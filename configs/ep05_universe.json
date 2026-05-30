@@ -1,12 +1,19 @@
 {
   "project": "AI_stock_backtest_lab",
   "episode": "EP05",
+  "warmup_start_date": "2023-09-01",
   "start_date": "2024-01-02",
   "end_date": "2026-05-26",
   "initial_cash_twd": 1000000,
   "execution": {
     "signal_timing": "T close",
     "trade_timing": "T+1 open",
+    "initial_entry": {
+      "trade_date": "2024-01-02",
+      "trade_timing": "open",
+      "selection_rule": "use_strategy_signal_from_previous_available_close",
+      "fixed_initial_asset": null
+    },
     "max_trades_per_day": 2,
     "allow_no_trade": true
   },
@@ -55,4 +62,3 @@
     "regime_anchor_rotation"
   ]
 }
-
