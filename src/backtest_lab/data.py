@@ -1,0 +1,82 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import pandas as pd
+
+
+REQUIRED_PRICE_COLUMNS = ("open", "close", "adj_close")
+
+
+def normalize_price_frame(frame: pd.DataFrame) -> pd.DataFrame:
+    normalized = frame.copy()
+    normalized.columns = [str(column).lower().replace(" ", "_") for column in normalized.columns]
+    missing = [column for column in REQUIRED_PRICE_COLUMNS if column not in normalized.columns]
+    if missing:
+        raise ValueError(f"Price data missing required columns: {', '.join(missing)}")
+    normalized.index = pd.to_datetime(normalized.index).normalize()
+    return normalized.sort_index()
+
+
+def load_price_csv(path: str | Path) -> pd.DataFrame:
+    frame = pd.read_csv(path, parse_dates=["date"], index_col="date")
+    return normalize_price_frame(frame)
+
+
+def download_yfinance_prices(
+    tickers: list[str],
+    start_date: str,
+    end_date: str,
+    cache_dir: str | Path,
+) -> dict[str, pd.DataFrame]:
+    import yfinance as yf
+
+    cache_path = Path(cache_dir)
+    cache_path.mkdir(parents=True, exist_ok=True)
+    yf.set_tz_cache_location(str(cache_path / "yfinance"))
+    prices: dict[str, pd.DataFrame] = {}
+    # yfinance end is exclusive; add one day so the configured final date is included.
+    yf_end = (pd.Timestamp(end_date) + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+    for ticker in tickers:
+        csv_path = cache_path / f"{ticker.replace('.', '_')}.csv"
+        if csv_path.exists():
+            prices[ticker] = load_price_csv(csv_path)
+            continue
+
+        raw = yf.download(
+            ticker,
+            start=start_date,
+            end=yf_end,
+            auto_adjust=False,
+            actions=True,
+            progress=False,
+            threads=False,
+        )
+        if raw.empty:
+            raise ValueError(f"No yfinance data returned for {ticker}")
+        raw = _single_ticker_columns(raw, ticker)
+
+        frame = pd.DataFrame(
+            {
+                "date": raw.index,
+                "open": raw["Open"].to_numpy(),
+                "high": raw["High"].to_numpy(),
+                "low": raw["Low"].to_numpy(),
+                "close": raw["Close"].to_numpy(),
+                "adj_close": raw["Adj Close"].to_numpy(),
+                "volume": raw["Volume"].to_numpy(),
+                "dividend": raw.get("Dividends", pd.Series(0, index=raw.index)).to_numpy(),
+                "stock_split": raw.get("Stock Splits", pd.Series(0, index=raw.index)).to_numpy(),
+            }
+        )
+        frame.to_csv(csv_path, index=False)
+        prices[ticker] = normalize_price_frame(frame.set_index("date"))
+    return prices
+
+
+def _single_ticker_columns(raw: pd.DataFrame, ticker: str) -> pd.DataFrame:
+    if not isinstance(raw.columns, pd.MultiIndex):
+        return raw
+    if "Ticker" in raw.columns.names:
+        return raw.xs(ticker, axis=1, level="Ticker")
+    return raw.droplevel(-1, axis=1)

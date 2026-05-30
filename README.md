@@ -96,3 +96,31 @@ EP05 不再做單一個股跟自己的買進持有比較，主軸改成「八檔
 - 4 到 8 張 PNG 圖表
 
 這些輸出要能直接交給 ChatGPT 中控制作 EP05 影片企劃、頁序、旁白與圖卡素材。
+
+## v0 執行方式
+
+目前 v0 已可跑：
+
+- 0050 買進持有對照組
+- 0050 正二買進持有對照組
+- `relative_strength_top1` 相對強弱第一名策略骨架
+
+執行：
+
+```powershell
+$env:PYTHONPATH='src'
+python -m backtest_lab.cli --config configs/ep05_universe.json --cache-dir backtest_cache --output-dir backtest_outputs
+```
+
+測試：
+
+```powershell
+python -m unittest discover -s tests -p "test*.py" -v
+```
+
+v0 限制：
+
+- 尚未實作股利發放日再投入。
+- 尚未實作股票股利 / 分割造成的股數調整。
+- `relative_strength_top1` 尚未加冷卻天數、換股門檻或低頻限制，所以交易次數偏高。
+- v0 數字只用來驗證工程規則，不應直接當成影片正式結論。
