@@ -11,7 +11,7 @@ class ConfigTest(unittest.TestCase):
         config = load_config(Path("configs") / "ep05_universe.json")
 
         self.assertEqual(config.start_date, "2024-01-02")
-        self.assertEqual(config.warmup_start_date, "2023-09-01")
+        self.assertEqual(config.warmup_start_date, "2023-01-01")
         self.assertEqual(config.execution.benchmark_entry_rule, "buy_and_hold_own_benchmark")
         self.assertEqual(
             config.execution.initial_entry_rule,
@@ -19,6 +19,7 @@ class ConfigTest(unittest.TestCase):
         )
         self.assertEqual(config.groups[0].benchmark, "0050.TW")
         self.assertEqual(config.groups[1].benchmark, "00631L.TW")
+        self.assertIn("dual_momentum_vol_control", config.strategies)
 
 
 if __name__ == "__main__":

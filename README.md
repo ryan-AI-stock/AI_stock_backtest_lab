@@ -104,6 +104,7 @@ EP05 不再做單一個股跟自己的買進持有比較，主軸改成「八檔
 - 0050 買進持有對照組
 - 0050 正二買進持有對照組
 - `relative_strength_top1` 相對強弱第一名策略骨架
+- `dual_momentum_vol_control` 雙動能波動控管策略
 - `benchmark_reconciliation.csv` 基準口徑調節表
 
 執行：
@@ -126,3 +127,15 @@ v0 限制：
 - 尚未實作一般化股票股利 / 分割股數調整。
 - `relative_strength_top1` 尚未加冷卻天數、換股門檻或低頻限制，所以交易次數偏高。
 - v0 數字只用來驗證工程規則，不應直接當成影片正式結論。
+
+## 專業風格策略：dual_momentum_vol_control
+
+這版不是宣稱「專業投資人都這樣做」，而是把投資實務與量化研究中常見的幾個規則合併成可回測版本：
+
+- 相對動能：在候選標的中挑近期與中期表現較強者。
+- 絕對趨勢濾網：價格需站上中期均線，且 3 個月與 6 個月動能為正。
+- 波動度懲罰：強勢但波動過大的標的分數會被扣分。
+- 週頻再平衡：只在每週第一個交易日檢查是否換股，避免每天追逐排名。
+- 無合格標的時可保留現金，避免在趨勢轉弱時硬買。
+
+這類設計接近常見的 tactical asset allocation、time-series momentum、cross-sectional momentum 與 volatility-aware momentum 思路，但仍只是 AI 輔助回測，不是投資建議。

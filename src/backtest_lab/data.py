@@ -56,8 +56,10 @@ def download_yfinance_prices(
     for ticker in tickers:
         csv_path = cache_path / f"{ticker.replace('.', '_')}.csv"
         if csv_path.exists():
-            prices[ticker] = load_price_csv(csv_path)
-            continue
+            cached = load_price_csv(csv_path)
+            if _covers_range(cached, start_date, end_date):
+                prices[ticker] = cached
+                continue
 
         raw = yf.download(
             ticker,
@@ -88,6 +90,14 @@ def download_yfinance_prices(
         frame.to_csv(csv_path, index=False)
         prices[ticker] = normalize_price_frame(frame.set_index("date"))
     return prices
+
+
+def _covers_range(frame: pd.DataFrame, start_date: str, end_date: str) -> bool:
+    if frame.empty:
+        return False
+    start = pd.Timestamp(start_date)
+    end = pd.Timestamp(end_date)
+    return frame.index.min() <= start and frame.index.max() >= end
 
 
 def _single_ticker_columns(raw: pd.DataFrame, ticker: str) -> pd.DataFrame:

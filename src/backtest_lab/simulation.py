@@ -6,7 +6,7 @@ import pandas as pd
 
 from backtest_lab.costs import TaiwanCostModel
 from backtest_lab.portfolio import Portfolio, Trade
-from backtest_lab.strategies import previous_available_date, relative_strength_top1
+from backtest_lab.strategies import dual_momentum_vol_control, previous_available_date, relative_strength_top1
 
 
 @dataclass
@@ -66,9 +66,7 @@ def simulate_relative_strength_top1(
         signal_date = previous_available_date(prices_by_ticker, trade_date)
         target = relative_strength_top1(prices_by_ticker, signal_date)
         current = portfolio.current_ticker()
-        if current == target:
-            continue
-        if current is not None:
+        if current != target and current is not None:
             sell_price = float(prices_by_ticker[current].loc[trade_date, "open"])
             portfolio.sell_all(
                 _date_str(trade_date),
@@ -77,14 +75,72 @@ def simulate_relative_strength_top1(
                 sell_price,
                 "relative_strength_rebalance",
             )
-        buy_price = float(prices_by_ticker[target].loc[trade_date, "open"])
-        portfolio.buy_max(
-            _date_str(trade_date),
-            target,
-            asset_types[target],
-            buy_price,
-            "relative_strength_initial_entry" if current is None else "relative_strength_rebalance",
-        )
+        if current != target:
+            buy_price = float(prices_by_ticker[target].loc[trade_date, "open"])
+            portfolio.buy_max(
+                _date_str(trade_date),
+                target,
+                asset_types[target],
+                buy_price,
+                "relative_strength_initial_entry" if current is None else "relative_strength_rebalance",
+            )
+        close_prices = {
+            ticker: float(prices.loc[trade_date, "close"])
+            for ticker, prices in prices_by_ticker.items()
+        }
+        equity_rows.append({"date": trade_date, "total_value": portfolio.market_value(close_prices)})
+
+    equity_curve = pd.DataFrame(equity_rows).set_index("date")
+    return _result(name, initial_cash, portfolio.trades, equity_curve)
+
+
+def simulate_dual_momentum_vol_control(
+    name: str,
+    prices_by_ticker: dict[str, pd.DataFrame],
+    asset_types: dict[str, str],
+    start_date: str,
+    end_date: str,
+    initial_cash: float,
+    cost_model: TaiwanCostModel,
+    dividend_series_by_ticker: dict[str, pd.Series] | None = None,
+    switch_threshold: float = 0.0,
+) -> BacktestResult:
+    trade_dates = _common_trade_dates(prices_by_ticker, start_date, end_date)
+    if not trade_dates:
+        raise ValueError(f"No common trade dates between {start_date} and {end_date}")
+    portfolio = Portfolio(initial_cash, cost_model)
+    equity_rows = []
+
+    for index, trade_date in enumerate(trade_dates):
+        current_before_trade = portfolio.current_ticker()
+        if current_before_trade is not None and dividend_series_by_ticker is not None:
+            dividend = float(dividend_series_by_ticker[current_before_trade].get(trade_date, 0.0))
+            portfolio.credit_dividend(_date_str(trade_date), current_before_trade, dividend)
+
+        if index == 0 or _is_first_trading_day_of_week(trade_dates, index):
+            signal_date = previous_available_date(prices_by_ticker, trade_date)
+            target = dual_momentum_vol_control(prices_by_ticker, signal_date)
+            current = portfolio.current_ticker()
+            if target != current and _should_switch(current, target, switch_threshold):
+                if current is not None:
+                    sell_price = float(prices_by_ticker[current].loc[trade_date, "open"])
+                    portfolio.sell_all(
+                        _date_str(trade_date),
+                        current,
+                        asset_types[current],
+                        sell_price,
+                        "dual_momentum_rebalance",
+                    )
+                if target is not None:
+                    buy_price = float(prices_by_ticker[target].loc[trade_date, "open"])
+                    portfolio.buy_max(
+                        _date_str(trade_date),
+                        target,
+                        asset_types[target],
+                        buy_price,
+                        "dual_momentum_initial_entry" if current is None else "dual_momentum_rebalance",
+                    )
+
         close_prices = {
             ticker: float(prices.loc[trade_date, "close"])
             for ticker, prices in prices_by_ticker.items()
@@ -111,6 +167,21 @@ def _common_trade_dates(
         dates = set(_trade_dates(prices, start_date, end_date))
         common = dates if common is None else common & dates
     return sorted(common or set())
+
+
+def _is_first_trading_day_of_week(trade_dates: list[pd.Timestamp], index: int) -> bool:
+    if index == 0:
+        return True
+    current = trade_dates[index].isocalendar()
+    previous = trade_dates[index - 1].isocalendar()
+    return (current.year, current.week) != (previous.year, previous.week)
+
+
+def _should_switch(current: str | None, target: str | None, switch_threshold: float) -> bool:
+    if switch_threshold <= 0:
+        return True
+    # The threshold parameter is reserved for score-aware switching in v2.
+    return current != target
 
 
 def _single_asset_equity_curve(

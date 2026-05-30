@@ -13,6 +13,7 @@ from backtest_lab.portfolio import Trade
 from backtest_lab.simulation import (
     BacktestResult,
     simulate_buy_and_hold,
+    simulate_dual_momentum_vol_control,
     simulate_relative_strength_top1,
 )
 
@@ -69,6 +70,18 @@ def main() -> None:
                 dividend_series_by_ticker=group_dividends,
             )
         )
+        results.append(
+            simulate_dual_momentum_vol_control(
+                name=f"{group.group_id}__dual_momentum_vol_control",
+                prices_by_ticker=group_prices,
+                asset_types=asset_types,
+                start_date=config.start_date,
+                end_date=config.end_date,
+                initial_cash=config.initial_cash_twd,
+                cost_model=config.cost_model,
+                dividend_series_by_ticker=group_dividends,
+            )
+        )
 
     _write_summary(results, output_dir)
     _write_benchmark_reconciliation(reconciliation_rows, output_dir)
@@ -103,7 +116,8 @@ def _write_summary(results: list[BacktestResult], output_dir: Path) -> None:
             "final_value": round(result.final_value, 2),
             "total_return_pct": round(result.total_return * 100, 2),
             "max_drawdown_pct": round(result.max_drawdown * 100, 2),
-            "trade_count": len(result.trades),
+            "trade_count": _execution_trade_count(result),
+            "event_count": len(result.trades),
         }
         for result in results
     ]
@@ -173,7 +187,8 @@ def _write_video_summary(results: list[BacktestResult], output_dir: Path) -> Non
                 "final_value": round(result.final_value, 2),
                 "total_return_pct": round(result.total_return * 100, 2),
                 "max_drawdown_pct": round(result.max_drawdown * 100, 2),
-                "trade_count": len(result.trades),
+                "trade_count": _execution_trade_count(result),
+                "event_count": len(result.trades),
                 "first_trade": _trade_row(result.trades[0]) if result.trades else None,
             }
             for result in results
@@ -190,6 +205,10 @@ def _trade_row(trade: Trade) -> dict:
     row["gross_amount"] = round(row["gross_amount"], 2)
     row["cash_after"] = round(row["cash_after"], 2)
     return row
+
+
+def _execution_trade_count(result: BacktestResult) -> int:
+    return sum(1 for trade in result.trades if trade.action in {"buy", "sell"})
 
 
 if __name__ == "__main__":
