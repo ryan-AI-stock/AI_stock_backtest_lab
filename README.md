@@ -105,6 +105,7 @@ EP05 不再做單一個股跟自己的買進持有比較，主軸改成「八檔
 - 0050 正二買進持有對照組
 - `relative_strength_top1` 相對強弱第一名策略骨架
 - `dual_momentum_vol_control` 雙動能波動控管策略
+- `theme_enhanced_dual_momentum` 題材雷達 proxy 策略
 - `benchmark_reconciliation.csv` 基準口徑調節表
 
 執行：
@@ -140,6 +141,16 @@ v0 限制：
 
 這類設計接近常見的 tactical asset allocation、time-series momentum、cross-sectional momentum 與 volatility-aware momentum 思路，但仍只是 AI 輔助回測，不是投資建議。
 
+## 題材雷達 proxy 策略
+
+`theme_enhanced_dual_momentum` 會讀取 `AI_stock_rotation_radar` 的 `theme_map.csv`，將候選股對應到題材，例如 AI 伺服器 / ODM、電源 / BBU、ASIC / IP、車用電子等。
+
+由於 `AI_stock_rotation_radar` 沒有從 2024-01-02 開始的完整每日雷達歷史分數，這裡不假裝使用不存在的歷史雷達報告；目前做法是用 rotation radar 的題材分類，再用歷史價格回推各題材在當時的強弱，形成 radar proxy。
+
+正式影片可以說成：
+
+> 這不是直接拿 EP04 當天的雷達結果倒回去用，而是用同一套題材分類邏輯，回頭檢查如果當時也用題材強弱輔助選股，結果會不會更好。
+
 ## 穩健性檢查輸出
 
 新增兩個檢查檔：
@@ -154,3 +165,12 @@ v0 限制：
   - 每個策略持有各標的的天數與占比
 
 目前初步結果：base 版本、排除聯發科、排除緯穎仍維持強勢，代表不是只靠單一股票；但短週期與月頻版本對結果影響明顯，代表策略仍有參數敏感度，不能直接當正式結論。
+
+## 圖表輸出
+
+CLI 會在 `backtest_outputs/charts/` 輸出：
+
+- `strategy_final_values.png`
+- `strategy_max_drawdowns.png`
+- `equity_curves.png`
+- `robustness_variants.png`

@@ -39,6 +39,53 @@ def dual_momentum_vol_control(
     trend_window: int = 126,
     volatility_window: int = 20,
 ) -> str | None:
+    scores = dual_momentum_scores(
+        prices_by_ticker,
+        signal_date,
+        momentum_windows=momentum_windows,
+        trend_window=trend_window,
+        volatility_window=volatility_window,
+    )
+    if not scores:
+        return None
+    return max(scores.items(), key=lambda item: (item[1], item[0]))[0]
+
+
+def theme_enhanced_dual_momentum(
+    prices_by_ticker: dict[str, pd.DataFrame],
+    signal_date: pd.Timestamp,
+    theme_by_ticker: dict[str, tuple[str, ...]],
+    momentum_windows: tuple[int, int] = (63, 126),
+    trend_window: int = 126,
+    volatility_window: int = 20,
+    theme_window: int = 20,
+    theme_weight: float = 0.25,
+) -> str | None:
+    base_scores = dual_momentum_scores(
+        prices_by_ticker,
+        signal_date,
+        momentum_windows=momentum_windows,
+        trend_window=trend_window,
+        volatility_window=volatility_window,
+    )
+    if not base_scores:
+        return None
+    theme_scores = _theme_scores(prices_by_ticker, signal_date, theme_by_ticker, theme_window)
+    adjusted_scores: dict[str, float] = {}
+    for ticker, score in base_scores.items():
+        themes = theme_by_ticker.get(ticker, ())
+        theme_bonus = max((theme_scores.get(theme, 0.0) for theme in themes), default=0.0)
+        adjusted_scores[ticker] = score + (theme_weight * theme_bonus)
+    return max(adjusted_scores.items(), key=lambda item: (item[1], item[0]))[0]
+
+
+def dual_momentum_scores(
+    prices_by_ticker: dict[str, pd.DataFrame],
+    signal_date: pd.Timestamp,
+    momentum_windows: tuple[int, int] = (63, 126),
+    trend_window: int = 126,
+    volatility_window: int = 20,
+) -> dict[str, float]:
     scores: dict[str, float] = {}
     required = max(max(momentum_windows), trend_window, volatility_window) + 1
     for ticker, prices in prices_by_ticker.items():
@@ -54,6 +101,30 @@ def dual_momentum_vol_control(
         daily_vol = history.pct_change().dropna().iloc[-volatility_window:].std()
         annual_vol = float(daily_vol * (252**0.5))
         scores[ticker] = (0.45 * medium_return) + (0.45 * long_return) - (0.10 * annual_vol)
-    if not scores:
-        return None
-    return max(scores.items(), key=lambda item: (item[1], item[0]))[0]
+    return scores
+
+
+def _theme_scores(
+    prices_by_ticker: dict[str, pd.DataFrame],
+    signal_date: pd.Timestamp,
+    theme_by_ticker: dict[str, tuple[str, ...]],
+    theme_window: int,
+) -> dict[str, float]:
+    values: dict[str, list[float]] = {}
+    for ticker, themes in theme_by_ticker.items():
+        if ticker not in prices_by_ticker:
+            continue
+        history = prices_by_ticker[ticker].loc[prices_by_ticker[ticker].index <= signal_date, "adj_close"].dropna()
+        if len(history) <= theme_window:
+            continue
+        theme_return = float(history.iloc[-1] / history.iloc[-theme_window] - 1)
+        for theme in themes:
+            values.setdefault(theme, []).append(theme_return)
+    scores: dict[str, float] = {}
+    for theme, returns in values.items():
+        if not returns:
+            continue
+        average_return = sum(returns) / len(returns)
+        strong_ratio = sum(1 for value in returns if value > 0) / len(returns)
+        scores[theme] = (0.7 * average_return) + (0.3 * strong_ratio)
+    return scores

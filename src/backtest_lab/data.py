@@ -39,6 +39,27 @@ def split_adjusted_dividends(
     return dividends
 
 
+def load_theme_map(path: str | Path | None) -> dict[str, tuple[str, ...]]:
+    if not path:
+        return {}
+    csv_path = Path(path)
+    if not csv_path.exists():
+        return {}
+    frame = pd.read_csv(csv_path, dtype={"symbol": str})
+    theme_by_ticker: dict[str, list[str]] = {}
+    for _, row in frame.iterrows():
+        symbol = str(row.get("symbol", "")).strip()
+        theme = str(row.get("theme", "")).strip()
+        primary = str(row.get("primary", "yes")).strip().lower()
+        if not symbol or not theme or primary in {"no", "false", "0"}:
+            continue
+        ticker = f"{symbol}.TW"
+        theme_by_ticker.setdefault(ticker, [])
+        if theme not in theme_by_ticker[ticker]:
+            theme_by_ticker[ticker].append(theme)
+    return {ticker: tuple(themes) for ticker, themes in theme_by_ticker.items()}
+
+
 def download_yfinance_prices(
     tickers: list[str],
     start_date: str,

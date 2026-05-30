@@ -9,6 +9,7 @@ from backtest_lab.simulation import (
     simulate_buy_and_hold,
     simulate_dual_momentum_vol_control,
     simulate_relative_strength_top1,
+    simulate_theme_enhanced_dual_momentum,
 )
 
 
@@ -115,6 +116,28 @@ class SimulationTest(unittest.TestCase):
 
         self.assertEqual(result.trades[0].ticker, "6669.TW")
         self.assertIn("current_ticker", result.equity_curve.columns)
+
+    def test_theme_enhanced_dual_momentum_accepts_rotation_theme_map(self) -> None:
+        flat_0050 = price_frame(100, 100, 0)
+        strong_stock = price_frame(200, 100, 3)
+        prices_by_ticker = {
+            "0050.TW": flat_0050,
+            "6669.TW": strong_stock,
+        }
+
+        result = simulate_theme_enhanced_dual_momentum(
+            name="題材加權雙動能",
+            prices_by_ticker=prices_by_ticker,
+            asset_types={"0050.TW": "etf", "6669.TW": "stock"},
+            theme_by_ticker={"6669.TW": ("AI伺服器/ODM",)},
+            start_date="2024-01-02",
+            end_date="2024-01-31",
+            initial_cash=1_000_000,
+            cost_model=TaiwanCostModel(),
+        )
+
+        self.assertEqual(result.trades[0].ticker, "6669.TW")
+        self.assertEqual(result.trades[0].reason, "theme_enhanced_initial_entry")
 
 
 if __name__ == "__main__":

@@ -8,13 +8,14 @@ from pathlib import Path
 import pandas as pd
 
 from backtest_lab.config import GroupConfig, load_config
-from backtest_lab.data import download_yfinance_prices, split_adjusted_dividends
+from backtest_lab.data import download_yfinance_prices, load_theme_map, split_adjusted_dividends
 from backtest_lab.portfolio import Trade
 from backtest_lab.simulation import (
     BacktestResult,
     simulate_buy_and_hold,
     simulate_dual_momentum_vol_control,
     simulate_relative_strength_top1,
+    simulate_theme_enhanced_dual_momentum,
 )
 
 
@@ -23,6 +24,7 @@ def main() -> None:
     parser.add_argument("--config", default="configs/ep05_universe.json")
     parser.add_argument("--cache-dir", default="backtest_cache")
     parser.add_argument("--output-dir", default="backtest_outputs")
+    parser.add_argument("--theme-map-file", default="", help="Optional AI_stock_rotation_radar theme_map.csv path.")
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -40,6 +42,7 @@ def main() -> None:
         ticker: split_adjusted_dividends(prices[ticker], config.manual_splits.get(ticker, ()))
         for ticker in tickers
     }
+    theme_by_ticker = load_theme_map(args.theme_map_file)
 
     results: list[BacktestResult] = []
     reconciliation_rows: list[dict] = []
@@ -82,13 +85,29 @@ def main() -> None:
                 dividend_series_by_ticker=group_dividends,
             )
         )
+        if theme_by_ticker:
+            results.append(
+                simulate_theme_enhanced_dual_momentum(
+                    name=f"{group.group_id}__theme_enhanced_dual_momentum",
+                    prices_by_ticker=group_prices,
+                    asset_types=asset_types,
+                    theme_by_ticker=theme_by_ticker,
+                    start_date=config.start_date,
+                    end_date=config.end_date,
+                    initial_cash=config.initial_cash_twd,
+                    cost_model=config.cost_model,
+                    dividend_series_by_ticker=group_dividends,
+                )
+            )
 
     _write_summary(results, output_dir)
     _write_benchmark_reconciliation(reconciliation_rows, output_dir)
     _write_trades(results, output_dir)
     _write_equity_curves(results, output_dir)
     _write_holding_exposure(results, output_dir)
-    _write_robustness_summary(_run_robustness_checks(config, prices, dividends), output_dir)
+    robustness_rows = _run_robustness_checks(config, prices, dividends)
+    _write_robustness_summary(robustness_rows, output_dir)
+    _write_charts(results, robustness_rows, output_dir)
     _write_video_summary(results, output_dir)
 
 
@@ -336,6 +355,77 @@ def _write_video_summary(results: list[BacktestResult], output_dir: Path) -> Non
         json.dumps(payload, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
+
+
+def _write_charts(results: list[BacktestResult], robustness_rows: list[dict], output_dir: Path) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    chart_dir = output_dir / "charts"
+    chart_dir.mkdir(parents=True, exist_ok=True)
+
+    labels = [_short_strategy_name(result.name) for result in results]
+    final_values = [result.final_value / 1_000_000 for result in results]
+    drawdowns = [result.max_drawdown * 100 for result in results]
+
+    plt.figure(figsize=(12, 6))
+    plt.bar(labels, final_values, color="#16a085")
+    plt.ylabel("Final value (NTD millions)")
+    plt.xticks(rotation=35, ha="right")
+    plt.tight_layout()
+    plt.savefig(chart_dir / "strategy_final_values.png", dpi=160)
+    plt.close()
+
+    plt.figure(figsize=(12, 6))
+    plt.bar(labels, drawdowns, color="#c0392b")
+    plt.ylabel("Max drawdown (%)")
+    plt.xticks(rotation=35, ha="right")
+    plt.tight_layout()
+    plt.savefig(chart_dir / "strategy_max_drawdowns.png", dpi=160)
+    plt.close()
+
+    plt.figure(figsize=(12, 6))
+    for result in results:
+        curve = result.equity_curve["total_value"] / 1_000_000
+        plt.plot(curve.index, curve.values, label=_short_strategy_name(result.name), linewidth=1.8)
+    plt.ylabel("Portfolio value (NTD millions)")
+    plt.legend(fontsize=8)
+    plt.tight_layout()
+    plt.savefig(chart_dir / "equity_curves.png", dpi=160)
+    plt.close()
+
+    robustness = pd.DataFrame(robustness_rows)
+    if not robustness.empty:
+        plt.figure(figsize=(12, 7))
+        for group, group_frame in robustness.groupby("group"):
+            plt.plot(
+                group_frame["variant"],
+                group_frame["final_value"] / 1_000_000,
+                marker="o",
+                label=group,
+            )
+        plt.ylabel("Final value (NTD millions)")
+        plt.xticks(rotation=35, ha="right")
+        plt.legend(fontsize=8)
+        plt.tight_layout()
+        plt.savefig(chart_dir / "robustness_variants.png", dpi=160)
+        plt.close()
+
+
+def _short_strategy_name(name: str) -> str:
+    replacements = {
+        "group_a_0050_plus_mega_caps__benchmark__0050.TW": "0050 B&H",
+        "group_b_00631l_plus_mega_caps__benchmark__00631L.TW": "0050 2x B&H",
+        "group_a_0050_plus_mega_caps__relative_strength_top1": "A daily top1",
+        "group_b_00631l_plus_mega_caps__relative_strength_top1": "B daily top1",
+        "group_a_0050_plus_mega_caps__dual_momentum_vol_control": "A dual momentum",
+        "group_b_00631l_plus_mega_caps__dual_momentum_vol_control": "B dual momentum",
+        "group_a_0050_plus_mega_caps__theme_enhanced_dual_momentum": "A radar proxy",
+        "group_b_00631l_plus_mega_caps__theme_enhanced_dual_momentum": "B radar proxy",
+    }
+    return replacements.get(name, name)
 
 
 def _trade_row(trade: Trade) -> dict:

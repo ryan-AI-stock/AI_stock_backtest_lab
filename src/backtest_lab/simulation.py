@@ -6,7 +6,12 @@ import pandas as pd
 
 from backtest_lab.costs import TaiwanCostModel
 from backtest_lab.portfolio import Portfolio, Trade
-from backtest_lab.strategies import dual_momentum_vol_control, previous_available_date, relative_strength_top1
+from backtest_lab.strategies import (
+    dual_momentum_vol_control,
+    previous_available_date,
+    relative_strength_top1,
+    theme_enhanced_dual_momentum,
+)
 
 
 @dataclass
@@ -154,6 +159,70 @@ def simulate_dual_momentum_vol_control(
                         asset_types[target],
                         buy_price,
                         "dual_momentum_initial_entry" if current is None else "dual_momentum_rebalance",
+                    )
+
+        close_prices = {
+            ticker: float(prices.loc[trade_date, "close"])
+            for ticker, prices in prices_by_ticker.items()
+        }
+        equity_rows.append(
+            {
+                "date": trade_date,
+                "total_value": portfolio.market_value(close_prices),
+                "current_ticker": portfolio.current_ticker() or "cash",
+            }
+        )
+
+    equity_curve = pd.DataFrame(equity_rows).set_index("date")
+    return _result(name, initial_cash, portfolio.trades, equity_curve)
+
+
+def simulate_theme_enhanced_dual_momentum(
+    name: str,
+    prices_by_ticker: dict[str, pd.DataFrame],
+    asset_types: dict[str, str],
+    theme_by_ticker: dict[str, tuple[str, ...]],
+    start_date: str,
+    end_date: str,
+    initial_cash: float,
+    cost_model: TaiwanCostModel,
+    dividend_series_by_ticker: dict[str, pd.Series] | None = None,
+    rebalance_frequency: str = "weekly",
+) -> BacktestResult:
+    trade_dates = _common_trade_dates(prices_by_ticker, start_date, end_date)
+    if not trade_dates:
+        raise ValueError(f"No common trade dates between {start_date} and {end_date}")
+    portfolio = Portfolio(initial_cash, cost_model)
+    equity_rows = []
+
+    for index, trade_date in enumerate(trade_dates):
+        current_before_trade = portfolio.current_ticker()
+        if current_before_trade is not None and dividend_series_by_ticker is not None:
+            dividend = float(dividend_series_by_ticker[current_before_trade].get(trade_date, 0.0))
+            portfolio.credit_dividend(_date_str(trade_date), current_before_trade, dividend)
+
+        if index == 0 or _is_rebalance_date(trade_dates, index, rebalance_frequency):
+            signal_date = previous_available_date(prices_by_ticker, trade_date)
+            target = theme_enhanced_dual_momentum(prices_by_ticker, signal_date, theme_by_ticker)
+            current = portfolio.current_ticker()
+            if target != current:
+                if current is not None:
+                    sell_price = float(prices_by_ticker[current].loc[trade_date, "open"])
+                    portfolio.sell_all(
+                        _date_str(trade_date),
+                        current,
+                        asset_types[current],
+                        sell_price,
+                        "theme_enhanced_rebalance",
+                    )
+                if target is not None:
+                    buy_price = float(prices_by_ticker[target].loc[trade_date, "open"])
+                    portfolio.buy_max(
+                        _date_str(trade_date),
+                        target,
+                        asset_types[target],
+                        buy_price,
+                        "theme_enhanced_initial_entry" if current is None else "theme_enhanced_rebalance",
                     )
 
         close_prices = {
