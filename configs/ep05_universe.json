@@ -1,0 +1,58 @@
+{
+  "project": "AI_stock_backtest_lab",
+  "episode": "EP05",
+  "start_date": "2024-01-02",
+  "end_date": "2026-05-26",
+  "initial_cash_twd": 1000000,
+  "execution": {
+    "signal_timing": "T close",
+    "trade_timing": "T+1 open",
+    "max_trades_per_day": 2,
+    "allow_no_trade": true
+  },
+  "costs": {
+    "broker_fee_rate": 0.001425,
+    "broker_fee_discount": 1.0,
+    "minimum_fee_twd": 20,
+    "stock_sell_tax_rate": 0.003,
+    "etf_sell_tax_rate": 0.001
+  },
+  "groups": [
+    {
+      "id": "group_a_0050_plus_mega_caps",
+      "benchmark": "0050.TW",
+      "benchmark_label": "0050 買進持有",
+      "assets": [
+        {"ticker": "0050.TW", "label": "0050", "type": "etf"},
+        {"ticker": "2330.TW", "label": "台積電", "type": "stock"},
+        {"ticker": "2454.TW", "label": "聯發科", "type": "stock"},
+        {"ticker": "2308.TW", "label": "台達電", "type": "stock"},
+        {"ticker": "2317.TW", "label": "鴻海", "type": "stock"},
+        {"ticker": "2382.TW", "label": "廣達", "type": "stock"},
+        {"ticker": "3231.TW", "label": "緯創", "type": "stock"},
+        {"ticker": "6669.TW", "label": "緯穎", "type": "stock"}
+      ]
+    },
+    {
+      "id": "group_b_00631l_plus_mega_caps",
+      "benchmark": "00631L.TW",
+      "benchmark_label": "0050 正二買進持有",
+      "assets": [
+        {"ticker": "00631L.TW", "label": "0050 正二", "type": "etf"},
+        {"ticker": "2330.TW", "label": "台積電", "type": "stock"},
+        {"ticker": "2454.TW", "label": "聯發科", "type": "stock"},
+        {"ticker": "2308.TW", "label": "台達電", "type": "stock"},
+        {"ticker": "2317.TW", "label": "鴻海", "type": "stock"},
+        {"ticker": "2382.TW", "label": "廣達", "type": "stock"},
+        {"ticker": "3231.TW", "label": "緯創", "type": "stock"},
+        {"ticker": "6669.TW", "label": "緯穎", "type": "stock"}
+      ]
+    }
+  ],
+  "strategies": [
+    "relative_strength_top1",
+    "risk_adjusted_top2",
+    "regime_anchor_rotation"
+  ]
+}
+

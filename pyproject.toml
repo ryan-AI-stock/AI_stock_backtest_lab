@@ -1,0 +1,16 @@
+[project]
+name = "ai-stock-backtest-lab"
+version = "0.1.0"
+description = "Backtest lab for 被AI研究所 EP05 stock rotation experiments."
+requires-python = ">=3.11"
+dependencies = [
+  "matplotlib>=3.8",
+  "numpy>=1.26",
+  "pandas>=2.2",
+  "yfinance>=0.2.40"
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
