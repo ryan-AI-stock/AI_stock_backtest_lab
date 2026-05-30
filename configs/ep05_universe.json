@@ -8,6 +8,11 @@
   "execution": {
     "signal_timing": "T close",
     "trade_timing": "T+1 open",
+    "benchmark_entry": {
+      "trade_date": "2024-01-02",
+      "trade_timing": "open",
+      "selection_rule": "buy_and_hold_own_benchmark"
+    },
     "initial_entry": {
       "trade_date": "2024-01-02",
       "trade_timing": "open",
