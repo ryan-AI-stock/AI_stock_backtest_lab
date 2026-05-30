@@ -23,6 +23,22 @@ def load_price_csv(path: str | Path) -> pd.DataFrame:
     return normalize_price_frame(frame)
 
 
+def split_adjusted_dividends(
+    prices: pd.DataFrame,
+    manual_splits: tuple[dict[str, float | str], ...] = (),
+) -> pd.Series:
+    if "dividend" not in prices.columns:
+        return pd.Series(0.0, index=prices.index)
+    dividends = prices["dividend"].fillna(0.0).astype(float).copy()
+    for event in manual_splits:
+        split_date = pd.Timestamp(str(event["date"]))
+        ratio = float(event["ratio"])
+        if ratio <= 0:
+            raise ValueError(f"Invalid split ratio for {split_date.date()}: {ratio}")
+        dividends.loc[dividends.index < split_date] = dividends.loc[dividends.index < split_date] / ratio
+    return dividends
+
+
 def download_yfinance_prices(
     tickers: list[str],
     start_date: str,

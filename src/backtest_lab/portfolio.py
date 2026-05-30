@@ -89,6 +89,26 @@ class Portfolio:
         self.trades.append(trade)
         return trade
 
+    def credit_dividend(self, date: str, ticker: str, dividend_per_share: float) -> Trade | None:
+        shares = self.shares(ticker)
+        if shares <= 0 or dividend_per_share <= 0:
+            return None
+        amount = shares * dividend_per_share
+        self.cash += amount
+        trade = Trade(
+            date=date,
+            ticker=ticker,
+            action="dividend",
+            shares=shares,
+            price=dividend_per_share,
+            gross_amount=amount,
+            costs=0,
+            cash_after=self.cash,
+            reason="cash_dividend",
+        )
+        self.trades.append(trade)
+        return trade
+
     def market_value(self, close_prices: dict[str, float]) -> float:
         value = self.cash
         for ticker, position in self.positions.items():
@@ -107,4 +127,3 @@ class Portfolio:
                 return shares
             shares -= 1
         return 0
-

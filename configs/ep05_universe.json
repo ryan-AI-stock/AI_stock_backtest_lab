@@ -29,6 +29,20 @@
     "stock_sell_tax_rate": 0.003,
     "etf_sell_tax_rate": 0.001
   },
+  "corporate_actions": {
+    "manual_splits": {
+      "0050.TW": [
+        {"date": "2025-06-18", "ratio": 4.0}
+      ]
+    },
+    "reference_values": {
+      "0050.TW": {
+        "source": "EP03 TWSE strict_guard/buy_hold output",
+        "final_value": 3000996.441427897,
+        "total_return_pct": 200.0996441427897
+      }
+    }
+  },
   "groups": [
     {
       "id": "group_a_0050_plus_mega_caps",

@@ -8,7 +8,7 @@ from pathlib import Path
 import pandas as pd
 
 from backtest_lab.config import GroupConfig, load_config
-from backtest_lab.data import download_yfinance_prices
+from backtest_lab.data import download_yfinance_prices, split_adjusted_dividends
 from backtest_lab.portfolio import Trade
 from backtest_lab.simulation import (
     BacktestResult,
@@ -35,12 +35,28 @@ def main() -> None:
         end_date=config.end_date,
         cache_dir=args.cache_dir,
     )
+    dividends = {
+        ticker: split_adjusted_dividends(prices[ticker], config.manual_splits.get(ticker, ()))
+        for ticker in tickers
+    }
 
     results: list[BacktestResult] = []
+    reconciliation_rows: list[dict] = []
     for group in config.groups:
-        results.append(_run_benchmark(group, prices, config))
+        benchmark_without_dividend = _run_benchmark(group, prices, config, dividend_series=None)
+        benchmark_with_dividend = _run_benchmark(group, prices, config, dividend_series=dividends[group.benchmark])
+        results.append(benchmark_with_dividend)
+        reconciliation_rows.append(
+            _benchmark_reconciliation_row(
+                group,
+                benchmark_without_dividend,
+                benchmark_with_dividend,
+                config.reference_values.get(group.benchmark),
+            )
+        )
         group_prices = {asset.ticker: prices[asset.ticker] for asset in group.assets}
         asset_types = {asset.ticker: asset.asset_type for asset in group.assets}
+        group_dividends = {asset.ticker: dividends[asset.ticker] for asset in group.assets}
         results.append(
             simulate_relative_strength_top1(
                 name=f"{group.group_id}__relative_strength_top1",
@@ -50,16 +66,23 @@ def main() -> None:
                 end_date=config.end_date,
                 initial_cash=config.initial_cash_twd,
                 cost_model=config.cost_model,
+                dividend_series_by_ticker=group_dividends,
             )
         )
 
     _write_summary(results, output_dir)
+    _write_benchmark_reconciliation(reconciliation_rows, output_dir)
     _write_trades(results, output_dir)
     _write_equity_curves(results, output_dir)
     _write_video_summary(results, output_dir)
 
 
-def _run_benchmark(group: GroupConfig, prices: dict[str, pd.DataFrame], config) -> BacktestResult:
+def _run_benchmark(
+    group: GroupConfig,
+    prices: dict[str, pd.DataFrame],
+    config,
+    dividend_series: pd.Series | None,
+) -> BacktestResult:
     return simulate_buy_and_hold(
         name=f"{group.group_id}__benchmark__{group.benchmark}",
         ticker=group.benchmark,
@@ -69,6 +92,7 @@ def _run_benchmark(group: GroupConfig, prices: dict[str, pd.DataFrame], config) 
         end_date=config.end_date,
         initial_cash=config.initial_cash_twd,
         cost_model=config.cost_model,
+        dividend_series=dividend_series,
     )
 
 
@@ -84,6 +108,38 @@ def _write_summary(results: list[BacktestResult], output_dir: Path) -> None:
         for result in results
     ]
     pd.DataFrame(rows).to_csv(output_dir / "strategies_summary.csv", index=False, encoding="utf-8-sig")
+
+
+def _benchmark_reconciliation_row(
+    group: GroupConfig,
+    without_dividend: BacktestResult,
+    with_dividend: BacktestResult,
+    reference: dict[str, float | str] | None,
+) -> dict:
+    reference_final = float(reference["final_value"]) if reference and "final_value" in reference else None
+    reference_diff = (
+        round(with_dividend.final_value - reference_final, 2)
+        if reference_final is not None
+        else None
+    )
+    return {
+        "group": group.group_id,
+        "benchmark": group.benchmark,
+        "without_dividend_final_value": round(without_dividend.final_value, 2),
+        "with_adjusted_dividend_final_value": round(with_dividend.final_value, 2),
+        "dividend_cash_added": round(with_dividend.final_value - without_dividend.final_value, 2),
+        "reference_source": reference.get("source") if reference else "",
+        "reference_final_value": reference_final,
+        "diff_vs_reference": reference_diff,
+    }
+
+
+def _write_benchmark_reconciliation(rows: list[dict], output_dir: Path) -> None:
+    pd.DataFrame(rows).to_csv(
+        output_dir / "benchmark_reconciliation.csv",
+        index=False,
+        encoding="utf-8-sig",
+    )
 
 
 def _write_trades(results: list[BacktestResult], output_dir: Path) -> None:
@@ -138,4 +194,3 @@ def _trade_row(trade: Trade) -> dict:
 
 if __name__ == "__main__":
     main()
-

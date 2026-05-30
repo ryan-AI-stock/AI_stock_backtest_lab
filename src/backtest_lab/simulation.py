@@ -28,6 +28,7 @@ def simulate_buy_and_hold(
     end_date: str,
     initial_cash: float,
     cost_model: TaiwanCostModel,
+    dividend_series: pd.Series | None = None,
 ) -> BacktestResult:
     trade_dates = _trade_dates(prices, start_date, end_date)
     if not trade_dates:
@@ -36,7 +37,7 @@ def simulate_buy_and_hold(
     entry_date = trade_dates[0]
     entry_price = float(prices.loc[entry_date, "open"])
     portfolio.buy_max(_date_str(entry_date), ticker, asset_type, entry_price, "benchmark_initial_entry")
-    equity_curve = _single_asset_equity_curve(portfolio, ticker, prices, trade_dates)
+    equity_curve = _single_asset_equity_curve(portfolio, ticker, prices, trade_dates, entry_date, dividend_series)
     return _result(name, initial_cash, portfolio.trades, equity_curve)
 
 
@@ -48,6 +49,7 @@ def simulate_relative_strength_top1(
     end_date: str,
     initial_cash: float,
     cost_model: TaiwanCostModel,
+    dividend_series_by_ticker: dict[str, pd.Series] | None = None,
 ) -> BacktestResult:
     trade_dates = _common_trade_dates(prices_by_ticker, start_date, end_date)
     if not trade_dates:
@@ -56,6 +58,11 @@ def simulate_relative_strength_top1(
     equity_rows = []
 
     for trade_date in trade_dates:
+        current_before_trade = portfolio.current_ticker()
+        if current_before_trade is not None and dividend_series_by_ticker is not None:
+            dividend = float(dividend_series_by_ticker[current_before_trade].get(trade_date, 0.0))
+            portfolio.credit_dividend(_date_str(trade_date), current_before_trade, dividend)
+
         signal_date = previous_available_date(prices_by_ticker, trade_date)
         target = relative_strength_top1(prices_by_ticker, signal_date)
         current = portfolio.current_ticker()
@@ -111,9 +118,14 @@ def _single_asset_equity_curve(
     ticker: str,
     prices: pd.DataFrame,
     trade_dates: list[pd.Timestamp],
+    entry_date: pd.Timestamp,
+    dividend_series: pd.Series | None,
 ) -> pd.DataFrame:
     rows = []
     for date in trade_dates:
+        if date > entry_date and dividend_series is not None:
+            dividend = float(dividend_series.get(date, 0.0))
+            portfolio.credit_dividend(_date_str(date), ticker, dividend)
         close_prices = {ticker: float(prices.loc[date, "close"])}
         rows.append({"date": date, "total_value": portfolio.market_value(close_prices)})
     return pd.DataFrame(rows).set_index("date")

@@ -49,6 +49,8 @@ class BacktestConfig:
     initial_cash_twd: int
     execution: ExecutionConfig
     cost_model: TaiwanCostModel
+    manual_splits: dict[str, tuple[dict[str, float | str], ...]]
+    reference_values: dict[str, dict[str, float | str]]
     groups: tuple[GroupConfig, ...]
     strategies: tuple[str, ...]
 
@@ -61,6 +63,7 @@ def load_config(path: str | Path) -> BacktestConfig:
 def parse_config(raw: dict[str, Any]) -> BacktestConfig:
     costs = raw["costs"]
     execution = raw["execution"]
+    corporate_actions = raw.get("corporate_actions", {})
     groups = tuple(
         GroupConfig(
             group_id=group["id"],
@@ -99,7 +102,11 @@ def parse_config(raw: dict[str, Any]) -> BacktestConfig:
             stock_sell_tax_rate=costs["stock_sell_tax_rate"],
             etf_sell_tax_rate=costs["etf_sell_tax_rate"],
         ),
+        manual_splits={
+            ticker: tuple(events)
+            for ticker, events in corporate_actions.get("manual_splits", {}).items()
+        },
+        reference_values=corporate_actions.get("reference_values", {}),
         groups=groups,
         strategies=tuple(raw["strategies"]),
     )
-
