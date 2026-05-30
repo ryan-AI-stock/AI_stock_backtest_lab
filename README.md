@@ -139,3 +139,18 @@ v0 限制：
 - 無合格標的時可保留現金，避免在趨勢轉弱時硬買。
 
 這類設計接近常見的 tactical asset allocation、time-series momentum、cross-sectional momentum 與 volatility-aware momentum 思路，但仍只是 AI 輔助回測，不是投資建議。
+
+## 穩健性檢查輸出
+
+新增兩個檢查檔：
+
+- `robustness_summary.csv`
+  - 不同動能窗口
+  - 週頻 / 月頻再平衡
+  - 排除聯發科
+  - 排除緯穎
+  - 2026 單獨驗證段
+- `holding_exposure.csv`
+  - 每個策略持有各標的的天數與占比
+
+目前初步結果：base 版本、排除聯發科、排除緯穎仍維持強勢，代表不是只靠單一股票；但短週期與月頻版本對結果影響明顯，代表策略仍有參數敏感度，不能直接當正式結論。

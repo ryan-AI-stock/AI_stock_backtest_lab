@@ -88,7 +88,13 @@ def simulate_relative_strength_top1(
             ticker: float(prices.loc[trade_date, "close"])
             for ticker, prices in prices_by_ticker.items()
         }
-        equity_rows.append({"date": trade_date, "total_value": portfolio.market_value(close_prices)})
+        equity_rows.append(
+            {
+                "date": trade_date,
+                "total_value": portfolio.market_value(close_prices),
+                "current_ticker": portfolio.current_ticker() or "cash",
+            }
+        )
 
     equity_curve = pd.DataFrame(equity_rows).set_index("date")
     return _result(name, initial_cash, portfolio.trades, equity_curve)
@@ -103,7 +109,10 @@ def simulate_dual_momentum_vol_control(
     initial_cash: float,
     cost_model: TaiwanCostModel,
     dividend_series_by_ticker: dict[str, pd.Series] | None = None,
-    switch_threshold: float = 0.0,
+    momentum_windows: tuple[int, int] = (63, 126),
+    trend_window: int = 126,
+    volatility_window: int = 20,
+    rebalance_frequency: str = "weekly",
 ) -> BacktestResult:
     trade_dates = _common_trade_dates(prices_by_ticker, start_date, end_date)
     if not trade_dates:
@@ -117,11 +126,17 @@ def simulate_dual_momentum_vol_control(
             dividend = float(dividend_series_by_ticker[current_before_trade].get(trade_date, 0.0))
             portfolio.credit_dividend(_date_str(trade_date), current_before_trade, dividend)
 
-        if index == 0 or _is_first_trading_day_of_week(trade_dates, index):
+        if index == 0 or _is_rebalance_date(trade_dates, index, rebalance_frequency):
             signal_date = previous_available_date(prices_by_ticker, trade_date)
-            target = dual_momentum_vol_control(prices_by_ticker, signal_date)
+            target = dual_momentum_vol_control(
+                prices_by_ticker,
+                signal_date,
+                momentum_windows=momentum_windows,
+                trend_window=trend_window,
+                volatility_window=volatility_window,
+            )
             current = portfolio.current_ticker()
-            if target != current and _should_switch(current, target, switch_threshold):
+            if target != current:
                 if current is not None:
                     sell_price = float(prices_by_ticker[current].loc[trade_date, "open"])
                     portfolio.sell_all(
@@ -145,7 +160,13 @@ def simulate_dual_momentum_vol_control(
             ticker: float(prices.loc[trade_date, "close"])
             for ticker, prices in prices_by_ticker.items()
         }
-        equity_rows.append({"date": trade_date, "total_value": portfolio.market_value(close_prices)})
+        equity_rows.append(
+            {
+                "date": trade_date,
+                "total_value": portfolio.market_value(close_prices),
+                "current_ticker": portfolio.current_ticker() or "cash",
+            }
+        )
 
     equity_curve = pd.DataFrame(equity_rows).set_index("date")
     return _result(name, initial_cash, portfolio.trades, equity_curve)
@@ -169,19 +190,24 @@ def _common_trade_dates(
     return sorted(common or set())
 
 
+def _is_rebalance_date(trade_dates: list[pd.Timestamp], index: int, frequency: str) -> bool:
+    if index == 0:
+        return True
+    if frequency == "daily":
+        return True
+    if frequency == "weekly":
+        return _is_first_trading_day_of_week(trade_dates, index)
+    if frequency == "monthly":
+        return trade_dates[index].month != trade_dates[index - 1].month
+    raise ValueError(f"Unsupported rebalance frequency: {frequency}")
+
+
 def _is_first_trading_day_of_week(trade_dates: list[pd.Timestamp], index: int) -> bool:
     if index == 0:
         return True
     current = trade_dates[index].isocalendar()
     previous = trade_dates[index - 1].isocalendar()
     return (current.year, current.week) != (previous.year, previous.week)
-
-
-def _should_switch(current: str | None, target: str | None, switch_threshold: float) -> bool:
-    if switch_threshold <= 0:
-        return True
-    # The threshold parameter is reserved for score-aware switching in v2.
-    return current != target
 
 
 def _single_asset_equity_curve(
@@ -198,7 +224,7 @@ def _single_asset_equity_curve(
             dividend = float(dividend_series.get(date, 0.0))
             portfolio.credit_dividend(_date_str(date), ticker, dividend)
         close_prices = {ticker: float(prices.loc[date, "close"])}
-        rows.append({"date": date, "total_value": portfolio.market_value(close_prices)})
+        rows.append({"date": date, "total_value": portfolio.market_value(close_prices), "current_ticker": ticker})
     return pd.DataFrame(rows).set_index("date")
 
 

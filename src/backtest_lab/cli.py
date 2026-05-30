@@ -87,6 +87,8 @@ def main() -> None:
     _write_benchmark_reconciliation(reconciliation_rows, output_dir)
     _write_trades(results, output_dir)
     _write_equity_curves(results, output_dir)
+    _write_holding_exposure(results, output_dir)
+    _write_robustness_summary(_run_robustness_checks(config, prices, dividends), output_dir)
     _write_video_summary(results, output_dir)
 
 
@@ -177,6 +179,142 @@ def _write_equity_curves(results: list[BacktestResult], output_dir: Path) -> Non
     )
 
 
+def _write_holding_exposure(results: list[BacktestResult], output_dir: Path) -> None:
+    rows = []
+    for result in results:
+        if "current_ticker" not in result.equity_curve.columns:
+            continue
+        counts = result.equity_curve["current_ticker"].value_counts()
+        total = int(counts.sum())
+        for ticker, days in counts.items():
+            rows.append(
+                {
+                    "strategy": result.name,
+                    "ticker": ticker,
+                    "days": int(days),
+                    "day_share_pct": round(days / total * 100, 2),
+                }
+            )
+    pd.DataFrame(rows).to_csv(output_dir / "holding_exposure.csv", index=False, encoding="utf-8-sig")
+
+
+def _run_robustness_checks(config, prices: dict[str, pd.DataFrame], dividends: dict[str, pd.Series]) -> list[dict]:
+    variants = [
+        {
+            "variant": "base_weekly_63_126",
+            "momentum_windows": (63, 126),
+            "trend_window": 126,
+            "volatility_window": 20,
+            "rebalance_frequency": "weekly",
+            "start_date": config.start_date,
+            "end_date": config.end_date,
+            "exclude": None,
+        },
+        {
+            "variant": "short_weekly_42_84",
+            "momentum_windows": (42, 84),
+            "trend_window": 84,
+            "volatility_window": 20,
+            "rebalance_frequency": "weekly",
+            "start_date": config.start_date,
+            "end_date": config.end_date,
+            "exclude": None,
+        },
+        {
+            "variant": "long_weekly_84_168",
+            "momentum_windows": (84, 168),
+            "trend_window": 168,
+            "volatility_window": 20,
+            "rebalance_frequency": "weekly",
+            "start_date": config.start_date,
+            "end_date": config.end_date,
+            "exclude": None,
+        },
+        {
+            "variant": "base_monthly_63_126",
+            "momentum_windows": (63, 126),
+            "trend_window": 126,
+            "volatility_window": 20,
+            "rebalance_frequency": "monthly",
+            "start_date": config.start_date,
+            "end_date": config.end_date,
+            "exclude": None,
+        },
+        {
+            "variant": "exclude_2454",
+            "momentum_windows": (63, 126),
+            "trend_window": 126,
+            "volatility_window": 20,
+            "rebalance_frequency": "weekly",
+            "start_date": config.start_date,
+            "end_date": config.end_date,
+            "exclude": "2454.TW",
+        },
+        {
+            "variant": "exclude_6669",
+            "momentum_windows": (63, 126),
+            "trend_window": 126,
+            "volatility_window": 20,
+            "rebalance_frequency": "weekly",
+            "start_date": config.start_date,
+            "end_date": config.end_date,
+            "exclude": "6669.TW",
+        },
+        {
+            "variant": "validation_2026_only",
+            "momentum_windows": (63, 126),
+            "trend_window": 126,
+            "volatility_window": 20,
+            "rebalance_frequency": "weekly",
+            "start_date": "2026-01-01",
+            "end_date": config.end_date,
+            "exclude": None,
+        },
+    ]
+    rows = []
+    for group in config.groups:
+        asset_types = {asset.ticker: asset.asset_type for asset in group.assets}
+        for variant in variants:
+            included_assets = [asset for asset in group.assets if asset.ticker != variant["exclude"]]
+            if not included_assets:
+                continue
+            group_prices = {asset.ticker: prices[asset.ticker] for asset in included_assets}
+            group_dividends = {asset.ticker: dividends[asset.ticker] for asset in included_assets}
+            result = simulate_dual_momentum_vol_control(
+                name=f"{group.group_id}__dual_momentum__{variant['variant']}",
+                prices_by_ticker=group_prices,
+                asset_types=asset_types,
+                start_date=variant["start_date"],
+                end_date=variant["end_date"],
+                initial_cash=config.initial_cash_twd,
+                cost_model=config.cost_model,
+                dividend_series_by_ticker=group_dividends,
+                momentum_windows=variant["momentum_windows"],
+                trend_window=variant["trend_window"],
+                volatility_window=variant["volatility_window"],
+                rebalance_frequency=variant["rebalance_frequency"],
+            )
+            rows.append(
+                {
+                    "group": group.group_id,
+                    "variant": variant["variant"],
+                    "start_date": variant["start_date"],
+                    "end_date": variant["end_date"],
+                    "excluded_ticker": variant["exclude"] or "",
+                    "final_value": round(result.final_value, 2),
+                    "total_return_pct": round(result.total_return * 100, 2),
+                    "max_drawdown_pct": round(result.max_drawdown * 100, 2),
+                    "trade_count": _execution_trade_count(result),
+                    "first_trade_ticker": _first_execution_ticker(result),
+                }
+            )
+    return rows
+
+
+def _write_robustness_summary(rows: list[dict], output_dir: Path) -> None:
+    pd.DataFrame(rows).to_csv(output_dir / "robustness_summary.csv", index=False, encoding="utf-8-sig")
+
+
 def _write_video_summary(results: list[BacktestResult], output_dir: Path) -> None:
     payload = {
         "episode": "EP05",
@@ -209,6 +347,13 @@ def _trade_row(trade: Trade) -> dict:
 
 def _execution_trade_count(result: BacktestResult) -> int:
     return sum(1 for trade in result.trades if trade.action in {"buy", "sell"})
+
+
+def _first_execution_ticker(result: BacktestResult) -> str:
+    for trade in result.trades:
+        if trade.action in {"buy", "sell"}:
+            return trade.ticker
+    return "cash"
 
 
 if __name__ == "__main__":

@@ -92,6 +92,29 @@ class SimulationTest(unittest.TestCase):
         self.assertEqual(result.trades[0].ticker, "6669.TW")
         self.assertEqual(result.trades[0].reason, "dual_momentum_initial_entry")
         self.assertLessEqual(len([trade for trade in result.trades if trade.action in {"buy", "sell"}]), 2)
+        self.assertIn("current_ticker", result.equity_curve.columns)
+
+    def test_dual_momentum_can_rebalance_monthly(self) -> None:
+        flat_0050 = price_frame(100, 100, 0)
+        strong_stock = price_frame(200, 100, 3)
+        prices_by_ticker = {
+            "0050.TW": flat_0050,
+            "6669.TW": strong_stock,
+        }
+
+        result = simulate_dual_momentum_vol_control(
+            name="雙動能月頻",
+            prices_by_ticker=prices_by_ticker,
+            asset_types={"0050.TW": "etf", "6669.TW": "stock"},
+            start_date="2024-01-02",
+            end_date="2024-02-29",
+            initial_cash=1_000_000,
+            cost_model=TaiwanCostModel(),
+            rebalance_frequency="monthly",
+        )
+
+        self.assertEqual(result.trades[0].ticker, "6669.TW")
+        self.assertIn("current_ticker", result.equity_curve.columns)
 
 
 if __name__ == "__main__":
