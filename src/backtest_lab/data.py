@@ -118,7 +118,15 @@ def _covers_range(frame: pd.DataFrame, start_date: str, end_date: str) -> bool:
         return False
     start = pd.Timestamp(start_date)
     end = pd.Timestamp(end_date)
-    return frame.index.min() <= start and frame.index.max() >= end
+    first = frame.index.min()
+    last = frame.index.max()
+    # Config ranges are calendar dates, but Taiwan market data only contains
+    # trading dates. Accept a small edge gap so Jan 1 holidays/weekends do not
+    # force an unnecessary network refresh when the cache already starts on the
+    # first available trading day.
+    start_gap_days = (first - start).days
+    end_gap_days = (end - last).days
+    return start_gap_days <= 10 and end_gap_days <= 10
 
 
 def _single_ticker_columns(raw: pd.DataFrame, ticker: str) -> pd.DataFrame:

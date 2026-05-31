@@ -220,6 +220,16 @@ def _write_holding_exposure(results: list[BacktestResult], output_dir: Path) -> 
 def _run_robustness_checks(config, prices: dict[str, pd.DataFrame], dividends: dict[str, pd.Series]) -> list[dict]:
     variants = [
         {
+            "variant": "base_daily_63_126",
+            "momentum_windows": (63, 126),
+            "trend_window": 126,
+            "volatility_window": 20,
+            "rebalance_frequency": "daily",
+            "start_date": config.start_date,
+            "end_date": config.end_date,
+            "exclude": None,
+        },
+        {
             "variant": "base_weekly_63_126",
             "momentum_windows": (63, 126),
             "trend_window": 126,
