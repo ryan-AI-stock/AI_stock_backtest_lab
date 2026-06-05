@@ -92,7 +92,7 @@ class PortfolioAppTest(unittest.TestCase):
 
         self.assertEqual(shares, 9)
 
-    def test_sync_portfolio_secret_uses_body_file_without_printing_json(self) -> None:
+    def test_sync_portfolio_secret_uses_stdin_without_printing_json(self) -> None:
         calls = []
 
         def runner(args, **kwargs):
@@ -108,8 +108,9 @@ class PortfolioAppTest(unittest.TestCase):
         args, kwargs = calls[0]
         self.assertEqual(result["secret_name"], PORTFOLIO_SECRET_NAME)
         self.assertEqual(args[:4], ["gh", "secret", "set", PORTFOLIO_SECRET_NAME])
-        self.assertIn("--body-file", args)
+        self.assertNotIn("--body", args)
         self.assertNotIn("2454.TW", " ".join(args))
+        self.assertIn("2454.TW", kwargs["input"])
         self.assertTrue(kwargs["capture_output"])
 
     def test_trigger_report_workflow_uses_signal_date_input(self) -> None:

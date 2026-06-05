@@ -143,6 +143,7 @@ def sync_portfolio_secret(
     path = Path(store_path)
     if not path.exists():
         raise ValueError("尚未找到本機持倉檔，請先儲存目前資產。")
+    secret_body = path.read_text(encoding="utf-8")
     result = _run_gh(
         [
             "gh",
@@ -151,11 +152,10 @@ def sync_portfolio_secret(
             PORTFOLIO_SECRET_NAME,
             "--repo",
             repo,
-            "--body-file",
-            str(path),
         ],
         runner=runner,
         action="sync_secret",
+        input_text=secret_body,
     )
     return {
         "action": "sync_secret",
@@ -202,8 +202,8 @@ def trigger_report_workflow(
     }
 
 
-def _run_gh(args: list[str], *, runner, action: str) -> dict:
-    completed = runner(args, capture_output=True, text=True, timeout=90)
+def _run_gh(args: list[str], *, runner, action: str, input_text: str | None = None) -> dict:
+    completed = runner(args, input=input_text, capture_output=True, text=True, timeout=90)
     stdout = str(getattr(completed, "stdout", "") or "").strip()
     stderr = str(getattr(completed, "stderr", "") or "").strip()
     returncode = int(getattr(completed, "returncode", 0))
