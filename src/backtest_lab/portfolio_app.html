@@ -72,9 +72,9 @@
   <header>
     <div>
       <h1>AI 股票紀律工作台</h1>
-      <div class="subtle" id="signal-meta">載入每日凍結策略訊號...</div>
+      <div class="subtle" id="signal-meta">載入每日最佳策略訊號...</div>
     </div>
-    <div class="badge">凍結版 v1 · 人工決策</div>
+    <div class="badge">最佳版 v20260605 · 人工決策</div>
   </header>
   <main>
     <div class="summary">
@@ -170,7 +170,7 @@
     function render() {
       const signal = state.signal;
       const portfolio = state.portfolio;
-      document.getElementById("signal-meta").textContent = signal ? `訊號日 ${signal.signal_date} · ${signal.action}` : "尚未找到正式凍結策略日報";
+      document.getElementById("signal-meta").textContent = signal ? `訊號日 ${signal.signal_date} · ${signal.action}` : "尚未找到正式最佳策略日報";
       document.getElementById("target").textContent = signal ? `${labels[signal.target_ticker] || "現金"} ${pct(signal.target_exposure)}` : "--";
       document.getElementById("regime").textContent = signal ? signal.market_regime_label : "--";
       document.getElementById("cash").textContent = `$${money(portfolio.cash_twd)}`;

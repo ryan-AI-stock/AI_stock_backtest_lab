@@ -376,7 +376,7 @@ def create_handler(*, store: PortfolioStore, signal_root: str, asset_types: dict
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run the private frozen-strategy portfolio workspace.")
+    parser = argparse.ArgumentParser(description="Run the private best-strategy portfolio workspace.")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--store", default=DEFAULT_STORE_PATH)

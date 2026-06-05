@@ -23,10 +23,16 @@ class _Files:
         self.updated = None
         self.created = None
         self.query = None
+        self.queries = []
 
     def list(self, **kwargs):
         self.query = kwargs["q"]
-        return _Request({"files": self.found})
+        self.queries.append(self.query)
+        if self.found and isinstance(self.found[0], list):
+            found = self.found.pop(0)
+        else:
+            found = self.found
+        return _Request({"files": found})
 
     def update(self, **kwargs):
         self.updated = kwargs
@@ -68,6 +74,25 @@ class DrivePublishTest(unittest.TestCase):
 
             self.assertEqual((file_id, action), ("created-id", "created"))
             self.assertEqual(service.resource.created["body"]["parents"], ["folder-id"])
+
+    def test_renames_legacy_latest_pdf_when_remote_name_changed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "report.pdf"
+            path.write_bytes(b"pdf")
+            service = _Service([[], [{"id": "legacy-id", "name": "old.pdf"}]])
+
+            file_id, action = upsert_pdf(
+                service,
+                "folder-id",
+                path,
+                "new.pdf",
+                media_factory=lambda *a, **k: "media",
+                legacy_remote_names=("old.pdf",),
+            )
+
+            self.assertEqual((file_id, action), ("legacy-id", "updated_legacy_renamed"))
+            self.assertEqual(service.resource.updated["body"]["name"], "new.pdf")
+            self.assertEqual(len(service.resource.queries), 2)
 
     def test_updates_fixed_file_id_without_searching_by_name(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

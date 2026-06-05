@@ -3,13 +3,14 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from dataclasses import dataclass
 from collections.abc import Mapping
+from dataclasses import dataclass
 from pathlib import Path
 
 
 DEFAULT_FOLDER_ID = "1O6Se-HfI7ZDTQ-LWeAO6f8vtvoLcCzIj"
-DEFAULT_REMOTE_NAME = "AI股票凍結策略每日觀察報告_最新版.pdf"
+DEFAULT_REMOTE_NAME = "AI股票最佳策略每日觀察報告_最新版_v20260605.pdf"
+LEGACY_REMOTE_NAMES = ("AI股票凍結策略每日觀察報告_最新版.pdf",)
 DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive"]
 
 
@@ -23,7 +24,7 @@ class GoogleDriveAuthConfig:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Upload or replace the latest frozen strategy PDF on Google Drive.")
+    parser = argparse.ArgumentParser(description="Upload or replace the latest best-strategy PDF on Google Drive.")
     parser.add_argument("--file", required=True)
     parser.add_argument("--folder-id", default=os.environ.get("FROZEN_REPORT_DRIVE_FOLDER_ID") or DEFAULT_FOLDER_ID)
     parser.add_argument("--file-id", default=os.environ.get("FROZEN_REPORT_DRIVE_FILE_ID", ""))
@@ -37,6 +38,7 @@ def main() -> None:
         Path(args.file),
         args.remote_name,
         file_id=args.file_id.strip() or None,
+        legacy_remote_names=LEGACY_REMOTE_NAMES,
     )
     print(f"DRIVE_AUTH_MODE={auth_mode}")
     print(f"DRIVE_ACTION={action}")
@@ -113,6 +115,7 @@ def upsert_pdf(
     remote_name: str,
     media_factory=None,
     file_id: str | None = None,
+    legacy_remote_names: tuple[str, ...] = (),
 ) -> tuple[str, str]:
     if not local_path.exists():
         raise FileNotFoundError(local_path)
@@ -129,24 +132,29 @@ def upsert_pdf(
             supportsAllDrives=True,
         ).execute()
         return file_id, "updated_by_id"
-    escaped = remote_name.replace("\\", "\\\\").replace("'", "\\'")
-    query = f"name = '{escaped}' and '{folder_id}' in parents and trashed = false"
-    found = service.files().list(
-        q=query,
-        fields="files(id,name)",
-        pageSize=10,
-        supportsAllDrives=True,
-        includeItemsFromAllDrives=True,
-    ).execute().get("files", [])
+    found = _find_by_name(service, folder_id, remote_name)
     if found:
         file_id = found[0]["id"]
         service.files().update(
             fileId=file_id,
+            body={"name": remote_name},
             media_body=media,
             fields="id",
             supportsAllDrives=True,
         ).execute()
         return file_id, "updated"
+    for legacy_name in legacy_remote_names:
+        found = _find_by_name(service, folder_id, legacy_name)
+        if found:
+            file_id = found[0]["id"]
+            service.files().update(
+                fileId=file_id,
+                body={"name": remote_name},
+                media_body=media,
+                fields="id",
+                supportsAllDrives=True,
+            ).execute()
+            return file_id, "updated_legacy_renamed"
     created = service.files().create(
         body={"name": remote_name, "parents": [folder_id]},
         media_body=media,
@@ -154,6 +162,18 @@ def upsert_pdf(
         supportsAllDrives=True,
     ).execute()
     return str(created["id"]), "created"
+
+
+def _find_by_name(service, folder_id: str, remote_name: str) -> list[dict]:
+    escaped = remote_name.replace("\\", "\\\\").replace("'", "\\'")
+    query = f"name = '{escaped}' and '{folder_id}' in parents and trashed = false"
+    return service.files().list(
+        q=query,
+        fields="files(id,name)",
+        pageSize=10,
+        supportsAllDrives=True,
+        includeItemsFromAllDrives=True,
+    ).execute().get("files", [])
 
 
 if __name__ == "__main__":

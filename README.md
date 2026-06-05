@@ -122,7 +122,7 @@ python -m backtest_lab.cli --config configs/ep05_universe.json --cache-dir backt
 python -m unittest discover -s tests -p "test*.py" -v
 ```
 
-## 凍結策略每日觀察報告
+## 最佳策略每日觀察報告
 
 正式每日產品使用 `frozen_cycle_proven_top1_v1`。它在台股開盤日 15:00 開始檢查九標的當日資料；資料未完整時，每小時重試。報告提供下一交易日的 AI 輔助操作建議，由投資人自行決定是否執行，不會自動下單。
 
@@ -134,8 +134,10 @@ python -m backtest_lab.frozen_strategy_monitor --signal-date 2026-05-26 --cache-
 Drive 固定更新檔名：
 
 ```text
-AI股票凍結策略每日觀察報告_最新版.pdf
+AI股票最佳策略每日觀察報告_最新版_v20260605.pdf
 ```
+
+`v20260605` 代表這版每日觀察報告產品線的完成/發布版本，不是每日訊號日期。每日留存檔會另外帶入訊號日期，例如 `AI股票最佳策略每日觀察報告_2026-06-05_v20260605.pdf`。
 
 GitHub Actions 的 Drive 上傳比照既有 DAILY / WEEKLY 股票報告專案，優先使用 Google OAuth refresh token，不使用 service account 作為主流程。
 

@@ -24,7 +24,9 @@ from backtest_lab.strategies import relative_strength_scores
 
 
 STRATEGY_ID = "frozen_cycle_proven_top1_v1"
-REPORT_NAME = "AI股票凍結策略每日觀察報告"
+REPORT_VERSION = "v20260605"
+REPORT_NAME = "AI股票最佳策略每日觀察報告"
+REPORT_VARIANT_LABEL = f"最佳版 {REPORT_VERSION}"
 DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1O6Se-HfI7ZDTQ-LWeAO6f8vtvoLcCzIj"
 DEFAULT_REPLAY_START = "2020-01-02"
 NO_DATA_EXIT_CODE = 3
@@ -116,7 +118,7 @@ def main() -> None:
     )
     _write_outputs(output_dir, signal)
     print(f"REPORT_DIR={output_dir.resolve()}")
-    print(f"LATEST_PDF={(output_dir / f'{REPORT_NAME}_最新版.pdf').resolve()}")
+    print(f"LATEST_PDF={(output_dir / _report_filename('pdf', latest=True)).resolve()}")
 
 
 def build_frozen_strategy_signal(
@@ -429,12 +431,22 @@ def _write_outputs(output_dir: Path, signal: FrozenStrategySignal) -> None:
         encoding="utf-8-sig",
     )
     report = _markdown_report(signal)
-    dated_md = output_dir / f"{REPORT_NAME}_{signal.signal_date}.md"
-    latest_md = output_dir / f"{REPORT_NAME}_最新版.md"
+    dated_md = output_dir / _report_filename("md", signal.signal_date)
+    latest_md = output_dir / _report_filename("md", latest=True)
     dated_md.write_text(report, encoding="utf-8")
     latest_md.write_text(report, encoding="utf-8")
-    _write_signal_pdf(output_dir / f"{REPORT_NAME}_{signal.signal_date}.pdf", signal)
-    _write_signal_pdf(output_dir / f"{REPORT_NAME}_最新版.pdf", signal)
+    _write_signal_pdf(output_dir / _report_filename("pdf", signal.signal_date), signal)
+    _write_signal_pdf(output_dir / _report_filename("pdf", latest=True), signal)
+
+
+def _report_filename(extension: str, signal_date: str | None = None, *, latest: bool = False) -> str:
+    if latest:
+        suffix = "最新版"
+    elif signal_date:
+        suffix = signal_date
+    else:
+        raise ValueError("signal_date is required when latest is false.")
+    return f"{REPORT_NAME}_{suffix}_{REPORT_VERSION}.{extension}"
 
 
 def _markdown_report(signal: FrozenStrategySignal) -> str:
@@ -453,7 +465,7 @@ def _markdown_report(signal: FrozenStrategySignal) -> str:
             "",
             "## 摘要",
             "",
-            f"- 凍結策略：{signal.strategy_id}",
+            f"- 策略版本：{REPORT_VARIANT_LABEL}",
             f"- 訊號日期：{signal.signal_date}",
             f"- 執行時點：{signal.execution_timing}",
             "- 定位：每日 AI 輔助操作建議，投資人自行判斷，不是自動下單，也不是投資建議。",
@@ -565,7 +577,7 @@ def _draw_header(ax, signal: FrozenStrategySignal) -> None:
     ax.text(
         0.06,
         0.895,
-        f"訊號日 {signal.signal_date} · 凍結版 v1 · 人工決策",
+        f"訊號日 {signal.signal_date} · {REPORT_VARIANT_LABEL} · 人工決策",
         color="#c8d5df",
         fontsize=11,
         transform=ax.transAxes,

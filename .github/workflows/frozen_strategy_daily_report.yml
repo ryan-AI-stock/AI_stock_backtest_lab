@@ -1,4 +1,4 @@
-name: Frozen Strategy Daily Report
+name: Best Strategy Daily Report
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ on:
     - cron: "0 7 * * 1-5"
 
 jobs:
-  frozen-strategy-report:
+  best-strategy-report:
     runs-on: ubuntu-latest
     timeout-minutes: 360
     permissions:
@@ -89,11 +89,11 @@ jobs:
           FROZEN_REPORT_DRIVE_FILE_ID: ${{ secrets.FROZEN_REPORT_DRIVE_FILE_ID || vars.FROZEN_REPORT_DRIVE_FILE_ID }}
         run: |
           python -m backtest_lab.drive_publish \
-            --file "outputs/frozen_strategy_monitor/$(echo '${{ steps.signal-date.outputs.value }}' | tr -d '-')/AI股票凍結策略每日觀察報告_最新版.pdf"
+            --file "outputs/frozen_strategy_monitor/$(echo '${{ steps.signal-date.outputs.value }}' | tr -d '-')/AI股票最佳策略每日觀察報告_最新版_v20260605.pdf"
 
       - name: Upload audit artifact
         uses: actions/upload-artifact@v4
         with:
-          name: frozen-strategy-report-${{ steps.signal-date.outputs.value }}
+          name: best-strategy-report-${{ steps.signal-date.outputs.value }}
           path: outputs/frozen_strategy_monitor/
           if-no-files-found: error
