@@ -137,6 +137,16 @@
             <div class="status" id="trade-status"></div>
           </form>
         </section>
+
+        <section>
+          <div class="section-head"><h2>同步與產報</h2><span class="subtle">只在按下後同步</span></div>
+          <p class="subtle" style="color: var(--muted); margin-top: 0;">同步會把目前本機持倉檔更新到此 repo 的 GitHub encrypted secret，不會寫入 repo。</p>
+          <div class="actions">
+            <button class="secondary" type="button" id="sync-secret">同步持倉 Secret</button>
+            <button type="button" id="sync-and-run">同步並產生報告</button>
+          </div>
+          <div class="status" id="sync-status"></div>
+        </section>
       </div>
     </div>
   </main>
@@ -217,6 +227,14 @@
       }, "trade-status");
     });
 
+    document.getElementById("sync-secret").addEventListener("click", async () => {
+      await send("/api/sync-secret", {}, "sync-status");
+    });
+
+    document.getElementById("sync-and-run").addEventListener("click", async () => {
+      await send("/api/sync-secret-and-run", {}, "sync-status");
+    });
+
     async function send(url, payload, statusId) {
       const status = document.getElementById(statusId);
       status.textContent = "處理中...";
@@ -229,7 +247,8 @@
         return;
       }
       state = data;
-      status.textContent = "已更新";
+      const messages = [data.sync_result?.message, data.action_result?.message].filter(Boolean);
+      status.textContent = messages.length ? messages.join(" ") : "已更新";
       render();
     }
 

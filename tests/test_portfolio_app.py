@@ -7,7 +7,20 @@ from pathlib import Path
 import test_paths  # noqa: F401
 
 from backtest_lab.costs import TaiwanCostModel
-from backtest_lab.portfolio_app import PortfolioStore, _max_affordable_shares, build_dashboard
+from backtest_lab.portfolio_app import (
+    PORTFOLIO_SECRET_NAME,
+    PortfolioStore,
+    _max_affordable_shares,
+    build_dashboard,
+    sync_portfolio_secret,
+    trigger_report_workflow,
+)
+
+
+class _Completed:
+    returncode = 0
+    stdout = "https://github.com/ryan-AI-stock/AI_stock_backtest_lab/actions/runs/1\n"
+    stderr = ""
 
 
 class PortfolioAppTest(unittest.TestCase):
@@ -78,6 +91,38 @@ class PortfolioAppTest(unittest.TestCase):
         shares = _max_affordable_shares(10_000, 1000, self.cost_model)
 
         self.assertEqual(shares, 9)
+
+    def test_sync_portfolio_secret_uses_body_file_without_printing_json(self) -> None:
+        calls = []
+
+        def runner(args, **kwargs):
+            calls.append((args, kwargs))
+            return _Completed()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "portfolio_store.json"
+            path.write_text('{"positions":{"2454.TW":{"shares":291}}}', encoding="utf-8")
+
+            result = sync_portfolio_secret(store_path=path, repo="owner/repo", runner=runner)
+
+        args, kwargs = calls[0]
+        self.assertEqual(result["secret_name"], PORTFOLIO_SECRET_NAME)
+        self.assertEqual(args[:4], ["gh", "secret", "set", PORTFOLIO_SECRET_NAME])
+        self.assertIn("--body-file", args)
+        self.assertNotIn("2454.TW", " ".join(args))
+        self.assertTrue(kwargs["capture_output"])
+
+    def test_trigger_report_workflow_uses_signal_date_input(self) -> None:
+        calls = []
+
+        def runner(args, **kwargs):
+            calls.append(args)
+            return _Completed()
+
+        result = trigger_report_workflow(signal_date="2026-06-05", repo="owner/repo", runner=runner)
+
+        self.assertEqual(result["signal_date"], "2026-06-05")
+        self.assertIn("signal_date=2026-06-05", calls[0])
 
 
 if __name__ == "__main__":

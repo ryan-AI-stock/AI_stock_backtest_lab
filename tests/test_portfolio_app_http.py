@@ -14,6 +14,12 @@ from backtest_lab.costs import TaiwanCostModel
 from backtest_lab.portfolio_app import PortfolioStore, create_handler
 
 
+class _Completed:
+    returncode = 0
+    stdout = "https://github.com/ryan-AI-stock/AI_stock_backtest_lab/actions/runs/1\n"
+    stderr = ""
+
+
 class PortfolioAppHttpTest(unittest.TestCase):
     def test_state_and_portfolio_update_over_http(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -42,6 +48,7 @@ class PortfolioAppHttpTest(unittest.TestCase):
                     signal_root=str(tmp_path / "signals"),
                     asset_types={"2454.TW": "stock"},
                     cost_model=TaiwanCostModel(),
+                    command_runner=lambda *args, **kwargs: _Completed(),
                 ),
             )
             thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -61,6 +68,10 @@ class PortfolioAppHttpTest(unittest.TestCase):
                     },
                 )
                 self.assertEqual(updated["portfolio"]["positions"][0]["shares"], 10)
+
+                synced = _request(port, "POST", "/api/sync-secret-and-run", {})
+                self.assertTrue(synced["sync_result"]["ok"])
+                self.assertTrue(synced["action_result"]["ok"])
             finally:
                 server.shutdown()
                 server.server_close()

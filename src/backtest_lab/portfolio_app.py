@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import subprocess
 import threading
 from datetime import date
 from http import HTTPStatus
@@ -16,6 +17,10 @@ from backtest_lab.config import load_config
 DEFAULT_USER_ID = "default"
 DEFAULT_STORE_PATH = "work/portfolio_app/portfolio_store.json"
 DEFAULT_SIGNAL_ROOT = "outputs/frozen_strategy_monitor"
+DEFAULT_GITHUB_REPO = "ryan-AI-stock/AI_stock_backtest_lab"
+DEFAULT_WORKFLOW_FILE = "frozen_strategy_daily_report.yml"
+DEFAULT_GITHUB_REF = "main"
+PORTFOLIO_SECRET_NAME = "PORTFOLIO_STORE_JSON"
 
 
 class PortfolioStore:
@@ -127,6 +132,85 @@ def load_latest_signal(signal_root: str | Path) -> dict | None:
         if payload.get("status") == "ready" and payload.get("signal"):
             return payload["signal"]
     return None
+
+
+def sync_portfolio_secret(
+    *,
+    store_path: str | Path,
+    repo: str = DEFAULT_GITHUB_REPO,
+    runner=subprocess.run,
+) -> dict:
+    path = Path(store_path)
+    if not path.exists():
+        raise ValueError("尚未找到本機持倉檔，請先儲存目前資產。")
+    result = _run_gh(
+        [
+            "gh",
+            "secret",
+            "set",
+            PORTFOLIO_SECRET_NAME,
+            "--repo",
+            repo,
+            "--body-file",
+            str(path),
+        ],
+        runner=runner,
+        action="sync_secret",
+    )
+    return {
+        "action": "sync_secret",
+        "repo": repo,
+        "secret_name": PORTFOLIO_SECRET_NAME,
+        "message": "已同步本機持倉到 GitHub repo secret。",
+        **result,
+    }
+
+
+def trigger_report_workflow(
+    *,
+    signal_date: str,
+    repo: str = DEFAULT_GITHUB_REPO,
+    workflow_file: str = DEFAULT_WORKFLOW_FILE,
+    ref: str = DEFAULT_GITHUB_REF,
+    runner=subprocess.run,
+) -> dict:
+    if not signal_date:
+        raise ValueError("尚未找到訊號日期，無法觸發 GitHub Action。")
+    result = _run_gh(
+        [
+            "gh",
+            "workflow",
+            "run",
+            workflow_file,
+            "--repo",
+            repo,
+            "--ref",
+            ref,
+            "-f",
+            f"signal_date={signal_date}",
+        ],
+        runner=runner,
+        action="run_workflow",
+    )
+    return {
+        "action": "run_workflow",
+        "repo": repo,
+        "workflow_file": workflow_file,
+        "signal_date": signal_date,
+        "message": "已觸發 GitHub Action，報告完成後會覆蓋 Drive 最新版 PDF。",
+        **result,
+    }
+
+
+def _run_gh(args: list[str], *, runner, action: str) -> dict:
+    completed = runner(args, capture_output=True, text=True, timeout=90)
+    stdout = str(getattr(completed, "stdout", "") or "").strip()
+    stderr = str(getattr(completed, "stderr", "") or "").strip()
+    returncode = int(getattr(completed, "returncode", 0))
+    if returncode != 0:
+        detail = stderr or stdout or f"{action} failed with exit code {returncode}."
+        raise ValueError(detail)
+    return {"ok": True, "stdout": stdout}
 
 
 def build_dashboard(user: dict, signal: dict | None, asset_types: dict[str, str], cost_model) -> dict:
@@ -310,7 +394,17 @@ def _ensure_user(data: dict, user_id: str) -> dict:
     return users[user_id]
 
 
-def create_handler(*, store: PortfolioStore, signal_root: str, asset_types: dict[str, str], cost_model):
+def create_handler(
+    *,
+    store: PortfolioStore,
+    signal_root: str,
+    asset_types: dict[str, str],
+    cost_model,
+    github_repo: str = DEFAULT_GITHUB_REPO,
+    workflow_file: str = DEFAULT_WORKFLOW_FILE,
+    github_ref: str = DEFAULT_GITHUB_REF,
+    command_runner=subprocess.run,
+):
     html = Path(__file__).with_name("portfolio_app.html").read_text(encoding="utf-8")
 
     class Handler(BaseHTTPRequestHandler):
@@ -344,6 +438,31 @@ def create_handler(*, store: PortfolioStore, signal_root: str, asset_types: dict
                         asset_types=asset_types,
                         cost_model=cost_model,
                     )
+                elif path == "/api/sync-secret":
+                    result = sync_portfolio_secret(store_path=store.path, repo=github_repo, runner=command_runner)
+                    user = store.get_user(user_id)
+                    signal = load_latest_signal(signal_root)
+                    response = build_dashboard(user, signal, asset_types, cost_model)
+                    response["sync_result"] = result
+                    self._json(response)
+                    return
+                elif path == "/api/sync-secret-and-run":
+                    signal = load_latest_signal(signal_root)
+                    signal_date = str(payload.get("signal_date") or (signal or {}).get("signal_date") or "")
+                    sync_result = sync_portfolio_secret(store_path=store.path, repo=github_repo, runner=command_runner)
+                    action_result = trigger_report_workflow(
+                        signal_date=signal_date,
+                        repo=github_repo,
+                        workflow_file=workflow_file,
+                        ref=github_ref,
+                        runner=command_runner,
+                    )
+                    user = store.get_user(user_id)
+                    response = build_dashboard(user, signal, asset_types, cost_model)
+                    response["sync_result"] = sync_result
+                    response["action_result"] = action_result
+                    self._json(response)
+                    return
                 else:
                     self.send_error(HTTPStatus.NOT_FOUND)
                     return
@@ -383,6 +502,9 @@ def main() -> None:
     parser.add_argument("--signal-root", default=DEFAULT_SIGNAL_ROOT)
     parser.add_argument("--config", default="configs/ep05_universe.json")
     parser.add_argument("--group-id", default="group_c_0050_00631l_plus_mega_caps")
+    parser.add_argument("--github-repo", default=DEFAULT_GITHUB_REPO)
+    parser.add_argument("--workflow-file", default=DEFAULT_WORKFLOW_FILE)
+    parser.add_argument("--github-ref", default=DEFAULT_GITHUB_REF)
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -393,6 +515,9 @@ def main() -> None:
         signal_root=args.signal_root,
         asset_types=asset_types,
         cost_model=config.cost_model,
+        github_repo=args.github_repo,
+        workflow_file=args.workflow_file,
+        github_ref=args.github_ref,
     )
     server = ThreadingHTTPServer((args.host, args.port), handler)
     print(f"PORTFOLIO_APP_URL=http://{args.host}:{args.port}")

@@ -171,6 +171,10 @@ python -m backtest_lab.portfolio_app --signal-root outputs/frozen_strategy_monit
 - 顯示模型目標比例，以及依可用現金估算的零股參考數量。
 - 手動登錄實際買賣成交價、股數與費用。
 - 只有手動登錄成交後，實際持倉與現金才會改變。
+- 按鈕同步目前持倉到 repo-level GitHub encrypted secret `PORTFOLIO_STORE_JSON`。
+- 按鈕同步後觸發 GitHub Action，讓 Drive 最新版 PDF 覆蓋為個人化報告。
+
+同步功能需要本機已安裝並登入 GitHub CLI `gh`，且帳號對 `ryan-AI-stock/AI_stock_backtest_lab` 有 repo secret 與 workflow dispatch 權限。持倉 JSON 不會寫入 repo；按鈕只會用 `gh secret set --body-file` 更新 encrypted secret。
 
 Codex 內部驗證原則：
 
