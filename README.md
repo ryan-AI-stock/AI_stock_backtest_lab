@@ -174,7 +174,7 @@ python -m backtest_lab.portfolio_app --signal-root outputs/frozen_strategy_monit
 - 按鈕同步目前持倉到 repo-level GitHub encrypted secret `PORTFOLIO_STORE_JSON`。
 - 按鈕同步後觸發 GitHub Action，讓 Drive 最新版 PDF 覆蓋為個人化報告。
 
-同步功能需要本機已安裝並登入 GitHub CLI `gh`，且帳號對 `ryan-AI-stock/AI_stock_backtest_lab` 有 repo secret 與 workflow dispatch 權限。持倉 JSON 不會寫入 repo；按鈕只會用 `gh secret set --body-file` 更新 encrypted secret。
+同步功能需要本機已安裝並登入 GitHub CLI `gh`，且帳號對 `ryan-AI-stock/AI_stock_backtest_lab` 有 repo secret 與 workflow dispatch 權限。持倉 JSON 不會寫入 repo；按鈕會透過 stdin 傳給 `gh secret set PORTFOLIO_STORE_JSON` 更新 encrypted secret，避免把持倉內容放在命令列參數或 log。
 
 Codex 內部驗證原則：
 
