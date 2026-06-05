@@ -147,6 +147,7 @@
     ];
     const labels = Object.fromEntries(assets);
     const money = value => new Intl.NumberFormat("zh-TW", { maximumFractionDigits: 0 }).format(value || 0);
+    const money2 = value => new Intl.NumberFormat("zh-TW", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value || 0);
     const pct = value => `${Math.round((value || 0) * 100)}%`;
     const actionLabel = action => ({buy:"買進",sell:"賣出",hold:"維持"}[action] || action);
     let state = null;
@@ -190,14 +191,14 @@
 
       document.getElementById("positions").innerHTML = portfolio.positions.length ? portfolio.positions.map(row => `
         <tr><td>${labels[row.ticker] || row.ticker}</td><td class="num">${money(row.shares)}</td>
-        <td class="num">$${money(row.avg_cost)}</td><td class="num">$${money(row.reference_price)}</td>
-        <td class="num">$${money(row.market_value_twd)}</td><td class="num">${row.unrealized_pnl_twd >= 0 ? "+" : ""}$${money(row.unrealized_pnl_twd)}</td></tr>`).join("") : `<tr><td class="empty" colspan="6">尚未輸入持倉</td></tr>`;
+        <td class="num">$${money2(row.avg_cost)}</td><td class="num">$${money2(row.reference_price)}</td>
+        <td class="num">$${money2(row.market_value_twd)}</td><td class="num">${row.unrealized_pnl_twd >= 0 ? "+" : ""}$${money2(row.unrealized_pnl_twd)}</td></tr>`).join("") : `<tr><td class="empty" colspan="6">尚未輸入持倉</td></tr>`;
 
       const trades = [...state.user.trades].reverse();
       document.getElementById("trades").innerHTML = trades.length ? trades.map(row => `
         <tr><td>${row.date}</td><td class="${row.side}">${actionLabel(row.side)}</td><td>${labels[row.ticker] || row.ticker}</td>
-        <td class="num">${money(row.shares)}</td><td class="num">$${money(row.price)}</td><td class="num">$${money(row.costs_twd)}</td>
-        <td class="num">${row.realized_pnl_twd == null ? "--" : `${row.realized_pnl_twd >= 0 ? "+" : ""}$${money(row.realized_pnl_twd)}`}</td></tr>`).join("") : `<tr><td class="empty" colspan="7">尚未登錄成交</td></tr>`;
+        <td class="num">${money(row.shares)}</td><td class="num">$${money2(row.price)}</td><td class="num">$${money2(row.costs_twd)}</td>
+        <td class="num">${row.realized_pnl_twd == null ? "--" : `${row.realized_pnl_twd >= 0 ? "+" : ""}$${money2(row.realized_pnl_twd)}`}</td></tr>`).join("") : `<tr><td class="empty" colspan="7">尚未登錄成交</td></tr>`;
     }
 
     document.getElementById("portfolio-form").addEventListener("submit", async event => {

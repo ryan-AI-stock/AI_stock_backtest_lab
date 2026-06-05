@@ -151,6 +151,7 @@ GitHub Actions 的 Drive 上傳比照既有 DAILY / WEEKLY 股票報告專案，
 
 - `FROZEN_REPORT_DRIVE_FOLDER_ID`：覆蓋預設 Drive 目標資料夾。
 - `FROZEN_REPORT_DRIVE_FILE_ID`：若要直接覆蓋同一個 Drive 檔案，可指定固定 file id。
+- `PORTFOLIO_STORE_JSON`：可選。若要讓 GitHub Action 產出的 PDF 結合個人持倉，需把 `work/portfolio_app/portfolio_store.json` 的內容設成此 secret；未設定時，報告只顯示模型帳戶狀態。
 - `GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON`：只保留作為備援，不是建議主設定。
 
 敏感憑證不可寫入 repo、README、workflow log 或測試資料。

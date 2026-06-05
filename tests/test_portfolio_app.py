@@ -52,6 +52,28 @@ class PortfolioAppTest(unittest.TestCase):
         self.assertGreater(dashboard["recommendations"][0]["shares"], 0)
         self.assertLessEqual(dashboard["recommendations"][0]["shares"], 100)
 
+    def test_portfolio_summary_keeps_reference_price_precision(self) -> None:
+        user = {
+            "user_id": "default",
+            "display_name": "主要使用者",
+            "cash_twd": 5000,
+            "positions": {"2454.TW": {"shares": 10, "avg_cost": 100.1234}},
+            "trades": [],
+        }
+        signal = {
+            "signal_date": "2026-06-04",
+            "target_ticker": "2454.TW",
+            "target_exposure": 1.0,
+            "close_prices": {"2454.TW": 100.125},
+        }
+
+        dashboard = build_dashboard(user, signal, self.asset_types, self.cost_model)
+        position = dashboard["portfolio"]["positions"][0]
+
+        self.assertEqual(position["reference_price"], 100.125)
+        self.assertEqual(position["market_value_twd"], 1001.25)
+        self.assertEqual(position["unrealized_pnl_twd"], 0.02)
+
     def test_affordable_shares_include_broker_fee(self) -> None:
         shares = _max_affordable_shares(10_000, 1000, self.cost_model)
 

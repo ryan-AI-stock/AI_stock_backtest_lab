@@ -43,6 +43,16 @@ jobs:
             echo "value=$(TZ=Asia/Taipei date +%F)" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Prepare optional personal portfolio store
+        shell: bash
+        env:
+          PORTFOLIO_STORE_JSON: ${{ secrets.PORTFOLIO_STORE_JSON }}
+        run: |
+          if [ -n "$PORTFOLIO_STORE_JSON" ]; then
+            mkdir -p work/portfolio_app
+            printf '%s' "$PORTFOLIO_STORE_JSON" > work/portfolio_app/portfolio_store.json
+          fi
+
       - name: Generate report, retry hourly until complete data is available
         id: report
         shell: bash

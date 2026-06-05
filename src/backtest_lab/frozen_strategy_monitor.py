@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import textwrap
 import urllib.error
 import urllib.parse
 import urllib.request
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 
 import pandas as pd
+from matplotlib import font_manager
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
@@ -20,6 +22,7 @@ from backtest_lab.regime_mode_switch import (
     frozen_cycle_proven_top1_v1_variant,
     simulate_regime_mode_switch,
 )
+from backtest_lab.portfolio_app import DEFAULT_STORE_PATH, PortfolioStore, build_dashboard
 from backtest_lab.strategies import relative_strength_scores
 
 
@@ -56,6 +59,8 @@ class FrozenStrategySignal:
     close_prices: dict[str, float]
     ranking: list[dict]
     projected_trades: list[dict]
+    personal_portfolio: dict | None = None
+    personal_recommendations: list[dict] | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -70,6 +75,7 @@ def main() -> None:
     parser.add_argument("--cache-dir", default="backtest_cache/frozen_strategy_monitor")
     parser.add_argument("--output-root", default="outputs/frozen_strategy_monitor")
     parser.add_argument("--replay-start", default=DEFAULT_REPLAY_START)
+    parser.add_argument("--portfolio-store", default=DEFAULT_STORE_PATH)
     args = parser.parse_args()
 
     output_dir = Path(args.output_root) / args.signal_date.replace("-", "")
@@ -115,6 +121,12 @@ def main() -> None:
         initial_cash=config.initial_cash_twd,
         cost_model=config.cost_model,
         manual_splits=config.manual_splits,
+    )
+    signal = attach_personal_portfolio(
+        signal,
+        portfolio_store=args.portfolio_store,
+        asset_types=asset_types,
+        cost_model=config.cost_model,
     )
     _write_outputs(output_dir, signal)
     print(f"REPORT_DIR={output_dir.resolve()}")
@@ -208,6 +220,25 @@ def build_frozen_strategy_signal(
         },
         ranking=ranking,
         projected_trades=projected_trades,
+    )
+
+
+def attach_personal_portfolio(
+    signal: FrozenStrategySignal,
+    *,
+    portfolio_store: str | Path,
+    asset_types: dict[str, str],
+    cost_model,
+) -> FrozenStrategySignal:
+    store_path = Path(portfolio_store)
+    if not store_path.exists():
+        return signal
+    user = PortfolioStore(store_path).get_user()
+    dashboard = build_dashboard(user, signal.to_dict(), asset_types, cost_model)
+    return replace(
+        signal,
+        personal_portfolio=dashboard["portfolio"],
+        personal_recommendations=dashboard["recommendations"],
     )
 
 
@@ -397,6 +428,7 @@ def _write_outputs(output_dir: Path, signal: FrozenStrategySignal) -> None:
     payload = {
         "status": "ready",
         "report_name": REPORT_NAME,
+        "report_mode": _report_mode(signal),
         "drive_folder_url": DRIVE_FOLDER_URL,
         "signal": signal.to_dict(),
         "disclaimer": "AI 輔助市場觀察、回測與紀律提醒，不是投資建議。",
@@ -405,6 +437,7 @@ def _write_outputs(output_dir: Path, signal: FrozenStrategySignal) -> None:
         json.dumps(payload, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
+    personal_summary = _personal_exposure_summary(signal) if signal.personal_portfolio else None
     pd.DataFrame([{
         "strategy_id": signal.strategy_id,
         "signal_date": signal.signal_date,
@@ -423,6 +456,13 @@ def _write_outputs(output_dir: Path, signal: FrozenStrategySignal) -> None:
         "attack_gate_active": signal.attack_gate_active,
         "attack_gate_ever_activated": signal.attack_gate_ever_activated,
         "risk_off_active": signal.risk_off_active,
+        "report_mode": _report_mode(signal),
+        "personal_portfolio_attached": signal.personal_portfolio is not None,
+        "personal_total_value_twd": personal_summary["total_value_twd"] if personal_summary else "",
+        "personal_cash_exposure": personal_summary["cash_exposure"] if personal_summary else "",
+        "personal_market_exposure": personal_summary["market_exposure"] if personal_summary else "",
+        "personal_target_actual_exposure": personal_summary["target_actual_exposure"] if personal_summary else "",
+        "personal_target_gap_exposure": personal_summary["target_gap_exposure"] if personal_summary else "",
     }]).to_csv(output_dir / "frozen_strategy_daily_status.csv", index=False, encoding="utf-8-sig")
     pd.DataFrame(signal.ranking).to_csv(output_dir / "frozen_strategy_ranking.csv", index=False, encoding="utf-8-sig")
     pd.DataFrame(signal.projected_trades).to_csv(
@@ -459,6 +499,7 @@ def _markdown_report(signal: FrozenStrategySignal) -> str:
         f"- {row['action']} {row['label']}，模型參考股數 {row['shares']}，參考價 {row['reference_price']}"
         for row in signal.projected_trades
     ] or ["- 模型目標未改變，沒有模擬換倉動作。"]
+    personal_lines = _personal_markdown_lines(signal)
     return "\n".join(
         [
             f"# {REPORT_NAME}",
@@ -466,6 +507,7 @@ def _markdown_report(signal: FrozenStrategySignal) -> str:
             "## 摘要",
             "",
             f"- 策略版本：{REPORT_VARIANT_LABEL}",
+            f"- 報告模式：{_report_mode_label(signal)}",
             f"- 訊號日期：{signal.signal_date}",
             f"- 執行時點：{signal.execution_timing}",
             "- 定位：每日 AI 輔助操作建議，投資人自行判斷，不是自動下單，也不是投資建議。",
@@ -486,6 +528,8 @@ def _markdown_report(signal: FrozenStrategySignal) -> str:
             *trade_lines,
             "",
             "上述股數與價格只用來重建模型狀態，不是針對使用者資產的實際下單建議。",
+            "",
+            *personal_lines,
             "",
             "## 九標的強弱排名",
             "",
@@ -509,6 +553,69 @@ def _markdown_report(signal: FrozenStrategySignal) -> str:
             "",
         ]
     )
+
+
+def _personal_markdown_lines(signal: FrozenStrategySignal) -> list[str]:
+    if not signal.personal_portfolio:
+        return [
+            "## 個人持倉參考",
+            "",
+            "- 尚未連結個人持倉檔；本報告為一般版，只顯示模型帳戶狀態。",
+        ]
+    summary = _personal_exposure_summary(signal)
+    recommendation_lines = [
+        f"- {_display_action(row['action'])} {row['ticker']}，參考股數 {row['shares']}，目標比例 {row['target_exposure']:.0%}，原因：{row['reason']}"
+        for row in signal.personal_recommendations or []
+    ] or ["- 依目前持倉與模型目標，暫無可計算的個人調整參考。"]
+    return [
+        "## 個人持倉參考",
+        "",
+        f"- 個人組合估值：約 {summary['total_value_twd']:,.2f} 元",
+        f"- 可用現金：約 {summary['cash_twd']:,.2f} 元，現金水位約 {summary['cash_exposure']:.2%}",
+        f"- 目前持股水位：約 {summary['market_exposure']:.2%}",
+        f"- 模型目標標的：{signal.target_label}，模型目標曝險 {signal.target_exposure:.0%}",
+        f"- 個人目前目標標的曝險：約 {summary['target_actual_exposure']:.2%}，與模型目標差距約 {summary['target_gap_exposure']:+.2%}",
+        "",
+        "### 個人帳戶參考調整",
+        "",
+        *recommendation_lines,
+        "",
+        "個人持倉參考只依目前手動輸入資料估算，不是自動下單或投資建議。",
+    ]
+
+
+def _personal_exposure_summary(signal: FrozenStrategySignal) -> dict:
+    portfolio = signal.personal_portfolio or {}
+    total = float(portfolio.get("total_value_twd") or 0)
+    cash = float(portfolio.get("cash_twd") or 0)
+    market = float(portfolio.get("market_value_twd") or 0)
+    target_value = 0.0
+    for row in portfolio.get("positions", []):
+        if row.get("ticker") == signal.target_ticker:
+            target_value += float(row.get("market_value_twd") or 0)
+    target_actual = target_value / total if total > 0 else 0.0
+    return {
+        "total_value_twd": total,
+        "cash_twd": cash,
+        "cash_exposure": cash / total if total > 0 else 0.0,
+        "market_exposure": market / total if total > 0 else 0.0,
+        "target_actual_exposure": target_actual,
+        "target_gap_exposure": float(signal.target_exposure) - target_actual,
+    }
+
+
+def _report_mode(signal: FrozenStrategySignal) -> str:
+    return "personalized" if signal.personal_portfolio else "general"
+
+
+def _report_mode_label(signal: FrozenStrategySignal) -> str:
+    if signal.personal_portfolio:
+        return "個人化版，已結合目前持倉檔"
+    return "一般版，未連結個人持倉檔"
+
+
+def _display_action(action: str) -> str:
+    return {"buy": "買進", "sell": "賣出", "hold": "維持"}.get(action, action)
 
 
 def _write_skip(
@@ -549,8 +656,7 @@ def _write_download_waiting(output_dir: Path, signal_date: str, error: Exception
 
 
 def _write_signal_pdf(path: Path, signal: FrozenStrategySignal) -> None:
-    plt.rcParams["font.sans-serif"] = ["Noto Sans CJK TC", "Microsoft JhengHei", "Arial Unicode MS", "DejaVu Sans"]
-    plt.rcParams["axes.unicode_minus"] = False
+    _configure_chinese_font()
     with PdfPages(path) as pdf:
         fig = plt.figure(figsize=(8.27, 11.69), facecolor="#f4f6f8")
         ax = fig.add_axes((0, 0, 1, 1))
@@ -559,16 +665,50 @@ def _write_signal_pdf(path: Path, signal: FrozenStrategySignal) -> None:
         _draw_metric_cards(ax, signal)
         _draw_ranking_table(ax, signal)
         _draw_footer(ax, "本報告為 AI 輔助市場觀察與紀律提醒，不是投資建議。")
-        pdf.savefig(fig, bbox_inches="tight")
-        plt.close(fig)
+        _save_figure_as_raster_pdf_page(pdf, fig)
 
         fig = plt.figure(figsize=(8.27, 11.69), facecolor="#f4f6f8")
         ax = fig.add_axes((0, 0, 1, 1))
         ax.axis("off")
         _draw_second_page(ax, signal)
         _draw_footer(ax, f"{REPORT_NAME} · {signal.signal_date}")
-        pdf.savefig(fig, bbox_inches="tight")
-        plt.close(fig)
+        _save_figure_as_raster_pdf_page(pdf, fig)
+
+
+def _configure_chinese_font() -> None:
+    candidates = [
+        Path("C:/Windows/Fonts/msjh.ttc"),
+        Path("C:/Windows/Fonts/msjhbd.ttc"),
+        Path("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"),
+        Path("/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"),
+        Path("/usr/share/fonts/truetype/noto/NotoSansTC-Regular.ttf"),
+    ]
+    family = None
+    for path in candidates:
+        if path.exists():
+            font_manager.fontManager.addfont(str(path))
+            family = font_manager.FontProperties(fname=str(path)).get_name()
+            break
+    if family is None:
+        family = "Microsoft JhengHei"
+    plt.rcParams["font.sans-serif"] = [family, "Noto Sans CJK TC", "Microsoft JhengHei", "Arial Unicode MS", "DejaVu Sans"]
+    plt.rcParams["axes.unicode_minus"] = False
+    plt.rcParams["pdf.fonttype"] = 42
+    plt.rcParams["ps.fonttype"] = 42
+
+
+def _save_figure_as_raster_pdf_page(pdf: PdfPages, source_fig) -> None:
+    buffer = io.BytesIO()
+    source_fig.savefig(buffer, format="png", dpi=220, facecolor=source_fig.get_facecolor())
+    plt.close(source_fig)
+    buffer.seek(0)
+    image = plt.imread(buffer, format="png")
+    fig = plt.figure(figsize=(8.27, 11.69), facecolor="white")
+    ax = fig.add_axes((0, 0, 1, 1))
+    ax.axis("off")
+    ax.imshow(image, aspect="auto", extent=(0, 1, 0, 1))
+    pdf.savefig(fig)
+    plt.close(fig)
 
 
 def _draw_header(ax, signal: FrozenStrategySignal) -> None:
@@ -577,7 +717,7 @@ def _draw_header(ax, signal: FrozenStrategySignal) -> None:
     ax.text(
         0.06,
         0.895,
-        f"訊號日 {signal.signal_date} · {REPORT_VARIANT_LABEL} · 人工決策",
+        f"訊號日 {signal.signal_date} · {REPORT_VARIANT_LABEL} · {_report_mode_label(signal)}",
         color="#c8d5df",
         fontsize=11,
         transform=ax.transAxes,
@@ -595,12 +735,21 @@ def _draw_header(ax, signal: FrozenStrategySignal) -> None:
 
 
 def _draw_metric_cards(ax, signal: FrozenStrategySignal) -> None:
-    cards = [
-        ("模型動作", signal.action, "#2457a7"),
-        ("下一交易日目標", f"{signal.target_label} · {signal.target_exposure:.0%}", "#13795b"),
-        ("目標狀態", signal.model_target_status, "#17212a"),
-        ("風險狀態", "風險關閉" if signal.risk_off_active else "風控未觸發", "#b42318" if signal.risk_off_active else "#13795b"),
-    ]
+    if signal.personal_portfolio:
+        summary = _personal_exposure_summary(signal)
+        cards = [
+            ("模型動作", signal.action, "#2457a7"),
+            ("模型目標", f"{signal.target_label} · {signal.target_exposure:.0%}", "#13795b"),
+            ("個人目標曝險", f"{summary['target_actual_exposure']:.2%}", "#17212a"),
+            ("與模型差距", f"{summary['target_gap_exposure']:+.2%}", "#b42318" if summary["target_gap_exposure"] > 0 else "#13795b"),
+        ]
+    else:
+        cards = [
+            ("模型動作", signal.action, "#2457a7"),
+            ("下一交易日目標", f"{signal.target_label} · {signal.target_exposure:.0%}", "#13795b"),
+            ("目標狀態", signal.model_target_status, "#17212a"),
+            ("風險狀態", "風險關閉" if signal.risk_off_active else "風控未觸發", "#b42318" if signal.risk_off_active else "#13795b"),
+        ]
     for index, (label, value, color) in enumerate(cards):
         x = 0.06 + index * 0.225
         ax.add_patch(
@@ -691,6 +840,7 @@ def _draw_second_page(ax, signal: FrozenStrategySignal) -> None:
                 f"模型重建淨值：{signal.model_total_value_twd:,.0f} 元",
             ],
         ),
+        _personal_pdf_section(signal),
         (
             "使用邊界",
             [
@@ -712,15 +862,34 @@ def _draw_second_page(ax, signal: FrozenStrategySignal) -> None:
     ]
     y = 0.83
     for title, lines in sections:
+        if not title:
+            continue
         ax.add_patch(plt.Rectangle((0.06, y - 0.015), 0.88, 0.035, facecolor="#e8eef3", edgecolor="#d9e0e5", transform=ax.transAxes))
         ax.text(0.075, y - 0.004, title, fontsize=12.5, fontweight="bold", color="#17212a", transform=ax.transAxes)
-        y -= 0.055
+        y -= 0.047
         for line in lines:
-            wrapped = textwrap.wrap(line, width=48)
+            wrapped = textwrap.wrap(line, width=56)
             for text in wrapped:
-                ax.text(0.075, y, f"• {text}", fontsize=10.5, color="#1f2d36", transform=ax.transAxes)
-                y -= 0.032
-        y -= 0.028
+                ax.text(0.075, y, f"• {text}", fontsize=9.6, color="#1f2d36", transform=ax.transAxes)
+                y -= 0.026
+        y -= 0.018
+
+
+def _personal_pdf_section(signal: FrozenStrategySignal) -> tuple[str, list[str]]:
+    if not signal.personal_portfolio:
+        return ("個人持倉參考", ["尚未連結個人持倉檔；本報告為一般版，只顯示模型帳戶狀態。"])
+    summary = _personal_exposure_summary(signal)
+    lines = [
+        f"個人組合估值：約 {summary['total_value_twd']:,.2f} 元；可用現金：約 {summary['cash_twd']:,.2f} 元。",
+        f"現金水位約 {summary['cash_exposure']:.2%}；持股水位約 {summary['market_exposure']:.2%}。",
+        f"模型目標：{signal.target_label} {signal.target_exposure:.0%}；個人目前目標標的曝險約 {summary['target_actual_exposure']:.2%}。",
+        f"與模型目標差距約 {summary['target_gap_exposure']:+.2%}。",
+    ]
+    for row in (signal.personal_recommendations or [])[:4]:
+        lines.append(
+            f"個人參考：{_display_action(row['action'])} {row['ticker']} {row['shares']} 股，參考價 {row['reference_price']:.2f}。"
+        )
+    return ("個人持倉參考", lines)
 
 
 def _draw_footer(ax, text: str) -> None:
