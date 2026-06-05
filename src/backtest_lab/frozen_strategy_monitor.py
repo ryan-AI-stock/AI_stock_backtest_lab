@@ -33,6 +33,14 @@ REPORT_VARIANT_LABEL = f"最佳版 {REPORT_VERSION}"
 DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1O6Se-HfI7ZDTQ-LWeAO6f8vtvoLcCzIj"
 DEFAULT_REPLAY_START = "2020-01-02"
 NO_DATA_EXIT_CODE = 3
+FOOTER_Y = 0.032
+FOOTER_SEPARATOR_Y = 0.078
+DETAIL_START_Y = 0.83
+DETAIL_BOTTOM_Y = 0.105
+DETAIL_TITLE_STEP = 0.047
+DETAIL_LINE_HEIGHT = 0.026
+DETAIL_SECTION_GAP = 0.018
+DETAIL_WRAP_WIDTH = 56
 
 
 @dataclass(frozen=True)
@@ -657,6 +665,8 @@ def _write_download_waiting(output_dir: Path, signal_date: str, error: Exception
 
 def _write_signal_pdf(path: Path, signal: FrozenStrategySignal) -> None:
     _configure_chinese_font()
+    detail_pages = _paginate_detail_sections(_detail_sections(signal))
+    total_pages = 1 + len(detail_pages)
     with PdfPages(path) as pdf:
         fig = plt.figure(figsize=(8.27, 11.69), facecolor="#f4f6f8")
         ax = fig.add_axes((0, 0, 1, 1))
@@ -664,15 +674,16 @@ def _write_signal_pdf(path: Path, signal: FrozenStrategySignal) -> None:
         _draw_header(ax, signal)
         _draw_metric_cards(ax, signal)
         _draw_ranking_table(ax, signal)
-        _draw_footer(ax, "本報告為 AI 輔助市場觀察與紀律提醒，不是投資建議。")
+        _draw_footer(ax, "本報告為 AI 輔助市場觀察與紀律提醒，不是投資建議。", page_number=1, total_pages=total_pages)
         _save_figure_as_raster_pdf_page(pdf, fig)
 
-        fig = plt.figure(figsize=(8.27, 11.69), facecolor="#f4f6f8")
-        ax = fig.add_axes((0, 0, 1, 1))
-        ax.axis("off")
-        _draw_second_page(ax, signal)
-        _draw_footer(ax, f"{REPORT_NAME} · {signal.signal_date}")
-        _save_figure_as_raster_pdf_page(pdf, fig)
+        for index, sections in enumerate(detail_pages, start=2):
+            fig = plt.figure(figsize=(8.27, 11.69), facecolor="#f4f6f8")
+            ax = fig.add_axes((0, 0, 1, 1))
+            ax.axis("off")
+            _draw_detail_page(ax, sections, is_continued=index > 2)
+            _draw_footer(ax, f"{REPORT_NAME} · {signal.signal_date}", page_number=index, total_pages=total_pages)
+            _save_figure_as_raster_pdf_page(pdf, fig)
 
 
 def _configure_chinese_font() -> None:
@@ -819,9 +830,12 @@ def _draw_ranking_table(ax, signal: FrozenStrategySignal) -> None:
 
 
 def _draw_second_page(ax, signal: FrozenStrategySignal) -> None:
-    ax.add_patch(plt.Rectangle((0, 0.9), 1, 0.1, color="#17212a", transform=ax.transAxes))
-    ax.text(0.06, 0.94, "操作摘要與風險說明", color="white", fontsize=18, fontweight="bold", transform=ax.transAxes)
-    sections = [
+    first_page = _paginate_detail_sections(_detail_sections(signal))[0]
+    _draw_detail_page(ax, first_page, is_continued=False)
+
+
+def _detail_sections(signal: FrozenStrategySignal) -> list[tuple[str, list[str]]]:
+    return [
         (
             "模型模擬動作",
             [
@@ -860,19 +874,51 @@ def _draw_second_page(ax, signal: FrozenStrategySignal) -> None:
             ],
         ),
     ]
-    y = 0.83
+
+
+def _paginate_detail_sections(sections: list[tuple[str, list[str]]]) -> list[list[tuple[str, list[str]]]]:
+    pages: list[list[tuple[str, list[str]]]] = []
+    current: list[tuple[str, list[str]]] = []
+    used_height = 0.0
+    available_height = DETAIL_START_Y - DETAIL_BOTTOM_Y
+    for section in sections:
+        title, lines = section
+        if not title:
+            continue
+        height = _detail_section_height(lines)
+        if current and used_height + height > available_height:
+            pages.append(current)
+            current = []
+            used_height = 0.0
+        current.append(section)
+        used_height += height
+    if current:
+        pages.append(current)
+    return pages
+
+
+def _detail_section_height(lines: list[str]) -> float:
+    wrapped_count = sum(max(1, len(textwrap.wrap(line, width=DETAIL_WRAP_WIDTH))) for line in lines)
+    return DETAIL_TITLE_STEP + wrapped_count * DETAIL_LINE_HEIGHT + DETAIL_SECTION_GAP
+
+
+def _draw_detail_page(ax, sections: list[tuple[str, list[str]]], *, is_continued: bool) -> None:
+    ax.add_patch(plt.Rectangle((0, 0.9), 1, 0.1, color="#17212a", transform=ax.transAxes))
+    title = "操作摘要與風險說明（續）" if is_continued else "操作摘要與風險說明"
+    ax.text(0.06, 0.94, title, color="white", fontsize=18, fontweight="bold", transform=ax.transAxes)
+    y = DETAIL_START_Y
     for title, lines in sections:
         if not title:
             continue
         ax.add_patch(plt.Rectangle((0.06, y - 0.015), 0.88, 0.035, facecolor="#e8eef3", edgecolor="#d9e0e5", transform=ax.transAxes))
         ax.text(0.075, y - 0.004, title, fontsize=12.5, fontweight="bold", color="#17212a", transform=ax.transAxes)
-        y -= 0.047
+        y -= DETAIL_TITLE_STEP
         for line in lines:
-            wrapped = textwrap.wrap(line, width=56)
+            wrapped = textwrap.wrap(line, width=DETAIL_WRAP_WIDTH)
             for text in wrapped:
                 ax.text(0.075, y, f"• {text}", fontsize=9.6, color="#1f2d36", transform=ax.transAxes)
-                y -= 0.026
-        y -= 0.018
+                y -= DETAIL_LINE_HEIGHT
+        y -= DETAIL_SECTION_GAP
 
 
 def _personal_pdf_section(signal: FrozenStrategySignal) -> tuple[str, list[str]]:
@@ -892,9 +938,11 @@ def _personal_pdf_section(signal: FrozenStrategySignal) -> tuple[str, list[str]]
     return ("個人持倉參考", lines)
 
 
-def _draw_footer(ax, text: str) -> None:
-    ax.text(0.06, 0.055, text, color="#73818b", fontsize=8.5, transform=ax.transAxes)
-    ax.text(0.94, 0.055, "AI_stock_backtest_lab", color="#73818b", fontsize=8.5, ha="right", transform=ax.transAxes)
+def _draw_footer(ax, text: str, *, page_number: int | None = None, total_pages: int | None = None) -> None:
+    ax.plot([0.06, 0.94], [FOOTER_SEPARATOR_Y, FOOTER_SEPARATOR_Y], color="#d9e0e5", linewidth=0.8, transform=ax.transAxes)
+    ax.text(0.06, FOOTER_Y, text, color="#73818b", fontsize=8.2, transform=ax.transAxes)
+    right_text = f"第 {page_number}/{total_pages} 頁" if page_number and total_pages else "被AI研究所"
+    ax.text(0.94, FOOTER_Y, right_text, color="#73818b", fontsize=8.2, ha="right", transform=ax.transAxes)
 
 
 def _format_price(value: float | None) -> str:

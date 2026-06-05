@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unittest
 import tempfile
+from dataclasses import replace
 from pathlib import Path
 
 import pandas as pd
@@ -10,12 +11,17 @@ import test_paths  # noqa: F401
 
 from backtest_lab.costs import TaiwanCostModel
 from backtest_lab.frozen_strategy_monitor import (
+    DETAIL_BOTTOM_Y,
+    DETAIL_START_Y,
     FrozenStrategySignal,
     _action,
     _append_projection_row,
     _cash_account_reference,
+    _detail_section_height,
+    _detail_sections,
     _incomplete_tickers,
     _model_target_status,
+    _paginate_detail_sections,
     _personal_exposure_summary,
     _report_mode,
     _report_mode_label,
@@ -136,6 +142,32 @@ class FrozenStrategyMonitorTest(unittest.TestCase):
             content = path.read_bytes()
             self.assertTrue(content.startswith(b"%PDF"))
             self.assertIn(b"/Subtype /Image", content)
+
+    def test_detail_pages_stay_above_footer_safe_area(self) -> None:
+        signal = replace(
+            _sample_signal(),
+            personal_portfolio={
+                "total_value_twd": 4_000_000,
+                "cash_twd": 800_000,
+                "market_value_twd": 3_200_000,
+                "positions": [{"ticker": "2454.TW", "market_value_twd": 1_000_000}],
+            },
+            personal_recommendations=[
+                {"action": "buy", "ticker": "2454.TW", "shares": 100, "reference_price": 4300.0},
+                {"action": "sell", "ticker": "2330.TW", "shares": 200, "reference_price": 1200.0},
+                {"action": "buy", "ticker": "6669.TW", "shares": 10, "reference_price": 5600.0},
+                {"action": "hold", "ticker": "00631L.TW", "shares": 0, "reference_price": 380.0},
+            ],
+        )
+
+        pages = _paginate_detail_sections(_detail_sections(signal))
+        available_height = DETAIL_START_Y - DETAIL_BOTTOM_Y
+
+        self.assertGreaterEqual(len(pages), 2)
+        for page in pages:
+            used_height = sum(_detail_section_height(lines) for _, lines in page)
+            self.assertLessEqual(used_height, available_height)
+        self.assertEqual(pages[-1][-1][0], "風險聲明")
 
 
 def _sample_signal() -> FrozenStrategySignal:
