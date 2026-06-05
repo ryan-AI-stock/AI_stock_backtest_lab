@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI 股票紀律工作台</title>
+  <style>
+    :root {
+      --ink: #182026;
+      --muted: #64717a;
+      --line: #dce2e6;
+      --panel: #ffffff;
+      --canvas: #f3f5f6;
+      --green: #13795b;
+      --red: #b42318;
+      --amber: #a15c00;
+      --blue: #2457a7;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--canvas); color: var(--ink); font-family: "Microsoft JhengHei", "Noto Sans TC", sans-serif; font-size: 14px; }
+    header { background: #17212a; color: white; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    h1 { margin: 0; font-size: 20px; font-weight: 700; }
+    h2 { margin: 0; font-size: 16px; }
+    .subtle { color: #b7c3cc; margin-top: 4px; font-size: 12px; }
+    .badge { border: 1px solid #60717f; padding: 5px 8px; border-radius: 4px; font-size: 12px; white-space: nowrap; }
+    main { max-width: 1360px; margin: 0 auto; padding: 18px; display: grid; gap: 14px; }
+    .summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    .metric, section { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+    .metric { padding: 13px 14px; min-width: 0; }
+    .metric-label { color: var(--muted); font-size: 12px; }
+    .metric-value { margin-top: 5px; font-size: 19px; font-weight: 700; overflow-wrap: anywhere; }
+    section { padding: 15px; }
+    .section-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(320px, 0.8fr); gap: 14px; align-items: start; }
+    .stack { display: grid; gap: 14px; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    th { color: var(--muted); font-size: 12px; font-weight: 600; background: #f8f9fa; }
+    td.num, th.num { text-align: right; }
+    .buy { color: var(--red); font-weight: 700; }
+    .sell { color: var(--green); font-weight: 700; }
+    .hold { color: var(--blue); font-weight: 700; }
+    form { display: grid; gap: 10px; }
+    .fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+    label { display: grid; gap: 5px; color: var(--muted); font-size: 12px; }
+    input, select { width: 100%; min-height: 36px; border: 1px solid #c8d1d7; border-radius: 4px; padding: 7px 8px; color: var(--ink); background: white; }
+    button { min-height: 36px; border: 1px solid #17212a; border-radius: 4px; background: #17212a; color: white; padding: 7px 12px; font-weight: 700; cursor: pointer; }
+    button.secondary { background: white; color: #17212a; }
+    .actions { display: flex; justify-content: flex-end; gap: 8px; }
+    .status { min-height: 18px; color: var(--green); font-size: 12px; }
+    .warning { color: var(--amber); }
+    .empty { padding: 18px 8px; color: var(--muted); text-align: center; }
+    .position-grid { display: grid; gap: 7px; }
+    .position-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; align-items: end; }
+    .position-row strong { padding-bottom: 10px; }
+    @media (max-width: 900px) {
+      .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .layout { grid-template-columns: 1fr; }
+      .fields { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 560px) {
+      header { align-items: flex-start; padding: 14px; }
+      main { padding: 10px; }
+      .summary, .fields { grid-template-columns: 1fr; }
+      .position-row { grid-template-columns: 1fr 1fr; }
+      .position-row strong { grid-column: 1 / -1; padding: 0; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>AI 股票紀律工作台</h1>
+      <div class="subtle" id="signal-meta">載入每日凍結策略訊號...</div>
+    </div>
+    <div class="badge">凍結版 v1 · 人工決策</div>
+  </header>
+  <main>
+    <div class="summary">
+      <div class="metric"><div class="metric-label">模型目標</div><div class="metric-value" id="target">--</div></div>
+      <div class="metric"><div class="metric-label">市場環境</div><div class="metric-value" id="regime">--</div></div>
+      <div class="metric"><div class="metric-label">可用現金</div><div class="metric-value" id="cash">--</div></div>
+      <div class="metric"><div class="metric-label">組合估值</div><div class="metric-value" id="total">--</div></div>
+    </div>
+
+    <div class="layout">
+      <div class="stack">
+        <section>
+          <div class="section-head"><h2>下一交易日模型建議</h2><span class="subtle">收盤價估算 · 支援零股</span></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>動作</th><th>標的</th><th class="num">參考股數</th><th class="num">目標比例</th><th class="num">參考金額</th><th>原因</th></tr></thead>
+            <tbody id="recommendations"></tbody>
+          </table></div>
+        </section>
+
+        <section>
+          <div class="section-head"><h2>目前持倉</h2><span class="subtle">只有手動儲存或登錄成交才會改變</span></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>標的</th><th class="num">股數</th><th class="num">平均成本</th><th class="num">參考價</th><th class="num">市值</th><th class="num">未實現損益</th></tr></thead>
+            <tbody id="positions"></tbody>
+          </table></div>
+        </section>
+
+        <section>
+          <div class="section-head"><h2>成交紀錄</h2><span class="subtle">最新紀錄優先</span></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>日期</th><th>動作</th><th>標的</th><th class="num">股數</th><th class="num">成交價</th><th class="num">成本</th><th class="num">已實現損益</th></tr></thead>
+            <tbody id="trades"></tbody>
+          </table></div>
+        </section>
+      </div>
+
+      <div class="stack">
+        <section>
+          <div class="section-head"><h2>設定目前資產</h2></div>
+          <form id="portfolio-form">
+            <label>可用現金<input id="cash-input" type="number" min="0" step="1" required></label>
+            <div class="position-grid" id="position-inputs"></div>
+            <div class="actions"><button type="submit">儲存目前資產</button></div>
+            <div class="status" id="portfolio-status"></div>
+          </form>
+        </section>
+
+        <section>
+          <div class="section-head"><h2>登錄實際成交</h2></div>
+          <form id="trade-form">
+            <div class="fields">
+              <label>日期<input id="trade-date" type="date" required></label>
+              <label>動作<select id="trade-side"><option value="buy">買進</option><option value="sell">賣出</option></select></label>
+              <label>標的<select id="trade-ticker"></select></label>
+              <label>股數<input id="trade-shares" type="number" min="1" step="1" required></label>
+              <label>成交價<input id="trade-price" type="number" min="0.01" step="0.01" required></label>
+              <label>實際費用<input id="trade-costs" type="number" min="0" step="1" placeholder="空白則依台股成本估算"></label>
+            </div>
+            <div class="actions"><button type="submit">登錄成交</button></div>
+            <div class="status" id="trade-status"></div>
+          </form>
+        </section>
+      </div>
+    </div>
+  </main>
+  <script>
+    const assets = [
+      ["0050.TW","0050"],["00631L.TW","0050 正二"],["2330.TW","台積電"],["2454.TW","聯發科"],
+      ["2308.TW","台達電"],["2317.TW","鴻海"],["2382.TW","廣達"],["3231.TW","緯創"],["6669.TW","緯穎"]
+    ];
+    const labels = Object.fromEntries(assets);
+    const money = value => new Intl.NumberFormat("zh-TW", { maximumFractionDigits: 0 }).format(value || 0);
+    const pct = value => `${Math.round((value || 0) * 100)}%`;
+    const actionLabel = action => ({buy:"買進",sell:"賣出",hold:"維持"}[action] || action);
+    let state = null;
+
+    function setupForms() {
+      document.getElementById("trade-date").value = new Date().toISOString().slice(0,10);
+      document.getElementById("trade-ticker").innerHTML = assets.map(([ticker,label]) => `<option value="${ticker}">${label}</option>`).join("");
+      document.getElementById("position-inputs").innerHTML = assets.map(([ticker,label]) => `
+        <div class="position-row"><strong>${label}</strong>
+          <label>股數<input data-shares="${ticker}" type="number" min="0" step="1" value="0"></label>
+          <label>平均成本<input data-cost="${ticker}" type="number" min="0" step="0.01" value="0"></label>
+        </div>`).join("");
+    }
+
+    async function refresh() {
+      const response = await fetch("/api/state");
+      state = await response.json();
+      render();
+    }
+
+    function render() {
+      const signal = state.signal;
+      const portfolio = state.portfolio;
+      document.getElementById("signal-meta").textContent = signal ? `訊號日 ${signal.signal_date} · ${signal.action}` : "尚未找到正式凍結策略日報";
+      document.getElementById("target").textContent = signal ? `${labels[signal.target_ticker] || "現金"} ${pct(signal.target_exposure)}` : "--";
+      document.getElementById("regime").textContent = signal ? signal.market_regime_label : "--";
+      document.getElementById("cash").textContent = `$${money(portfolio.cash_twd)}`;
+      document.getElementById("total").textContent = `$${money(portfolio.total_value_twd)}`;
+      document.getElementById("cash-input").value = state.user.cash_twd;
+
+      for (const [ticker] of assets) {
+        const position = state.user.positions[ticker] || {shares:0,avg_cost:0};
+        document.querySelector(`[data-shares="${ticker}"]`).value = position.shares;
+        document.querySelector(`[data-cost="${ticker}"]`).value = position.avg_cost;
+      }
+
+      document.getElementById("recommendations").innerHTML = state.recommendations.length ? state.recommendations.map(row => `
+        <tr><td class="${row.action}">${actionLabel(row.action)}</td><td>${labels[row.ticker] || row.ticker}</td>
+        <td class="num">${money(row.shares)}</td><td class="num">${pct(row.target_exposure)}</td>
+        <td class="num">$${money(row.estimated_gross_twd)}</td><td>${row.reason}</td></tr>`).join("") : `<tr><td class="empty" colspan="6">目前沒有可計算的模型調整建議</td></tr>`;
+
+      document.getElementById("positions").innerHTML = portfolio.positions.length ? portfolio.positions.map(row => `
+        <tr><td>${labels[row.ticker] || row.ticker}</td><td class="num">${money(row.shares)}</td>
+        <td class="num">$${money(row.avg_cost)}</td><td class="num">$${money(row.reference_price)}</td>
+        <td class="num">$${money(row.market_value_twd)}</td><td class="num">${row.unrealized_pnl_twd >= 0 ? "+" : ""}$${money(row.unrealized_pnl_twd)}</td></tr>`).join("") : `<tr><td class="empty" colspan="6">尚未輸入持倉</td></tr>`;
+
+      const trades = [...state.user.trades].reverse();
+      document.getElementById("trades").innerHTML = trades.length ? trades.map(row => `
+        <tr><td>${row.date}</td><td class="${row.side}">${actionLabel(row.side)}</td><td>${labels[row.ticker] || row.ticker}</td>
+        <td class="num">${money(row.shares)}</td><td class="num">$${money(row.price)}</td><td class="num">$${money(row.costs_twd)}</td>
+        <td class="num">${row.realized_pnl_twd == null ? "--" : `${row.realized_pnl_twd >= 0 ? "+" : ""}$${money(row.realized_pnl_twd)}`}</td></tr>`).join("") : `<tr><td class="empty" colspan="7">尚未登錄成交</td></tr>`;
+    }
+
+    document.getElementById("portfolio-form").addEventListener("submit", async event => {
+      event.preventDefault();
+      const positions = assets.map(([ticker]) => ({ticker, shares:Number(document.querySelector(`[data-shares="${ticker}"]`).value), avg_cost:Number(document.querySelector(`[data-cost="${ticker}"]`).value)}));
+      await send("/api/portfolio", {cash_twd:Number(document.getElementById("cash-input").value), positions}, "portfolio-status");
+    });
+
+    document.getElementById("trade-form").addEventListener("submit", async event => {
+      event.preventDefault();
+      const costs = document.getElementById("trade-costs").value;
+      await send("/api/trades", {
+        date:document.getElementById("trade-date").value, side:document.getElementById("trade-side").value,
+        ticker:document.getElementById("trade-ticker").value, shares:Number(document.getElementById("trade-shares").value),
+        price:Number(document.getElementById("trade-price").value), costs_twd:costs === "" ? null : Number(costs)
+      }, "trade-status");
+    });
+
+    async function send(url, payload, statusId) {
+      const status = document.getElementById(statusId);
+      status.textContent = "處理中...";
+      status.className = "status";
+      const response = await fetch(url, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)});
+      const data = await response.json();
+      if (!response.ok) {
+        status.textContent = data.error || "操作失敗";
+        status.className = "status warning";
+        return;
+      }
+      state = data;
+      status.textContent = "已更新";
+      render();
+    }
+
+    setupForms();
+    refresh();
+  </script>
+</body>
+</html>

@@ -122,6 +122,59 @@ python -m backtest_lab.cli --config configs/ep05_universe.json --cache-dir backt
 python -m unittest discover -s tests -p "test*.py" -v
 ```
 
+## 凍結策略每日觀察報告
+
+正式每日產品使用 `frozen_cycle_proven_top1_v1`。它在台股開盤日 15:00 開始檢查九標的當日資料；資料未完整時，每小時重試。報告提供下一交易日的 AI 輔助操作建議，由投資人自行決定是否執行，不會自動下單。
+
+```powershell
+$env:PYTHONPATH='src'
+python -m backtest_lab.frozen_strategy_monitor --signal-date 2026-05-26 --cache-dir backtest_cache/unified_9_asset_full
+```
+
+Drive 固定更新檔名：
+
+```text
+AI股票凍結策略每日觀察報告_最新版.pdf
+```
+
+GitHub Actions 的 Drive 上傳比照既有 DAILY / WEEKLY 股票報告專案，優先使用 Google OAuth refresh token，不使用 service account 作為主流程。
+
+需要的 repo 或 org secrets：
+
+- `GOOGLE_OAUTH_CLIENT_ID`
+- `GOOGLE_OAUTH_CLIENT_SECRET`
+- `GOOGLE_OAUTH_REFRESH_TOKEN`
+
+可選設定：
+
+- `FROZEN_REPORT_DRIVE_FOLDER_ID`：覆蓋預設 Drive 目標資料夾。
+- `FROZEN_REPORT_DRIVE_FILE_ID`：若要直接覆蓋同一個 Drive 檔案，可指定固定 file id。
+- `GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON`：只保留作為備援，不是建議主設定。
+
+敏感憑證不可寫入 repo、README、workflow log 或測試資料。
+
+## 私有持倉工作台
+
+第一版是綁定 `127.0.0.1` 的單一使用者私有介面，資料檔位於被 git 忽略的 `work/portfolio_app/`。資料結構已預留 `user_id`，可在日後擴成多人帳號。
+
+```powershell
+$env:PYTHONPATH='src'
+python -m backtest_lab.portfolio_app --signal-root outputs/frozen_strategy_monitor
+```
+
+介面支援：
+
+- 輸入目前可用現金、各檔股數與平均成本。
+- 顯示模型目標比例，以及依可用現金估算的零股參考數量。
+- 手動登錄實際買賣成交價、股數與費用。
+- 只有手動登錄成交後，實際持倉與現金才會改變。
+
+Codex 內部驗證原則：
+
+- 不預設用 Codex 背景啟動長駐服務，避免工具呼叫卡住。
+- HTTP 驗證使用短生命週期測試，測試內啟動 server、測完自動關閉。
+- 若要人工操作網頁，再由使用者於本機終端手動執行上述啟動命令，並用 `Ctrl+C` 關閉。
+
 v0 限制：
 
 - 已可記錄現金股利入帳，但尚未實作股利自動再投入。

@@ -118,12 +118,14 @@ def simulate_dual_momentum_vol_control(
     trend_window: int = 126,
     volatility_window: int = 20,
     rebalance_frequency: str = "weekly",
+    signal_weekday: int | None = None,
 ) -> BacktestResult:
     trade_dates = _common_trade_dates(prices_by_ticker, start_date, end_date)
     if not trade_dates:
         raise ValueError(f"No common trade dates between {start_date} and {end_date}")
     portfolio = Portfolio(initial_cash, cost_model)
     equity_rows = []
+    last_signal_week_key: tuple[int, int] | None = None
 
     for index, trade_date in enumerate(trade_dates):
         current_before_trade = portfolio.current_ticker()
@@ -131,8 +133,15 @@ def simulate_dual_momentum_vol_control(
             dividend = float(dividend_series_by_ticker[current_before_trade].get(trade_date, 0.0))
             portfolio.credit_dividend(_date_str(trade_date), current_before_trade, dividend)
 
-        if index == 0 or _is_rebalance_date(trade_dates, index, rebalance_frequency):
-            signal_date = previous_available_date(prices_by_ticker, trade_date)
+        signal_date = previous_available_date(prices_by_ticker, trade_date)
+        should_rebalance = index == 0 or _is_rebalance_date(trade_dates, index, rebalance_frequency)
+        if signal_weekday is not None:
+            signal_week_key = (signal_date.isocalendar().year, signal_date.isocalendar().week)
+            should_rebalance = signal_date.weekday() == signal_weekday and signal_week_key != last_signal_week_key
+            if should_rebalance:
+                last_signal_week_key = signal_week_key
+
+        if should_rebalance:
             target = dual_momentum_vol_control(
                 prices_by_ticker,
                 signal_date,

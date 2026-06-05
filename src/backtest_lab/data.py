@@ -65,6 +65,7 @@ def download_yfinance_prices(
     start_date: str,
     end_date: str,
     cache_dir: str | Path,
+    allow_edge_gap: bool = True,
 ) -> dict[str, pd.DataFrame]:
     import yfinance as yf
 
@@ -78,7 +79,7 @@ def download_yfinance_prices(
         csv_path = cache_path / f"{ticker.replace('.', '_')}.csv"
         if csv_path.exists():
             cached = load_price_csv(csv_path)
-            if _covers_range(cached, start_date, end_date):
+            if _covers_range(cached, start_date, end_date, allow_edge_gap=allow_edge_gap):
                 prices[ticker] = cached
                 continue
 
@@ -113,7 +114,7 @@ def download_yfinance_prices(
     return prices
 
 
-def _covers_range(frame: pd.DataFrame, start_date: str, end_date: str) -> bool:
+def _covers_range(frame: pd.DataFrame, start_date: str, end_date: str, allow_edge_gap: bool = True) -> bool:
     if frame.empty:
         return False
     start = pd.Timestamp(start_date)
@@ -126,6 +127,8 @@ def _covers_range(frame: pd.DataFrame, start_date: str, end_date: str) -> bool:
     # first available trading day.
     start_gap_days = (first - start).days
     end_gap_days = (end - last).days
+    if not allow_edge_gap:
+        return start_gap_days <= 10 and end_gap_days == 0
     return start_gap_days <= 10 and end_gap_days <= 10
 
 

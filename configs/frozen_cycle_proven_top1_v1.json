@@ -1,0 +1,62 @@
+{
+  "strategy_id": "frozen_cycle_proven_top1_v1",
+  "status": "frozen_baseline",
+  "effective_date": "2026-06-04",
+  "purpose": "AI 輔助回測、shadow mode 與後續挑戰者比較基準，不是投資建議。",
+  "universe": {
+    "market_signal_assets": ["0050.TW", "00631L.TW"],
+    "attack_candidates": [
+      "2330.TW",
+      "2454.TW",
+      "2308.TW",
+      "2317.TW",
+      "2382.TW",
+      "3231.TW",
+      "6669.TW"
+    ]
+  },
+  "operation": {
+    "analysis_frequency": "every_twse_trading_day_after_close",
+    "execution_timing": "next_trading_day_open",
+    "trade_trigger": "only_when_target_or_exposure_changes",
+    "attack_holding_count": 1
+  },
+  "cycle_proof": {
+    "fallback_ticker": "0050.TW",
+    "initial_margin_over_fallback": 0.22,
+    "initial_persistence_lookback_days": 10,
+    "initial_min_top_days": 10,
+    "reentry_margin_over_fallback": 0.20,
+    "reentry_min_short_to_medium_momentum_ratio": 0.40,
+    "cold_start_history_days": 60,
+    "systemic_bear_resets_cycle": true
+  },
+  "waiting_and_risk": {
+    "waiting_ticker": "00631L.TW",
+    "waiting_exposure": 1.0,
+    "preproof_risk_filter": "risk_2of3",
+    "preproof_risk_ticker": "00631L.TW",
+    "preproof_risk_exposure": 0.25,
+    "preproof_risk_exit_confirmation_days": 5,
+    "waiting_defense_rule": "ma200",
+    "portfolio_stop_drawdown_pct": 0.12
+  },
+  "verified_results": {
+    "period_2021_2022": {
+      "total_return_pct": 15.21,
+      "max_drawdown_pct": -18.0
+    },
+    "period_2023_2024": {
+      "total_return_pct": 544.85,
+      "max_drawdown_pct": -34.46
+    },
+    "full_2020_2026": {
+      "total_return_pct": 4281.29,
+      "max_drawdown_pct": -39.64
+    }
+  },
+  "change_control": {
+    "overwrite_allowed": false,
+    "rule": "任何參數、股票池、持股數量、分析頻率或風控變更必須另建 challenger 版本，不得覆蓋本檔。"
+  }
+}

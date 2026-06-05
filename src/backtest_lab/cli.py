@@ -25,13 +25,26 @@ def main() -> None:
     parser.add_argument("--cache-dir", default="backtest_cache")
     parser.add_argument("--output-dir", default="backtest_outputs")
     parser.add_argument("--theme-map-file", default="", help="Optional AI_stock_rotation_radar theme_map.csv path.")
+    parser.add_argument("--group-id", default="", help="Override the configured active group.")
+    parser.add_argument(
+        "--all-groups",
+        action="store_true",
+        help="Run every configured group for historical result reproduction.",
+    )
     args = parser.parse_args()
 
     config = load_config(args.config)
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    tickers = sorted({asset.ticker for group in config.groups for asset in group.assets})
+    groups = (
+        config.groups
+        if args.all_groups
+        else (config.group_by_id(args.group_id),)
+        if args.group_id
+        else (config.active_group,)
+    )
+    tickers = sorted({asset.ticker for group in groups for asset in group.assets})
     prices = download_yfinance_prices(
         tickers=tickers,
         start_date=config.warmup_start_date,
@@ -46,18 +59,32 @@ def main() -> None:
 
     results: list[BacktestResult] = []
     reconciliation_rows: list[dict] = []
-    for group in config.groups:
-        benchmark_without_dividend = _run_benchmark(group, prices, config, dividend_series=None)
-        benchmark_with_dividend = _run_benchmark(group, prices, config, dividend_series=dividends[group.benchmark])
-        results.append(benchmark_with_dividend)
-        reconciliation_rows.append(
-            _benchmark_reconciliation_row(
+    for group in groups:
+        for benchmark_ticker in group.comparison_benchmarks:
+            benchmark_without_dividend = _run_benchmark(
                 group,
-                benchmark_without_dividend,
-                benchmark_with_dividend,
-                config.reference_values.get(group.benchmark),
+                benchmark_ticker,
+                prices,
+                config,
+                dividend_series=None,
             )
-        )
+            benchmark_with_dividend = _run_benchmark(
+                group,
+                benchmark_ticker,
+                prices,
+                config,
+                dividend_series=dividends[benchmark_ticker],
+            )
+            results.append(benchmark_with_dividend)
+            reconciliation_rows.append(
+                _benchmark_reconciliation_row(
+                    group,
+                    benchmark_ticker,
+                    benchmark_without_dividend,
+                    benchmark_with_dividend,
+                    config.reference_values.get(benchmark_ticker),
+                )
+            )
         group_prices = {asset.ticker: prices[asset.ticker] for asset in group.assets}
         asset_types = {asset.ticker: asset.asset_type for asset in group.assets}
         group_dividends = {asset.ticker: dividends[asset.ticker] for asset in group.assets}
@@ -105,7 +132,7 @@ def main() -> None:
     _write_trades(results, output_dir)
     _write_equity_curves(results, output_dir)
     _write_holding_exposure(results, output_dir)
-    robustness_rows = _run_robustness_checks(config, prices, dividends)
+    robustness_rows = _run_robustness_checks(config, groups, prices, dividends)
     _write_robustness_summary(robustness_rows, output_dir)
     _write_charts(results, robustness_rows, output_dir)
     _write_video_summary(results, output_dir)
@@ -113,15 +140,16 @@ def main() -> None:
 
 def _run_benchmark(
     group: GroupConfig,
+    benchmark_ticker: str,
     prices: dict[str, pd.DataFrame],
     config,
     dividend_series: pd.Series | None,
 ) -> BacktestResult:
     return simulate_buy_and_hold(
-        name=f"{group.group_id}__benchmark__{group.benchmark}",
-        ticker=group.benchmark,
-        asset_type=group.asset_type(group.benchmark),
-        prices=prices[group.benchmark],
+        name=f"{group.group_id}__benchmark__{benchmark_ticker}",
+        ticker=benchmark_ticker,
+        asset_type=group.asset_type(benchmark_ticker),
+        prices=prices[benchmark_ticker],
         start_date=config.start_date,
         end_date=config.end_date,
         initial_cash=config.initial_cash_twd,
@@ -147,6 +175,7 @@ def _write_summary(results: list[BacktestResult], output_dir: Path) -> None:
 
 def _benchmark_reconciliation_row(
     group: GroupConfig,
+    benchmark_ticker: str,
     without_dividend: BacktestResult,
     with_dividend: BacktestResult,
     reference: dict[str, float | str] | None,
@@ -159,7 +188,7 @@ def _benchmark_reconciliation_row(
     )
     return {
         "group": group.group_id,
-        "benchmark": group.benchmark,
+        "benchmark": benchmark_ticker,
         "without_dividend_final_value": round(without_dividend.final_value, 2),
         "with_adjusted_dividend_final_value": round(with_dividend.final_value, 2),
         "dividend_cash_added": round(with_dividend.final_value - without_dividend.final_value, 2),
@@ -217,7 +246,12 @@ def _write_holding_exposure(results: list[BacktestResult], output_dir: Path) -> 
     pd.DataFrame(rows).to_csv(output_dir / "holding_exposure.csv", index=False, encoding="utf-8-sig")
 
 
-def _run_robustness_checks(config, prices: dict[str, pd.DataFrame], dividends: dict[str, pd.Series]) -> list[dict]:
+def _run_robustness_checks(
+    config,
+    groups: tuple[GroupConfig, ...],
+    prices: dict[str, pd.DataFrame],
+    dividends: dict[str, pd.Series],
+) -> list[dict]:
     variants = [
         {
             "variant": "base_daily_63_126",
@@ -301,7 +335,7 @@ def _run_robustness_checks(config, prices: dict[str, pd.DataFrame], dividends: d
         },
     ]
     rows = []
-    for group in config.groups:
+    for group in groups:
         asset_types = {asset.ticker: asset.asset_type for asset in group.assets}
         for variant in variants:
             included_assets = [asset for asset in group.assets if asset.ticker != variant["exclude"]]
@@ -434,6 +468,11 @@ def _short_strategy_name(name: str) -> str:
         "group_b_00631l_plus_mega_caps__dual_momentum_vol_control": "B dual momentum",
         "group_a_0050_plus_mega_caps__theme_enhanced_dual_momentum": "A radar proxy",
         "group_b_00631l_plus_mega_caps__theme_enhanced_dual_momentum": "B radar proxy",
+        "group_c_0050_00631l_plus_mega_caps__benchmark__0050.TW": "0050 B&H",
+        "group_c_0050_00631l_plus_mega_caps__benchmark__00631L.TW": "0050 2x B&H",
+        "group_c_0050_00631l_plus_mega_caps__relative_strength_top1": "9-asset daily top1",
+        "group_c_0050_00631l_plus_mega_caps__dual_momentum_vol_control": "9-asset dual momentum",
+        "group_c_0050_00631l_plus_mega_caps__theme_enhanced_dual_momentum": "9-asset radar proxy",
     }
     return replacements.get(name, name)
 

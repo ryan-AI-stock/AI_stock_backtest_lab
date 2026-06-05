@@ -1,6 +1,7 @@
 {
   "project": "AI_stock_backtest_lab",
   "episode": "EP05",
+  "active_group_id": "group_c_0050_00631l_plus_mega_caps",
   "warmup_start_date": "2023-01-01",
   "start_date": "2024-01-02",
   "end_date": "2026-05-26",
@@ -64,6 +65,23 @@
       "benchmark": "00631L.TW",
       "benchmark_label": "0050 正二買進持有",
       "assets": [
+        {"ticker": "00631L.TW", "label": "0050 正二", "type": "etf"},
+        {"ticker": "2330.TW", "label": "台積電", "type": "stock"},
+        {"ticker": "2454.TW", "label": "聯發科", "type": "stock"},
+        {"ticker": "2308.TW", "label": "台達電", "type": "stock"},
+        {"ticker": "2317.TW", "label": "鴻海", "type": "stock"},
+        {"ticker": "2382.TW", "label": "廣達", "type": "stock"},
+        {"ticker": "3231.TW", "label": "緯創", "type": "stock"},
+        {"ticker": "6669.TW", "label": "緯穎", "type": "stock"}
+      ]
+    },
+    {
+      "id": "group_c_0050_00631l_plus_mega_caps",
+      "benchmark": "0050.TW",
+      "benchmark_label": "0050 買進持有",
+      "comparison_benchmarks": ["0050.TW", "00631L.TW"],
+      "assets": [
+        {"ticker": "0050.TW", "label": "0050", "type": "etf"},
         {"ticker": "00631L.TW", "label": "0050 正二", "type": "etf"},
         {"ticker": "2330.TW", "label": "台積電", "type": "stock"},
         {"ticker": "2454.TW", "label": "聯發科", "type": "stock"},

@@ -19,6 +19,17 @@ def relative_strength_top1(
     signal_date: pd.Timestamp,
     windows: tuple[int, int] = (20, 60),
 ) -> str:
+    scores = relative_strength_scores(prices_by_ticker, signal_date, windows)
+    if not scores:
+        raise ValueError(f"No ticker had enough warmup data for signal date {signal_date.date()}")
+    return max(scores.items(), key=lambda item: (item[1], item[0]))[0]
+
+
+def relative_strength_scores(
+    prices_by_ticker: dict[str, pd.DataFrame],
+    signal_date: pd.Timestamp,
+    windows: tuple[int, int] = (20, 60),
+) -> dict[str, float]:
     scores: dict[str, float] = {}
     for ticker, prices in prices_by_ticker.items():
         history = prices.loc[prices.index <= signal_date, "adj_close"].dropna()
@@ -27,9 +38,7 @@ def relative_strength_top1(
         short_return = history.iloc[-1] / history.iloc[-windows[0]] - 1
         long_return = history.iloc[-1] / history.iloc[-windows[1]] - 1
         scores[ticker] = (0.4 * short_return) + (0.6 * long_return)
-    if not scores:
-        raise ValueError(f"No ticker had enough warmup data for signal date {signal_date.date()}")
-    return max(scores.items(), key=lambda item: (item[1], item[0]))[0]
+    return scores
 
 
 def dual_momentum_vol_control(

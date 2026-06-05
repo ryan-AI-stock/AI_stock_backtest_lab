@@ -20,6 +20,7 @@ class GroupConfig:
     group_id: str
     benchmark: str
     benchmark_label: str
+    comparison_benchmarks: tuple[str, ...]
     assets: tuple[AssetConfig, ...]
 
     def asset_type(self, ticker: str) -> str:
@@ -43,6 +44,7 @@ class ExecutionConfig:
 class BacktestConfig:
     project: str
     episode: str
+    active_group_id: str
     warmup_start_date: str
     start_date: str
     end_date: str
@@ -53,6 +55,16 @@ class BacktestConfig:
     reference_values: dict[str, dict[str, float | str]]
     groups: tuple[GroupConfig, ...]
     strategies: tuple[str, ...]
+
+    def group_by_id(self, group_id: str) -> GroupConfig:
+        for group in self.groups:
+            if group.group_id == group_id:
+                return group
+        raise KeyError(f"Unknown group: {group_id}")
+
+    @property
+    def active_group(self) -> GroupConfig:
+        return self.group_by_id(self.active_group_id)
 
 
 def load_config(path: str | Path) -> BacktestConfig:
@@ -69,6 +81,7 @@ def parse_config(raw: dict[str, Any]) -> BacktestConfig:
             group_id=group["id"],
             benchmark=group["benchmark"],
             benchmark_label=group["benchmark_label"],
+            comparison_benchmarks=tuple(group.get("comparison_benchmarks", [group["benchmark"]])),
             assets=tuple(
                 AssetConfig(
                     ticker=asset["ticker"],
@@ -83,6 +96,7 @@ def parse_config(raw: dict[str, Any]) -> BacktestConfig:
     return BacktestConfig(
         project=raw["project"],
         episode=raw["episode"],
+        active_group_id=raw.get("active_group_id", groups[0].group_id),
         warmup_start_date=raw["warmup_start_date"],
         start_date=raw["start_date"],
         end_date=raw["end_date"],
