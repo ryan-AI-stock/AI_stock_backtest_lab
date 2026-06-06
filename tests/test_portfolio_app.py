@@ -86,6 +86,32 @@ class PortfolioAppTest(unittest.TestCase):
         self.assertEqual(position["reference_price"], 100.125)
         self.assertEqual(position["market_value_twd"], 1001.25)
         self.assertEqual(position["unrealized_pnl_twd"], 0.02)
+        self.assertEqual(position["estimated_exit_costs_twd"], 23)
+        self.assertEqual(position["net_unrealized_pnl_twd"], -22.98)
+        self.assertEqual(dashboard["portfolio"]["estimated_exit_costs_twd"], 23)
+        self.assertEqual(dashboard["portfolio"]["net_unrealized_pnl_twd"], -22.98)
+
+    def test_portfolio_summary_matches_broker_app_net_unrealized_loss_basis(self) -> None:
+        user = {
+            "user_id": "default",
+            "display_name": "主要使用者",
+            "cash_twd": 0,
+            "positions": {"2454.TW": {"shares": 291, "avg_cost": 4566.01}},
+            "trades": [],
+        }
+        signal = {
+            "signal_date": "2026-06-05",
+            "target_ticker": "2454.TW",
+            "target_exposure": 1.0,
+            "close_prices": {"2454.TW": 4300.0},
+        }
+
+        dashboard = build_dashboard(user, signal, self.asset_types, self.cost_model)
+        position = dashboard["portfolio"]["positions"][0]
+
+        self.assertEqual(position["unrealized_pnl_twd"], -77408.91)
+        self.assertEqual(position["estimated_exit_costs_twd"], 5537)
+        self.assertEqual(position["net_unrealized_pnl_twd"], -82945.91)
 
     def test_affordable_shares_include_broker_fee(self) -> None:
         shares = _max_affordable_shares(10_000, 1000, self.cost_model)

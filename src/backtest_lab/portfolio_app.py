@@ -218,11 +218,11 @@ def build_dashboard(user: dict, signal: dict | None, asset_types: dict[str, str]
         return {
             "user": user,
             "signal": None,
-            "portfolio": _portfolio_summary(user, {}),
+            "portfolio": _portfolio_summary(user, {}, asset_types, cost_model),
             "recommendations": [],
         }
     close_prices = {ticker: float(price) for ticker, price in signal.get("close_prices", {}).items()}
-    portfolio = _portfolio_summary(user, close_prices)
+    portfolio = _portfolio_summary(user, close_prices, asset_types, cost_model)
     recommendations = _recommendations(user, signal, close_prices, asset_types, cost_model, portfolio["total_value_twd"])
     return {
         "user": user,
@@ -232,16 +232,22 @@ def build_dashboard(user: dict, signal: dict | None, asset_types: dict[str, str]
     }
 
 
-def _portfolio_summary(user: dict, close_prices: dict[str, float]) -> dict:
+def _portfolio_summary(user: dict, close_prices: dict[str, float], asset_types: dict[str, str], cost_model) -> dict:
     rows = []
     market_value = 0.0
     unrealized = 0.0
+    net_unrealized = 0.0
+    estimated_exit_costs = 0.0
     for ticker, position in sorted(user["positions"].items()):
         price = close_prices.get(ticker, position["avg_cost"])
         value = position["shares"] * price
         pnl = (price - position["avg_cost"]) * position["shares"]
+        exit_cost = cost_model.sell_cost(value, asset_types.get(ticker, "stock"))
+        net_pnl = pnl - exit_cost
         market_value += value
         unrealized += pnl
+        net_unrealized += net_pnl
+        estimated_exit_costs += exit_cost
         rows.append(
             {
                 "ticker": ticker,
@@ -250,6 +256,8 @@ def _portfolio_summary(user: dict, close_prices: dict[str, float]) -> dict:
                 "reference_price": round(price, 4),
                 "market_value_twd": round(value, 2),
                 "unrealized_pnl_twd": round(pnl, 2),
+                "estimated_exit_costs_twd": round(exit_cost, 2),
+                "net_unrealized_pnl_twd": round(net_pnl, 2),
             }
         )
     total = user["cash_twd"] + market_value
@@ -258,6 +266,8 @@ def _portfolio_summary(user: dict, close_prices: dict[str, float]) -> dict:
         "market_value_twd": round(market_value, 2),
         "total_value_twd": round(total, 2),
         "unrealized_pnl_twd": round(unrealized, 2),
+        "estimated_exit_costs_twd": round(estimated_exit_costs, 2),
+        "net_unrealized_pnl_twd": round(net_unrealized, 2),
         "positions": rows,
     }
 

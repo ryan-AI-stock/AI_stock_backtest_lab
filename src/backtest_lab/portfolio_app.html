@@ -97,7 +97,7 @@
         <section>
           <div class="section-head"><h2>目前持倉</h2><span class="subtle">只有手動儲存或登錄成交才會改變</span></div>
           <div class="table-wrap"><table>
-            <thead><tr><th>標的</th><th class="num">股數</th><th class="num">平均成本</th><th class="num">參考價</th><th class="num">市值</th><th class="num">未實現損益</th></tr></thead>
+            <thead><tr><th>標的</th><th class="num">股數</th><th class="num">平均成本</th><th class="num">參考價</th><th class="num">市值</th><th class="num">未實現損益</th><th class="num">扣預估券商買賣成本後損益</th></tr></thead>
             <tbody id="positions"></tbody>
           </table></div>
         </section>
@@ -202,7 +202,8 @@
       document.getElementById("positions").innerHTML = portfolio.positions.length ? portfolio.positions.map(row => `
         <tr><td>${labels[row.ticker] || row.ticker}</td><td class="num">${money(row.shares)}</td>
         <td class="num">$${money2(row.avg_cost)}</td><td class="num">$${money2(row.reference_price)}</td>
-        <td class="num">$${money2(row.market_value_twd)}</td><td class="num">${row.unrealized_pnl_twd >= 0 ? "+" : ""}$${money2(row.unrealized_pnl_twd)}</td></tr>`).join("") : `<tr><td class="empty" colspan="6">尚未輸入持倉</td></tr>`;
+        <td class="num">$${money2(row.market_value_twd)}</td><td class="num">${row.unrealized_pnl_twd >= 0 ? "+" : ""}$${money2(row.unrealized_pnl_twd)}</td>
+        <td class="num">${row.net_unrealized_pnl_twd >= 0 ? "+" : ""}$${money2(row.net_unrealized_pnl_twd)}</td></tr>`).join("") : `<tr><td class="empty" colspan="7">尚未輸入持倉</td></tr>`;
 
       const trades = [...state.user.trades].reverse();
       document.getElementById("trades").innerHTML = trades.length ? trades.map(row => `
