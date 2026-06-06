@@ -39,7 +39,13 @@ from backtest_lab.frozen_report_pdf import (
     paginate_detail_sections as _pdf_paginate_detail_sections,
     write_signal_pdf as _pdf_write_signal_pdf,
 )
-from backtest_lab.market_regime import classify_market_regime, latest_available_date
+from backtest_lab.frozen_report_outputs import (
+    report_filename as _output_report_filename,
+    write_download_waiting_status as _output_write_download_waiting,
+    write_report_outputs as _output_write_report_outputs,
+    write_skip_status as _output_write_skip,
+)
+from backtest_lab.market_regime import classify_market_regime
 from backtest_lab.regime_mode_switch import (
     frozen_cycle_proven_top1_v1_variant,
     simulate_regime_mode_switch,
@@ -335,71 +341,21 @@ def _label(ticker: str, labels: dict[str, str]) -> str:
 
 
 def _write_outputs(output_dir: Path, signal: FrozenStrategySignal) -> None:
-    waiting_status = output_dir / "waiting_status.json"
-    if waiting_status.exists():
-        waiting_status.unlink()
-    payload = {
-        "status": "ready",
-        "report_name": REPORT_NAME,
-        "report_mode": _report_mode(signal),
-        "drive_folder_url": DRIVE_FOLDER_URL,
-        "signal": signal.to_dict(),
-        "disclaimer": "AI 輔助市場觀察、回測與紀律提醒，不是投資建議。",
-    }
-    (output_dir / "frozen_strategy_signal.json").write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2),
-        encoding="utf-8",
+    _output_write_report_outputs(
+        output_dir,
+        signal,
+        report_name=REPORT_NAME,
+        report_version=REPORT_VERSION,
+        drive_folder_url=DRIVE_FOLDER_URL,
+        markdown_report=_markdown_report,
+        write_signal_pdf=_write_signal_pdf,
+        report_mode=_report_mode,
+        personal_exposure_summary=_personal_exposure_summary,
     )
-    personal_summary = _personal_exposure_summary(signal) if signal.personal_portfolio else None
-    pd.DataFrame([{
-        "strategy_id": signal.strategy_id,
-        "signal_date": signal.signal_date,
-        "market_regime": signal.market_regime,
-        "market_regime_label": signal.market_regime_label,
-        "action": signal.action,
-        "current_ticker": signal.current_ticker,
-        "current_label": signal.current_label,
-        "current_exposure": signal.current_exposure,
-        "target_ticker": signal.target_ticker,
-        "target_label": signal.target_label,
-        "target_exposure": signal.target_exposure,
-        "target_is_actionable": signal.target_is_actionable,
-        "model_target_status": signal.model_target_status,
-        "cash_account_reference": signal.cash_account_reference,
-        "attack_gate_active": signal.attack_gate_active,
-        "attack_gate_ever_activated": signal.attack_gate_ever_activated,
-        "risk_off_active": signal.risk_off_active,
-        "report_mode": _report_mode(signal),
-        "personal_portfolio_attached": signal.personal_portfolio is not None,
-        "personal_total_value_twd": personal_summary["total_value_twd"] if personal_summary else "",
-        "personal_cash_exposure": personal_summary["cash_exposure"] if personal_summary else "",
-        "personal_market_exposure": personal_summary["market_exposure"] if personal_summary else "",
-        "personal_target_actual_exposure": personal_summary["target_actual_exposure"] if personal_summary else "",
-        "personal_target_gap_exposure": personal_summary["target_gap_exposure"] if personal_summary else "",
-    }]).to_csv(output_dir / "frozen_strategy_daily_status.csv", index=False, encoding="utf-8-sig")
-    pd.DataFrame(signal.ranking).to_csv(output_dir / "frozen_strategy_ranking.csv", index=False, encoding="utf-8-sig")
-    pd.DataFrame(signal.projected_trades).to_csv(
-        output_dir / "frozen_strategy_projected_trades.csv",
-        index=False,
-        encoding="utf-8-sig",
-    )
-    report = _markdown_report(signal)
-    dated_md = output_dir / _report_filename("md", signal.signal_date)
-    latest_md = output_dir / _report_filename("md", latest=True)
-    dated_md.write_text(report, encoding="utf-8")
-    latest_md.write_text(report, encoding="utf-8")
-    _write_signal_pdf(output_dir / _report_filename("pdf", signal.signal_date), signal)
-    _write_signal_pdf(output_dir / _report_filename("pdf", latest=True), signal)
 
 
 def _report_filename(extension: str, signal_date: str | None = None, *, latest: bool = False) -> str:
-    if latest:
-        suffix = "最新版"
-    elif signal_date:
-        suffix = signal_date
-    else:
-        raise ValueError("signal_date is required when latest is false.")
-    return f"{REPORT_NAME}_{suffix}_{REPORT_VERSION}.{extension}"
+    return _output_report_filename(REPORT_NAME, REPORT_VERSION, extension, signal_date, latest=latest)
 
 
 def _markdown_report(signal: FrozenStrategySignal) -> str:
@@ -437,35 +393,11 @@ def _write_skip(
     prices_by_ticker: dict[str, pd.DataFrame],
     incomplete: list[str],
 ) -> None:
-    payload = {
-        "status": "waiting_for_complete_market_data",
-        "signal_date": signal_date,
-        "incomplete_tickers": incomplete,
-        "latest_available_dates": {
-            ticker: (
-                latest_available_date(frame).strftime("%Y-%m-%d")
-                if latest_available_date(frame) is not None
-                else ""
-            )
-            for ticker, frame in prices_by_ticker.items()
-        },
-    }
-    (output_dir / "waiting_status.json").write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
+    _output_write_skip(output_dir, signal_date, prices_by_ticker, incomplete)
 
 
 def _write_download_waiting(output_dir: Path, signal_date: str, error: Exception) -> None:
-    payload = {
-        "status": "waiting_for_market_data_download",
-        "signal_date": signal_date,
-        "error": str(error),
-    }
-    (output_dir / "waiting_status.json").write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
+    _output_write_download_waiting(output_dir, signal_date, error)
 
 
 def _write_signal_pdf(path: Path, signal: FrozenStrategySignal) -> None:
