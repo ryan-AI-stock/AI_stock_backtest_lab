@@ -1,0 +1,96 @@
+name: Sector Dynamic Pool Report
+
+on:
+  workflow_dispatch:
+    inputs:
+      end_date:
+        description: "Backtest end date in YYYY-MM-DD. Defaults to today's date in Asia/Taipei."
+        required: false
+        type: string
+      theme:
+        description: "Radar theme name."
+        required: false
+        type: string
+        default: "記憶體"
+  schedule:
+    # Keep a separate latest report in the same Drive folder as the best-strategy report.
+    - cron: "40 7 * * 1-5"
+
+jobs:
+  sector-dynamic-pool-report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout backtest lab
+        uses: actions/checkout@v4
+
+      - name: Checkout rotation radar data
+        uses: actions/checkout@v4
+        with:
+          repository: ryan-AI-stock/AI_stock_rotation_radar
+          path: radar
+          token: ${{ secrets.RADAR_REPO_TOKEN || github.token }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies and Chinese font
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fonts-noto-cjk
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Resolve inputs
+        id: inputs
+        shell: bash
+        run: |
+          if [ -n "${{ inputs.end_date }}" ]; then
+            echo "end_date=${{ inputs.end_date }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "end_date=$(TZ=Asia/Taipei date +%F)" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -n "${{ inputs.theme }}" ]; then
+            echo "theme=${{ inputs.theme }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "theme=記憶體" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Generate sector dynamic pool report
+        env:
+          PYTHONPATH: src
+        run: |
+          rm -rf outputs/sector_dynamic_pool/latest
+          python -m backtest_lab.sector_dynamic_pool_backtest \
+            --config configs/ep05_universe.json \
+            --strategy-config configs/frozen_cycle_proven_top1_v1.json \
+            --radar-root radar \
+            --theme "${{ steps.inputs.outputs.theme }}" \
+            --start-date 2024-01-02 \
+            --end-date "${{ steps.inputs.outputs.end_date }}" \
+            --warmup-start 2022-01-01 \
+            --cache-dir backtest_cache/sector_dynamic_pool \
+            --output-root outputs/sector_dynamic_pool
+
+      - name: Publish latest PDF to Google Drive
+        env:
+          PYTHONPATH: src
+          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+          GOOGLE_OAUTH_REFRESH_TOKEN: ${{ secrets.GOOGLE_OAUTH_REFRESH_TOKEN }}
+          FROZEN_REPORT_DRIVE_FOLDER_ID: ${{ secrets.FROZEN_REPORT_DRIVE_FOLDER_ID || vars.FROZEN_REPORT_DRIVE_FOLDER_ID }}
+        run: |
+          python -m backtest_lab.drive_publish \
+            --file "outputs/sector_dynamic_pool/latest/雷達動態題材池個股輪動回測_最新版_v0_記憶體題材池.pdf" \
+            --remote-name "雷達動態題材池個股輪動回測_最新版_v0_記憶體題材池.pdf"
+
+      - name: Upload audit artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sector-dynamic-pool-report-${{ steps.inputs.outputs.end_date }}
+          path: outputs/sector_dynamic_pool/
+          if-no-files-found: error
