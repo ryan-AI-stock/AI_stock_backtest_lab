@@ -12,6 +12,15 @@ import pandas as pd
 
 from backtest_lab.config import load_config
 from backtest_lab.data import download_yfinance_prices, split_adjusted_dividends
+from backtest_lab.frozen_report_content import (
+    display_action as _content_display_action,
+    markdown_report as _content_markdown_report,
+    personal_exposure_summary as _content_personal_exposure_summary,
+    personal_markdown_lines as _content_personal_markdown_lines,
+    personal_pdf_section as _content_personal_pdf_section,
+    report_mode as _content_report_mode,
+    report_mode_label as _content_report_mode_label,
+)
 from backtest_lab.frozen_report_pdf import (
     DETAIL_BOTTOM_Y,
     DETAIL_LINE_HEIGHT,
@@ -497,132 +506,32 @@ def _report_filename(extension: str, signal_date: str | None = None, *, latest: 
 
 
 def _markdown_report(signal: FrozenStrategySignal) -> str:
-    ranking_lines = [
-        f"{row['rank']}. {row['label']} ({row['ticker']})，分數 {row['score']:.4f}（{row['score_band']}），角色：{row['role']}"
-        for row in signal.ranking
-    ]
-    score_guide_lines = [f"- {line}" for line in _score_guide_lines()]
-    trade_lines = [
-        f"- {row['action']} {row['label']}，模型參考股數 {row['shares']}，參考價 {row['reference_price']}"
-        for row in signal.projected_trades
-    ] or ["- 模型目標未改變，沒有模擬換倉動作。"]
-    personal_lines = _personal_markdown_lines(signal)
-    return "\n".join(
-        [
-            f"# {REPORT_NAME}",
-            "",
-            "## 摘要",
-            "",
-            f"- 策略版本：{REPORT_VARIANT_LABEL}",
-            f"- 報告模式：{_report_mode_label(signal)}",
-            f"- 訊號日期：{signal.signal_date}",
-            f"- 執行時點：{signal.execution_timing}",
-            "- 定位：每日 AI 輔助操作建議，投資人自行判斷，不是自動下單，也不是投資建議。",
-            "",
-            "## 今日結論",
-            "",
-            f"- 市場環境：{signal.market_regime_label}",
-            f"- 模型動作：{signal.action}",
-            f"- 模型目標狀態：{signal.model_target_status}",
-            f"- 今日收盤後模型部位：{signal.current_label}，曝險約 {signal.current_exposure:.0%}",
-            f"- 下一交易日模型目標：{signal.target_label}，曝險約 {signal.target_exposure:.0%}",
-            f"- 全現金帳戶參考：{signal.cash_account_reference}",
-            f"- 進攻閘門：{'已開啟' if signal.attack_gate_active else '尚未開啟'}",
-            f"- 風險關閉狀態：{'啟動' if signal.risk_off_active else '未啟動'}",
-            "",
-            "## 模型模擬動作",
-            "",
-            *trade_lines,
-            "",
-            "上述股數與價格只用來重建模型狀態，不是針對使用者資產的實際下單建議。",
-            "",
-            *personal_lines,
-            "",
-            "## 九標的強弱排名",
-            "",
-            "注意：排名只代表相對強弱，不等於買入資格；可執行參考請看「下一交易日模型目標」與「模型目標狀態」。",
-            "",
-            "### 分數解讀",
-            "",
-            *score_guide_lines,
-            "",
-            *ranking_lines,
-            "",
-            "## 角色說明",
-            "",
-            "- 0050 是市場代理、循環判斷基準與比較基準。",
-            "- 0050正二是槓桿大盤訊號、積極等待與曝險工具，不是唯一趨勢判斷依據。",
-            "- 七檔指定個股才是進攻模式的持股候選。",
-            "",
-            "## 風險聲明",
-            "",
-            "歷史回測與 shadow mode 都不能保證未來績效。本報告只供 AI 輔助市場觀察、回測與紀律提醒。",
-            "",
-        ]
+    return _content_markdown_report(
+        signal,
+        report_name=REPORT_NAME,
+        report_variant_label=REPORT_VARIANT_LABEL,
+        score_guide_lines=_score_guide_lines(),
     )
 
 
 def _personal_markdown_lines(signal: FrozenStrategySignal) -> list[str]:
-    if not signal.personal_portfolio:
-        return [
-            "## 個人持倉參考",
-            "",
-            "- 尚未連結個人持倉檔；本報告為一般版，只顯示模型帳戶狀態。",
-        ]
-    summary = _personal_exposure_summary(signal)
-    recommendation_lines = [
-        f"- {_display_action(row['action'])} {row['ticker']}，參考股數 {row['shares']}，目標比例 {row['target_exposure']:.0%}，原因：{row['reason']}"
-        for row in signal.personal_recommendations or []
-    ] or ["- 依目前持倉與模型目標，暫無可計算的個人調整參考。"]
-    return [
-        "## 個人持倉參考",
-        "",
-        f"- 個人組合估值：約 {summary['total_value_twd']:,.2f} 元",
-        f"- 可用現金：約 {summary['cash_twd']:,.2f} 元，現金水位約 {summary['cash_exposure']:.2%}",
-        f"- 目前持股水位：約 {summary['market_exposure']:.2%}",
-        f"- 模型目標標的：{signal.target_label}，模型目標曝險 {signal.target_exposure:.0%}",
-        f"- 個人目前目標標的曝險：約 {summary['target_actual_exposure']:.2%}，與模型目標差距約 {summary['target_gap_exposure']:+.2%}",
-        "",
-        "### 個人帳戶參考調整",
-        "",
-        *recommendation_lines,
-        "",
-        "個人持倉參考只依目前手動輸入資料估算，不是自動下單或投資建議。",
-    ]
+    return _content_personal_markdown_lines(signal)
 
 
 def _personal_exposure_summary(signal: FrozenStrategySignal) -> dict:
-    portfolio = signal.personal_portfolio or {}
-    total = float(portfolio.get("total_value_twd") or 0)
-    cash = float(portfolio.get("cash_twd") or 0)
-    market = float(portfolio.get("market_value_twd") or 0)
-    target_value = 0.0
-    for row in portfolio.get("positions", []):
-        if row.get("ticker") == signal.target_ticker:
-            target_value += float(row.get("market_value_twd") or 0)
-    target_actual = target_value / total if total > 0 else 0.0
-    return {
-        "total_value_twd": total,
-        "cash_twd": cash,
-        "cash_exposure": cash / total if total > 0 else 0.0,
-        "market_exposure": market / total if total > 0 else 0.0,
-        "target_actual_exposure": target_actual,
-        "target_gap_exposure": float(signal.target_exposure) - target_actual,
-    }
+    return _content_personal_exposure_summary(signal)
 
 
 def _report_mode(signal: FrozenStrategySignal) -> str:
-    return "personalized" if signal.personal_portfolio else "general"
+    return _content_report_mode(signal)
 
 
 def _report_mode_label(signal: FrozenStrategySignal) -> str:
-    if signal.personal_portfolio:
-        return "個人化版，已結合目前持倉檔"
-    return "一般版，未連結個人持倉檔"
+    return _content_report_mode_label(signal)
 
 
 def _display_action(action: str) -> str:
-    return {"buy": "買進", "sell": "賣出", "hold": "維持"}.get(action, action)
+    return _content_display_action(action)
 
 
 def _write_skip(
@@ -687,20 +596,7 @@ def _detail_section_height(lines: list[str]) -> float:
 
 
 def _personal_pdf_section(signal: FrozenStrategySignal) -> tuple[str, list[str]]:
-    if not signal.personal_portfolio:
-        return ("個人持倉參考", ["尚未連結個人持倉檔；本報告為一般版，只顯示模型帳戶狀態。"])
-    summary = _personal_exposure_summary(signal)
-    lines = [
-        f"個人組合估值：約 {summary['total_value_twd']:,.2f} 元；可用現金：約 {summary['cash_twd']:,.2f} 元。",
-        f"現金水位約 {summary['cash_exposure']:.2%}；持股水位約 {summary['market_exposure']:.2%}。",
-        f"模型目標：{signal.target_label} {signal.target_exposure:.0%}；個人目前目標標的曝險約 {summary['target_actual_exposure']:.2%}。",
-        f"與模型目標差距約 {summary['target_gap_exposure']:+.2%}。",
-    ]
-    for row in (signal.personal_recommendations or [])[:4]:
-        lines.append(
-            f"個人參考：{_display_action(row['action'])} {row['ticker']} {row['shares']} 股，參考價 {row['reference_price']:.2f}。"
-        )
-    return ("個人持倉參考", lines)
+    return _content_personal_pdf_section(signal)
 
 
 if __name__ == "__main__":
