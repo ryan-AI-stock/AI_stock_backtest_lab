@@ -171,7 +171,8 @@ python -m backtest_lab.portfolio_app --signal-root outputs/frozen_strategy_monit
 - 檢視內建股票池：`雷達中小型校準版`，由 radar snapshot 動態決定候選股，不寫死固定清單。
 - 維護 `模型延遲公開成績單池`：0050、0050正二，加上跟隨大型權值股池最新模型第一名的第三檔股票。
 - 新增、修改、刪除自訂股票池；手動輸入股票代號時一行一檔。
-- 預留 `strategy_preset` 欄位，供每日報告、回測與未來私有部署依池執行。
+- `strategy_preset` 會經由 `strategy_preset_dispatcher` 對應到目前負責的 engine / workflow / report line。
+- 可將本機股票池設定同步到 GitHub repo secret `STOCK_POOLS_JSON`；`stock_pool_observation.yml` 會在執行時還原這份設定，讓自訂池能進入每日股票池觀察總覽。
 
 舊版持倉 store 與同步函式仍保留在後端，供每日 PDF 個人化報告相容使用；但 8765 首頁已改為股票池管理。若之後要重新設計持倉功能，應以股票池中控台為入口重做，不再恢復舊版工作台畫面。
 
@@ -216,6 +217,13 @@ GitHub Actions workflow：`.github/workflows/model_scorecard_report.yml`。Drive
 ## 股票池觀察框架
 
 `stock_pool_observation` 是統一股票池觀察輸出層，用來把實際操盤觀察池整理成同一套 JSON/CSV/PDF schema。它只產出觀察排名與候選股分數，不直接取代最佳版正式持倉引擎。
+
+目前 `strategy_preset` dispatcher 的路由：
+
+- `best_v20260605`：正式最佳版每日報告，workflow `frozen_strategy_daily_report.yml`。
+- `radar_core_mid_small_calibrated_v1`：雷達中小型操盤觀察池，workflow `stock_pool_observation.yml`。
+- `universal_pool_custom`：自訂股票池通用觀察，workflow `stock_pool_observation.yml`。
+- `delayed_public_scorecard_v1`：免費用戶延遲公開驗證工具，workflow `model_scorecard_report.yml`。
 
 `AI股票池觀察總覽_最新版_v20260612.pdf` 定位為創作者本人隔日操作前看的實際操盤觀察報告。預設只包含 `operational_observation=true` 的股票池，例如：
 

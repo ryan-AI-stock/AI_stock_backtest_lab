@@ -17,6 +17,8 @@ class StockPoolObservationWorkflowTest(unittest.TestCase):
         self.assertIn("STOCK_POOL_OBSERVATION_DRIVE_FOLDER_ID", workflow)
         self.assertIn("--require-exact-signal-date", workflow)
         self.assertIn("steps.observation-pdf.outputs.exists == 'true'", workflow)
+        self.assertIn("STOCK_POOLS_JSON", workflow)
+        self.assertIn("work/stock_pools/stock_pools.json", workflow)
 
 
 if __name__ == "__main__":

@@ -117,6 +117,11 @@ class PortfolioAppHttpTest(unittest.TestCase):
                     {"name": "自訂觀察池", "symbols_text": "2330\n2454", "strategy_preset": "universal_pool_custom"},
                 )
                 self.assertIn("自訂觀察池", {pool["name"] for pool in updated["pools"]})
+
+                synced = _request(port, "POST", "/api/sync-pools-secret-and-run", {"signal_date": "2026-06-04"})
+                self.assertTrue(synced["sync_result"]["ok"])
+                self.assertEqual(synced["sync_result"]["secret_name"], "STOCK_POOLS_JSON")
+                self.assertEqual(synced["action_result"]["workflow_file"], "stock_pool_observation.yml")
             finally:
                 server.shutdown()
                 server.server_close()

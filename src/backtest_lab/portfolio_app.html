@@ -92,7 +92,11 @@
       <section>
         <div class="section-head">
           <h2>股票池列表</h2>
-          <button class="secondary" type="button" id="new-pool">新增自訂池</button>
+          <div class="actions">
+            <button class="secondary" type="button" id="sync-pools">同步股票池</button>
+            <button class="secondary" type="button" id="sync-pools-run">同步並產報告</button>
+            <button class="secondary" type="button" id="new-pool">新增自訂池</button>
+          </div>
         </div>
         <div class="detail-grid" id="summary"></div>
         <div class="section-head">
@@ -218,6 +222,7 @@
         <div class="section-head"><h3>${pool.name}</h3><span class="pill ${pool.locked ? "green" : "blue"}">${kindLabel(pool)}</span></div>
         <div class="pool-meta">
           <span class="pill">${pool.strategy_preset}</span>
+          <span class="pill">${pool.dispatch?.report_line || "未分派"}</span>
           <span class="pill">${symbols.length} 檔</span>
           ${pool.dynamic_binding ? `<span class="pill blue">跟隨 ${pool.dynamic_binding.source_pool_id}</span>` : ""}
         </div>
@@ -307,6 +312,31 @@
       status.textContent = "已刪除";
       render();
     });
+
+    async function syncPools(runAfterSync) {
+      const status = byId("status");
+      status.textContent = runAfterSync ? "同步股票池並觸發報告中..." : "同步股票池中...";
+      status.className = "status";
+      const endpoint = runAfterSync ? "/api/sync-pools-secret-and-run" : "/api/sync-pools-secret";
+      const signalDate = state.latest_signal?.signal_date || "";
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({signal_date: signalDate})
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        status.textContent = data.error || "同步失敗";
+        status.className = "status error";
+        return;
+      }
+      state = data;
+      status.textContent = data.action_result ? "已同步股票池並觸發股票池觀察報告" : "已同步股票池到 GitHub secret";
+      render();
+    }
+
+    byId("sync-pools").addEventListener("click", () => syncPools(false));
+    byId("sync-pools-run").addEventListener("click", () => syncPools(true));
 
     refresh();
   </script>

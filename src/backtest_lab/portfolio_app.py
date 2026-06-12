@@ -21,7 +21,12 @@ from backtest_lab.portfolio_app_settings import (
     PORTFOLIO_SECRET_NAME,
 )
 from backtest_lab.portfolio_dashboard import _max_affordable_shares, build_dashboard, load_latest_signal
-from backtest_lab.portfolio_github import sync_portfolio_secret, trigger_report_workflow
+from backtest_lab.portfolio_github import (
+    sync_portfolio_secret,
+    sync_stock_pools_secret,
+    trigger_report_workflow,
+    trigger_stock_pool_observation_workflow,
+)
 from backtest_lab.portfolio_store import PortfolioStore
 from backtest_lab.stock_pool_store import KNOWN_SYMBOLS, StockPoolStore
 
@@ -104,6 +109,35 @@ def create_handler(
                     )
                     user = store.get_user(user_id)
                     response = build_dashboard(user, signal, asset_types, cost_model)
+                    response["sync_result"] = sync_result
+                    response["action_result"] = action_result
+                    self._json(response)
+                    return
+                elif path == "/api/sync-pools-secret":
+                    result = sync_stock_pools_secret(
+                        pool_store_path=pool_store.path,
+                        repo=github_repo,
+                        runner=command_runner,
+                    )
+                    response = _pool_state()
+                    response["sync_result"] = result
+                    self._json(response)
+                    return
+                elif path == "/api/sync-pools-secret-and-run":
+                    signal = load_latest_signal(signal_root)
+                    signal_date = str(payload.get("signal_date") or (signal or {}).get("signal_date") or "")
+                    sync_result = sync_stock_pools_secret(
+                        pool_store_path=pool_store.path,
+                        repo=github_repo,
+                        runner=command_runner,
+                    )
+                    action_result = trigger_stock_pool_observation_workflow(
+                        signal_date=signal_date,
+                        repo=github_repo,
+                        ref=github_ref,
+                        runner=command_runner,
+                    )
+                    response = _pool_state()
                     response["sync_result"] = sync_result
                     response["action_result"] = action_result
                     self._json(response)

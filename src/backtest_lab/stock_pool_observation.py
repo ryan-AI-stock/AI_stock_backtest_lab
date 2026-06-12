@@ -15,6 +15,7 @@ from backtest_lab.data import download_yfinance_prices
 from backtest_lab.frozen_report_pdf import _configure_chinese_font, _save_figure_as_raster_pdf_page
 from backtest_lab.radar_snapshot_v2_source import load_radar_snapshot_history, select_radar_snapshot_candidates
 from backtest_lab.stock_pool_store import StockPoolStore
+from backtest_lab.strategy_preset_dispatcher import dispatch_pool
 from backtest_lab.universal_pool_strategy import (
     PoolProfile,
     UniversalCandidateScore,
@@ -175,6 +176,7 @@ def run_stock_pool_observation_batch(
                 {
                     "pool_id": pool.get("pool_id"),
                     "pool_name": pool.get("name"),
+                    "dispatch": dispatch_pool(pool),
                     "reason": reason,
                 }
             )
@@ -200,6 +202,7 @@ def run_stock_pool_observation_batch(
                 {
                     "pool_id": observation.pool_id,
                     "pool_name": observation.pool_name,
+                    "dispatch": dispatch_pool(pool),
                     "signal_date": observation.signal_date,
                     "top_ticker": observation.top_ticker,
                     "top_display": observation.top_display,
@@ -213,6 +216,7 @@ def run_stock_pool_observation_batch(
                 {
                     "pool_id": pool.get("pool_id"),
                     "pool_name": pool.get("name"),
+                    "dispatch": dispatch_pool(pool),
                     "reason": str(error),
                 }
             )
@@ -236,6 +240,8 @@ def write_stock_pool_observation_batch_summary(root: Path, manifest: dict[str, A
                 "top_display": item.get("top_display", ""),
                 "top_ticker": item.get("top_ticker", ""),
                 "action_state": item.get("action_state", ""),
+                "report_line": (item.get("dispatch") or {}).get("report_line", ""),
+                "workflow_file": (item.get("dispatch") or {}).get("workflow_file", ""),
                 "missing_price_tickers": ",".join(item.get("missing_price_tickers") or []),
                 "reason": "",
                 "output_dir": item.get("output_dir", ""),
@@ -251,6 +257,8 @@ def write_stock_pool_observation_batch_summary(root: Path, manifest: dict[str, A
                 "top_display": "",
                 "top_ticker": "",
                 "action_state": "",
+                "report_line": (item.get("dispatch") or {}).get("report_line", ""),
+                "workflow_file": (item.get("dispatch") or {}).get("workflow_file", ""),
                 "missing_price_tickers": "",
                 "reason": item.get("reason", ""),
                 "output_dir": "",

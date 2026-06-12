@@ -110,6 +110,17 @@ jobs:
             echo "radar_snapshot_dir=" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Prepare optional stock pool store
+        if: steps.schedule-gate.outputs.should_run == 'true'
+        shell: bash
+        env:
+          STOCK_POOLS_JSON: ${{ secrets.STOCK_POOLS_JSON }}
+        run: |
+          if [ -n "$STOCK_POOLS_JSON" ]; then
+            mkdir -p work/stock_pools
+            printf '%s' "$STOCK_POOLS_JSON" > work/stock_pools/stock_pools.json
+          fi
+
       - name: Generate stock-pool observations
         if: steps.schedule-gate.outputs.should_run == 'true'
         shell: bash

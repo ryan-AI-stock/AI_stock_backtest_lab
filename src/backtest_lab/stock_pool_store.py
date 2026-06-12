@@ -6,6 +6,7 @@ import threading
 from pathlib import Path
 from typing import Any
 
+from backtest_lab.strategy_preset_dispatcher import dispatch_pool, resolve_strategy_preset
 
 KNOWN_SYMBOLS: dict[str, dict[str, str]] = {
     "0050.TW": {"symbol": "0050", "name": "0050", "asset_type": "etf"},
@@ -33,6 +34,7 @@ class StockPoolStore:
             for pool in data["pools"]:
                 resolved = json.loads(json.dumps(pool, ensure_ascii=False))
                 resolved["resolved_symbols"] = self._resolve_symbols(pool, latest_signal=latest_signal)
+                resolved["dispatch"] = dispatch_pool(resolved)
                 pools.append(resolved)
             return pools
 
@@ -41,6 +43,7 @@ class StockPoolStore:
         name = str(payload.get("name") or pool_id).strip()
         if not name:
             raise ValueError("股票池名稱不可空白。")
+        preset = resolve_strategy_preset(str(payload.get("strategy_preset") or "universal_pool_custom"))
         symbols = parse_symbol_lines(str(payload.get("symbols_text") or ""))
         dynamic_binding = payload.get("dynamic_binding") or None
         with self.lock:
@@ -53,7 +56,8 @@ class StockPoolStore:
                 "name": name,
                 "kind": str(payload.get("kind") or "custom"),
                 "locked": False,
-                "strategy_preset": str(payload.get("strategy_preset") or "universal_pool_custom"),
+                "strategy_preset": preset.preset,
+                "operational_observation": preset.operational_observation,
                 "description": str(payload.get("description") or ""),
                 "symbols": symbols,
                 "dynamic_binding": dynamic_binding,

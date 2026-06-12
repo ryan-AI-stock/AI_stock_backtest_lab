@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+import json
 from pathlib import Path
 
 from backtest_lab.portfolio_app_settings import (
@@ -8,7 +9,10 @@ from backtest_lab.portfolio_app_settings import (
     DEFAULT_GITHUB_REPO,
     DEFAULT_WORKFLOW_FILE,
     PORTFOLIO_SECRET_NAME,
+    STOCK_POOL_OBSERVATION_WORKFLOW_FILE,
+    STOCK_POOLS_SECRET_NAME,
 )
+from backtest_lab.stock_pool_store import default_stock_pool_data
 
 
 def sync_portfolio_secret(
@@ -39,6 +43,40 @@ def sync_portfolio_secret(
         "repo": repo,
         "secret_name": PORTFOLIO_SECRET_NAME,
         "message": "已同步本機持倉到 GitHub repo secret。",
+        **result,
+    }
+
+
+def sync_stock_pools_secret(
+    *,
+    pool_store_path: str | Path,
+    repo: str = DEFAULT_GITHUB_REPO,
+    runner=subprocess.run,
+) -> dict:
+    path = Path(pool_store_path)
+    secret_body = (
+        path.read_text(encoding="utf-8")
+        if path.exists()
+        else json.dumps(default_stock_pool_data(), ensure_ascii=False)
+    )
+    result = _run_gh(
+        [
+            "gh",
+            "secret",
+            "set",
+            STOCK_POOLS_SECRET_NAME,
+            "--repo",
+            repo,
+        ],
+        runner=runner,
+        action="sync_stock_pools_secret",
+        input_text=secret_body,
+    )
+    return {
+        "action": "sync_stock_pools_secret",
+        "repo": repo,
+        "secret_name": STOCK_POOLS_SECRET_NAME,
+        "message": "已同步本機股票池設定到 GitHub repo secret。",
         **result,
     }
 
@@ -75,6 +113,44 @@ def trigger_report_workflow(
         "workflow_file": workflow_file,
         "signal_date": signal_date,
         "message": "已觸發 GitHub Action，報告完成後會覆蓋 Drive 最新版 PDF。",
+        **result,
+    }
+
+
+def trigger_stock_pool_observation_workflow(
+    *,
+    signal_date: str,
+    repo: str = DEFAULT_GITHUB_REPO,
+    workflow_file: str = STOCK_POOL_OBSERVATION_WORKFLOW_FILE,
+    ref: str = DEFAULT_GITHUB_REF,
+    runner=subprocess.run,
+) -> dict:
+    if not signal_date:
+        raise ValueError("尚未找到訊號日期，無法觸發股票池觀察 GitHub Action。")
+    result = _run_gh(
+        [
+            "gh",
+            "workflow",
+            "run",
+            workflow_file,
+            "--repo",
+            repo,
+            "--ref",
+            ref,
+            "-f",
+            f"signal_date={signal_date}",
+            "-f",
+            "pool_id=all",
+        ],
+        runner=runner,
+        action="run_stock_pool_observation_workflow",
+    )
+    return {
+        "action": "run_stock_pool_observation_workflow",
+        "repo": repo,
+        "workflow_file": workflow_file,
+        "signal_date": signal_date,
+        "message": "已觸發股票池觀察 GitHub Action，完成後會覆蓋 Drive 最新版 PDF。",
         **result,
     }
 

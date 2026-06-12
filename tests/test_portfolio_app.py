@@ -13,8 +13,11 @@ from backtest_lab.portfolio_app import (
     _max_affordable_shares,
     build_dashboard,
     sync_portfolio_secret,
+    sync_stock_pools_secret,
     trigger_report_workflow,
+    trigger_stock_pool_observation_workflow,
 )
+from backtest_lab.portfolio_app_settings import STOCK_POOLS_SECRET_NAME
 
 
 class _Completed:
@@ -150,6 +153,39 @@ class PortfolioAppTest(unittest.TestCase):
 
         self.assertEqual(result["signal_date"], "2026-06-05")
         self.assertIn("signal_date=2026-06-05", calls[0])
+
+    def test_sync_stock_pools_secret_uses_stdin_without_printing_json(self) -> None:
+        calls = []
+
+        def runner(args, **kwargs):
+            calls.append((args, kwargs))
+            return _Completed()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "stock_pools.json"
+            path.write_text('{"pools":[{"pool_id":"custom","symbols":[{"ticker":"2454.TW"}]}]}', encoding="utf-8")
+
+            result = sync_stock_pools_secret(pool_store_path=path, repo="owner/repo", runner=runner)
+
+        args, kwargs = calls[0]
+        self.assertEqual(result["secret_name"], STOCK_POOLS_SECRET_NAME)
+        self.assertEqual(args[:4], ["gh", "secret", "set", STOCK_POOLS_SECRET_NAME])
+        self.assertNotIn("--body", args)
+        self.assertNotIn("2454.TW", " ".join(args))
+        self.assertIn("2454.TW", kwargs["input"])
+
+    def test_trigger_stock_pool_observation_workflow_uses_pool_id_all(self) -> None:
+        calls = []
+
+        def runner(args, **kwargs):
+            calls.append(args)
+            return _Completed()
+
+        result = trigger_stock_pool_observation_workflow(signal_date="2026-06-12", repo="owner/repo", runner=runner)
+
+        self.assertEqual(result["workflow_file"], "stock_pool_observation.yml")
+        self.assertIn("signal_date=2026-06-12", calls[0])
+        self.assertIn("pool_id=all", calls[0])
 
 
 if __name__ == "__main__":
