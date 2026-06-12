@@ -216,6 +216,7 @@ class StockPoolObservationTest(unittest.TestCase):
 
             self.assertEqual([item["pool_id"] for item in manifest["generated"]], ["large_cap_best_v20260605"])
             self.assertIn("top_candidates", manifest["generated"][0])
+            self.assertIn("strength_rank", manifest["generated"][0]["top_candidates"][0])
             report = (Path(manifest["output_root"]) / "stock_pool_observation_report.md").read_text(encoding="utf-8")
             self.assertNotIn("模型延遲公開成績單池", report)
 

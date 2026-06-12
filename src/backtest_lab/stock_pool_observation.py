@@ -216,6 +216,9 @@ def _source_summary(metadata: dict[str, Any]) -> str:
         date_text = ",".join(metadata.get("formal_report_dates") or []) or "未標日期"
         candidates = "、".join(metadata.get("candidate_displays") or [])
         return f"RADAR正式候選 {date_text}：{candidates}"
+    if metadata.get("source_type") == "best_v20260605_signal":
+        gate_text = "個股攻擊閘門已開啟" if metadata.get("attack_gate_active") else "個股攻擊閘門未開啟"
+        return f"最佳版正式引擎：{metadata.get('market_regime_label') or '市場環境未標'}，{gate_text}"
     return str(metadata.get("source_type") or "")
 
 
@@ -510,8 +513,8 @@ def _draw_pool_top3_sections(ax, rows: list[dict[str, Any]]) -> float:
             transform=ax.transAxes,
         )
         y -= 0.054
-        headers = ("名次", "標的", "分數", "程式判斷原因")
-        widths = (0.08, 0.22, 0.12, 0.46)
+        headers = ("決策", "強弱", "標的", "分數", "程式判斷原因")
+        widths = (0.07, 0.07, 0.2, 0.1, 0.44)
         ax.add_patch(plt.Rectangle((x0, y), 0.88, 0.03, facecolor="#f7fafc", edgecolor="#e1e7ec", transform=ax.transAxes))
         x = x0
         for header, width in zip(headers, widths):
@@ -523,6 +526,7 @@ def _draw_pool_top3_sections(ax, rows: list[dict[str, Any]]) -> float:
             ax.add_patch(plt.Rectangle((x0, y), 0.88, 0.039, facecolor=fill, edgecolor="#e1e7ec", transform=ax.transAxes))
             cells = (
                 str(candidate.get("rank", "")),
+                str(candidate.get("strength_rank", "")),
                 str(candidate.get("display", "")),
                 f"{float(candidate.get('score') or 0):.4f}",
                 str(candidate.get("reason", "")),
@@ -546,6 +550,12 @@ def _draw_pool_top3_sections(ax, rows: list[dict[str, Any]]) -> float:
 
 
 def _top_candidate_rows(observation: StockPoolObservation, limit: int = 3) -> list[dict[str, Any]]:
+    strength_order = sorted(
+        observation.candidates,
+        key=lambda item: (item.score, item.ret20, item.ticker),
+        reverse=True,
+    )
+    strength_rank_by_ticker = {candidate.ticker: rank for rank, candidate in enumerate(strength_order, start=1)}
     candidates = sorted(
         observation.candidates,
         key=lambda item: (item.passed, item.score, item.ret20, item.ticker),
@@ -556,6 +566,7 @@ def _top_candidate_rows(observation: StockPoolObservation, limit: int = 3) -> li
         rows.append(
             {
                 "rank": rank,
+                "strength_rank": strength_rank_by_ticker.get(candidate.ticker, rank),
                 "ticker": candidate.ticker,
                 "display": _candidate_display(observation, candidate.ticker),
                 "score": round(candidate.score, 6),
@@ -586,9 +597,12 @@ def _candidate_display(observation: StockPoolObservation, ticker: str) -> str:
 
 def _candidate_reason(observation: StockPoolObservation, candidate: UniversalCandidateScore) -> str:
     if observation.strategy_preset == "best_v20260605":
+        metadata = observation.source_metadata or {}
+        regime = metadata.get("market_regime_label") or "目前市場環境"
+        gate_text = "個股攻擊閘門已開啟" if metadata.get("attack_gate_active") else "個股攻擊閘門未開啟"
         if candidate.ticker == observation.top_ticker:
-            return f"正式模型目標；{observation.action_state}。"
-        return f"強弱分數靠前，但不是最終模型目標；{candidate.reason or '觀察'}。"
+            return f"最終模型目標；{regime}，{gate_text}，先採市場曝險工具。"
+        return f"強弱分數靠前，但{gate_text}，尚未切回個股攻擊；{candidate.reason or '觀察'}。"
     parts = []
     if candidate.passed:
         parts.append("通過池內條件")
@@ -838,6 +852,16 @@ def _build_best_v20260605_observation(
         top_score=next((candidate.score for candidate in candidates if candidate.ticker == top_ticker), None),
         action_state=signal.model_target_status,
         candidates=candidates,
+        source_metadata={
+            "source_type": "best_v20260605_signal",
+            "market_regime_label": signal.market_regime_label,
+            "attack_gate_active": signal.attack_gate_active,
+            "attack_gate_ever_activated": signal.attack_gate_ever_activated,
+            "risk_off_active": signal.risk_off_active,
+            "action": signal.action,
+            "target_label": signal.target_label,
+            "target_exposure": signal.target_exposure,
+        },
     )
 
 
