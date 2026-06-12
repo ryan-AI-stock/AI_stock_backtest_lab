@@ -222,18 +222,18 @@ class StockPoolObservationTest(unittest.TestCase):
                 cache_dir / "1111_TW.csv",
                 index=False,
             )
-            _write_stock_metrics(
-                radar_data_dir / "stock_metrics.refreshed.csv",
+            _write_formal_candidate_interface(
+                radar_data_dir / "formal_radar_candidates.latest.csv",
                 [
                     {
+                        "report_date": dates[-1].strftime("%Y-%m-%d"),
                         "symbol": "1111",
                         "name": "測試記憶體",
                         "sector": "記憶體",
-                        "pullback_quality": 70,
-                        "chip_cleanliness": 56,
-                        "technical_setup": 78,
-                        "liquidity": 100,
-                        "risk_heat": 53,
+                        "score": "70.0",
+                        "bucket_key": "watch",
+                        "rank_in_bucket": "1",
+                        "selected_for_backtest_pool": "true",
                     }
                 ],
             )
@@ -258,7 +258,14 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertEqual(len(manifest["generated"]), 1)
             self.assertEqual(manifest["generated"][0]["pool_id"], "radar_mid_small_calibrated_v1")
             self.assertEqual(manifest["generated"][0]["top_ticker"], "1111.TW")
+            self.assertEqual(
+                manifest["generated"][0]["source_metadata"]["candidate_displays"],
+                ["測試記憶體(1111)"],
+            )
             self.assertEqual(manifest["skipped"], [])
+            report = (Path(manifest["output_root"]) / "stock_pool_observation_report.md").read_text(encoding="utf-8")
+            self.assertIn("RADAR正式候選", report)
+            self.assertIn("測試記憶體(1111)", report)
 
     def test_batch_generates_pool_with_partial_price_coverage(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)
@@ -388,6 +395,11 @@ def _write_stock_metrics(path: Path, rows: list[dict[str, object]]) -> None:
     }
     frame = pd.DataFrame([{**defaults, **row} for row in rows])
     frame.to_csv(path, index=False, encoding="utf-8-sig")
+
+
+def _write_formal_candidate_interface(path: Path, rows: list[dict[str, object]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(rows).to_csv(path, index=False, encoding="utf-8-sig")
 
 
 if __name__ == "__main__":

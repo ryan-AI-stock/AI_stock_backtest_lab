@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -52,6 +52,7 @@ class StockPoolObservation:
     top_score: float | None
     action_state: str
     candidates: list[UniversalCandidateScore]
+    source_metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -120,6 +121,7 @@ def build_stock_pool_observation(
         top_score=round(top.score, 6) if top else None,
         action_state="watch_candidate" if top else "no_valid_candidate",
         candidates=candidates,
+        source_metadata=_build_pool_source_metadata(pool, available_symbols),
     )
 
 
@@ -150,6 +152,37 @@ def build_dispatched_stock_pool_observation(
         conviction_by_ticker=conviction_by_ticker,
         require_exact_signal_date=require_exact_signal_date,
     )
+
+
+def _build_pool_source_metadata(pool: dict[str, Any], symbols: list[dict[str, Any]]) -> dict[str, Any]:
+    if pool.get("strategy_preset") != "radar_core_mid_small_calibrated_v1":
+        return {}
+    formal_dates = sorted(
+        {
+            str(symbol.get("formal_report_date") or "").strip()
+            for symbol in symbols
+            if str(symbol.get("formal_report_date") or "").strip()
+        }
+    )
+    return {
+        "source_type": "formal_radar_candidates",
+        "source_path": pool.get("radar_candidate_source", ""),
+        "mode": pool.get("radar_candidate_mode", ""),
+        "formal_report_dates": formal_dates,
+        "candidate_count": len(symbols),
+        "candidate_displays": [symbol.get("display") or symbol.get("ticker") for symbol in symbols],
+        "candidate_symbols": [symbol.get("symbol") or str(symbol.get("ticker", "")).split(".")[0] for symbol in symbols],
+    }
+
+
+def _source_summary(metadata: dict[str, Any]) -> str:
+    if not metadata:
+        return ""
+    if metadata.get("source_type") == "formal_radar_candidates":
+        date_text = ",".join(metadata.get("formal_report_dates") or []) or "未標日期"
+        candidates = "、".join(metadata.get("candidate_displays") or [])
+        return f"RADAR正式候選 {date_text}：{candidates}"
+    return str(metadata.get("source_type") or "")
 
 
 def write_stock_pool_observation(output_dir: Path, observation: StockPoolObservation) -> None:
@@ -242,6 +275,7 @@ def run_stock_pool_observation_batch(
                     "top_ticker": observation.top_ticker,
                     "top_display": observation.top_display,
                     "action_state": observation.action_state,
+                    "source_metadata": observation.source_metadata,
                     "missing_price_tickers": missing_price_tickers,
                     "output_dir": str(pool_dir),
                 }
@@ -278,6 +312,7 @@ def write_stock_pool_observation_batch_summary(root: Path, manifest: dict[str, A
                 "report_line": (item.get("dispatch") or {}).get("report_line", ""),
                 "workflow_file": (item.get("dispatch") or {}).get("workflow_file", ""),
                 "missing_price_tickers": ",".join(item.get("missing_price_tickers") or []),
+                "source_summary": _source_summary(item.get("source_metadata") or {}),
                 "reason": "",
                 "output_dir": item.get("output_dir", ""),
             }
@@ -295,6 +330,7 @@ def write_stock_pool_observation_batch_summary(root: Path, manifest: dict[str, A
                 "report_line": (item.get("dispatch") or {}).get("report_line", ""),
                 "workflow_file": (item.get("dispatch") or {}).get("workflow_file", ""),
                 "missing_price_tickers": "",
+                "source_summary": "",
                 "reason": item.get("reason", ""),
                 "output_dir": "",
             }
@@ -316,8 +352,8 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
         f"- 已產出股票池：{len(manifest.get('generated', []))}",
         f"- 跳過股票池：{len(manifest.get('skipped', []))}",
         "",
-        "| 狀態 | 股票池 | 第一名/原因 | 缺價股票 |",
-        "| --- | --- | --- | --- |",
+        "| 狀態 | 股票池 | 第一名/原因 | 來源摘要 | 缺價股票 |",
+        "| --- | --- | --- | --- | --- |",
     ]
     for row in rows:
         if row["status"] == "generated":
@@ -326,7 +362,7 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
         else:
             target = row["reason"] or "skipped"
             missing = "-"
-        lines.append(f"| {row['status']} | {row['pool_name']} | {target} | {missing} |")
+        lines.append(f"| {row['status']} | {row['pool_name']} | {target} | {row.get('source_summary') or '-'} | {missing} |")
     lines.extend(
         [
             "",
@@ -393,8 +429,8 @@ def _draw_observation_pdf_page(ax, manifest: dict[str, Any], rows: list[dict[str
 
 def _draw_observation_table(ax, rows: list[dict[str, Any]]) -> None:
     x0, y0 = 0.06, 0.62
-    widths = [0.12, 0.31, 0.2, 0.22]
-    headers = ["狀態", "股票池", "第一名/原因", "缺價股票"]
+    widths = [0.1, 0.25, 0.18, 0.28, 0.14]
+    headers = ["狀態", "股票池", "第一名/原因", "來源", "缺價"]
     ax.add_patch(plt.Rectangle((x0, y0), sum(widths), 0.044, facecolor="#e9f0f5", edgecolor="#d7e0e7", transform=ax.transAxes))
     x = x0
     for header, width in zip(headers, widths):
@@ -417,6 +453,7 @@ def _draw_observation_table(ax, rows: list[dict[str, Any]]) -> None:
             row["status"],
             row["pool_name"],
             target,
+            row.get("source_summary") or "-",
             row["missing_price_tickers"] or "-",
         ]
         x = x0
