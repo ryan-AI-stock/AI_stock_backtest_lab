@@ -18,7 +18,7 @@ from backtest_lab.market_cap_source import load_first_available_market_caps
 from backtest_lab.risk_factor_source import RiskFactorSignal, load_first_available_risk_factors
 from backtest_lab.frozen_report_pdf import _configure_chinese_font, _save_figure_as_raster_pdf_page
 from backtest_lab.frozen_strategy_monitor import build_frozen_strategy_signal
-from backtest_lab.stock_pool_store import StockPoolStore
+from backtest_lab.stock_pool_store import KNOWN_SYMBOLS, StockPoolStore
 from backtest_lab.strategy_preset_dispatcher import dispatch_pool, resolve_strategy_preset
 from backtest_lab.universal_pool_strategy import (
     PoolProfile,
@@ -335,6 +335,7 @@ def run_stock_pool_observation_batch(
                     "top_ticker": observation.top_ticker,
                     "top_display": observation.top_display,
                     "action_state": observation.action_state,
+                    "top_candidates": _top_candidate_rows(observation),
                     "source_metadata": observation.source_metadata,
                     "missing_price_tickers": missing_price_tickers,
                     "output_dir": str(pool_dir),
@@ -373,6 +374,8 @@ def write_stock_pool_observation_batch_summary(root: Path, manifest: dict[str, A
                 "workflow_file": (item.get("dispatch") or {}).get("workflow_file", ""),
                 "missing_price_tickers": ",".join(item.get("missing_price_tickers") or []),
                 "source_summary": _source_summary(item.get("source_metadata") or {}),
+                "top_candidates": item.get("top_candidates") or [],
+                "top_candidates_text": _top_candidates_text(item.get("top_candidates") or []),
                 "reason": "",
                 "output_dir": item.get("output_dir", ""),
             }
@@ -391,6 +394,8 @@ def write_stock_pool_observation_batch_summary(root: Path, manifest: dict[str, A
                 "workflow_file": (item.get("dispatch") or {}).get("workflow_file", ""),
                 "missing_price_tickers": "",
                 "source_summary": "",
+                "top_candidates": [],
+                "top_candidates_text": "",
                 "reason": item.get("reason", ""),
                 "output_dir": "",
             }
@@ -412,12 +417,12 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
         f"- 已產出股票池：{len(manifest.get('generated', []))}",
         f"- 跳過股票池：{len(manifest.get('skipped', []))}",
         "",
-        "| 狀態 | 股票池 | 第一名/原因 | 來源摘要 | 缺價股票 |",
+        "| 狀態 | 股票池 | 前三名 / 跳過原因 | 來源摘要 | 缺價股票 |",
         "| --- | --- | --- | --- | --- |",
     ]
     for row in rows:
         if row["status"] == "generated":
-            target = row["top_display"] or row["top_ticker"] or row["action_state"] or "無合格候選"
+            target = row["top_candidates_text"] or row["top_display"] or row["top_ticker"] or row["action_state"] or "無合格候選"
             missing = row["missing_price_tickers"] or "-"
         else:
             target = row["reason"] or "skipped"
@@ -472,9 +477,9 @@ def _draw_observation_pdf_page(ax, manifest: dict[str, Any], rows: list[dict[str
         ax.text(x + 0.014, 0.795, label, color="#66737d", fontsize=9.5, transform=ax.transAxes)
         ax.text(x + 0.014, 0.767, str(value)[:18], color=color, fontsize=11.2, fontweight="bold", transform=ax.transAxes)
 
-    ax.text(0.06, 0.675, "股票池觀察結果", color="#17212a", fontsize=16, fontweight="bold", transform=ax.transAxes)
-    _draw_observation_table(ax, rows)
-    ax.text(0.06, 0.18, "使用邊界", color="#17212a", fontsize=14, fontweight="bold", transform=ax.transAxes)
+    ax.text(0.06, 0.675, "股票池前三名與原因", color="#17212a", fontsize=16, fontweight="bold", transform=ax.transAxes)
+    bottom_y = _draw_pool_top3_sections(ax, rows)
+    ax.text(0.06, bottom_y - 0.035, "使用邊界", color="#17212a", fontsize=14, fontweight="bold", transform=ax.transAxes)
     notes = [
         "本報告用同一套觀察框架讀取不同股票池，方便比較各池目前第一順位與資料缺口。",
         "強弱排名是觀察清單，不是買入資格清單；實際操作仍需搭配策略規則、交易成本與風險承受度。",
@@ -482,45 +487,117 @@ def _draw_observation_pdf_page(ax, manifest: dict[str, Any], rows: list[dict[str
         "本報告為 AI 輔助市場觀察與回測工作流輸出，不是投資建議。",
     ]
     for index, note in enumerate(notes):
-        ax.text(0.075, 0.15 - index * 0.028, f"• {note}", color="#4d5b66", fontsize=10.2, transform=ax.transAxes)
+        ax.text(0.075, bottom_y - 0.065 - index * 0.028, f"• {note}", color="#4d5b66", fontsize=10.2, transform=ax.transAxes)
     ax.text(0.06, 0.04, f"{REPORT_NAME} · {manifest.get('signal_date', '')}", color="#9aa7b1", fontsize=8.5, transform=ax.transAxes)
     ax.text(0.94, 0.04, "AI_stock_backtest_lab", color="#9aa7b1", fontsize=8.5, ha="right", transform=ax.transAxes)
 
 
-def _draw_observation_table(ax, rows: list[dict[str, Any]]) -> None:
-    x0, y0 = 0.06, 0.62
-    widths = [0.1, 0.25, 0.18, 0.28, 0.14]
-    headers = ["狀態", "股票池", "第一名/原因", "來源", "缺價"]
-    ax.add_patch(plt.Rectangle((x0, y0), sum(widths), 0.044, facecolor="#e9f0f5", edgecolor="#d7e0e7", transform=ax.transAxes))
-    x = x0
-    for header, width in zip(headers, widths):
-        ax.text(x + 0.01, y0 + 0.015, header, color="#34424d", fontsize=10, fontweight="bold", transform=ax.transAxes)
-        x += width
-    max_rows = rows[:8]
-    for index, row in enumerate(max_rows):
-        y = y0 - (index + 1) * 0.047
-        color = "#ffffff" if index % 2 == 0 else "#f8fafc"
-        ax.add_patch(plt.Rectangle((x0, y), sum(widths), 0.047, facecolor=color, edgecolor="#e1e7ec", transform=ax.transAxes))
-        status_color = "#13795b" if row["status"] == "generated" else "#b42318"
-        target = (
-            row["top_display"]
-            or row["top_ticker"]
-            or row["reason"]
-            or row["action_state"]
-            or "-"
+def _draw_pool_top3_sections(ax, rows: list[dict[str, Any]]) -> float:
+    x0 = 0.06
+    y = 0.635
+    generated_rows = [row for row in rows if row["status"] == "generated"]
+    skipped_rows = [row for row in rows if row["status"] != "generated"]
+    for row in generated_rows[:3]:
+        ax.add_patch(plt.Rectangle((x0, y - 0.025), 0.88, 0.035, facecolor="#e9f0f5", edgecolor="#d7e0e7", transform=ax.transAxes))
+        ax.text(x0 + 0.012, y - 0.013, row["pool_name"], color="#17212a", fontsize=11.2, fontweight="bold", transform=ax.transAxes)
+        ax.text(
+            0.93,
+            y - 0.013,
+            f"資料日 {row['signal_date']}",
+            color="#66737d",
+            fontsize=8.5,
+            ha="right",
+            transform=ax.transAxes,
         )
-        cells = [
-            row["status"],
-            row["pool_name"],
-            target,
-            row.get("source_summary") or "-",
-            row["missing_price_tickers"] or "-",
-        ]
+        y -= 0.054
+        headers = ("名次", "標的", "分數", "程式判斷原因")
+        widths = (0.08, 0.22, 0.12, 0.46)
+        ax.add_patch(plt.Rectangle((x0, y), 0.88, 0.03, facecolor="#f7fafc", edgecolor="#e1e7ec", transform=ax.transAxes))
         x = x0
-        for cell_index, (cell, width) in enumerate(zip(cells, widths)):
-            text_color = status_color if cell_index == 0 else "#26323b"
-            ax.text(x + 0.01, y + 0.016, str(cell)[:24], color=text_color, fontsize=9.2, transform=ax.transAxes)
+        for header, width in zip(headers, widths):
+            ax.text(x + 0.008, y + 0.01, header, color="#52616b", fontsize=8.8, fontweight="bold", transform=ax.transAxes)
             x += width
+        y -= 0.035
+        for candidate in (row.get("top_candidates") or [])[:3]:
+            fill = "#fff7e6" if candidate.get("is_model_target") else "white"
+            ax.add_patch(plt.Rectangle((x0, y), 0.88, 0.039, facecolor=fill, edgecolor="#e1e7ec", transform=ax.transAxes))
+            cells = (
+                str(candidate.get("rank", "")),
+                str(candidate.get("display", "")),
+                f"{float(candidate.get('score') or 0):.4f}",
+                str(candidate.get("reason", "")),
+            )
+            x = x0
+            for cell, width in zip(cells, widths):
+                ax.text(x + 0.008, y + 0.013, cell[:42], color="#26323b", fontsize=8.7, transform=ax.transAxes)
+                x += width
+            y -= 0.039
+        missing = row.get("missing_price_tickers") or ""
+        source = row.get("source_summary") or ""
+        if missing or source:
+            note = "；".join(part for part in [f"來源：{source}" if source else "", f"缺價：{missing}" if missing else ""] if part)
+            ax.text(x0 + 0.008, y - 0.003, note[:88], color="#66737d", fontsize=8.2, transform=ax.transAxes)
+            y -= 0.026
+        y -= 0.02
+    for row in skipped_rows[:3]:
+        ax.text(x0, y, f"跳過：{row['pool_name']}，原因：{row['reason']}", color="#b42318", fontsize=9, transform=ax.transAxes)
+        y -= 0.03
+    return max(y, 0.23)
+
+
+def _top_candidate_rows(observation: StockPoolObservation, limit: int = 3) -> list[dict[str, Any]]:
+    candidates = sorted(
+        observation.candidates,
+        key=lambda item: (item.passed, item.score, item.ret20, item.ticker),
+        reverse=True,
+    )
+    rows = []
+    for rank, candidate in enumerate(candidates[:limit], start=1):
+        rows.append(
+            {
+                "rank": rank,
+                "ticker": candidate.ticker,
+                "display": _candidate_display(candidate.ticker),
+                "score": round(candidate.score, 6),
+                "passed": candidate.passed,
+                "is_model_target": candidate.ticker == observation.top_ticker,
+                "reason": _candidate_reason(observation, candidate),
+            }
+        )
+    return rows
+
+
+def _candidate_display(ticker: str) -> str:
+    known = KNOWN_SYMBOLS.get(ticker, {})
+    symbol = known.get("symbol") or ticker.replace(".TW", "").replace(".TWO", "")
+    name = known.get("name") or symbol
+    return f"{name}({symbol})"
+
+
+def _candidate_reason(observation: StockPoolObservation, candidate: UniversalCandidateScore) -> str:
+    if observation.strategy_preset == "best_v20260605":
+        if candidate.ticker == observation.top_ticker:
+            return f"正式模型目標；{observation.action_state}。"
+        return f"強弱分數靠前，但不是最終模型目標；{candidate.reason or '觀察'}。"
+    parts = []
+    if candidate.passed:
+        parts.append("通過池內條件")
+    else:
+        parts.append(candidate.reason or "未通過池內條件")
+    if candidate.ret60:
+        parts.append(f"60日動能{candidate.ret60:+.1%}")
+    if candidate.flow_risk_score > 0:
+        parts.append(f"風險分{candidate.flow_risk_score:.2f}")
+    if candidate.flow_risk_reasons:
+        parts.append(candidate.flow_risk_reasons)
+    return "；".join(parts)[:80]
+
+
+def _top_candidates_text(candidates: list[dict[str, Any]]) -> str:
+    return "；".join(
+        f"{row.get('rank')}.{row.get('display')}({float(row.get('score') or 0):.2f})"
+        for row in candidates[:3]
+    )
 
 
 def main() -> None:

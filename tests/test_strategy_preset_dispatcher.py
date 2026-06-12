@@ -17,8 +17,8 @@ class StrategyPresetDispatcherTest(unittest.TestCase):
             }
         )
 
-        self.assertEqual(routed["workflow_file"], "frozen_strategy_daily_report.yml")
-        self.assertEqual(routed["report_line"], "best_strategy_daily_report")
+        self.assertEqual(routed["workflow_file"], "stock_pool_observation.yml")
+        self.assertEqual(routed["report_line"], "stock_pool_observation")
         self.assertTrue(routed["operational_observation"])
 
     def test_scorecard_preset_is_not_operational_observation(self) -> None:

@@ -7,9 +7,6 @@ on:
         description: "Signal date in YYYY-MM-DD. Defaults to today's date in Asia/Taipei."
         required: false
         type: string
-  schedule:
-    # Start at 15:00 Asia/Taipei, Monday-Friday. The job retries hourly when final data is incomplete.
-    - cron: "0 7 * * 1-5"
 
 jobs:
   best-strategy-report:
@@ -121,19 +118,6 @@ jobs:
             fi
           done
           echo "ready=${ready}" >> "$GITHUB_OUTPUT"
-
-      - name: Publish latest PDF to Google Drive
-        if: steps.schedule-gate.outputs.should_run == 'true' && steps.report.outputs.ready == 'true'
-        env:
-          PYTHONPATH: src
-          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
-          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
-          GOOGLE_OAUTH_REFRESH_TOKEN: ${{ secrets.GOOGLE_OAUTH_REFRESH_TOKEN }}
-          FROZEN_REPORT_DRIVE_FOLDER_ID: ${{ secrets.FROZEN_REPORT_DRIVE_FOLDER_ID || vars.FROZEN_REPORT_DRIVE_FOLDER_ID }}
-          FROZEN_REPORT_DRIVE_FILE_ID: ${{ secrets.FROZEN_REPORT_DRIVE_FILE_ID || vars.FROZEN_REPORT_DRIVE_FILE_ID }}
-        run: |
-          python -m backtest_lab.drive_publish \
-            --file "outputs/frozen_strategy_monitor/$(echo '${{ steps.signal-date.outputs.value }}' | tr -d '-')/AI股票最佳策略每日觀察報告_最新版_v20260605.pdf"
 
       - name: Upload audit artifact
         if: steps.schedule-gate.outputs.should_run == 'true'

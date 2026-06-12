@@ -23,7 +23,7 @@ class StockPoolStoreTest(unittest.TestCase):
         self.assertEqual(len(large["resolved_symbols"]), 9)
         self.assertTrue(large["operational_observation"])
         self.assertFalse(scorecard["operational_observation"])
-        self.assertEqual(large["dispatch"]["workflow_file"], "frozen_strategy_daily_report.yml")
+        self.assertEqual(large["dispatch"]["workflow_file"], "stock_pool_observation.yml")
         self.assertEqual(scorecard["dispatch"]["workflow_file"], "model_scorecard_report.yml")
 
     def test_scorecard_pool_dynamic_third_symbol_follows_latest_signal(self) -> None:

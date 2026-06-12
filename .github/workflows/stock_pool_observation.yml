@@ -17,7 +17,7 @@ on:
         required: false
         type: string
   schedule:
-    # Run after the best-strategy report and delayed scorecard windows.
+    # Operational stock-pool overview. Uses same-day latest close data when available.
     - cron: "40 8 * * 1-5"
 
 jobs:

@@ -66,11 +66,7 @@ DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1O6Se-HfI7ZDTQ-LWeAO6
 DEFAULT_REPLAY_START = "2020-01-02"
 NO_DATA_EXIT_CODE = 3
 MAX_SHADOW_MODES = 3
-DEFAULT_SHADOW_MODE_IDS = (
-    "attack_hybrid_best_m20",
-    "risk_overlay_dd5_cash",
-    "challenger_pre0_m20",
-)
+DEFAULT_SHADOW_MODE_IDS: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -369,51 +365,7 @@ def build_shadow_mode_signals(
 
 
 def _shadow_mode_variants() -> list[tuple[str, str, RegimeModeSwitchVariant]]:
-    robustness_variants = {
-        variant.name: variant
-        for variant in cycle_proven_robustness_variants()
-    }
-    challenger_pre0_m20 = (
-        "cycle_robust_m20_persist10of10_reentry_m20_accel40_"
-        "00631l_ma200_preproof_risk2of3_to_cash_exit5_stop12"
-    )
-    challenger = robustness_variants[challenger_pre0_m20]
-    attack_hybrid = replace(
-        frozen_cycle_proven_top1_v1_variant(),
-        name="shadow_attack_hybrid_best_m20",
-        attack_gate_margin_over_fallback=0.20,
-        attack_gate_min_top_days=10,
-        attack_gate_reentry_margin_over_fallback=0.20,
-        attack_gate_reentry_min_short_to_medium_momentum_ratio=0.40,
-        attack_selection_exclude_tickers=("0050.TW", "00631L.TW"),
-    )
-    risk_overlay = replace(
-        challenger,
-        name="shadow_risk_overlay_dd5_cash",
-        market_risk_off_filter="dd5_ma60_ret20",
-        market_risk_off_mode=MODE_CASH,
-        market_risk_off_defense_ticker=None,
-        market_risk_off_exposure=0.0,
-        market_risk_off_exit_confirmation_days=3,
-        market_risk_off_only_before_first_attack_activation=False,
-    )
-    return [
-        (
-            "attack_hybrid_best_m20",
-            "Shadow 1：攻擊型候選 混合F",
-            attack_hybrid,
-        ),
-        (
-            "risk_overlay_dd5_cash",
-            "Shadow 2：風控型候選 dd5轉現金",
-            risk_overlay,
-        ),
-        (
-            "challenger_pre0_m20",
-            "Shadow 3：挑戰版 pre0 m20",
-            challenger,
-        )
-    ]
+    return []
 
 
 def attach_personal_portfolio(

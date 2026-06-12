@@ -22,9 +22,9 @@ PRESET_SPECS: dict[str, StrategyPresetSpec] = {
     "best_v20260605": StrategyPresetSpec(
         preset="best_v20260605",
         label="AI中大型權值股最佳版 v20260605",
-        engine_module="backtest_lab.frozen_strategy_monitor",
-        workflow_file="frozen_strategy_daily_report.yml",
-        report_line="best_strategy_daily_report",
+        engine_module="backtest_lab.stock_pool_observation",
+        workflow_file="stock_pool_observation.yml",
+        report_line="stock_pool_observation",
         operational_observation=True,
     ),
     "radar_core_mid_small_calibrated_v1": StrategyPresetSpec(

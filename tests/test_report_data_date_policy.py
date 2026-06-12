@@ -18,7 +18,9 @@ class ReportDataDatePolicyTest(unittest.TestCase):
         self.assertIn("--signal-date", best_workflow)
         self.assertNotIn("public scorecard is delayed", best_workflow)
         self.assertNotIn("--report-date", best_workflow)
-        self.assertIn("AI股票最佳策略每日觀察報告_最新版_v20260605.pdf", best_workflow)
+        self.assertNotIn("schedule:", best_workflow)
+        self.assertNotIn("drive_publish", best_workflow)
+        self.assertNotIn("AI股票最佳策略每日觀察報告_最新版_v20260605.pdf", best_workflow)
 
         self.assertIn("--signal-date", observation_workflow)
         self.assertNotIn("public scorecard is delayed", observation_workflow)

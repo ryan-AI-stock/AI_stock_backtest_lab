@@ -169,6 +169,8 @@ class StockPoolObservationTest(unittest.TestCase):
             )
 
             self.assertEqual(len(manifest["generated"]), 1)
+            self.assertEqual(len(manifest["generated"][0]["top_candidates"]), 1)
+            self.assertEqual(manifest["generated"][0]["top_candidates"][0]["display"], "台積電(2330)")
             self.assertEqual(len(manifest["skipped"]), 1)
             self.assertEqual(manifest["skipped"][0]["reason"], "missing_formal_radar_candidates")
             manifest_path = Path(manifest["output_root"]) / "stock_pool_observation_manifest.json"
@@ -213,6 +215,7 @@ class StockPoolObservationTest(unittest.TestCase):
                 )
 
             self.assertEqual([item["pool_id"] for item in manifest["generated"]], ["large_cap_best_v20260605"])
+            self.assertIn("top_candidates", manifest["generated"][0])
             report = (Path(manifest["output_root"]) / "stock_pool_observation_report.md").read_text(encoding="utf-8")
             self.assertNotIn("模型延遲公開成績單池", report)
 

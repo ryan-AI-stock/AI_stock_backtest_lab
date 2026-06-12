@@ -140,10 +140,7 @@ class FrozenStrategyMonitorTest(unittest.TestCase):
         variants = _shadow_mode_variants()
 
         self.assertLessEqual(len(variants), 3)
-        self.assertEqual(
-            [variant_id for variant_id, _, _ in variants],
-            ["attack_hybrid_best_m20", "risk_overlay_dd5_cash", "challenger_pre0_m20"],
-        )
+        self.assertEqual(variants, [])
 
     def test_shadow_mode_pdf_section_summarizes_candidate_value(self) -> None:
         signal = replace(
