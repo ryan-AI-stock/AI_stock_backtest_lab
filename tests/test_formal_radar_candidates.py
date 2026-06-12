@@ -32,6 +32,7 @@ class FormalRadarCandidatesTest(unittest.TestCase):
                         "bucket_key": "watch",
                         "rank_in_bucket": "1",
                         "selected_for_backtest_pool": "true",
+                        "market_cap_twd": "80,000,000,000",
                     },
                     {
                         "report_date": "2026-06-12",
@@ -50,6 +51,7 @@ class FormalRadarCandidatesTest(unittest.TestCase):
 
         self.assertEqual([item.symbol for item in candidates], ["2408"])
         self.assertEqual(candidates[0].report_date, "2026-06-12")
+        self.assertEqual(candidates[0].market_cap_twd, 80_000_000_000)
 
     def test_rejects_stale_formal_candidate_interface(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -114,7 +116,12 @@ class FormalRadarCandidatesTest(unittest.TestCase):
             root = Path(tmp)
             _write_stock_metrics(
                 root / "stock_metrics.refreshed.csv",
-                [_row("2368", "金像電", pullback=70, chip=56, technical=78, liquidity=100, risk_heat=53)],
+                [
+                    {
+                        **_row("2368", "金像電", pullback=70, chip=56, technical=78, liquidity=100, risk_heat=53),
+                        "market_cap_twd": 120_000_000_000,
+                    }
+                ],
             )
             candidates = load_formal_radar_candidates(root)
 
@@ -124,6 +131,7 @@ class FormalRadarCandidatesTest(unittest.TestCase):
         self.assertEqual(symbols[0]["display"], "金像電(2368)")
         self.assertEqual(symbols[0]["source"], "formal_radar_bucket")
         self.assertEqual(symbols[0]["formal_bucket"], BUCKET_WATCH)
+        self.assertEqual(symbols[0]["market_cap_twd"], 120_000_000_000)
 
 
 def _row(

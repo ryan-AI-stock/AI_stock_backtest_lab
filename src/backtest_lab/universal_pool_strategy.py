@@ -8,6 +8,10 @@ import pandas as pd
 POOL_HIGH_LIQUIDITY = "high_liquidity"
 POOL_STANDARD_LIQUIDITY = "standard_liquidity"
 POOL_LOW_LIQUIDITY_OR_MIXED = "low_liquidity_or_mixed"
+SIZE_LARGE_CAP = "large_cap"
+SIZE_MID_CAP = "mid_cap"
+SIZE_SMALL_CAP = "small_cap"
+SIZE_MICRO_CAP = "micro_cap"
 SIZE_UNKNOWN = "unknown_size"
 
 
@@ -31,6 +35,13 @@ class UniversalPoolParameters:
 
 
 @dataclass(frozen=True)
+class SizeClassificationThresholds:
+    large_min_twd: float = 500_000_000_000
+    mid_min_twd: float = 50_000_000_000
+    small_min_twd: float = 5_000_000_000
+
+
+@dataclass(frozen=True)
 class UniversalCandidateScore:
     ticker: str
     score: float
@@ -44,6 +55,8 @@ class UniversalCandidateScore:
     reason: str = ""
     liquidity_profile: str = ""
     size_profile: str = SIZE_UNKNOWN
+    market_cap_twd: float = 0.0
+    size_basis: str = ""
     profile_type: str = ""
     applied_score_mode: str = ""
 
@@ -113,12 +126,21 @@ def score_universal_candidates(
     params: UniversalPoolParameters,
     *,
     conviction_by_ticker: dict[str, float] | None = None,
+    market_cap_by_ticker: dict[str, float] | None = None,
+    size_thresholds: SizeClassificationThresholds = SizeClassificationThresholds(),
 ) -> dict[str, UniversalCandidateScore]:
     scores: dict[str, UniversalCandidateScore] = {}
     conviction_by_ticker = conviction_by_ticker or {}
+    market_cap_by_ticker = market_cap_by_ticker or {}
     for ticker, prices in prices_by_ticker.items():
         liquidity_profile = classify_candidate_liquidity_profile(prices, signal_date)
-        candidate_params = parameters_for_liquidity_profile(liquidity_profile)
+        size_profile, market_cap_twd, size_basis = classify_candidate_size_profile(
+            prices,
+            signal_date,
+            market_cap_twd=market_cap_by_ticker.get(ticker),
+            thresholds=size_thresholds,
+        )
+        candidate_params = parameters_for_candidate_route(size_profile, liquidity_profile)
         scores[ticker] = score_universal_candidate(
             ticker=ticker,
             prices=prices,
@@ -126,6 +148,9 @@ def score_universal_candidates(
             params=candidate_params,
             conviction_bonus=conviction_by_ticker.get(ticker, 0.0),
             liquidity_profile=liquidity_profile,
+            size_profile=size_profile,
+            market_cap_twd=market_cap_twd,
+            size_basis=size_basis,
         )
     return scores
 
@@ -139,6 +164,8 @@ def score_universal_candidate(
     conviction_bonus: float = 0.0,
     liquidity_profile: str = "",
     size_profile: str = SIZE_UNKNOWN,
+    market_cap_twd: float = 0.0,
+    size_basis: str = "",
 ) -> UniversalCandidateScore:
     history = prices.loc[prices.index <= signal_date].dropna(subset=["adj_close"])
     if len(history) < 126:
@@ -147,6 +174,8 @@ def score_universal_candidate(
             "warmup不足",
             liquidity_profile=liquidity_profile,
             size_profile=size_profile,
+            market_cap_twd=market_cap_twd,
+            size_basis=size_basis,
             applied_score_mode=params.score_mode,
         )
 
@@ -159,6 +188,8 @@ def score_universal_candidate(
             "跌破20日均線",
             liquidity_profile=liquidity_profile,
             size_profile=size_profile,
+            market_cap_twd=market_cap_twd,
+            size_basis=size_basis,
             applied_score_mode=params.score_mode,
         )
     if params.require_ma60 and close < ma60:
@@ -167,6 +198,8 @@ def score_universal_candidate(
             "跌破60日均線",
             liquidity_profile=liquidity_profile,
             size_profile=size_profile,
+            market_cap_twd=market_cap_twd,
+            size_basis=size_basis,
             applied_score_mode=params.score_mode,
         )
 
@@ -179,6 +212,8 @@ def score_universal_candidate(
             avg_turnover_twd=avg_turnover,
             liquidity_profile=liquidity_profile,
             size_profile=size_profile,
+            market_cap_twd=market_cap_twd,
+            size_basis=size_basis,
             applied_score_mode=params.score_mode,
         )
 
@@ -197,6 +232,8 @@ def score_universal_candidate(
             drawdown20=drawdown20,
             liquidity_profile=liquidity_profile,
             size_profile=size_profile,
+            market_cap_twd=market_cap_twd,
+            size_basis=size_basis,
             applied_score_mode=params.score_mode,
         )
     if drawdown20 < params.max_stock_drawdown_20d:
@@ -210,6 +247,8 @@ def score_universal_candidate(
             drawdown20=drawdown20,
             liquidity_profile=liquidity_profile,
             size_profile=size_profile,
+            market_cap_twd=market_cap_twd,
+            size_basis=size_basis,
             applied_score_mode=params.score_mode,
         )
 
@@ -236,6 +275,8 @@ def score_universal_candidate(
             reason="分數未達門檻",
             liquidity_profile=liquidity_profile,
             size_profile=size_profile,
+            market_cap_twd=market_cap_twd,
+            size_basis=size_basis,
             profile_type=liquidity_profile,
             applied_score_mode=params.score_mode,
         )
@@ -251,6 +292,8 @@ def score_universal_candidate(
         passed=True,
         liquidity_profile=liquidity_profile,
         size_profile=size_profile,
+        market_cap_twd=market_cap_twd,
+        size_basis=size_basis,
         profile_type=liquidity_profile,
         applied_score_mode=params.score_mode,
     )
@@ -271,6 +314,53 @@ def classify_candidate_liquidity_profile(prices: pd.DataFrame, signal_date: pd.T
 
 def classify_candidate_profile(prices: pd.DataFrame, signal_date: pd.Timestamp) -> str:
     return classify_candidate_liquidity_profile(prices, signal_date)
+
+
+def classify_candidate_size_profile(
+    prices: pd.DataFrame,
+    signal_date: pd.Timestamp,
+    *,
+    market_cap_twd: float | None = None,
+    thresholds: SizeClassificationThresholds = SizeClassificationThresholds(),
+) -> tuple[str, float, str]:
+    cap = _resolve_market_cap_twd(prices, signal_date, market_cap_twd=market_cap_twd)
+    if cap <= 0:
+        return SIZE_UNKNOWN, 0.0, ""
+    if cap >= thresholds.large_min_twd:
+        return SIZE_LARGE_CAP, cap, "market_cap_twd"
+    if cap >= thresholds.mid_min_twd:
+        return SIZE_MID_CAP, cap, "market_cap_twd"
+    if cap >= thresholds.small_min_twd:
+        return SIZE_SMALL_CAP, cap, "market_cap_twd"
+    return SIZE_MICRO_CAP, cap, "market_cap_twd"
+
+
+def _resolve_market_cap_twd(
+    prices: pd.DataFrame,
+    signal_date: pd.Timestamp,
+    *,
+    market_cap_twd: float | None = None,
+) -> float:
+    if market_cap_twd is not None and pd.notna(market_cap_twd):
+        return float(market_cap_twd)
+    history = prices.loc[prices.index <= signal_date]
+    for column in ("free_float_market_cap_twd", "market_cap_twd"):
+        if column not in history.columns:
+            continue
+        series = pd.to_numeric(history[column], errors="coerce").dropna()
+        if not series.empty and float(series.iloc[-1]) > 0:
+            return float(series.iloc[-1])
+    return 0.0
+
+
+def parameters_for_candidate_route(size_profile: str, liquidity_profile: str) -> UniversalPoolParameters:
+    if size_profile == SIZE_LARGE_CAP and liquidity_profile != POOL_LOW_LIQUIDITY_OR_MIXED:
+        return parameters_for_liquidity_profile(POOL_HIGH_LIQUIDITY)
+    if size_profile in {SIZE_SMALL_CAP, SIZE_MICRO_CAP}:
+        return parameters_for_liquidity_profile(POOL_LOW_LIQUIDITY_OR_MIXED)
+    if size_profile == SIZE_MID_CAP:
+        return parameters_for_liquidity_profile(POOL_STANDARD_LIQUIDITY)
+    return parameters_for_liquidity_profile(liquidity_profile)
 
 
 def parameters_for_liquidity_profile(liquidity_profile: str) -> UniversalPoolParameters:
@@ -330,6 +420,8 @@ def _candidate_reject(
     drawdown20: float = 0.0,
     liquidity_profile: str = "",
     size_profile: str = SIZE_UNKNOWN,
+    market_cap_twd: float = 0.0,
+    size_basis: str = "",
     profile_type: str = "",
     applied_score_mode: str = "",
 ) -> UniversalCandidateScore:
@@ -347,6 +439,8 @@ def _candidate_reject(
         reason=reason,
         liquidity_profile=liquidity_profile,
         size_profile=size_profile,
+        market_cap_twd=market_cap_twd,
+        size_basis=size_basis,
         profile_type=profile_type,
         applied_score_mode=applied_score_mode,
     )

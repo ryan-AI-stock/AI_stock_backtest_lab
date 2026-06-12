@@ -21,14 +21,15 @@ from backtest_lab.stock_pool_store import symbol_entry
 class StockPoolObservationTest(unittest.TestCase):
     def test_build_observation_outputs_unified_schema_and_top_candidate(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)
+        tsmc = symbol_entry("2330.TW", source="manual")
+        tsmc["market_cap_twd"] = 2_000_000_000_000
+        mediatek = symbol_entry("2454.TW", source="manual")
+        mediatek["market_cap_twd"] = 200_000_000_000
         pool = {
             "pool_id": "custom_ai_pool",
             "name": "自訂AI觀察池",
             "strategy_preset": "universal_pool_custom",
-            "resolved_symbols": [
-                symbol_entry("2330.TW", source="manual"),
-                symbol_entry("2454.TW", source="manual"),
-            ],
+            "resolved_symbols": [tsmc, mediatek],
         }
         prices = {
             "2330.TW": _trend_frame(dates, start=100, step=0.2, volume=20_000_000),
@@ -49,6 +50,10 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertEqual(observation.top_ticker, "2454.TW")
         self.assertEqual(observation.top_display, "聯發科(2454)")
         self.assertGreaterEqual(observation.passed_count, 1)
+        scores = {candidate.ticker: candidate for candidate in observation.candidates}
+        self.assertEqual(scores["2330.TW"].size_profile, "large_cap")
+        self.assertEqual(scores["2454.TW"].size_profile, "mid_cap")
+        self.assertEqual(scores["2454.TW"].market_cap_twd, 200_000_000_000)
 
     def test_observation_resolves_to_previous_common_trading_date(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)

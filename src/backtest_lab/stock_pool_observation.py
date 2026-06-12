@@ -94,6 +94,7 @@ def build_stock_pool_observation(
         signal_ts,
         params,
         conviction_by_ticker=conviction_by_ticker,
+        market_cap_by_ticker=_market_cap_by_ticker(available_symbols),
     )
     candidates = sorted(
         scored.values(),
@@ -173,6 +174,25 @@ def _build_pool_source_metadata(pool: dict[str, Any], symbols: list[dict[str, An
         "candidate_displays": [symbol.get("display") or symbol.get("ticker") for symbol in symbols],
         "candidate_symbols": [symbol.get("symbol") or str(symbol.get("ticker", "")).split(".")[0] for symbol in symbols],
     }
+
+
+def _market_cap_by_ticker(symbols: list[dict[str, Any]]) -> dict[str, float]:
+    result: dict[str, float] = {}
+    for symbol in symbols:
+        ticker = str(symbol.get("ticker") or "").strip()
+        if not ticker:
+            continue
+        market_cap = _number(symbol.get("free_float_market_cap_twd") or symbol.get("market_cap_twd"))
+        if market_cap > 0:
+            result[ticker] = market_cap
+    return result
+
+
+def _number(value: object) -> float:
+    try:
+        return float(str(value).replace(",", "").strip() or 0)
+    except ValueError:
+        return 0.0
 
 
 def _source_summary(metadata: dict[str, Any]) -> str:

@@ -8,7 +8,12 @@ from backtest_lab.universal_pool_strategy import (
     POOL_HIGH_LIQUIDITY,
     POOL_LOW_LIQUIDITY_OR_MIXED,
     POOL_STANDARD_LIQUIDITY,
+    SIZE_LARGE_CAP,
+    SIZE_MICRO_CAP,
+    SIZE_MID_CAP,
+    SIZE_SMALL_CAP,
     SIZE_UNKNOWN,
+    classify_candidate_size_profile,
     classify_candidate_liquidity_profile,
     default_parameters_for_profile,
     infer_pool_profile,
@@ -104,6 +109,47 @@ class UniversalPoolStrategyTest(unittest.TestCase):
         self.assertEqual(classify_candidate_liquidity_profile(prices["9999.TW"], dates[-1]), POOL_LOW_LIQUIDITY_OR_MIXED)
         self.assertEqual(scores["9999.TW"].liquidity_profile, POOL_LOW_LIQUIDITY_OR_MIXED)
         self.assertEqual(scores["9999.TW"].reason, "流動性不足")
+
+    def test_size_profile_uses_market_cap_when_available(self) -> None:
+        dates = pd.bdate_range("2024-01-02", periods=150)
+        prices = {
+            "2330.TW": _price_frame(dates, close=100, volume=20_000_000),
+            "2454.TW": _price_frame(dates, close=80, volume=5_000_000),
+            "2408.TW": _price_frame(dates, close=60, volume=3_000_000),
+            "9999.TW": _price_frame(dates, close=50, volume=3_000_000),
+        }
+        pool_params = default_parameters_for_profile(infer_pool_profile(prices, dates[-1]))
+
+        scores = score_universal_candidates(
+            prices,
+            dates[-1],
+            params=pool_params,
+            market_cap_by_ticker={
+                "2330.TW": 2_000_000_000_000,
+                "2454.TW": 200_000_000_000,
+                "2408.TW": 20_000_000_000,
+                "9999.TW": 2_000_000_000,
+            },
+        )
+
+        self.assertEqual(scores["2330.TW"].size_profile, SIZE_LARGE_CAP)
+        self.assertEqual(scores["2454.TW"].size_profile, SIZE_MID_CAP)
+        self.assertEqual(scores["2408.TW"].size_profile, SIZE_SMALL_CAP)
+        self.assertEqual(scores["9999.TW"].size_profile, SIZE_MICRO_CAP)
+        self.assertEqual(scores["2330.TW"].size_basis, "market_cap_twd")
+
+    def test_size_profile_reads_latest_market_cap_column_without_future_data(self) -> None:
+        dates = pd.bdate_range("2024-01-02", periods=150)
+        prices = _price_frame(dates, close=100, volume=20_000_000)
+        prices["market_cap_twd"] = 40_000_000_000
+        prices.loc[dates[-1], "market_cap_twd"] = 80_000_000_000
+        prices.loc[pd.Timestamp("2025-01-02"), "market_cap_twd"] = 1_000_000_000_000
+
+        size_profile, market_cap, size_basis = classify_candidate_size_profile(prices, dates[-1])
+
+        self.assertEqual(size_profile, SIZE_MID_CAP)
+        self.assertEqual(market_cap, 80_000_000_000)
+        self.assertEqual(size_basis, "market_cap_twd")
 
 
 def _price_frame(dates: pd.DatetimeIndex, *, close: float, volume: int) -> pd.DataFrame:

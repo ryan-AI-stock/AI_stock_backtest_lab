@@ -21,6 +21,7 @@ class FormalRadarCandidate:
     bucket: str
     rank: int
     report_date: str = ""
+    market_cap_twd: float = 0.0
 
     @property
     def ticker(self) -> str:
@@ -65,6 +66,7 @@ def _load_candidate_interface(path: Path, *, signal_date: str | None) -> list[Fo
             bucket=str(row.get("bucket_key") or "").strip(),
             rank=int(_number(row.get("rank_in_bucket")) or index + 1),
             report_date=str(row.get("report_date") or "").strip(),
+            market_cap_twd=_number(row.get("free_float_market_cap_twd") or row.get("market_cap_twd")),
         )
         for index, (_, row) in enumerate(rows.iterrows())
         if str(row.get("symbol") or "").strip()
@@ -92,6 +94,7 @@ def _load_from_stock_metrics(path: Path) -> list[FormalRadarCandidate]:
             score=candidate.score,
             bucket=candidate.bucket,
             rank=index + 1,
+            market_cap_twd=candidate.market_cap_twd,
         )
         for index, candidate in enumerate(source[:limit])
     ]
@@ -111,6 +114,7 @@ def formal_radar_candidates_to_symbols(candidates: list[FormalRadarCandidate]) -
             "formal_score": candidate.score,
             "formal_rank": candidate.rank,
             "formal_report_date": candidate.report_date,
+            "market_cap_twd": candidate.market_cap_twd,
         }
         for candidate in candidates
     ]
@@ -123,6 +127,7 @@ class _ScoredRow:
     sector: str
     score: float
     bucket: str
+    market_cap_twd: float = 0.0
 
 
 def _score_row(row: pd.Series) -> _ScoredRow:
@@ -164,6 +169,7 @@ def _score_row(row: pd.Series) -> _ScoredRow:
         sector=sector,
         score=total,
         bucket=_classify_stock(total, pullback, chip, valuation, liquidity, risk_heat),
+        market_cap_twd=_number(row.get("free_float_market_cap_twd") or row.get("market_cap_twd")),
     )
 
 
