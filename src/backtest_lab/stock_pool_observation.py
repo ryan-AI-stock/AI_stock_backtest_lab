@@ -13,9 +13,9 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 from backtest_lab.config import load_config
 from backtest_lab.data import download_yfinance_prices
+from backtest_lab.formal_radar_candidates import formal_radar_candidates_to_symbols, load_formal_radar_candidates
 from backtest_lab.frozen_report_pdf import _configure_chinese_font, _save_figure_as_raster_pdf_page
 from backtest_lab.frozen_strategy_monitor import build_frozen_strategy_signal
-from backtest_lab.radar_snapshot_v2_source import load_radar_snapshot_history, select_radar_snapshot_candidates
 from backtest_lab.stock_pool_store import StockPoolStore
 from backtest_lab.strategy_preset_dispatcher import dispatch_pool, resolve_strategy_preset
 from backtest_lab.universal_pool_strategy import (
@@ -174,6 +174,7 @@ def run_stock_pool_observation_batch(
     cache_dir: str | Path,
     output_root: str | Path,
     radar_snapshot_dir: str | Path | None = None,
+    radar_data_dir: str | Path | None = None,
     radar_top_n: int = 20,
     require_exact_signal_date: bool = False,
     operational_only: bool = True,
@@ -195,13 +196,14 @@ def run_stock_pool_observation_batch(
             pool,
             signal_date=signal_date,
             radar_snapshot_dir=radar_snapshot_dir,
+            radar_data_dir=radar_data_dir,
             radar_top_n=radar_top_n,
         )
         tickers = [symbol["ticker"] for symbol in pool.get("resolved_symbols", [])]
         if not tickers:
             reason = (
-                "missing_radar_snapshot_dir"
-                if pool.get("strategy_preset") == "radar_core_mid_small_calibrated_v1" and not radar_snapshot_dir
+                "missing_formal_radar_candidates"
+                if pool.get("strategy_preset") == "radar_core_mid_small_calibrated_v1"
                 else "no_resolved_symbols"
             )
             manifest["skipped"].append(
@@ -433,6 +435,7 @@ def main() -> None:
     parser.add_argument("--output-root", default=DEFAULT_OUTPUT_ROOT)
     parser.add_argument("--warmup-start", default="2020-01-02")
     parser.add_argument("--radar-snapshot-dir", default=os.getenv("RADAR_SNAPSHOT_DIR", ""))
+    parser.add_argument("--radar-data-dir", default=os.getenv("RADAR_DATA_DIR", ""))
     parser.add_argument("--radar-top-n", type=int, default=20)
     parser.add_argument("--require-exact-signal-date", action="store_true")
     parser.add_argument(
@@ -452,6 +455,7 @@ def main() -> None:
             cache_dir=args.cache_dir,
             output_root=args.output_root,
             radar_snapshot_dir=args.radar_snapshot_dir or None,
+            radar_data_dir=args.radar_data_dir or None,
             radar_top_n=args.radar_top_n,
             require_exact_signal_date=args.require_exact_signal_date,
             operational_only=not args.include_non_operational_pools,
@@ -465,6 +469,7 @@ def main() -> None:
         pool,
         signal_date=args.signal_date,
         radar_snapshot_dir=args.radar_snapshot_dir or None,
+        radar_data_dir=args.radar_data_dir or None,
         radar_top_n=args.radar_top_n,
     )
     tickers = [symbol["ticker"] for symbol in pool.get("resolved_symbols", [])]
@@ -639,38 +644,38 @@ def _resolve_dynamic_observation_pool(
     *,
     signal_date: str,
     radar_snapshot_dir: str | Path | None,
+    radar_data_dir: str | Path | None,
     radar_top_n: int,
 ) -> dict[str, Any]:
     if pool.get("resolved_symbols") or pool.get("strategy_preset") != "radar_core_mid_small_calibrated_v1":
         return pool
-    if not radar_snapshot_dir:
+    data_dir = _resolve_radar_data_dir(radar_data_dir=radar_data_dir, radar_snapshot_dir=radar_snapshot_dir)
+    if data_dir is None:
         return pool
-    history = load_radar_snapshot_history(radar_snapshot_dir)
-    candidates = select_radar_snapshot_candidates(history, signal_date, top_n=radar_top_n)
-    resolved = []
-    for _, row in candidates.rows.iterrows():
-        symbol = str(row.get("symbol") or "").strip()
-        if not symbol:
-            continue
-        ticker = f"{symbol}.TW"
-        name = str(row.get("name") or symbol).strip() or symbol
-        resolved.append(
-            {
-                "ticker": ticker,
-                "symbol": symbol,
-                "name": name,
-                "display": f"{name}({symbol})",
-                "asset_type": "stock",
-                "source": "radar_snapshot_v2",
-                "theme": str(row.get("theme") or ""),
-                "snapshot_date": candidates.snapshot_date.strftime("%Y-%m-%d"),
-                "candidate_rank": int(row.get("candidate_rank") or len(resolved) + 1),
-            }
-        )
+    try:
+        candidates = load_formal_radar_candidates(data_dir)
+    except FileNotFoundError:
+        return pool
     updated = json.loads(json.dumps(pool, ensure_ascii=False))
-    updated["resolved_symbols"] = resolved
-    updated["radar_snapshot_date"] = candidates.snapshot_date.strftime("%Y-%m-%d")
+    updated["resolved_symbols"] = formal_radar_candidates_to_symbols(candidates[:radar_top_n])
+    updated["radar_candidate_source"] = str(data_dir)
+    updated["radar_candidate_mode"] = "formal_bucket_actionable_else_watch"
     return updated
+
+
+def _resolve_radar_data_dir(
+    *,
+    radar_data_dir: str | Path | None,
+    radar_snapshot_dir: str | Path | None,
+) -> Path | None:
+    if radar_data_dir:
+        return Path(radar_data_dir)
+    if not radar_snapshot_dir:
+        return None
+    snapshot_path = Path(radar_snapshot_dir)
+    if snapshot_path.name == "history":
+        return snapshot_path.parent
+    return snapshot_path
 
 
 if __name__ == "__main__":

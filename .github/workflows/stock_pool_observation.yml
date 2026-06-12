@@ -109,6 +109,11 @@ jobs:
           else
             echo "radar_snapshot_dir=" >> "$GITHUB_OUTPUT"
           fi
+          if [ -d "AI_stock_rotation_radar/data" ]; then
+            echo "radar_data_dir=AI_stock_rotation_radar/data" >> "$GITHUB_OUTPUT"
+          else
+            echo "radar_data_dir=" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Prepare optional stock pool store
         if: steps.schedule-gate.outputs.should_run == 'true'
@@ -127,6 +132,7 @@ jobs:
         env:
           PYTHONPATH: src
           RADAR_SNAPSHOT_DIR: ${{ steps.observation-inputs.outputs.radar_snapshot_dir }}
+          RADAR_DATA_DIR: ${{ steps.observation-inputs.outputs.radar_data_dir }}
         run: |
           date_key="${{ steps.observation-inputs.outputs.signal_date }}"
           date_key="${date_key//-/}"
@@ -134,6 +140,9 @@ jobs:
           radar_args=()
           if [ -n "$RADAR_SNAPSHOT_DIR" ]; then
             radar_args+=(--radar-snapshot-dir "$RADAR_SNAPSHOT_DIR")
+          fi
+          if [ -n "$RADAR_DATA_DIR" ]; then
+            radar_args+=(--radar-data-dir "$RADAR_DATA_DIR")
           fi
           python -m backtest_lab.stock_pool_observation \
             --pool-id "${{ steps.observation-inputs.outputs.pool_id }}" \

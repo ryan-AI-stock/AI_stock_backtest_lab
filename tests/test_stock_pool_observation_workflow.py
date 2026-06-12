@@ -5,11 +5,14 @@ from pathlib import Path
 
 
 class StockPoolObservationWorkflowTest(unittest.TestCase):
-    def test_workflow_checks_out_radar_repo_and_defaults_snapshot_history(self) -> None:
+    def test_workflow_checks_out_radar_repo_and_passes_formal_radar_data_dir(self) -> None:
         workflow = Path(".github/workflows/stock_pool_observation.yml").read_text(encoding="utf-8")
 
         self.assertIn("repository: ryan-AI-stock/AI_stock_rotation_radar", workflow)
         self.assertIn("path: AI_stock_rotation_radar", workflow)
+        self.assertIn("AI_stock_rotation_radar/data", workflow)
+        self.assertIn("RADAR_DATA_DIR", workflow)
+        self.assertIn("--radar-data-dir", workflow)
         self.assertIn("AI_stock_rotation_radar/data/history", workflow)
         self.assertIn("RADAR_SNAPSHOT_DIR", workflow)
         self.assertIn("python -m backtest_lab.drive_publish", workflow)

@@ -243,18 +243,25 @@ python -m backtest_lab.stock_pool_observation `
   --output-root outputs/stock_pool_observations
 ```
 
-若要讓 `雷達中小型校準版` 也產出結果，需提供 radar snapshot v2 原始/replay 資料夾：
+`雷達中小型校準版` 的候選來源是每日題材輪動雷達的正式個股分類結果，不直接把廣義 snapshot 候選當成可操作池。流程是：
+
+1. 優先讀取 `stock_metrics.refreshed.csv` 裡可重建出的分類 1「條件最完整」。
+2. 若分類 1 沒有標的，改用分類 2「接近條件」前 3 檔。
+3. Backtest Lab 再對這批候選做第二階段策略排序。
+
+若要讓 `雷達中小型校準版` 也產出結果，需提供 RADAR repo 的 `data` 目錄；`radar_snapshot_dir` 只保留為歷史研究與相容參數：
 
 ```powershell
 python -m backtest_lab.stock_pool_observation `
   --pool-id all `
   --signal-date 2026-06-05 `
+  --radar-data-dir <AI_stock_rotation_radar/data> `
   --radar-snapshot-dir <radar_snapshot資料夾> `
   --cache-dir backtest_cache/stock_pool_observations `
   --output-root outputs/stock_pool_observations
 ```
 
-GitHub Actions workflow：`.github/workflows/stock_pool_observation.yml`。workflow 會嘗試 checkout `ryan-AI-stock/AI_stock_rotation_radar`，並預設使用 `AI_stock_rotation_radar/data/history` 作為正式日常 snapshot 來源；也可用 workflow dispatch input `radar_snapshot_dir` 或 repo variable `RADAR_SNAPSHOT_DIR` 覆蓋。若 RADAR repo checkout 失敗或未提供 snapshot 來源，雷達池會在 manifest 中標示 `missing_radar_snapshot_dir`，其餘可解析股票池仍會正常產出。
+GitHub Actions workflow：`.github/workflows/stock_pool_observation.yml`。workflow 會嘗試 checkout `ryan-AI-stock/AI_stock_rotation_radar`，並預設使用 `AI_stock_rotation_radar/data` 作為每日雷達正式分類來源。若 RADAR repo checkout 失敗或未提供正式分類 CSV，雷達池會在 manifest 中標示 `missing_formal_radar_candidates`，其餘可解析股票池仍會正常產出。
 
 若研究時需要把非操盤池也納入觀察輸出，可手動加上 `--include-non-operational-pools`；正式排程不使用此參數。
 

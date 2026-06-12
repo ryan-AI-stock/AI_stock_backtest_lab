@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import tempfile
 import unittest
-import csv
 from pathlib import Path
 from unittest.mock import patch
 
@@ -10,7 +9,6 @@ import pandas as pd
 
 import test_paths  # noqa: F401
 
-from backtest_lab.radar_snapshot_readiness import REQUIRED_SNAPSHOT_COLUMNS
 from backtest_lab.stock_pool_observation import (
     build_dispatched_stock_pool_observation,
     build_stock_pool_observation,
@@ -167,7 +165,7 @@ class StockPoolObservationTest(unittest.TestCase):
 
             self.assertEqual(len(manifest["generated"]), 1)
             self.assertEqual(len(manifest["skipped"]), 1)
-            self.assertEqual(manifest["skipped"][0]["reason"], "missing_radar_snapshot_dir")
+            self.assertEqual(manifest["skipped"][0]["reason"], "missing_formal_radar_candidates")
             manifest_path = Path(manifest["output_root"]) / "stock_pool_observation_manifest.json"
             self.assertTrue(manifest_path.exists())
             self.assertTrue((Path(manifest["output_root"]) / "stock_pool_observation_summary.csv").exists())
@@ -213,18 +211,32 @@ class StockPoolObservationTest(unittest.TestCase):
             report = (Path(manifest["output_root"]) / "stock_pool_observation_report.md").read_text(encoding="utf-8")
             self.assertNotIn("模型延遲公開成績單池", report)
 
-    def test_batch_resolves_radar_pool_from_snapshot_dir(self) -> None:
+    def test_batch_resolves_radar_pool_from_formal_radar_metrics(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             cache_dir = root / "cache"
-            snapshot_dir = root / "snapshots"
+            radar_data_dir = root / "radar_data"
             cache_dir.mkdir()
             _trend_frame(dates, start=100, step=0.5, volume=20_000_000).reset_index(names="date").to_csv(
                 cache_dir / "1111_TW.csv",
                 index=False,
             )
-            _write_snapshot(snapshot_dir / "radar_snapshot_20250601.csv", date=dates[-1].strftime("%Y-%m-%d"))
+            _write_stock_metrics(
+                radar_data_dir / "stock_metrics.refreshed.csv",
+                [
+                    {
+                        "symbol": "1111",
+                        "name": "測試記憶體",
+                        "sector": "記憶體",
+                        "pullback_quality": 70,
+                        "chip_cleanliness": 56,
+                        "technical_setup": 78,
+                        "liquidity": 100,
+                        "risk_heat": 53,
+                    }
+                ],
+            )
 
             manifest = run_stock_pool_observation_batch(
                 pools=[
@@ -239,7 +251,7 @@ class StockPoolObservationTest(unittest.TestCase):
                 warmup_start=dates[0].strftime("%Y-%m-%d"),
                 cache_dir=cache_dir,
                 output_root=root / "out",
-                radar_snapshot_dir=snapshot_dir,
+                radar_data_dir=radar_data_dir,
                 radar_top_n=5,
             )
 
@@ -347,39 +359,35 @@ def _trend_frame(dates: pd.DatetimeIndex, *, start: float, step: float, volume: 
     )
 
 
-def _write_snapshot(path: Path, *, date: str) -> None:
+def _write_stock_metrics(path: Path, rows: list[dict[str, object]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8-sig", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=sorted(REQUIRED_SNAPSHOT_COLUMNS))
-        writer.writeheader()
-        row = {column: "" for column in sorted(REQUIRED_SNAPSHOT_COLUMNS)}
-        row.update(
-            {
-                "date": date,
-                "theme": "記憶體",
-                "symbol": "1111",
-                "name": "測試記憶體",
-                "theme_rank": "1",
-                "theme_score": "90",
-                "capital_share": "0.2",
-                "turnover_value": "100000000",
-                "stock_score": "85",
-                "bucket": "theme_leader",
-                "fundamental_pass": "true",
-                "fundamental_score": "80",
-                "fundamental_data_status": "ok",
-                "fundamental_source_date": date,
-                "risk_heat": "0.2",
-                "liquidity": "ok",
-                "stock_turnover_rank_in_theme": "1",
-                "stock_turnover_share_in_theme": "0.5",
-                "theme_leader_flag": "true",
-                "theme_second_line_flag": "false",
-                "theme_laggard_rebound_flag": "false",
-                "overheated_flag": "false",
-            }
-        )
-        writer.writerow(row)
+    defaults = {
+        "symbol": "",
+        "name": "",
+        "sector": "",
+        "close": 100,
+        "pullback_quality": 50,
+        "chip_cleanliness": 50,
+        "foreign_5d": 0,
+        "trust_5d": 0,
+        "margin_change_5d": 0,
+        "pe": 0,
+        "sector_pe_low": 0,
+        "sector_pe_avg": 0,
+        "sector_pe_high": 0,
+        "fair_value_low": 0,
+        "fair_value_avg": 0,
+        "fair_value_high": 0,
+        "revenue_yoy": 0,
+        "revenue_mom": 0,
+        "technical_setup": 50,
+        "liquidity": 100,
+        "risk_heat": 50,
+        "thesis": "",
+        "risk_reason": "",
+    }
+    frame = pd.DataFrame([{**defaults, **row} for row in rows])
+    frame.to_csv(path, index=False, encoding="utf-8-sig")
 
 
 if __name__ == "__main__":
