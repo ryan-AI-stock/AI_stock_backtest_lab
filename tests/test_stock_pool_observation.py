@@ -12,6 +12,7 @@ import test_paths  # noqa: F401
 
 from backtest_lab.radar_snapshot_readiness import REQUIRED_SNAPSHOT_COLUMNS
 from backtest_lab.stock_pool_observation import (
+    build_dispatched_stock_pool_observation,
     build_stock_pool_observation,
     run_stock_pool_observation_batch,
     write_stock_pool_observation,
@@ -108,6 +109,32 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertTrue((output_dir / "stock_pool_observation.json").exists())
             self.assertTrue((output_dir / "stock_pool_observation_candidates.csv").exists())
 
+    def test_best_preset_dispatches_to_frozen_strategy_observation(self) -> None:
+        dates = pd.bdate_range("2025-01-02", periods=160)
+        pool = {
+            "pool_id": "large_cap_best_v20260605",
+            "name": "AI中大型權值股池最佳版 v20260605",
+            "strategy_preset": "best_v20260605",
+            "resolved_symbols": [symbol_entry("2454.TW", source="fixed")],
+        }
+        prices = {"2454.TW": _trend_frame(dates, start=100, step=0.2, volume=20_000_000)}
+        expected = build_stock_pool_observation(
+            pool={**pool, "strategy_preset": "universal_pool_custom"},
+            prices_by_ticker=prices,
+            signal_date=dates[-1],
+        )
+
+        with patch("backtest_lab.stock_pool_observation._build_best_v20260605_observation", return_value=expected) as mocked:
+            observation = build_dispatched_stock_pool_observation(
+                pool=pool,
+                prices_by_ticker=prices,
+                signal_date=dates[-1],
+                warmup_start=dates[0].strftime("%Y-%m-%d"),
+            )
+
+        self.assertIs(observation, expected)
+        self.assertTrue(mocked.called)
+
     def test_batch_writes_manifest_and_skips_empty_pool(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)
         source_cache = {
@@ -164,7 +191,7 @@ class StockPoolObservationTest(unittest.TestCase):
                         {
                             "pool_id": "large_cap_best_v20260605",
                             "name": "AI中大型權值股池最佳版 v20260605",
-                            "strategy_preset": "best_v20260605",
+                            "strategy_preset": "universal_pool_custom",
                             "operational_observation": True,
                             "resolved_symbols": [symbol_entry("2330.TW", source="fixed")],
                         },

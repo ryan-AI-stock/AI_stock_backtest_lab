@@ -11,11 +11,13 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
+from backtest_lab.config import load_config
 from backtest_lab.data import download_yfinance_prices
 from backtest_lab.frozen_report_pdf import _configure_chinese_font, _save_figure_as_raster_pdf_page
+from backtest_lab.frozen_strategy_monitor import build_frozen_strategy_signal
 from backtest_lab.radar_snapshot_v2_source import load_radar_snapshot_history, select_radar_snapshot_candidates
 from backtest_lab.stock_pool_store import StockPoolStore
-from backtest_lab.strategy_preset_dispatcher import dispatch_pool
+from backtest_lab.strategy_preset_dispatcher import dispatch_pool, resolve_strategy_preset
 from backtest_lab.universal_pool_strategy import (
     PoolProfile,
     UniversalCandidateScore,
@@ -30,6 +32,7 @@ DEFAULT_OUTPUT_ROOT = "outputs/stock_pool_observations"
 REPORT_NAME = "AI股票池觀察總覽"
 REPORT_VERSION = "v20260612"
 REPORT_LATEST_FILENAME = f"{REPORT_NAME}_最新版_{REPORT_VERSION}.pdf"
+FROZEN_BEST_GROUP_ID = "group_c_0050_00631l_plus_mega_caps"
 
 
 @dataclass(frozen=True)
@@ -120,6 +123,35 @@ def build_stock_pool_observation(
     )
 
 
+def build_dispatched_stock_pool_observation(
+    *,
+    pool: dict[str, Any],
+    prices_by_ticker: dict[str, pd.DataFrame],
+    signal_date: str | pd.Timestamp,
+    warmup_start: str,
+    theme_by_ticker: dict[str, str] | None = None,
+    conviction_by_ticker: dict[str, float] | None = None,
+    require_exact_signal_date: bool = False,
+) -> StockPoolObservation:
+    spec = resolve_strategy_preset(pool.get("strategy_preset"))
+    if spec.preset == "best_v20260605":
+        return _build_best_v20260605_observation(
+            pool=pool,
+            prices_by_ticker=prices_by_ticker,
+            signal_date=signal_date,
+            warmup_start=warmup_start,
+            require_exact_signal_date=require_exact_signal_date,
+        )
+    return build_stock_pool_observation(
+        pool=pool,
+        prices_by_ticker=prices_by_ticker,
+        signal_date=signal_date,
+        theme_by_ticker=theme_by_ticker,
+        conviction_by_ticker=conviction_by_ticker,
+        require_exact_signal_date=require_exact_signal_date,
+    )
+
+
 def write_stock_pool_observation(output_dir: Path, observation: StockPoolObservation) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     payload = observation.to_dict()
@@ -190,10 +222,11 @@ def run_stock_pool_observation_batch(
             )
             if not prices:
                 raise ValueError(f"No price data available for pool tickers: {', '.join(tickers)}")
-            observation = build_stock_pool_observation(
+            observation = build_dispatched_stock_pool_observation(
                 pool=pool,
                 prices_by_ticker=prices,
                 signal_date=signal_date,
+                warmup_start=warmup_start,
                 require_exact_signal_date=require_exact_signal_date,
             )
             pool_dir = root / str(pool["pool_id"])
@@ -445,10 +478,11 @@ def main() -> None:
     )
     if not prices:
         raise ValueError(f"No price data available for pool tickers: {', '.join(tickers)}")
-    observation = build_stock_pool_observation(
+    observation = build_dispatched_stock_pool_observation(
         pool=pool,
         prices_by_ticker=prices,
         signal_date=args.signal_date,
+        warmup_start=args.warmup_start,
         require_exact_signal_date=args.require_exact_signal_date,
     )
     if missing_price_tickers:
@@ -466,6 +500,98 @@ def _resolve_signal_date(prices_by_ticker: dict[str, pd.DataFrame], requested: p
     if not common:
         raise ValueError(f"No common signal date on or before {requested.strftime('%Y-%m-%d')}")
     return max(common)
+
+
+def _build_best_v20260605_observation(
+    *,
+    pool: dict[str, Any],
+    prices_by_ticker: dict[str, pd.DataFrame],
+    signal_date: str | pd.Timestamp,
+    warmup_start: str,
+    require_exact_signal_date: bool,
+) -> StockPoolObservation:
+    requested_ts = pd.Timestamp(signal_date)
+    signal_ts = _resolve_signal_date(prices_by_ticker, requested_ts)
+    if require_exact_signal_date and signal_ts != requested_ts.normalize():
+        raise ValueError(
+            f"No exact common price data for signal date {requested_ts.strftime('%Y-%m-%d')}; "
+            f"latest common date is {signal_ts.strftime('%Y-%m-%d')}"
+        )
+
+    config = load_config("configs/ep05_universe.json")
+    group = config.group_by_id(FROZEN_BEST_GROUP_ID)
+    labels = {asset.ticker: asset.label for asset in group.assets}
+    asset_types = {asset.ticker: asset.asset_type for asset in group.assets}
+    required_tickers = set(labels)
+    missing = sorted(required_tickers - set(prices_by_ticker))
+    if missing:
+        raise ValueError(f"best_v20260605 requires full large-cap pool prices: {', '.join(missing)}")
+
+    signal = build_frozen_strategy_signal(
+        signal_date=signal_ts.strftime("%Y-%m-%d"),
+        replay_start=warmup_start,
+        prices_by_ticker={ticker: prices_by_ticker[ticker] for ticker in sorted(required_tickers)},
+        labels=labels,
+        asset_types=asset_types,
+        initial_cash=config.initial_cash_twd,
+        cost_model=config.cost_model,
+        manual_splits=config.manual_splits,
+    )
+    profile = infer_pool_profile(prices_by_ticker, signal_ts)
+    params = default_parameters_for_profile(profile)
+    universal = score_universal_candidates(prices_by_ticker, signal_ts, params)
+    candidates: list[UniversalCandidateScore] = []
+    for row in signal.ranking:
+        ticker = str(row["ticker"])
+        base = universal.get(ticker) or UniversalCandidateScore(
+            ticker=ticker,
+            score=0.0,
+            ret20=0.0,
+            ret60=0.0,
+            ret120=0.0,
+            vol20=0.0,
+            avg_turnover_twd=0.0,
+            drawdown20=0.0,
+            passed=False,
+            reason="no_price_score",
+        )
+        passed = signal.target_is_actionable and ticker == signal.target_ticker
+        candidates.append(
+            UniversalCandidateScore(
+                ticker=ticker,
+                score=float(row["score"]),
+                ret20=base.ret20,
+                ret60=base.ret60,
+                ret120=base.ret120,
+                vol20=base.vol20,
+                avg_turnover_twd=base.avg_turnover_twd,
+                drawdown20=base.drawdown20,
+                passed=passed,
+                reason=signal.model_target_status if passed else str(row.get("score_band") or ""),
+            )
+        )
+    top_ticker = signal.target_ticker if signal.target_is_actionable else None
+    display_by_ticker = {
+        symbol["ticker"]: symbol.get("display") or labels.get(symbol["ticker"], symbol["ticker"])
+        for symbol in pool.get("resolved_symbols", [])
+    }
+    return StockPoolObservation(
+        schema_version=1,
+        pool_id=str(pool["pool_id"]),
+        pool_name=str(pool["name"]),
+        strategy_preset=str(pool.get("strategy_preset") or "best_v20260605"),
+        signal_date=signal.signal_date,
+        data_end_date=signal.signal_date,
+        candidate_count=len(candidates),
+        passed_count=sum(1 for candidate in candidates if candidate.passed),
+        pool_profile=profile,
+        parameters=params,
+        top_ticker=top_ticker,
+        top_display=display_by_ticker.get(top_ticker, labels.get(top_ticker, top_ticker)) if top_ticker else None,
+        top_score=next((candidate.score for candidate in candidates if candidate.ticker == top_ticker), None),
+        action_state=signal.model_target_status,
+        candidates=candidates,
+    )
 
 
 def _observation_pools(pools: list[dict[str, Any]], *, operational_only: bool) -> list[dict[str, Any]]:
