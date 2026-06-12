@@ -190,6 +190,35 @@ jobs:
             --require-exact-signal-date \
             "${radar_args[@]}"
 
+      - name: Audit optional risk-factor data readiness
+        if: steps.schedule-gate.outputs.should_run == 'true'
+        shell: bash
+        env:
+          PYTHONPATH: src
+          RADAR_DATA_DIR: ${{ steps.observation-inputs.outputs.radar_data_dir }}
+          MARKET_CAP_DATA_PATH: ${{ steps.observation-inputs.outputs.market_cap_data }}
+          INSTITUTIONAL_FLOW_DATA_PATH: ${{ vars.INSTITUTIONAL_FLOW_DATA_PATH }}
+          MARGIN_SHORT_DATA_PATH: ${{ vars.MARGIN_SHORT_DATA_PATH }}
+          BORROW_LENDING_DATA_PATH: ${{ vars.BORROW_LENDING_DATA_PATH }}
+          DAY_TRADING_DATA_PATH: ${{ vars.DAY_TRADING_DATA_PATH }}
+          SENTIMENT_DATA_PATH: ${{ vars.SENTIMENT_DATA_PATH }}
+        run: |
+          date_key="${{ steps.observation-inputs.outputs.signal_date }}"
+          date_key="${date_key//-/}"
+          output_dir="outputs/stock_pool_observations/${date_key}"
+          mkdir -p "$output_dir"
+          python -m backtest_lab.risk_factor_readiness \
+            --signal-date "${{ steps.observation-inputs.outputs.signal_date }}" \
+            --radar-data-dir "$RADAR_DATA_DIR" \
+            --market-cap-data "$MARKET_CAP_DATA_PATH" \
+            --institutional-flow-data "$INSTITUTIONAL_FLOW_DATA_PATH" \
+            --margin-short-data "$MARGIN_SHORT_DATA_PATH" \
+            --borrow-lending-data "$BORROW_LENDING_DATA_PATH" \
+            --day-trading-data "$DAY_TRADING_DATA_PATH" \
+            --sentiment-data "$SENTIMENT_DATA_PATH" \
+            --output-json "${output_dir}/risk_factor_readiness.json" \
+            --output-csv "${output_dir}/risk_factor_readiness_signals.csv"
+
       - name: Check whether latest observation PDF exists
         if: steps.schedule-gate.outputs.should_run == 'true'
         id: observation-pdf
