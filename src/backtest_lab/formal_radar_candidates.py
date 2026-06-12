@@ -20,6 +20,7 @@ class FormalRadarCandidate:
     score: float
     bucket: str
     rank: int
+    report_date: str = ""
 
     @property
     def ticker(self) -> str:
@@ -33,11 +34,46 @@ class FormalRadarCandidate:
 def load_formal_radar_candidates(
     data_dir: str | Path,
     *,
+    signal_date: str | None = None,
+    candidate_filename: str = "formal_radar_candidates.latest.csv",
     stock_metrics_filename: str = "stock_metrics.refreshed.csv",
 ) -> list[FormalRadarCandidate]:
-    path = Path(data_dir) / stock_metrics_filename
+    data_path = Path(data_dir)
+    candidate_path = data_path / candidate_filename
+    if candidate_path.exists():
+        return _load_candidate_interface(candidate_path, signal_date=signal_date)
+    return _load_from_stock_metrics(data_path / stock_metrics_filename)
+
+
+def _load_candidate_interface(path: Path, *, signal_date: str | None) -> list[FormalRadarCandidate]:
+    frame = pd.read_csv(path, dtype={"symbol": str}).fillna("")
+    if "selected_for_backtest_pool" not in frame.columns:
+        return []
+    selected = frame[frame["selected_for_backtest_pool"].astype(str).str.lower() == "true"]
+    if selected.empty:
+        return []
+    report_dates = {str(value).strip() for value in selected.get("report_date", []) if str(value).strip()}
+    if signal_date and report_dates and signal_date not in report_dates:
+        return []
+    rows = selected.sort_values(["bucket_key", "rank_in_bucket", "score"], ascending=[True, True, False])
+    return [
+        FormalRadarCandidate(
+            symbol=str(row.get("symbol") or "").strip(),
+            name=str(row.get("name") or row.get("symbol") or "").strip(),
+            sector=str(row.get("sector") or "").strip(),
+            score=_number(row.get("score")),
+            bucket=str(row.get("bucket_key") or "").strip(),
+            rank=int(_number(row.get("rank_in_bucket")) or index + 1),
+            report_date=str(row.get("report_date") or "").strip(),
+        )
+        for index, (_, row) in enumerate(rows.iterrows())
+        if str(row.get("symbol") or "").strip()
+    ]
+
+
+def _load_from_stock_metrics(path: Path) -> list[FormalRadarCandidate]:
     if not path.exists():
-        raise FileNotFoundError(f"Formal radar stock metrics not found: {path}")
+        raise FileNotFoundError(f"Formal radar candidate source not found: {path}")
     frame = pd.read_csv(path, dtype={"symbol": str}).fillna("")
     scored = sorted(
         (_score_row(row) for _, row in frame.iterrows()),
@@ -74,6 +110,7 @@ def formal_radar_candidates_to_symbols(candidates: list[FormalRadarCandidate]) -
             "formal_bucket": candidate.bucket,
             "formal_score": candidate.score,
             "formal_rank": candidate.rank,
+            "formal_report_date": candidate.report_date,
         }
         for candidate in candidates
     ]

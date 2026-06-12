@@ -17,6 +17,63 @@ from backtest_lab.formal_radar_candidates import (
 
 
 class FormalRadarCandidatesTest(unittest.TestCase):
+    def test_loads_selected_rows_from_formal_candidate_interface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_candidate_interface(
+                root / "formal_radar_candidates.latest.csv",
+                [
+                    {
+                        "report_date": "2026-06-12",
+                        "symbol": "2408",
+                        "name": "南亞科",
+                        "sector": "記憶體",
+                        "score": "73.8",
+                        "bucket_key": "watch",
+                        "rank_in_bucket": "1",
+                        "selected_for_backtest_pool": "true",
+                    },
+                    {
+                        "report_date": "2026-06-12",
+                        "symbol": "2368",
+                        "name": "金像電",
+                        "sector": "PCB/載板",
+                        "score": "70.7",
+                        "bucket_key": "watch",
+                        "rank_in_bucket": "2",
+                        "selected_for_backtest_pool": "false",
+                    },
+                ],
+            )
+
+            candidates = load_formal_radar_candidates(root, signal_date="2026-06-12")
+
+        self.assertEqual([item.symbol for item in candidates], ["2408"])
+        self.assertEqual(candidates[0].report_date, "2026-06-12")
+
+    def test_rejects_stale_formal_candidate_interface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_candidate_interface(
+                root / "formal_radar_candidates.latest.csv",
+                [
+                    {
+                        "report_date": "2026-05-29",
+                        "symbol": "2408",
+                        "name": "南亞科",
+                        "sector": "記憶體",
+                        "score": "73.8",
+                        "bucket_key": "watch",
+                        "rank_in_bucket": "1",
+                        "selected_for_backtest_pool": "true",
+                    }
+                ],
+            )
+
+            candidates = load_formal_radar_candidates(root, signal_date="2026-06-12")
+
+        self.assertEqual(candidates, [])
+
     def test_uses_actionable_bucket_before_watch_bucket(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -107,6 +164,11 @@ def _row(
 
 
 def _write_stock_metrics(path: Path, rows: list[dict[str, object]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(rows).to_csv(path, index=False, encoding="utf-8-sig")
+
+
+def _write_candidate_interface(path: Path, rows: list[dict[str, object]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(rows).to_csv(path, index=False, encoding="utf-8-sig")
 

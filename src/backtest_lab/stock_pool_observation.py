@@ -653,7 +653,7 @@ def _resolve_dynamic_observation_pool(
     if data_dir is None:
         return pool
     try:
-        candidates = load_formal_radar_candidates(data_dir)
+        candidates = load_formal_radar_candidates(data_dir, signal_date=signal_date)
     except FileNotFoundError:
         return pool
     updated = json.loads(json.dumps(pool, ensure_ascii=False))
