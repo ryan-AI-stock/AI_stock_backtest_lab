@@ -291,6 +291,7 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertIn("day_trading", manifest["risk_factor_sources"])
             self.assertEqual(manifest["risk_factor_count"], 1)
             self.assertEqual(manifest["generated"][0]["top_ticker"], "1111.TW")
+            self.assertEqual(manifest["generated"][0]["top_candidates"][0]["display"], "測試記憶體(1111)")
             self.assertEqual(
                 manifest["generated"][0]["source_metadata"]["candidate_displays"],
                 ["測試記憶體(1111)"],

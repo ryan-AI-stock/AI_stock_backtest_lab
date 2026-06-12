@@ -557,7 +557,7 @@ def _top_candidate_rows(observation: StockPoolObservation, limit: int = 3) -> li
             {
                 "rank": rank,
                 "ticker": candidate.ticker,
-                "display": _candidate_display(candidate.ticker),
+                "display": _candidate_display(observation, candidate.ticker),
                 "score": round(candidate.score, 6),
                 "passed": candidate.passed,
                 "is_model_target": candidate.ticker == observation.top_ticker,
@@ -567,9 +567,19 @@ def _top_candidate_rows(observation: StockPoolObservation, limit: int = 3) -> li
     return rows
 
 
-def _candidate_display(ticker: str) -> str:
+def _candidate_display(observation: StockPoolObservation, ticker: str) -> str:
+    if ticker == observation.top_ticker and observation.top_display:
+        return observation.top_display
+    symbol = ticker.replace(".TW", "").replace(".TWO", "")
+    metadata = observation.source_metadata or {}
+    for candidate_symbol, candidate_display in zip(
+        metadata.get("candidate_symbols") or [],
+        metadata.get("candidate_displays") or [],
+    ):
+        if str(candidate_symbol) == symbol and candidate_display:
+            return str(candidate_display)
     known = KNOWN_SYMBOLS.get(ticker, {})
-    symbol = known.get("symbol") or ticker.replace(".TW", "").replace(".TWO", "")
+    symbol = known.get("symbol") or symbol
     name = known.get("name") or symbol
     return f"{name}({symbol})"
 
