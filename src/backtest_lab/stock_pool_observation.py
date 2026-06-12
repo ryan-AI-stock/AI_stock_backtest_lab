@@ -216,7 +216,7 @@ def run_stock_pool_observation_batch(
         try:
             prices, missing_price_tickers = _load_observation_price_frames(
                 tickers=tickers,
-                start_date=warmup_start,
+                start_date=_price_start_for_pool(pool, warmup_start),
                 end_date=signal_date,
                 cache_dir=cache_dir,
             )
@@ -472,7 +472,7 @@ def main() -> None:
         raise ValueError(f"Pool has no resolved tickers: {args.pool_id}")
     prices, missing_price_tickers = _load_observation_price_frames(
         tickers=tickers,
-        start_date=args.warmup_start,
+        start_date=_price_start_for_pool(pool, args.warmup_start),
         end_date=args.signal_date,
         cache_dir=args.cache_dir,
     )
@@ -626,6 +626,12 @@ def _load_observation_price_frames(
         except Exception:
             missing.append(ticker)
     return prices, missing
+
+
+def _price_start_for_pool(pool: dict[str, Any], warmup_start: str) -> str:
+    if pool.get("strategy_preset") == "best_v20260605":
+        return (pd.Timestamp(warmup_start) - pd.DateOffset(years=2)).strftime("%Y-%m-%d")
+    return warmup_start
 
 
 def _resolve_dynamic_observation_pool(
