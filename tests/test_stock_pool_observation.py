@@ -70,6 +70,24 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertEqual(observation.signal_date, dates[-1].strftime("%Y-%m-%d"))
         self.assertEqual(observation.data_end_date, dates[-1].strftime("%Y-%m-%d"))
 
+    def test_observation_can_require_exact_signal_date(self) -> None:
+        dates = pd.bdate_range("2025-01-02", periods=160)
+        pool = {
+            "pool_id": "custom_ai_pool",
+            "name": "自訂AI觀察池",
+            "strategy_preset": "universal_pool_custom",
+            "resolved_symbols": [symbol_entry("2330.TW", source="manual")],
+        }
+        prices = {"2330.TW": _trend_frame(dates, start=100, step=0.2, volume=20_000_000)}
+
+        with self.assertRaisesRegex(ValueError, "No exact common price data"):
+            build_stock_pool_observation(
+                pool=pool,
+                prices_by_ticker=prices,
+                signal_date=(dates[-1] + pd.Timedelta(days=3)).strftime("%Y-%m-%d"),
+                require_exact_signal_date=True,
+            )
+
     def test_write_observation_outputs_json_and_candidates_csv(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)
         pool = {
@@ -217,6 +235,36 @@ class StockPoolObservationTest(unittest.TestCase):
             report = (Path(manifest["output_root"]) / "stock_pool_observation_report.md").read_text(encoding="utf-8")
             self.assertIn("缺價股票", report)
             self.assertIn("9999.TW", report)
+
+    def test_batch_skips_without_latest_pdf_when_exact_signal_date_missing(self) -> None:
+        dates = pd.bdate_range("2025-01-02", periods=160)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache_dir = root / "cache"
+            cache_dir.mkdir()
+            prices = {"1111.TW": _trend_frame(dates, start=100, step=0.5, volume=20_000_000)}
+
+            with patch("backtest_lab.stock_pool_observation.download_yfinance_prices", return_value=prices):
+                manifest = run_stock_pool_observation_batch(
+                    pools=[
+                        {
+                            "pool_id": "strict_pool",
+                            "name": "嚴格日期池",
+                            "strategy_preset": "universal_pool_custom",
+                            "resolved_symbols": [{"ticker": "1111.TW", "display": "測試(1111)", "asset_type": "stock"}],
+                        }
+                    ],
+                    signal_date=(dates[-1] + pd.Timedelta(days=3)).strftime("%Y-%m-%d"),
+                    warmup_start=dates[0].strftime("%Y-%m-%d"),
+                    cache_dir=cache_dir,
+                    output_root=root / "out",
+                    require_exact_signal_date=True,
+                )
+
+            self.assertEqual(manifest["generated"], [])
+            self.assertEqual(len(manifest["skipped"]), 1)
+            self.assertIn("No exact common price data", manifest["skipped"][0]["reason"])
+            self.assertFalse((Path(manifest["output_root"]) / "AI股票池觀察總覽_最新版_v20260612.pdf").exists())
 
 
 def _trend_frame(dates: pd.DatetimeIndex, *, start: float, step: float, volume: int) -> pd.DataFrame:

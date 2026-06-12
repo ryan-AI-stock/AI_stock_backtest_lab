@@ -15,6 +15,8 @@ class StockPoolObservationWorkflowTest(unittest.TestCase):
         self.assertIn("python -m backtest_lab.drive_publish", workflow)
         self.assertIn("AI股票池觀察總覽_最新版_v20260612.pdf", workflow)
         self.assertIn("STOCK_POOL_OBSERVATION_DRIVE_FOLDER_ID", workflow)
+        self.assertIn("--require-exact-signal-date", workflow)
+        self.assertIn("steps.observation-pdf.outputs.exists == 'true'", workflow)
 
 
 if __name__ == "__main__":

@@ -64,8 +64,15 @@ def build_stock_pool_observation(
     signal_date: str | pd.Timestamp,
     theme_by_ticker: dict[str, str] | None = None,
     conviction_by_ticker: dict[str, float] | None = None,
+    require_exact_signal_date: bool = False,
 ) -> StockPoolObservation:
-    signal_ts = _resolve_signal_date(prices_by_ticker, pd.Timestamp(signal_date))
+    requested_ts = pd.Timestamp(signal_date)
+    signal_ts = _resolve_signal_date(prices_by_ticker, requested_ts)
+    if require_exact_signal_date and signal_ts != requested_ts.normalize():
+        raise ValueError(
+            f"No exact common price data for signal date {requested_ts.strftime('%Y-%m-%d')}; "
+            f"latest common date is {signal_ts.strftime('%Y-%m-%d')}"
+        )
     available_symbols = [
         symbol
         for symbol in pool.get("resolved_symbols") or pool.get("symbols") or []
@@ -135,6 +142,7 @@ def run_stock_pool_observation_batch(
     output_root: str | Path,
     radar_snapshot_dir: str | Path | None = None,
     radar_top_n: int = 20,
+    require_exact_signal_date: bool = False,
 ) -> dict[str, Any]:
     date_key = pd.Timestamp(signal_date).strftime("%Y%m%d")
     root = Path(output_root) / date_key
@@ -142,6 +150,7 @@ def run_stock_pool_observation_batch(
     manifest: dict[str, Any] = {
         "status": "ready",
         "signal_date": signal_date,
+        "require_exact_signal_date": require_exact_signal_date,
         "output_root": str(root),
         "generated": [],
         "skipped": [],
@@ -181,6 +190,7 @@ def run_stock_pool_observation_batch(
                 pool=pool,
                 prices_by_ticker=prices,
                 signal_date=signal_date,
+                require_exact_signal_date=require_exact_signal_date,
             )
             pool_dir = root / str(pool["pool_id"])
             write_stock_pool_observation(pool_dir, observation)
@@ -249,7 +259,8 @@ def write_stock_pool_observation_batch_summary(root: Path, manifest: dict[str, A
         markdown_observation_batch_report(manifest, rows),
         encoding="utf-8",
     )
-    write_stock_pool_observation_batch_pdf(root / REPORT_LATEST_FILENAME, manifest, rows)
+    if manifest.get("generated"):
+        write_stock_pool_observation_batch_pdf(root / REPORT_LATEST_FILENAME, manifest, rows)
 
 
 def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[str, Any]]) -> str:
@@ -380,6 +391,7 @@ def main() -> None:
     parser.add_argument("--warmup-start", default="2020-01-02")
     parser.add_argument("--radar-snapshot-dir", default=os.getenv("RADAR_SNAPSHOT_DIR", ""))
     parser.add_argument("--radar-top-n", type=int, default=20)
+    parser.add_argument("--require-exact-signal-date", action="store_true")
     args = parser.parse_args()
 
     store = StockPoolStore(args.pool_store)
@@ -393,6 +405,7 @@ def main() -> None:
             output_root=args.output_root,
             radar_snapshot_dir=args.radar_snapshot_dir or None,
             radar_top_n=args.radar_top_n,
+            require_exact_signal_date=args.require_exact_signal_date,
         )
         print(f"STOCK_POOL_OBSERVATION_MANIFEST={Path(manifest['output_root']).resolve() / 'stock_pool_observation_manifest.json'}")
         return
@@ -420,6 +433,7 @@ def main() -> None:
         pool=pool,
         prices_by_ticker=prices,
         signal_date=args.signal_date,
+        require_exact_signal_date=args.require_exact_signal_date,
     )
     if missing_price_tickers:
         print(f"STOCK_POOL_OBSERVATION_MISSING_PRICE_TICKERS={','.join(missing_price_tickers)}")

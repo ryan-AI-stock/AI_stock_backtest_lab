@@ -130,10 +130,25 @@ jobs:
             --warmup-start 2020-01-02 \
             --cache-dir backtest_cache/stock_pool_observations \
             --output-root outputs/stock_pool_observations \
+            --require-exact-signal-date \
             "${radar_args[@]}"
 
-      - name: Publish latest PDF to Google Drive
+      - name: Check whether latest observation PDF exists
         if: steps.schedule-gate.outputs.should_run == 'true'
+        id: observation-pdf
+        shell: bash
+        run: |
+          path="outputs/stock_pool_observations/$(echo '${{ steps.observation-inputs.outputs.signal_date }}' | tr -d '-')/AI股票池觀察總覽_最新版_v20260612.pdf"
+          if [ -f "$path" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "path=$path" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "No latest observation PDF produced; skip Drive overwrite."
+          fi
+
+      - name: Publish latest PDF to Google Drive
+        if: steps.schedule-gate.outputs.should_run == 'true' && steps.observation-pdf.outputs.exists == 'true'
         env:
           PYTHONPATH: src
           GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
@@ -146,7 +161,7 @@ jobs:
             --folder-id "$STOCK_POOL_OBSERVATION_DRIVE_FOLDER_ID" \
             --file-id "$STOCK_POOL_OBSERVATION_DRIVE_FILE_ID" \
             --remote-name "AI股票池觀察總覽_最新版_v20260612.pdf" \
-            --file "outputs/stock_pool_observations/$(echo '${{ steps.observation-inputs.outputs.signal_date }}' | tr -d '-')/AI股票池觀察總覽_最新版_v20260612.pdf"
+            --file "${{ steps.observation-pdf.outputs.path }}"
 
       - name: Upload observation artifact
         if: steps.schedule-gate.outputs.should_run == 'true'
