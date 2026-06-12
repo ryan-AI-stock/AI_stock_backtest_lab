@@ -261,7 +261,7 @@ python -m backtest_lab.stock_pool_observation `
   --output-root outputs/stock_pool_observations
 ```
 
-GitHub Actions workflow：`.github/workflows/stock_pool_observation.yml`。workflow 會嘗試 checkout `ryan-AI-stock/AI_stock_rotation_radar`，並預設使用 `AI_stock_rotation_radar/data` 作為每日雷達正式分類來源。若 RADAR repo checkout 失敗或未提供正式分類 CSV，雷達池會在 manifest 中標示 `missing_formal_radar_candidates`，其餘可解析股票池仍會正常產出。
+GitHub Actions workflow：`.github/workflows/stock_pool_observation.yml`。workflow 會嘗試 checkout `ryan-AI-stock/AI_stock_rotation_radar`，並預設使用 `AI_stock_rotation_radar/data` 作為每日雷達正式分類來源。Backtest Lab 不在這條 workflow 內重跑 RADAR 全市場更新；RADAR 端必須先提供正式分類候選 CSV，例如 `stock_metrics.refreshed.csv`。若 RADAR repo checkout 失敗或未提供正式分類 CSV，雷達池會在 manifest 中標示 `missing_formal_radar_candidates`，其餘可解析股票池仍會正常產出。
 
 若研究時需要把非操盤池也納入觀察輸出，可手動加上 `--include-non-operational-pools`；正式排程不使用此參數。
 

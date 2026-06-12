@@ -126,22 +126,6 @@ jobs:
             printf '%s' "$STOCK_POOLS_JSON" > work/stock_pools/stock_pools.json
           fi
 
-      - name: Refresh formal radar candidate metrics
-        if: steps.schedule-gate.outputs.should_run == 'true'
-        shell: bash
-        run: |
-          if [ ! -f "AI_stock_rotation_radar/rotation_radar/cli.py" ]; then
-            echo "RADAR repo checkout not available; radar pool will be skipped if no formal candidate CSV exists."
-            exit 0
-          fi
-          cd AI_stock_rotation_radar
-          export PYTHONPATH=.
-          python -m rotation_radar.cli \
-            --update-latest-report \
-            --report-date "${{ steps.observation-inputs.outputs.signal_date }}" \
-            --skip-depth-refresh \
-            --output reports/latest_for_backtest_pool.html
-
       - name: Generate stock-pool observations
         if: steps.schedule-gate.outputs.should_run == 'true'
         shell: bash
