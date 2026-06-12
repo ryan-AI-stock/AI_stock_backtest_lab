@@ -239,6 +239,7 @@ class StockPoolObservationTest(unittest.TestCase):
                         "bucket_key": "watch",
                         "rank_in_bucket": "1",
                         "selected_for_backtest_pool": "true",
+                        "market_cap_twd": "80,000,000,000",
                     }
                 ],
             )
@@ -262,12 +263,19 @@ class StockPoolObservationTest(unittest.TestCase):
 
             self.assertEqual(len(manifest["generated"]), 1)
             self.assertEqual(manifest["generated"][0]["pool_id"], "radar_mid_small_calibrated_v1")
+            self.assertTrue(manifest["market_cap_source"].endswith("formal_radar_candidates.latest.csv"))
+            self.assertEqual(manifest["market_cap_count"], 1)
             self.assertEqual(manifest["generated"][0]["top_ticker"], "1111.TW")
             self.assertEqual(
                 manifest["generated"][0]["source_metadata"]["candidate_displays"],
                 ["測試記憶體(1111)"],
             )
             self.assertEqual(manifest["skipped"], [])
+            candidates = pd.read_csv(
+                Path(manifest["generated"][0]["output_dir"]) / "stock_pool_observation_candidates.csv"
+            )
+            self.assertEqual(candidates.loc[0, "size_profile"], "mid_cap")
+            self.assertEqual(candidates.loc[0, "market_cap_twd"], 80_000_000_000)
             report = (Path(manifest["output_root"]) / "stock_pool_observation_report.md").read_text(encoding="utf-8")
             self.assertIn("RADAR正式候選", report)
             self.assertIn("測試記憶體(1111)", report)

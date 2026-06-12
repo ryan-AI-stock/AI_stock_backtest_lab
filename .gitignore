@@ -8,10 +8,10 @@ backtest_cache/
 backtest_outputs/
 outputs/
 work/
+tmp/
 
 .env
 *.pem
 *.key
 credentials*.json
 token*.json
-

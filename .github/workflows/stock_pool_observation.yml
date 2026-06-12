@@ -87,6 +87,7 @@ jobs:
           INPUT_POOL_ID: ${{ inputs.pool_id }}
           INPUT_RADAR_SNAPSHOT_DIR: ${{ inputs.radar_snapshot_dir }}
           VAR_RADAR_SNAPSHOT_DIR: ${{ vars.RADAR_SNAPSHOT_DIR }}
+          VAR_MARKET_CAP_DATA_PATH: ${{ vars.MARKET_CAP_DATA_PATH }}
         run: |
           if [ -n "$INPUT_SIGNAL_DATE" ]; then
             echo "signal_date=$INPUT_SIGNAL_DATE" >> "$GITHUB_OUTPUT"
@@ -111,8 +112,20 @@ jobs:
           fi
           if [ -d "AI_stock_rotation_radar/data" ]; then
             echo "radar_data_dir=AI_stock_rotation_radar/data" >> "$GITHUB_OUTPUT"
+            if [ -n "$VAR_MARKET_CAP_DATA_PATH" ]; then
+              echo "market_cap_data=$VAR_MARKET_CAP_DATA_PATH" >> "$GITHUB_OUTPUT"
+            elif [ -f "AI_stock_rotation_radar/data/market_cap.latest.csv" ]; then
+              echo "market_cap_data=AI_stock_rotation_radar/data/market_cap.latest.csv" >> "$GITHUB_OUTPUT"
+            elif [ -f "AI_stock_rotation_radar/data/market_caps.latest.csv" ]; then
+              echo "market_cap_data=AI_stock_rotation_radar/data/market_caps.latest.csv" >> "$GITHUB_OUTPUT"
+            elif [ -f "AI_stock_rotation_radar/data/stock_metrics.refreshed.csv" ]; then
+              echo "market_cap_data=AI_stock_rotation_radar/data/stock_metrics.refreshed.csv" >> "$GITHUB_OUTPUT"
+            else
+              echo "market_cap_data=" >> "$GITHUB_OUTPUT"
+            fi
           else
             echo "radar_data_dir=" >> "$GITHUB_OUTPUT"
+            echo "market_cap_data=" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Prepare optional stock pool store
@@ -133,6 +146,7 @@ jobs:
           PYTHONPATH: src
           RADAR_SNAPSHOT_DIR: ${{ steps.observation-inputs.outputs.radar_snapshot_dir }}
           RADAR_DATA_DIR: ${{ steps.observation-inputs.outputs.radar_data_dir }}
+          MARKET_CAP_DATA_PATH: ${{ steps.observation-inputs.outputs.market_cap_data }}
         run: |
           date_key="${{ steps.observation-inputs.outputs.signal_date }}"
           date_key="${date_key//-/}"
@@ -143,6 +157,9 @@ jobs:
           fi
           if [ -n "$RADAR_DATA_DIR" ]; then
             radar_args+=(--radar-data-dir "$RADAR_DATA_DIR")
+          fi
+          if [ -n "$MARKET_CAP_DATA_PATH" ]; then
+            radar_args+=(--market-cap-data "$MARKET_CAP_DATA_PATH")
           fi
           python -m backtest_lab.stock_pool_observation \
             --pool-id "${{ steps.observation-inputs.outputs.pool_id }}" \

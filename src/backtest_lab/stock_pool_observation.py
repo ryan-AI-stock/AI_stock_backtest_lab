@@ -14,6 +14,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 from backtest_lab.config import load_config
 from backtest_lab.data import download_yfinance_prices
 from backtest_lab.formal_radar_candidates import formal_radar_candidates_to_symbols, load_formal_radar_candidates
+from backtest_lab.market_cap_source import load_first_available_market_caps
 from backtest_lab.frozen_report_pdf import _configure_chinese_font, _save_figure_as_raster_pdf_page
 from backtest_lab.frozen_strategy_monitor import build_frozen_strategy_signal
 from backtest_lab.stock_pool_store import StockPoolStore
@@ -69,6 +70,7 @@ def build_stock_pool_observation(
     signal_date: str | pd.Timestamp,
     theme_by_ticker: dict[str, str] | None = None,
     conviction_by_ticker: dict[str, float] | None = None,
+    market_cap_by_ticker: dict[str, float] | None = None,
     require_exact_signal_date: bool = False,
 ) -> StockPoolObservation:
     requested_ts = pd.Timestamp(signal_date)
@@ -94,7 +96,10 @@ def build_stock_pool_observation(
         signal_ts,
         params,
         conviction_by_ticker=conviction_by_ticker,
-        market_cap_by_ticker=_market_cap_by_ticker(available_symbols),
+        market_cap_by_ticker={
+            **(market_cap_by_ticker or {}),
+            **_market_cap_by_ticker(available_symbols),
+        },
     )
     candidates = sorted(
         scored.values(),
@@ -134,6 +139,7 @@ def build_dispatched_stock_pool_observation(
     warmup_start: str,
     theme_by_ticker: dict[str, str] | None = None,
     conviction_by_ticker: dict[str, float] | None = None,
+    market_cap_by_ticker: dict[str, float] | None = None,
     require_exact_signal_date: bool = False,
 ) -> StockPoolObservation:
     spec = resolve_strategy_preset(pool.get("strategy_preset"))
@@ -143,6 +149,7 @@ def build_dispatched_stock_pool_observation(
             prices_by_ticker=prices_by_ticker,
             signal_date=signal_date,
             warmup_start=warmup_start,
+            market_cap_by_ticker=market_cap_by_ticker,
             require_exact_signal_date=require_exact_signal_date,
         )
     return build_stock_pool_observation(
@@ -151,6 +158,7 @@ def build_dispatched_stock_pool_observation(
         signal_date=signal_date,
         theme_by_ticker=theme_by_ticker,
         conviction_by_ticker=conviction_by_ticker,
+        market_cap_by_ticker=market_cap_by_ticker,
         require_exact_signal_date=require_exact_signal_date,
     )
 
@@ -228,6 +236,7 @@ def run_stock_pool_observation_batch(
     output_root: str | Path,
     radar_snapshot_dir: str | Path | None = None,
     radar_data_dir: str | Path | None = None,
+    market_cap_data: str | Path | None = None,
     radar_top_n: int = 20,
     require_exact_signal_date: bool = False,
     operational_only: bool = True,
@@ -235,11 +244,18 @@ def run_stock_pool_observation_batch(
     date_key = pd.Timestamp(signal_date).strftime("%Y%m%d")
     root = Path(output_root) / date_key
     root.mkdir(parents=True, exist_ok=True)
+    market_caps, market_cap_source = load_first_available_market_caps(
+        signal_date=signal_date,
+        explicit_path=market_cap_data,
+        radar_data_dir=radar_data_dir,
+    )
     manifest: dict[str, Any] = {
         "status": "ready",
         "signal_date": signal_date,
         "require_exact_signal_date": require_exact_signal_date,
         "operational_only": operational_only,
+        "market_cap_source": market_cap_source,
+        "market_cap_count": len(market_caps),
         "output_root": str(root),
         "generated": [],
         "skipped": [],
@@ -282,6 +298,7 @@ def run_stock_pool_observation_batch(
                 prices_by_ticker=prices,
                 signal_date=signal_date,
                 warmup_start=warmup_start,
+                market_cap_by_ticker=market_caps,
                 require_exact_signal_date=require_exact_signal_date,
             )
             pool_dir = root / str(pool["pool_id"])
@@ -493,6 +510,7 @@ def main() -> None:
     parser.add_argument("--warmup-start", default="2020-01-02")
     parser.add_argument("--radar-snapshot-dir", default=os.getenv("RADAR_SNAPSHOT_DIR", ""))
     parser.add_argument("--radar-data-dir", default=os.getenv("RADAR_DATA_DIR", ""))
+    parser.add_argument("--market-cap-data", default=os.getenv("MARKET_CAP_DATA_PATH", ""))
     parser.add_argument("--radar-top-n", type=int, default=20)
     parser.add_argument("--require-exact-signal-date", action="store_true")
     parser.add_argument(
@@ -513,6 +531,7 @@ def main() -> None:
             output_root=args.output_root,
             radar_snapshot_dir=args.radar_snapshot_dir or None,
             radar_data_dir=args.radar_data_dir or None,
+            market_cap_data=args.market_cap_data or None,
             radar_top_n=args.radar_top_n,
             require_exact_signal_date=args.require_exact_signal_date,
             operational_only=not args.include_non_operational_pools,
@@ -540,11 +559,19 @@ def main() -> None:
     )
     if not prices:
         raise ValueError(f"No price data available for pool tickers: {', '.join(tickers)}")
+    market_caps, market_cap_source = load_first_available_market_caps(
+        signal_date=args.signal_date,
+        explicit_path=args.market_cap_data or None,
+        radar_data_dir=args.radar_data_dir or None,
+    )
+    if market_cap_source:
+        print(f"STOCK_POOL_OBSERVATION_MARKET_CAP_SOURCE={Path(market_cap_source).resolve()}")
     observation = build_dispatched_stock_pool_observation(
         pool=pool,
         prices_by_ticker=prices,
         signal_date=args.signal_date,
         warmup_start=args.warmup_start,
+        market_cap_by_ticker=market_caps,
         require_exact_signal_date=args.require_exact_signal_date,
     )
     if missing_price_tickers:
@@ -570,6 +597,7 @@ def _build_best_v20260605_observation(
     prices_by_ticker: dict[str, pd.DataFrame],
     signal_date: str | pd.Timestamp,
     warmup_start: str,
+    market_cap_by_ticker: dict[str, float] | None,
     require_exact_signal_date: bool,
 ) -> StockPoolObservation:
     requested_ts = pd.Timestamp(signal_date)
@@ -601,7 +629,12 @@ def _build_best_v20260605_observation(
     )
     profile = infer_pool_profile(prices_by_ticker, signal_ts)
     params = default_parameters_for_profile(profile)
-    universal = score_universal_candidates(prices_by_ticker, signal_ts, params)
+    universal = score_universal_candidates(
+        prices_by_ticker,
+        signal_ts,
+        params,
+        market_cap_by_ticker=market_cap_by_ticker,
+    )
     candidates: list[UniversalCandidateScore] = []
     for row in signal.ranking:
         ticker = str(row["ticker"])
@@ -632,6 +665,8 @@ def _build_best_v20260605_observation(
                 reason=signal.model_target_status if passed else str(row.get("score_band") or ""),
                 liquidity_profile=base.liquidity_profile,
                 size_profile=base.size_profile,
+                market_cap_twd=base.market_cap_twd,
+                size_basis=base.size_basis,
                 profile_type=base.profile_type,
                 applied_score_mode=base.applied_score_mode,
             )
