@@ -4,6 +4,7 @@ import unittest
 
 import pandas as pd
 
+from backtest_lab.risk_factor_source import RiskFactorSignal
 from backtest_lab.universal_pool_strategy import (
     POOL_HIGH_LIQUIDITY,
     POOL_LOW_LIQUIDITY_OR_MIXED,
@@ -13,6 +14,7 @@ from backtest_lab.universal_pool_strategy import (
     SIZE_MID_CAP,
     SIZE_SMALL_CAP,
     SIZE_UNKNOWN,
+    UniversalPoolParameters,
     classify_candidate_size_profile,
     classify_candidate_liquidity_profile,
     default_parameters_for_profile,
@@ -87,6 +89,53 @@ class UniversalPoolStrategyTest(unittest.TestCase):
 
         self.assertFalse(score.passed)
         self.assertEqual(score.reason, "流動性不足")
+
+    def test_risk_signal_is_diagnostic_until_weight_is_enabled(self) -> None:
+        dates = pd.bdate_range("2024-01-02", periods=150)
+        prices = _price_frame(dates, close=100, volume=20_000_000)
+        risk_signal = RiskFactorSignal(
+            ticker="2454.TW",
+            total_risk_score=50.0,
+            margin_risk=50.0,
+            score_adjustment=-0.05,
+            reasons=("融資短線升溫",),
+            source_dates=("2024-07-29",),
+            source_kinds=("margin_short",),
+        )
+        base_params = UniversalPoolParameters(
+            min_avg_turnover_twd=0.0,
+            min_stock_score=-1.0,
+            overheated_20d_return=0.90,
+            score_mode="relative_strength",
+            risk_signal_weight=0.0,
+        )
+        weighted_params = UniversalPoolParameters(
+            min_avg_turnover_twd=0.0,
+            min_stock_score=-1.0,
+            overheated_20d_return=0.90,
+            score_mode="relative_strength",
+            risk_signal_weight=1.0,
+        )
+
+        diagnostic = score_universal_candidate(
+            ticker="2454.TW",
+            prices=prices,
+            signal_date=dates[-1],
+            params=base_params,
+            risk_signal=risk_signal,
+        )
+        weighted = score_universal_candidate(
+            ticker="2454.TW",
+            prices=prices,
+            signal_date=dates[-1],
+            params=weighted_params,
+            risk_signal=risk_signal,
+        )
+
+        self.assertEqual(diagnostic.score, 0.0)
+        self.assertEqual(diagnostic.flow_risk_score, 50.0)
+        self.assertEqual(diagnostic.flow_risk_reasons, "融資短線升溫")
+        self.assertLess(weighted.score, diagnostic.score)
 
     def test_mixed_pool_scores_each_stock_with_its_own_liquidity_profile(self) -> None:
         dates = pd.bdate_range("2024-01-02", periods=150)

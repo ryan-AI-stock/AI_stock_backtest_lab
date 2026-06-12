@@ -243,6 +243,25 @@ class StockPoolObservationTest(unittest.TestCase):
                     }
                 ],
             )
+            pd.DataFrame(
+                [
+                    {
+                        "date": dates[-1].strftime("%Y-%m-%d"),
+                        "ticker": "1111.TW",
+                        "margin_balance_5d_change_pct": 18.0,
+                        "margin_overheat_flag": "true",
+                    }
+                ]
+            ).to_csv(radar_data_dir / "margin_short.latest.csv", index=False, encoding="utf-8-sig")
+            pd.DataFrame(
+                [
+                    {
+                        "date": dates[-1].strftime("%Y-%m-%d"),
+                        "ticker": "1111.TW",
+                        "day_trading_volume_ratio": 42.0,
+                    }
+                ]
+            ).to_csv(radar_data_dir / "day_trading.latest.csv", index=False, encoding="utf-8-sig")
 
             manifest = run_stock_pool_observation_batch(
                 pools=[
@@ -265,6 +284,9 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertEqual(manifest["generated"][0]["pool_id"], "radar_mid_small_calibrated_v1")
             self.assertTrue(manifest["market_cap_source"].endswith("formal_radar_candidates.latest.csv"))
             self.assertEqual(manifest["market_cap_count"], 1)
+            self.assertIn("margin_short", manifest["risk_factor_sources"])
+            self.assertIn("day_trading", manifest["risk_factor_sources"])
+            self.assertEqual(manifest["risk_factor_count"], 1)
             self.assertEqual(manifest["generated"][0]["top_ticker"], "1111.TW")
             self.assertEqual(
                 manifest["generated"][0]["source_metadata"]["candidate_displays"],
@@ -276,6 +298,9 @@ class StockPoolObservationTest(unittest.TestCase):
             )
             self.assertEqual(candidates.loc[0, "size_profile"], "mid_cap")
             self.assertEqual(candidates.loc[0, "market_cap_twd"], 80_000_000_000)
+            self.assertGreater(candidates.loc[0, "flow_risk_score"], 0)
+            self.assertIn("融資短線升溫", candidates.loc[0, "flow_risk_reasons"])
+            self.assertIn("當沖比42.0%", candidates.loc[0, "flow_risk_reasons"])
             report = (Path(manifest["output_root"]) / "stock_pool_observation_report.md").read_text(encoding="utf-8")
             self.assertIn("RADAR正式候選", report)
             self.assertIn("測試記憶體(1111)", report)

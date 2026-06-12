@@ -15,6 +15,7 @@ from backtest_lab.config import load_config
 from backtest_lab.data import download_yfinance_prices
 from backtest_lab.formal_radar_candidates import formal_radar_candidates_to_symbols, load_formal_radar_candidates
 from backtest_lab.market_cap_source import load_first_available_market_caps
+from backtest_lab.risk_factor_source import RiskFactorSignal, load_first_available_risk_factors
 from backtest_lab.frozen_report_pdf import _configure_chinese_font, _save_figure_as_raster_pdf_page
 from backtest_lab.frozen_strategy_monitor import build_frozen_strategy_signal
 from backtest_lab.stock_pool_store import StockPoolStore
@@ -71,6 +72,7 @@ def build_stock_pool_observation(
     theme_by_ticker: dict[str, str] | None = None,
     conviction_by_ticker: dict[str, float] | None = None,
     market_cap_by_ticker: dict[str, float] | None = None,
+    risk_signal_by_ticker: dict[str, RiskFactorSignal] | None = None,
     require_exact_signal_date: bool = False,
 ) -> StockPoolObservation:
     requested_ts = pd.Timestamp(signal_date)
@@ -100,6 +102,7 @@ def build_stock_pool_observation(
             **(market_cap_by_ticker or {}),
             **_market_cap_by_ticker(available_symbols),
         },
+        risk_signal_by_ticker=risk_signal_by_ticker,
     )
     candidates = sorted(
         scored.values(),
@@ -140,6 +143,7 @@ def build_dispatched_stock_pool_observation(
     theme_by_ticker: dict[str, str] | None = None,
     conviction_by_ticker: dict[str, float] | None = None,
     market_cap_by_ticker: dict[str, float] | None = None,
+    risk_signal_by_ticker: dict[str, RiskFactorSignal] | None = None,
     require_exact_signal_date: bool = False,
 ) -> StockPoolObservation:
     spec = resolve_strategy_preset(pool.get("strategy_preset"))
@@ -150,6 +154,7 @@ def build_dispatched_stock_pool_observation(
             signal_date=signal_date,
             warmup_start=warmup_start,
             market_cap_by_ticker=market_cap_by_ticker,
+            risk_signal_by_ticker=risk_signal_by_ticker,
             require_exact_signal_date=require_exact_signal_date,
         )
     return build_stock_pool_observation(
@@ -159,6 +164,7 @@ def build_dispatched_stock_pool_observation(
         theme_by_ticker=theme_by_ticker,
         conviction_by_ticker=conviction_by_ticker,
         market_cap_by_ticker=market_cap_by_ticker,
+        risk_signal_by_ticker=risk_signal_by_ticker,
         require_exact_signal_date=require_exact_signal_date,
     )
 
@@ -237,6 +243,11 @@ def run_stock_pool_observation_batch(
     radar_snapshot_dir: str | Path | None = None,
     radar_data_dir: str | Path | None = None,
     market_cap_data: str | Path | None = None,
+    institutional_flow_data: str | Path | None = None,
+    margin_short_data: str | Path | None = None,
+    borrow_lending_data: str | Path | None = None,
+    day_trading_data: str | Path | None = None,
+    sentiment_data: str | Path | None = None,
     radar_top_n: int = 20,
     require_exact_signal_date: bool = False,
     operational_only: bool = True,
@@ -249,6 +260,15 @@ def run_stock_pool_observation_batch(
         explicit_path=market_cap_data,
         radar_data_dir=radar_data_dir,
     )
+    risk_signals, risk_sources = load_first_available_risk_factors(
+        signal_date=signal_date,
+        radar_data_dir=radar_data_dir,
+        institutional_path=institutional_flow_data,
+        margin_short_path=margin_short_data,
+        borrow_lending_path=borrow_lending_data,
+        day_trading_path=day_trading_data,
+        sentiment_path=sentiment_data,
+    )
     manifest: dict[str, Any] = {
         "status": "ready",
         "signal_date": signal_date,
@@ -256,6 +276,8 @@ def run_stock_pool_observation_batch(
         "operational_only": operational_only,
         "market_cap_source": market_cap_source,
         "market_cap_count": len(market_caps),
+        "risk_factor_sources": risk_sources,
+        "risk_factor_count": len(risk_signals),
         "output_root": str(root),
         "generated": [],
         "skipped": [],
@@ -299,6 +321,7 @@ def run_stock_pool_observation_batch(
                 signal_date=signal_date,
                 warmup_start=warmup_start,
                 market_cap_by_ticker=market_caps,
+                risk_signal_by_ticker=risk_signals,
                 require_exact_signal_date=require_exact_signal_date,
             )
             pool_dir = root / str(pool["pool_id"])
@@ -511,6 +534,11 @@ def main() -> None:
     parser.add_argument("--radar-snapshot-dir", default=os.getenv("RADAR_SNAPSHOT_DIR", ""))
     parser.add_argument("--radar-data-dir", default=os.getenv("RADAR_DATA_DIR", ""))
     parser.add_argument("--market-cap-data", default=os.getenv("MARKET_CAP_DATA_PATH", ""))
+    parser.add_argument("--institutional-flow-data", default=os.getenv("INSTITUTIONAL_FLOW_DATA_PATH", ""))
+    parser.add_argument("--margin-short-data", default=os.getenv("MARGIN_SHORT_DATA_PATH", ""))
+    parser.add_argument("--borrow-lending-data", default=os.getenv("BORROW_LENDING_DATA_PATH", ""))
+    parser.add_argument("--day-trading-data", default=os.getenv("DAY_TRADING_DATA_PATH", ""))
+    parser.add_argument("--sentiment-data", default=os.getenv("SENTIMENT_DATA_PATH", ""))
     parser.add_argument("--radar-top-n", type=int, default=20)
     parser.add_argument("--require-exact-signal-date", action="store_true")
     parser.add_argument(
@@ -532,6 +560,11 @@ def main() -> None:
             radar_snapshot_dir=args.radar_snapshot_dir or None,
             radar_data_dir=args.radar_data_dir or None,
             market_cap_data=args.market_cap_data or None,
+            institutional_flow_data=args.institutional_flow_data or None,
+            margin_short_data=args.margin_short_data or None,
+            borrow_lending_data=args.borrow_lending_data or None,
+            day_trading_data=args.day_trading_data or None,
+            sentiment_data=args.sentiment_data or None,
             radar_top_n=args.radar_top_n,
             require_exact_signal_date=args.require_exact_signal_date,
             operational_only=not args.include_non_operational_pools,
@@ -566,12 +599,24 @@ def main() -> None:
     )
     if market_cap_source:
         print(f"STOCK_POOL_OBSERVATION_MARKET_CAP_SOURCE={Path(market_cap_source).resolve()}")
+    risk_signals, risk_sources = load_first_available_risk_factors(
+        signal_date=args.signal_date,
+        radar_data_dir=args.radar_data_dir or None,
+        institutional_path=args.institutional_flow_data or None,
+        margin_short_path=args.margin_short_data or None,
+        borrow_lending_path=args.borrow_lending_data or None,
+        day_trading_path=args.day_trading_data or None,
+        sentiment_path=args.sentiment_data or None,
+    )
+    if risk_sources:
+        print(f"STOCK_POOL_OBSERVATION_RISK_FACTOR_SOURCES={json.dumps(risk_sources, ensure_ascii=False)}")
     observation = build_dispatched_stock_pool_observation(
         pool=pool,
         prices_by_ticker=prices,
         signal_date=args.signal_date,
         warmup_start=args.warmup_start,
         market_cap_by_ticker=market_caps,
+        risk_signal_by_ticker=risk_signals,
         require_exact_signal_date=args.require_exact_signal_date,
     )
     if missing_price_tickers:
@@ -598,6 +643,7 @@ def _build_best_v20260605_observation(
     signal_date: str | pd.Timestamp,
     warmup_start: str,
     market_cap_by_ticker: dict[str, float] | None,
+    risk_signal_by_ticker: dict[str, RiskFactorSignal] | None,
     require_exact_signal_date: bool,
 ) -> StockPoolObservation:
     requested_ts = pd.Timestamp(signal_date)
@@ -634,6 +680,7 @@ def _build_best_v20260605_observation(
         signal_ts,
         params,
         market_cap_by_ticker=market_cap_by_ticker,
+        risk_signal_by_ticker=risk_signal_by_ticker,
     )
     candidates: list[UniversalCandidateScore] = []
     for row in signal.ranking:
@@ -669,6 +716,18 @@ def _build_best_v20260605_observation(
                 size_basis=base.size_basis,
                 profile_type=base.profile_type,
                 applied_score_mode=base.applied_score_mode,
+                flow_risk_score=base.flow_risk_score,
+                institutional_risk=base.institutional_risk,
+                margin_risk=base.margin_risk,
+                borrow_risk=base.borrow_risk,
+                day_trading_risk=base.day_trading_risk,
+                sentiment_risk=base.sentiment_risk,
+                bullish_flow_score=base.bullish_flow_score,
+                sentiment_score=base.sentiment_score,
+                flow_score_adjustment=base.flow_score_adjustment,
+                flow_risk_reasons=base.flow_risk_reasons,
+                flow_source_dates=base.flow_source_dates,
+                flow_source_kinds=base.flow_source_kinds,
             )
         )
     top_ticker = signal.target_ticker if signal.target_is_actionable else None
