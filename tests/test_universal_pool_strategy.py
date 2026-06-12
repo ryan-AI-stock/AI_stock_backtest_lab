@@ -7,9 +7,12 @@ import pandas as pd
 from backtest_lab.universal_pool_strategy import (
     POOL_LARGE_LIQUID,
     POOL_MID_SMALL_LIQUID,
+    POOL_THIN_OR_MIXED,
+    classify_candidate_profile,
     default_parameters_for_profile,
     infer_pool_profile,
     score_universal_candidate,
+    score_universal_candidates,
     universal_stock_score,
 )
 
@@ -77,6 +80,27 @@ class UniversalPoolStrategyTest(unittest.TestCase):
 
         self.assertFalse(score.passed)
         self.assertEqual(score.reason, "流動性不足")
+
+    def test_mixed_pool_scores_each_stock_with_its_own_profile(self) -> None:
+        dates = pd.bdate_range("2024-01-02", periods=150)
+        prices = {
+            "2330.TW": _price_frame(dates, close=100, volume=20_000_000),
+            "2408.TW": _price_frame(dates, close=80, volume=800_000),
+            "9999.TW": _price_frame(dates, close=50, volume=10_000),
+        }
+        pool_params = default_parameters_for_profile(infer_pool_profile(prices, dates[-1]))
+
+        scores = score_universal_candidates(prices, dates[-1], params=pool_params)
+
+        self.assertEqual(classify_candidate_profile(prices["2330.TW"], dates[-1]), POOL_LARGE_LIQUID)
+        self.assertEqual(scores["2330.TW"].profile_type, POOL_LARGE_LIQUID)
+        self.assertEqual(scores["2330.TW"].applied_score_mode, "relative_strength")
+        self.assertEqual(classify_candidate_profile(prices["2408.TW"], dates[-1]), POOL_MID_SMALL_LIQUID)
+        self.assertEqual(scores["2408.TW"].profile_type, POOL_MID_SMALL_LIQUID)
+        self.assertEqual(scores["2408.TW"].applied_score_mode, "risk_adjusted")
+        self.assertEqual(classify_candidate_profile(prices["9999.TW"], dates[-1]), POOL_THIN_OR_MIXED)
+        self.assertEqual(scores["9999.TW"].profile_type, POOL_THIN_OR_MIXED)
+        self.assertEqual(scores["9999.TW"].reason, "流動性不足")
 
 
 def _price_frame(dates: pd.DatetimeIndex, *, close: float, volume: int) -> pd.DataFrame:

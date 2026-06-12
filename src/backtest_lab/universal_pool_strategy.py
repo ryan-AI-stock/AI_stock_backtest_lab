@@ -40,6 +40,8 @@ class UniversalCandidateScore:
     drawdown20: float
     passed: bool
     reason: str = ""
+    profile_type: str = ""
+    applied_score_mode: str = ""
 
 
 def infer_pool_profile(
@@ -111,12 +113,15 @@ def score_universal_candidates(
     scores: dict[str, UniversalCandidateScore] = {}
     conviction_by_ticker = conviction_by_ticker or {}
     for ticker, prices in prices_by_ticker.items():
+        profile_type = classify_candidate_profile(prices, signal_date)
+        candidate_params = parameters_for_candidate_profile(profile_type)
         scores[ticker] = score_universal_candidate(
             ticker=ticker,
             prices=prices,
             signal_date=signal_date,
-            params=params,
+            params=candidate_params,
             conviction_bonus=conviction_by_ticker.get(ticker, 0.0),
+            profile_type=profile_type,
         )
     return scores
 
@@ -128,23 +133,30 @@ def score_universal_candidate(
     signal_date: pd.Timestamp,
     params: UniversalPoolParameters,
     conviction_bonus: float = 0.0,
+    profile_type: str = "",
 ) -> UniversalCandidateScore:
     history = prices.loc[prices.index <= signal_date].dropna(subset=["adj_close"])
     if len(history) < 126:
-        return _candidate_reject(ticker, "warmup不足")
+        return _candidate_reject(ticker, "warmup不足", profile_type=profile_type, applied_score_mode=params.score_mode)
 
     close = float(history["adj_close"].iloc[-1])
     ma20 = float(history["adj_close"].iloc[-20:].mean())
     ma60 = float(history["adj_close"].iloc[-60:].mean())
     if close < ma20:
-        return _candidate_reject(ticker, "跌破20日均線")
+        return _candidate_reject(ticker, "跌破20日均線", profile_type=profile_type, applied_score_mode=params.score_mode)
     if params.require_ma60 and close < ma60:
-        return _candidate_reject(ticker, "跌破60日均線")
+        return _candidate_reject(ticker, "跌破60日均線", profile_type=profile_type, applied_score_mode=params.score_mode)
 
     volume = history["volume"].fillna(0) if "volume" in history.columns else pd.Series(0, index=history.index)
     avg_turnover = float((history["close"] * volume).tail(20).mean()) if "close" in history.columns else 0.0
     if avg_turnover < params.min_avg_turnover_twd:
-        return _candidate_reject(ticker, "流動性不足", avg_turnover_twd=avg_turnover)
+        return _candidate_reject(
+            ticker,
+            "流動性不足",
+            avg_turnover_twd=avg_turnover,
+            profile_type=profile_type,
+            applied_score_mode=params.score_mode,
+        )
 
     ret20 = window_return(history["adj_close"], 20)
     ret60 = window_return(history["adj_close"], 60)
@@ -159,6 +171,8 @@ def score_universal_candidate(
             ret120=ret120,
             avg_turnover_twd=avg_turnover,
             drawdown20=drawdown20,
+            profile_type=profile_type,
+            applied_score_mode=params.score_mode,
         )
     if drawdown20 < params.max_stock_drawdown_20d:
         return _candidate_reject(
@@ -169,6 +183,8 @@ def score_universal_candidate(
             ret120=ret120,
             avg_turnover_twd=avg_turnover,
             drawdown20=drawdown20,
+            profile_type=profile_type,
+            applied_score_mode=params.score_mode,
         )
 
     vol20 = float(history["adj_close"].pct_change().dropna().iloc[-20:].std() * (252**0.5))
@@ -192,6 +208,8 @@ def score_universal_candidate(
             drawdown20=drawdown20,
             passed=False,
             reason="分數未達門檻",
+            profile_type=profile_type,
+            applied_score_mode=params.score_mode,
         )
     return UniversalCandidateScore(
         ticker=ticker,
@@ -203,6 +221,32 @@ def score_universal_candidate(
         avg_turnover_twd=avg_turnover,
         drawdown20=drawdown20,
         passed=True,
+        profile_type=profile_type,
+        applied_score_mode=params.score_mode,
+    )
+
+
+def classify_candidate_profile(prices: pd.DataFrame, signal_date: pd.Timestamp) -> str:
+    history = prices.loc[prices.index <= signal_date].dropna(subset=["close"])
+    if len(history) < 20 or "volume" not in history.columns:
+        return POOL_THIN_OR_MIXED
+    volume = history["volume"].fillna(0)
+    avg_turnover = float((history["close"] * volume).tail(20).mean())
+    if avg_turnover >= 1_000_000_000:
+        return POOL_LARGE_LIQUID
+    if avg_turnover >= 60_000_000:
+        return POOL_MID_SMALL_LIQUID
+    return POOL_THIN_OR_MIXED
+
+
+def parameters_for_candidate_profile(profile_type: str) -> UniversalPoolParameters:
+    return default_parameters_for_profile(
+        PoolProfile(
+            pool_type=profile_type,
+            ticker_count=1,
+            median_turnover_twd=0.0,
+            has_theme_map=False,
+        )
     )
 
 
@@ -246,6 +290,8 @@ def _candidate_reject(
     vol20: float = 0.0,
     avg_turnover_twd: float = 0.0,
     drawdown20: float = 0.0,
+    profile_type: str = "",
+    applied_score_mode: str = "",
 ) -> UniversalCandidateScore:
     return UniversalCandidateScore(
         ticker=ticker,
@@ -258,4 +304,6 @@ def _candidate_reject(
         drawdown20=drawdown20,
         passed=False,
         reason=reason,
+        profile_type=profile_type,
+        applied_score_mode=applied_score_mode,
     )
