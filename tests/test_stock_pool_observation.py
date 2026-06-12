@@ -150,6 +150,42 @@ class StockPoolObservationTest(unittest.TestCase):
                 (Path(manifest["generated"][0]["output_dir"]) / "stock_pool_observation.json").exists()
             )
 
+    def test_batch_excludes_non_operational_scorecard_pool_by_default(self) -> None:
+        dates = pd.bdate_range("2025-01-02", periods=160)
+        prices = {"2330.TW": _trend_frame(dates, start=100, step=0.5, volume=20_000_000)}
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache_dir = root / "cache"
+            cache_dir.mkdir()
+
+            with patch("backtest_lab.stock_pool_observation.download_yfinance_prices", return_value=prices):
+                manifest = run_stock_pool_observation_batch(
+                    pools=[
+                        {
+                            "pool_id": "large_cap_best_v20260605",
+                            "name": "AI中大型權值股池最佳版 v20260605",
+                            "strategy_preset": "best_v20260605",
+                            "operational_observation": True,
+                            "resolved_symbols": [symbol_entry("2330.TW", source="fixed")],
+                        },
+                        {
+                            "pool_id": "model_scorecard_ep10",
+                            "name": "模型延遲公開成績單池",
+                            "strategy_preset": "delayed_public_scorecard_v1",
+                            "operational_observation": False,
+                            "resolved_symbols": [symbol_entry("2330.TW", source="dynamic")],
+                        },
+                    ],
+                    signal_date=dates[-1].strftime("%Y-%m-%d"),
+                    warmup_start=dates[0].strftime("%Y-%m-%d"),
+                    cache_dir=cache_dir,
+                    output_root=root / "out",
+                )
+
+            self.assertEqual([item["pool_id"] for item in manifest["generated"]], ["large_cap_best_v20260605"])
+            report = (Path(manifest["output_root"]) / "stock_pool_observation_report.md").read_text(encoding="utf-8")
+            self.assertNotIn("模型延遲公開成績單池", report)
+
     def test_batch_resolves_radar_pool_from_snapshot_dir(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)
         with tempfile.TemporaryDirectory() as tmp:

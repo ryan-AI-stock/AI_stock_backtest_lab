@@ -130,6 +130,7 @@ def default_stock_pool_data() -> dict[str, Any]:
                 "kind": "built_in",
                 "locked": True,
                 "strategy_preset": "best_v20260605",
+                "operational_observation": True,
                 "description": "正式最佳版使用的 0050、0050正二與七檔 AI 中大型權值股。",
                 "symbols": [symbol_entry(ticker, source="fixed") for ticker in large_symbols],
             },
@@ -139,6 +140,7 @@ def default_stock_pool_data() -> dict[str, Any]:
                 "kind": "built_in",
                 "locked": True,
                 "strategy_preset": "radar_core_mid_small_calibrated_v1",
+                "operational_observation": True,
                 "description": "由 AI_stock_rotation_radar snapshot 與雷達核心成員池 v1 動態決定候選股，不在介面寫死成固定清單。",
                 "symbols": [],
             },
@@ -148,6 +150,7 @@ def default_stock_pool_data() -> dict[str, Any]:
                 "kind": "task",
                 "locked": False,
                 "strategy_preset": "delayed_public_scorecard_v1",
+                "operational_observation": False,
                 "description": "0050、0050正二，加上跟隨池1每日模型第一名的第三檔股票。",
                 "symbols": [
                     symbol_entry("0050.TW", source="fixed"),

@@ -19,7 +19,10 @@ class StockPoolStoreTest(unittest.TestCase):
         self.assertIn("radar_mid_small_calibrated_v1", pool_ids)
         self.assertIn("model_scorecard_ep10", pool_ids)
         large = next(pool for pool in pools if pool["pool_id"] == "large_cap_best_v20260605")
+        scorecard = next(pool for pool in pools if pool["pool_id"] == "model_scorecard_ep10")
         self.assertEqual(len(large["resolved_symbols"]), 9)
+        self.assertTrue(large["operational_observation"])
+        self.assertFalse(scorecard["operational_observation"])
 
     def test_scorecard_pool_dynamic_third_symbol_follows_latest_signal(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

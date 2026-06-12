@@ -215,7 +215,14 @@ GitHub Actions workflow：`.github/workflows/model_scorecard_report.yml`。Drive
 
 ## 股票池觀察框架
 
-`stock_pool_observation` 是統一股票池觀察輸出層，用來把大型權值股池、成績單池、雷達中小型池與自訂池整理成同一套 JSON/CSV schema。它只產出觀察排名與候選股分數，不直接取代最佳版正式持倉引擎。
+`stock_pool_observation` 是統一股票池觀察輸出層，用來把實際操盤觀察池整理成同一套 JSON/CSV/PDF schema。它只產出觀察排名與候選股分數，不直接取代最佳版正式持倉引擎。
+
+`AI股票池觀察總覽_最新版_v20260612.pdf` 定位為創作者本人隔日操作前看的實際操盤觀察報告。預設只包含 `operational_observation=true` 的股票池，例如：
+
+- `AI中大型權值股池最佳版 v20260605`
+- `雷達中小型校準版`
+
+`模型延遲公開成績單池` 不會出現在這份操盤觀察總覽中。它屬於另一條免費用戶驗證工具產品線，由 `model_scorecard_report.yml` 產出 `AI模型延遲公開成績單_最新版_v20260612.pdf`，用來延遲公開「最佳版每日建議、0050、0050正二」三條資金曲線。
 
 本機批次產出範例：
 
@@ -240,6 +247,8 @@ python -m backtest_lab.stock_pool_observation `
 ```
 
 GitHub Actions workflow：`.github/workflows/stock_pool_observation.yml`。workflow 會嘗試 checkout `ryan-AI-stock/AI_stock_rotation_radar`，並預設使用 `AI_stock_rotation_radar/data/history` 作為正式日常 snapshot 來源；也可用 workflow dispatch input `radar_snapshot_dir` 或 repo variable `RADAR_SNAPSHOT_DIR` 覆蓋。若 RADAR repo checkout 失敗或未提供 snapshot 來源，雷達池會在 manifest 中標示 `missing_radar_snapshot_dir`，其餘可解析股票池仍會正常產出。
+
+若研究時需要把非操盤池也納入觀察輸出，可手動加上 `--include-non-operational-pools`；正式排程不使用此參數。
 
 雷達候選股若只有少數個股缺價格資料，不會讓整個雷達池失敗；缺價代號會寫入 manifest 的 `missing_price_tickers`。
 

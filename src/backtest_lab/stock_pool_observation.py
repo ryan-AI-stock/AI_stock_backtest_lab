@@ -143,6 +143,7 @@ def run_stock_pool_observation_batch(
     radar_snapshot_dir: str | Path | None = None,
     radar_top_n: int = 20,
     require_exact_signal_date: bool = False,
+    operational_only: bool = True,
 ) -> dict[str, Any]:
     date_key = pd.Timestamp(signal_date).strftime("%Y%m%d")
     root = Path(output_root) / date_key
@@ -151,11 +152,12 @@ def run_stock_pool_observation_batch(
         "status": "ready",
         "signal_date": signal_date,
         "require_exact_signal_date": require_exact_signal_date,
+        "operational_only": operational_only,
         "output_root": str(root),
         "generated": [],
         "skipped": [],
     }
-    for pool in pools:
+    for pool in _observation_pools(pools, operational_only=operational_only):
         pool = _resolve_dynamic_observation_pool(
             pool,
             signal_date=signal_date,
@@ -392,6 +394,11 @@ def main() -> None:
     parser.add_argument("--radar-snapshot-dir", default=os.getenv("RADAR_SNAPSHOT_DIR", ""))
     parser.add_argument("--radar-top-n", type=int, default=20)
     parser.add_argument("--require-exact-signal-date", action="store_true")
+    parser.add_argument(
+        "--include-non-operational-pools",
+        action="store_true",
+        help="Also include task/scorecard pools that are not meant for the operational observation PDF.",
+    )
     args = parser.parse_args()
 
     store = StockPoolStore(args.pool_store)
@@ -406,6 +413,7 @@ def main() -> None:
             radar_snapshot_dir=args.radar_snapshot_dir or None,
             radar_top_n=args.radar_top_n,
             require_exact_signal_date=args.require_exact_signal_date,
+            operational_only=not args.include_non_operational_pools,
         )
         print(f"STOCK_POOL_OBSERVATION_MANIFEST={Path(manifest['output_root']).resolve() / 'stock_pool_observation_manifest.json'}")
         return
@@ -450,6 +458,16 @@ def _resolve_signal_date(prices_by_ticker: dict[str, pd.DataFrame], requested: p
     if not common:
         raise ValueError(f"No common signal date on or before {requested.strftime('%Y-%m-%d')}")
     return max(common)
+
+
+def _observation_pools(pools: list[dict[str, Any]], *, operational_only: bool) -> list[dict[str, Any]]:
+    if not operational_only:
+        return pools
+    return [
+        pool
+        for pool in pools
+        if pool.get("operational_observation", True)
+    ]
 
 
 def _load_observation_price_frames(
