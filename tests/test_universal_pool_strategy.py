@@ -5,10 +5,11 @@ import unittest
 import pandas as pd
 
 from backtest_lab.universal_pool_strategy import (
-    POOL_LARGE_LIQUID,
-    POOL_MID_SMALL_LIQUID,
-    POOL_THIN_OR_MIXED,
-    classify_candidate_profile,
+    POOL_HIGH_LIQUIDITY,
+    POOL_LOW_LIQUIDITY_OR_MIXED,
+    POOL_STANDARD_LIQUIDITY,
+    SIZE_UNKNOWN,
+    classify_candidate_liquidity_profile,
     default_parameters_for_profile,
     infer_pool_profile,
     score_universal_candidate,
@@ -18,7 +19,7 @@ from backtest_lab.universal_pool_strategy import (
 
 
 class UniversalPoolStrategyTest(unittest.TestCase):
-    def test_large_liquid_pool_does_not_need_turnover_gate_by_default(self) -> None:
+    def test_high_liquidity_pool_does_not_need_turnover_gate_by_default(self) -> None:
         dates = pd.bdate_range("2024-01-02", periods=30)
         prices = {
             f"{ticker}.TW": _price_frame(dates, close=100 + index, volume=20_000_000)
@@ -28,11 +29,12 @@ class UniversalPoolStrategyTest(unittest.TestCase):
         profile = infer_pool_profile(prices, dates[-1])
         params = default_parameters_for_profile(profile)
 
-        self.assertEqual(profile.pool_type, POOL_LARGE_LIQUID)
+        self.assertEqual(profile.pool_type, POOL_HIGH_LIQUIDITY)
+        self.assertEqual(profile.classification_basis, "liquidity")
         self.assertEqual(params.min_avg_turnover_twd, 0.0)
         self.assertEqual(params.score_mode, "relative_strength")
 
-    def test_mid_small_pool_defaults_to_liquidity_and_overheat_controls(self) -> None:
+    def test_standard_liquidity_pool_defaults_to_liquidity_and_overheat_controls(self) -> None:
         dates = pd.bdate_range("2024-01-02", periods=30)
         prices = {
             f"{ticker}.TW": _price_frame(dates, close=80 + index, volume=800_000)
@@ -42,7 +44,7 @@ class UniversalPoolStrategyTest(unittest.TestCase):
         profile = infer_pool_profile(prices, dates[-1], theme_by_ticker={ticker: "記憶體" for ticker in prices})
         params = default_parameters_for_profile(profile)
 
-        self.assertEqual(profile.pool_type, POOL_MID_SMALL_LIQUID)
+        self.assertEqual(profile.pool_type, POOL_STANDARD_LIQUIDITY)
         self.assertEqual(params.min_avg_turnover_twd, 60_000_000)
         self.assertAlmostEqual(params.overheated_20d_return, 0.62)
         self.assertEqual(params.score_mode, "risk_adjusted")
@@ -81,7 +83,7 @@ class UniversalPoolStrategyTest(unittest.TestCase):
         self.assertFalse(score.passed)
         self.assertEqual(score.reason, "流動性不足")
 
-    def test_mixed_pool_scores_each_stock_with_its_own_profile(self) -> None:
+    def test_mixed_pool_scores_each_stock_with_its_own_liquidity_profile(self) -> None:
         dates = pd.bdate_range("2024-01-02", periods=150)
         prices = {
             "2330.TW": _price_frame(dates, close=100, volume=20_000_000),
@@ -92,14 +94,15 @@ class UniversalPoolStrategyTest(unittest.TestCase):
 
         scores = score_universal_candidates(prices, dates[-1], params=pool_params)
 
-        self.assertEqual(classify_candidate_profile(prices["2330.TW"], dates[-1]), POOL_LARGE_LIQUID)
-        self.assertEqual(scores["2330.TW"].profile_type, POOL_LARGE_LIQUID)
+        self.assertEqual(classify_candidate_liquidity_profile(prices["2330.TW"], dates[-1]), POOL_HIGH_LIQUIDITY)
+        self.assertEqual(scores["2330.TW"].liquidity_profile, POOL_HIGH_LIQUIDITY)
+        self.assertEqual(scores["2330.TW"].size_profile, SIZE_UNKNOWN)
         self.assertEqual(scores["2330.TW"].applied_score_mode, "relative_strength")
-        self.assertEqual(classify_candidate_profile(prices["2408.TW"], dates[-1]), POOL_MID_SMALL_LIQUID)
-        self.assertEqual(scores["2408.TW"].profile_type, POOL_MID_SMALL_LIQUID)
+        self.assertEqual(classify_candidate_liquidity_profile(prices["2408.TW"], dates[-1]), POOL_STANDARD_LIQUIDITY)
+        self.assertEqual(scores["2408.TW"].liquidity_profile, POOL_STANDARD_LIQUIDITY)
         self.assertEqual(scores["2408.TW"].applied_score_mode, "risk_adjusted")
-        self.assertEqual(classify_candidate_profile(prices["9999.TW"], dates[-1]), POOL_THIN_OR_MIXED)
-        self.assertEqual(scores["9999.TW"].profile_type, POOL_THIN_OR_MIXED)
+        self.assertEqual(classify_candidate_liquidity_profile(prices["9999.TW"], dates[-1]), POOL_LOW_LIQUIDITY_OR_MIXED)
+        self.assertEqual(scores["9999.TW"].liquidity_profile, POOL_LOW_LIQUIDITY_OR_MIXED)
         self.assertEqual(scores["9999.TW"].reason, "流動性不足")
 
 

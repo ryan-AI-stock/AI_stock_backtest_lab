@@ -610,6 +610,8 @@ def _build_best_v20260605_observation(
                 drawdown20=base.drawdown20,
                 passed=passed,
                 reason=signal.model_target_status if passed else str(row.get("score_band") or ""),
+                liquidity_profile=base.liquidity_profile,
+                size_profile=base.size_profile,
                 profile_type=base.profile_type,
                 applied_score_mode=base.applied_score_mode,
             )
