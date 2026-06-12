@@ -29,9 +29,16 @@ def write_signal_pdf(
     report_mode_label: Callable[[object], str],
     personal_exposure_summary: Callable[[object], dict],
     personal_pdf_section: Callable[[object], tuple[str, list[str]]],
+    shadow_pdf_section: Callable[[object], tuple[str, list[str]]],
 ) -> None:
     _configure_chinese_font()
-    detail_pages = paginate_detail_sections(detail_sections(signal, personal_pdf_section=personal_pdf_section))
+    detail_pages = paginate_detail_sections(
+        detail_sections(
+            signal,
+            personal_pdf_section=personal_pdf_section,
+            shadow_pdf_section=shadow_pdf_section,
+        )
+    )
     total_pages = 1 + len(detail_pages)
     with PdfPages(path) as pdf:
         fig = plt.figure(figsize=(8.27, 11.69), facecolor="#f4f6f8")
@@ -52,7 +59,12 @@ def write_signal_pdf(
             _save_figure_as_raster_pdf_page(pdf, fig)
 
 
-def detail_sections(signal, *, personal_pdf_section: Callable[[object], tuple[str, list[str]]]) -> list[tuple[str, list[str]]]:
+def detail_sections(
+    signal,
+    *,
+    personal_pdf_section: Callable[[object], tuple[str, list[str]]],
+    shadow_pdf_section: Callable[[object], tuple[str, list[str]]],
+) -> list[tuple[str, list[str]]]:
     return [
         (
             "模型模擬動作",
@@ -72,6 +84,7 @@ def detail_sections(signal, *, personal_pdf_section: Callable[[object], tuple[st
                 f"模型重建淨值：{signal.model_total_value_twd:,.0f} 元",
             ],
         ),
+        shadow_pdf_section(signal),
         personal_pdf_section(signal),
         (
             "使用邊界",
@@ -116,6 +129,10 @@ def paginate_detail_sections(sections: list[tuple[str, list[str]]]) -> list[list
 
 
 def detail_section_height(lines: list[str]) -> float:
+    if any(line.startswith("CARD|") for line in lines):
+        card_count = sum(1 for line in lines if line.startswith("CARD|"))
+        note_count = sum(1 for line in lines if line.startswith("NOTE|"))
+        return DETAIL_TITLE_STEP + 0.064 + card_count * 0.116 + note_count * DETAIL_LINE_HEIGHT + DETAIL_SECTION_GAP
     wrapped_count = sum(max(1, len(textwrap.wrap(line, width=DETAIL_WRAP_WIDTH))) for line in lines)
     return DETAIL_TITLE_STEP + wrapped_count * DETAIL_LINE_HEIGHT + DETAIL_SECTION_GAP
 
@@ -274,12 +291,78 @@ def _draw_detail_page(ax, sections: list[tuple[str, list[str]]], *, is_continued
         ax.add_patch(plt.Rectangle((0.06, y - 0.015), 0.88, 0.035, facecolor="#e8eef3", edgecolor="#d9e0e5", transform=ax.transAxes))
         ax.text(0.075, y - 0.004, title, fontsize=12.5, fontweight="bold", color="#17212a", transform=ax.transAxes)
         y -= DETAIL_TITLE_STEP
+        if title == "Shadow Mode 對照" and any(line.startswith("CARD|") for line in lines):
+            y = _draw_shadow_cards(ax, lines, y)
+            y -= DETAIL_SECTION_GAP
+            continue
         for line in lines:
             wrapped = textwrap.wrap(line, width=DETAIL_WRAP_WIDTH)
             for text in wrapped:
                 ax.text(0.075, y, f"• {text}", fontsize=9.6, color="#1f2d36", transform=ax.transAxes)
                 y -= DETAIL_LINE_HEIGHT
         y -= DETAIL_SECTION_GAP
+
+
+def _draw_shadow_cards(ax, lines: list[str], start_y: float) -> float:
+    y = start_y
+    for line in lines:
+        if line.startswith("INFO|"):
+            ax.text(0.075, y, line.split("|", 1)[1], fontsize=9.4, color="#52616b", transform=ax.transAxes)
+            y -= 0.026
+        elif line.startswith("BASE|"):
+            _, label, value = line.split("|", 2)
+            ax.add_patch(
+                plt.Rectangle((0.075, y - 0.02), 0.84, 0.036, facecolor="#f7fafc", edgecolor="#d9e0e5", linewidth=0.8, transform=ax.transAxes)
+            )
+            ax.text(0.09, y - 0.006, label, fontsize=9.4, color="#52616b", transform=ax.transAxes)
+            ax.text(0.9, y - 0.006, value, fontsize=10.2, fontweight="bold", color="#17212a", ha="right", transform=ax.transAxes)
+            y -= 0.05
+        elif line.startswith("CARD|"):
+            _, role, label, diff, target, action, focus, trade = line.split("|", 7)
+            y = _draw_shadow_card(ax, y, role, label, diff, target, action, focus, trade)
+        elif line.startswith("NOTE|"):
+            ax.text(0.09, y, line.split("|", 1)[1], fontsize=8.8, color="#8a5b00", transform=ax.transAxes)
+            y -= DETAIL_LINE_HEIGHT
+    return y
+
+
+def _draw_shadow_card(
+    ax,
+    y: float,
+    role: str,
+    label: str,
+    diff: str,
+    target: str,
+    action: str,
+    focus: str,
+    trade: str,
+) -> float:
+    palette = {
+        "攻擊型": ("#e8f5ef", "#13795b"),
+        "風控型": ("#fff4e5", "#b86b00"),
+        "對照型": ("#eef4ff", "#2457a7"),
+    }
+    fill, accent = palette.get(role, ("#f7fafc", "#52616b"))
+    card_h = 0.1
+    top = y - 0.006
+    ax.add_patch(
+        plt.Rectangle((0.075, top - card_h), 0.84, card_h, facecolor="white", edgecolor="#d9e0e5", linewidth=0.9, transform=ax.transAxes)
+    )
+    ax.add_patch(
+        plt.Rectangle((0.075, top - card_h), 0.014, card_h, facecolor=accent, edgecolor=accent, linewidth=0, transform=ax.transAxes)
+    )
+    ax.add_patch(
+        plt.Rectangle((0.095, top - 0.03), 0.085, 0.024, facecolor=fill, edgecolor=accent, linewidth=0.8, transform=ax.transAxes)
+    )
+    ax.text(0.1375, top - 0.022, role, fontsize=8.8, color=accent, fontweight="bold", ha="center", transform=ax.transAxes)
+    ax.text(0.195, top - 0.022, label, fontsize=10.2, color="#17212a", fontweight="bold", transform=ax.transAxes)
+    diff_color = "#13795b" if diff.startswith("+") else "#b42318"
+    ax.text(0.9, top - 0.022, diff, fontsize=10.0, color=diff_color, fontweight="bold", ha="right", transform=ax.transAxes)
+    ax.text(0.095, top - 0.055, f"目標：{target}", fontsize=9.0, color="#31414d", transform=ax.transAxes)
+    ax.text(0.31, top - 0.055, f"動作：{action}", fontsize=9.0, color="#31414d", transform=ax.transAxes)
+    ax.text(0.095, top - 0.079, f"觀察：{focus}", fontsize=8.8, color="#52616b", transform=ax.transAxes)
+    ax.text(0.43, top - 0.079, f"換倉：{textwrap.shorten(trade, width=30, placeholder='...')}", fontsize=8.8, color="#52616b", transform=ax.transAxes)
+    return y - 0.116
 
 
 def _draw_footer(ax, text: str, *, page_number: int | None = None, total_pages: int | None = None) -> None:

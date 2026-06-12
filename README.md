@@ -156,9 +156,9 @@ GitHub Actions 的 Drive 上傳比照既有 DAILY / WEEKLY 股票報告專案，
 
 敏感憑證不可寫入 repo、README、workflow log 或測試資料。
 
-## 私有持倉工作台
+## 股票池管理中控台
 
-第一版是綁定 `127.0.0.1` 的單一使用者私有介面，資料檔位於被 git 忽略的 `work/portfolio_app/`。資料結構已預留 `user_id`，可在日後擴成多人帳號。
+`127.0.0.1:8765` 現在作為股票池管理中控台，不再作為舊版「AI 股票紀律工作台」首頁。資料檔位於被 git 忽略的 `work/stock_pools/stock_pools.json`，保留日後接 GitHub Actions 或私有伺服器的設定入口。
 
 ```powershell
 $env:PYTHONPATH='src'
@@ -167,20 +167,101 @@ python -m backtest_lab.portfolio_app --signal-root outputs/frozen_strategy_monit
 
 介面支援：
 
-- 輸入目前可用現金、各檔股數與平均成本。
-- 顯示模型目標比例，以及依可用現金估算的零股參考數量。
-- 手動登錄實際買賣成交價、股數與費用。
-- 只有手動登錄成交後，實際持倉與現金才會改變。
-- 按鈕同步目前持倉到 repo-level GitHub encrypted secret `PORTFOLIO_STORE_JSON`。
-- 按鈕同步後觸發 GitHub Action，讓 Drive 最新版 PDF 覆蓋為個人化報告。
+- 檢視內建股票池：`AI中大型權值股池最佳版 v20260605`，共 9 檔。
+- 檢視內建股票池：`雷達中小型校準版`，由 radar snapshot 動態決定候選股，不寫死固定清單。
+- 維護 `模型延遲公開成績單池`：0050、0050正二，加上跟隨大型權值股池最新模型第一名的第三檔股票。
+- 新增、修改、刪除自訂股票池；手動輸入股票代號時一行一檔。
+- 預留 `strategy_preset` 欄位，供每日報告、回測與未來私有部署依池執行。
 
-同步功能需要本機已安裝並登入 GitHub CLI `gh`，且帳號對 `ryan-AI-stock/AI_stock_backtest_lab` 有 repo secret 與 workflow dispatch 權限。持倉 JSON 不會寫入 repo；按鈕會透過 stdin 傳給 `gh secret set PORTFOLIO_STORE_JSON` 更新 encrypted secret，避免把持倉內容放在命令列參數或 log。
+舊版持倉 store 與同步函式仍保留在後端，供每日 PDF 個人化報告相容使用；但 8765 首頁已改為股票池管理。若之後要重新設計持倉功能，應以股票池中控台為入口重做，不再恢復舊版工作台畫面。
 
 Codex 內部驗證原則：
 
 - 不預設用 Codex 背景啟動長駐服務，避免工具呼叫卡住。
 - HTTP 驗證使用短生命週期測試，測試內啟動 server、測完自動關閉。
 - 若要人工操作網頁，再由使用者於本機終端手動執行上述啟動命令，並用 `Ctrl+C` 關閉。
+
+## AI 模型延遲公開成績單
+
+這條產品線用來公開「延遲一週」的模型歷史觀察結果，不公布即時訊號。第一版以 `2026-05-29` 作為暫定追蹤起點，初始資金 `1,328,709` 元，固定比較：
+
+- AI中大型權值股池最佳版 v20260605
+- AI 模型追蹤標的持有，標的會依最佳版模型狀態自動變更
+- 0050 買進持有
+- 0050正二買進持有
+
+本機手動產出範例：
+
+```powershell
+$env:PYTHONPATH='src'
+python -m backtest_lab.model_scorecard_report `
+  --config configs/ep05_universe.json `
+  --strategy-config configs/frozen_cycle_proven_top1_v1.json `
+  --group-id group_c_0050_00631l_plus_mega_caps `
+  --report-date 2026-06-12 `
+  --tracking-start 2026-05-29 `
+  --initial-cash 1328709 `
+  --cache-dir backtest_cache/frozen_strategy_monitor `
+  --output-root outputs/model_scorecard_report
+```
+
+固定最新版檔名：
+
+```text
+AI模型延遲公開成績單_最新版_v20260612.pdf
+```
+
+GitHub Actions workflow：`.github/workflows/model_scorecard_report.yml`。Drive 目標資料夾預設為 `1NDqeKNo3Sa08t0PUqWiSkCLQTZGfKHIe`，也可用 `SCORECARD_REPORT_DRIVE_FOLDER_ID` 覆蓋；若要固定覆蓋同一個 Drive file id，可設定 `SCORECARD_REPORT_DRIVE_FILE_ID`。
+
+## 股票池觀察框架
+
+`stock_pool_observation` 是統一股票池觀察輸出層，用來把大型權值股池、成績單池、雷達中小型池與自訂池整理成同一套 JSON/CSV schema。它只產出觀察排名與候選股分數，不直接取代最佳版正式持倉引擎。
+
+本機批次產出範例：
+
+```powershell
+$env:PYTHONPATH='src'
+python -m backtest_lab.stock_pool_observation `
+  --pool-id all `
+  --signal-date 2026-06-05 `
+  --cache-dir backtest_cache/frozen_strategy_monitor `
+  --output-root outputs/stock_pool_observations
+```
+
+若要讓 `雷達中小型校準版` 也產出結果，需提供 radar snapshot v2 原始/replay 資料夾：
+
+```powershell
+python -m backtest_lab.stock_pool_observation `
+  --pool-id all `
+  --signal-date 2026-06-05 `
+  --radar-snapshot-dir <radar_snapshot資料夾> `
+  --cache-dir backtest_cache/stock_pool_observations `
+  --output-root outputs/stock_pool_observations
+```
+
+GitHub Actions workflow：`.github/workflows/stock_pool_observation.yml`。workflow 會嘗試 checkout `ryan-AI-stock/AI_stock_rotation_radar`，並預設使用 `AI_stock_rotation_radar/data/history` 作為正式日常 snapshot 來源；也可用 workflow dispatch input `radar_snapshot_dir` 或 repo variable `RADAR_SNAPSHOT_DIR` 覆蓋。若 RADAR repo checkout 失敗或未提供 snapshot 來源，雷達池會在 manifest 中標示 `missing_radar_snapshot_dir`，其餘可解析股票池仍會正常產出。
+
+雷達候選股若只有少數個股缺價格資料，不會讓整個雷達池失敗；缺價代號會寫入 manifest 的 `missing_price_tickers`。
+
+每次批次產出會寫入同一個日期資料夾：
+
+- `stock_pool_observation_manifest.json`
+- `stock_pool_observation_summary.csv`
+- `stock_pool_observation_report.md`
+- `AI股票池觀察總覽_最新版_v20260612.pdf`
+
+Drive 固定更新檔名：
+
+```text
+AI股票池觀察總覽_最新版_v20260612.pdf
+```
+
+Drive 預設目標資料夾與最佳版每日觀察報告相同：`1O6Se-HfI7ZDTQ-LWeAO6f8vtvoLcCzIj`。可用以下 secrets 或 variables 覆蓋：
+
+- `STOCK_POOL_OBSERVATION_DRIVE_FOLDER_ID`
+- `STOCK_POOL_OBSERVATION_DRIVE_FILE_ID`
+
+這條 workflow 是新的股票池觀察總覽入口，用來取代舊的「雷達動態題材池個股輪動回測」每日上傳需求；舊研究程式仍可能被回測測試引用，但不再有獨立每日上傳 workflow。
 
 v0 限制：
 

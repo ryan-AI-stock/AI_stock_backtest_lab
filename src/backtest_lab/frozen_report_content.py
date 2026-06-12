@@ -11,6 +11,7 @@ def markdown_report(signal, *, report_name: str, report_variant_label: str, scor
         f"- {row['action']} {row['label']}，模型參考股數 {row['shares']}，參考價 {row['reference_price']}"
         for row in signal.projected_trades
     ] or ["- 模型目標未改變，沒有模擬換倉動作。"]
+    shadow_lines = shadow_mode_markdown_lines(signal)
     personal_lines = personal_markdown_lines(signal)
     return "\n".join(
         [
@@ -41,6 +42,8 @@ def markdown_report(signal, *, report_name: str, report_variant_label: str, scor
             "",
             "上述股數與價格只用來重建模型狀態，不是針對使用者資產的實際下單建議。",
             "",
+            *shadow_lines,
+            "",
             *personal_lines,
             "",
             "## 九標的強弱排名",
@@ -64,6 +67,85 @@ def markdown_report(signal, *, report_name: str, report_variant_label: str, scor
             "歷史回測與 shadow mode 都不能保證未來績效。本報告只供 AI 輔助市場觀察、回測與紀律提醒。",
             "",
         ]
+    )
+
+
+def shadow_mode_markdown_lines(signal) -> list[str]:
+    shadows = list(signal.shadow_modes or [])
+    if not shadows:
+        return [
+            "## Shadow Mode 對照",
+            "",
+            "- 目前沒有啟用 shadow mode；每日報告只追蹤正式最佳版。",
+        ]
+    lines = [
+        "## Shadow Mode 對照",
+        "",
+        "Shadow mode 是用未來實際行情驗證候選模型，不會取代正式最佳版，也不是投資建議。",
+        "",
+        f"**正式最佳版同本金重建淨值：約 {signal.model_total_value_twd:,.0f} 元**",
+        "",
+        "| 類型 | 模型 | 同本金淨值 | 與最佳版差距 | 下一交易日目標 | 模型動作 | 觀察重點 |",
+        "| --- | --- | ---: | ---: | --- | --- | --- |",
+    ]
+    for shadow in shadows[:3]:
+        role, focus = _shadow_role_and_focus(shadow)
+        lines.append(
+            "| "
+            + " | ".join(
+                [
+                    role,
+                    _compact_shadow_label(shadow.shadow_label),
+                    f"{shadow.model_total_value_twd:,.0f} 元",
+                    _shadow_diff_text(shadow),
+                    f"{shadow.target_label} {shadow.target_exposure:.0%}",
+                    shadow.action,
+                    focus,
+                ]
+            )
+            + " |"
+        )
+    lines.extend(["", "### Shadow 模擬換倉明細", ""])
+    for shadow in shadows[:3]:
+        trade_text = _shadow_trade_text(shadow.projected_trades)
+        role, _ = _shadow_role_and_focus(shadow)
+        lines.append(f"- {role}／{_compact_shadow_label(shadow.shadow_label)}：{trade_text}")
+        if shadow.target_ticker != signal.target_ticker:
+            lines.append(
+                f"  - 與最佳版不同：最佳版目標是 {signal.target_label}，此 shadow 目標是 {shadow.target_label}。後續實際差異以每日同本金淨值追蹤。"
+            )
+    return lines
+
+
+def _compact_shadow_label(label: str) -> str:
+    if "：" in label:
+        return label.split("：", 1)[1]
+    return label
+
+
+def _shadow_role_and_focus(shadow) -> tuple[str, str]:
+    shadow_id = getattr(shadow, "shadow_id", "")
+    label = getattr(shadow, "shadow_label", "")
+    if "attack_hybrid" in shadow_id or "攻擊型" in label:
+        return ("攻擊型", "看能否提升報酬")
+    if "risk_overlay" in shadow_id or "風控型" in label:
+        return ("風控型", "看降低回撤的代價")
+    if "challenger" in shadow_id or "挑戰版" in label:
+        return ("對照型", "延續舊候選追蹤")
+    return ("候選型", "觀察是否優於最佳版")
+
+
+def _shadow_diff_text(shadow) -> str:
+    sign = "+" if shadow.value_diff_twd >= 0 else "-"
+    return f"{sign}{abs(shadow.value_diff_twd):,.0f} 元（{shadow.value_diff_pct:+.2%}）"
+
+
+def _shadow_trade_text(projected_trades: list[dict]) -> str:
+    if not projected_trades:
+        return "目標未改變，沒有模擬換倉動作。"
+    return "；".join(
+        f"{row['action']} {row['label']} {row['shares']} 股，參考價 {row['reference_price']}"
+        for row in projected_trades
     )
 
 
@@ -145,3 +227,32 @@ def personal_pdf_section(signal) -> tuple[str, list[str]]:
             f"個人參考：{display_action(row['action'])} {row['ticker']} {row['shares']} 股，參考價 {row['reference_price']:.2f}。"
         )
     return ("個人持倉參考", lines)
+
+
+def shadow_mode_pdf_section(signal) -> tuple[str, list[str]]:
+    shadows = list(signal.shadow_modes or [])
+    if not shadows:
+        return ("Shadow Mode 對照", ["目前沒有啟用 shadow mode；每日報告只追蹤正式最佳版。"])
+    lines = [
+        "INFO|Shadow mode 是用未來實際行情驗證候選模型，不會取代正式最佳版。",
+        f"BASE|正式最佳版同本金淨值|{signal.model_total_value_twd:,.0f} 元",
+    ]
+    for shadow in shadows[:3]:
+        role, focus = _shadow_role_and_focus(shadow)
+        lines.append(
+            "CARD|"
+            + "|".join(
+                [
+                    role,
+                    _compact_shadow_label(shadow.shadow_label),
+                    _shadow_diff_text(shadow),
+                    f"{shadow.target_label} {shadow.target_exposure:.0%}",
+                    shadow.action,
+                    focus,
+                    _shadow_trade_text(shadow.projected_trades),
+                ]
+            )
+        )
+        if shadow.target_ticker != signal.target_ticker:
+            lines.append(f"NOTE|最佳版目標 {signal.target_label}；此 shadow 目標 {shadow.target_label}")
+    return ("Shadow Mode 對照", lines)

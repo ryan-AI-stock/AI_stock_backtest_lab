@@ -1,29 +1,29 @@
-name: Sector Dynamic Pool Report
+name: Model Scorecard Delayed Report
 
 on:
   workflow_dispatch:
     inputs:
-      end_date:
-        description: "Backtest end date in YYYY-MM-DD. Defaults to today's date in Asia/Taipei."
+      report_date:
+        description: "Report date in YYYY-MM-DD. Defaults to shared schedule target date."
         required: false
         type: string
-      theme:
-        description: "Radar theme name."
+      tracking_start:
+        description: "Scorecard simulation start date."
         required: false
         type: string
-        default: "記憶體"
+        default: "2026-05-29"
   schedule:
-    # Keep a separate latest report in the same Drive folder as the best-strategy report.
-    - cron: "40 7 * * 1-5"
+    # Start after the best-strategy report window. The public scorecard is delayed by 7 calendar days.
+    - cron: "20 8 * * 1-5"
 
 jobs:
-  sector-dynamic-pool-report:
+  model-scorecard-report:
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    timeout-minutes: 240
     permissions:
       contents: read
     steps:
-      - name: Checkout backtest lab
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Checkout shared schedule rules
@@ -57,15 +57,7 @@ jobs:
         if: steps.schedule-gate.outputs.should_run != 'true'
         run: |
           echo "Schedule gate closed: ${{ steps.schedule-gate.outputs.reason }}"
-          echo "No report generated for this run."
-
-      - name: Checkout rotation radar data
-        if: steps.schedule-gate.outputs.should_run == 'true'
-        uses: actions/checkout@v4
-        with:
-          repository: ryan-AI-stock/AI_stock_rotation_radar
-          path: radar
-          token: ${{ secrets.RADAR_REPO_TOKEN || github.token }}
+          echo "No scorecard generated for this run."
 
       - name: Install dependencies and Chinese font
         if: steps.schedule-gate.outputs.should_run == 'true'
@@ -75,40 +67,43 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
 
-      - name: Resolve inputs
+      - name: Resolve report inputs
         if: steps.schedule-gate.outputs.should_run == 'true'
-        id: inputs
+        id: report-inputs
         shell: bash
         run: |
-          if [ -n "${{ inputs.end_date }}" ]; then
-            echo "end_date=${{ inputs.end_date }}" >> "$GITHUB_OUTPUT"
+          if [ -n "${{ inputs.report_date }}" ]; then
+            echo "report_date=${{ inputs.report_date }}" >> "$GITHUB_OUTPUT"
           elif [ -n "${{ steps.schedule-gate.outputs.target_date }}" ]; then
-            echo "end_date=${{ steps.schedule-gate.outputs.target_date }}" >> "$GITHUB_OUTPUT"
+            echo "report_date=${{ steps.schedule-gate.outputs.target_date }}" >> "$GITHUB_OUTPUT"
           else
-            echo "end_date=$(TZ=Asia/Taipei date +%F)" >> "$GITHUB_OUTPUT"
+            echo "report_date=$(TZ=Asia/Taipei date +%F)" >> "$GITHUB_OUTPUT"
           fi
-          if [ -n "${{ inputs.theme }}" ]; then
-            echo "theme=${{ inputs.theme }}" >> "$GITHUB_OUTPUT"
+          if [ -n "${{ inputs.tracking_start }}" ]; then
+            echo "tracking_start=${{ inputs.tracking_start }}" >> "$GITHUB_OUTPUT"
           else
-            echo "theme=記憶體" >> "$GITHUB_OUTPUT"
+            echo "tracking_start=2026-05-29" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Generate sector dynamic pool report
+      - name: Generate delayed model scorecard
         if: steps.schedule-gate.outputs.should_run == 'true'
+        id: scorecard
+        shell: bash
         env:
           PYTHONPATH: src
         run: |
-          rm -rf outputs/sector_dynamic_pool/latest
-          python -m backtest_lab.sector_dynamic_pool_backtest \
+          date_key="${{ steps.report-inputs.outputs.report_date }}"
+          date_key="${date_key//-/}"
+          rm -rf "outputs/model_scorecard_report/${date_key}"
+          python -m backtest_lab.model_scorecard_report \
             --config configs/ep05_universe.json \
             --strategy-config configs/frozen_cycle_proven_top1_v1.json \
-            --radar-root radar \
-            --theme "${{ steps.inputs.outputs.theme }}" \
-            --start-date 2024-01-02 \
-            --end-date "${{ steps.inputs.outputs.end_date }}" \
-            --warmup-start 2022-01-01 \
-            --cache-dir backtest_cache/sector_dynamic_pool \
-            --output-root outputs/sector_dynamic_pool
+            --group-id group_c_0050_00631l_plus_mega_caps \
+            --report-date "${{ steps.report-inputs.outputs.report_date }}" \
+            --tracking-start "${{ steps.report-inputs.outputs.tracking_start }}" \
+            --initial-cash 1328709 \
+            --cache-dir backtest_cache/model_scorecard_report \
+            --output-root outputs/model_scorecard_report
 
       - name: Publish latest PDF to Google Drive
         if: steps.schedule-gate.outputs.should_run == 'true'
@@ -117,16 +112,19 @@ jobs:
           GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
           GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
           GOOGLE_OAUTH_REFRESH_TOKEN: ${{ secrets.GOOGLE_OAUTH_REFRESH_TOKEN }}
-          FROZEN_REPORT_DRIVE_FOLDER_ID: ${{ secrets.FROZEN_REPORT_DRIVE_FOLDER_ID || vars.FROZEN_REPORT_DRIVE_FOLDER_ID }}
+          SCORECARD_REPORT_DRIVE_FOLDER_ID: ${{ secrets.SCORECARD_REPORT_DRIVE_FOLDER_ID || vars.SCORECARD_REPORT_DRIVE_FOLDER_ID || '1NDqeKNo3Sa08t0PUqWiSkCLQTZGfKHIe' }}
+          SCORECARD_REPORT_DRIVE_FILE_ID: ${{ secrets.SCORECARD_REPORT_DRIVE_FILE_ID || vars.SCORECARD_REPORT_DRIVE_FILE_ID }}
         run: |
           python -m backtest_lab.drive_publish \
-            --file "outputs/sector_dynamic_pool/latest/雷達動態題材池個股輪動回測_最新版_v0_記憶體題材池.pdf" \
-            --remote-name "雷達動態題材池個股輪動回測_最新版_v0_記憶體題材池.pdf"
+            --folder-id "$SCORECARD_REPORT_DRIVE_FOLDER_ID" \
+            --file-id "$SCORECARD_REPORT_DRIVE_FILE_ID" \
+            --remote-name "AI模型延遲公開成績單_最新版_v20260612.pdf" \
+            --file "outputs/model_scorecard_report/$(echo '${{ steps.report-inputs.outputs.report_date }}' | tr -d '-')/AI模型延遲公開成績單_最新版_v20260612.pdf"
 
       - name: Upload audit artifact
         if: steps.schedule-gate.outputs.should_run == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: sector-dynamic-pool-report-${{ steps.inputs.outputs.end_date }}
-          path: outputs/sector_dynamic_pool/
+          name: model-scorecard-report-${{ steps.report-inputs.outputs.report_date }}
+          path: outputs/model_scorecard_report/
           if-no-files-found: error

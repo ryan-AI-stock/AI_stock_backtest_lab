@@ -11,7 +11,8 @@ from pathlib import Path
 import test_paths  # noqa: F401
 
 from backtest_lab.costs import TaiwanCostModel
-from backtest_lab.portfolio_app import PortfolioStore, create_handler
+from backtest_lab.portfolio_app import PortfolioStore, create_handler, load_latest_observation_state
+from backtest_lab.stock_pool_store import StockPoolStore
 
 
 class _Completed:
@@ -45,7 +46,9 @@ class PortfolioAppHttpTest(unittest.TestCase):
                 ("127.0.0.1", 0),
                 create_handler(
                     store=PortfolioStore(tmp_path / "store.json"),
+                    pool_store=StockPoolStore(tmp_path / "stock_pools.json"),
                     signal_root=str(tmp_path / "signals"),
+                    observation_root=str(tmp_path / "observations"),
                     asset_types={"2454.TW": "stock"},
                     cost_model=TaiwanCostModel(),
                     command_runner=lambda *args, **kwargs: _Completed(),
@@ -72,6 +75,106 @@ class PortfolioAppHttpTest(unittest.TestCase):
                 synced = _request(port, "POST", "/api/sync-secret-and-run", {})
                 self.assertTrue(synced["sync_result"]["ok"])
                 self.assertTrue(synced["action_result"]["ok"])
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=5)
+
+    def test_stock_pool_api_lists_defaults_and_accepts_custom_pool(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            signal_dir = tmp_path / "signals" / "20260604"
+            signal_dir.mkdir(parents=True)
+            (signal_dir / "frozen_strategy_signal.json").write_text(
+                json.dumps({"status": "ready", "signal": {"signal_date": "2026-06-04", "target_ticker": "2330.TW"}}),
+                encoding="utf-8",
+            )
+            server = ThreadingHTTPServer(
+                ("127.0.0.1", 0),
+                create_handler(
+                    store=PortfolioStore(tmp_path / "store.json"),
+                    pool_store=StockPoolStore(tmp_path / "stock_pools.json"),
+                    signal_root=str(tmp_path / "signals"),
+                    observation_root=str(tmp_path / "observations"),
+                    asset_types={"2454.TW": "stock"},
+                    cost_model=TaiwanCostModel(),
+                    command_runner=lambda *args, **kwargs: _Completed(),
+                ),
+            )
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                port = server.server_address[1]
+                state = _request(port, "GET", "/api/pools")
+                self.assertEqual(state["latest_signal"]["target_ticker"], "2330.TW")
+                scorecard = next(pool for pool in state["pools"] if pool["pool_id"] == "model_scorecard_ep10")
+                self.assertEqual(scorecard["resolved_symbols"][2]["ticker"], "2330.TW")
+
+                updated = _request(
+                    port,
+                    "POST",
+                    "/api/pools",
+                    {"name": "自訂觀察池", "symbols_text": "2330\n2454", "strategy_preset": "universal_pool_custom"},
+                )
+                self.assertIn("自訂觀察池", {pool["name"] for pool in updated["pools"]})
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=5)
+
+    def test_observation_api_reads_latest_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            root = tmp_path / "observations"
+            old_dir = root / "20260526"
+            new_dir = root / "20260605"
+            old_dir.mkdir(parents=True)
+            new_dir.mkdir(parents=True)
+            (old_dir / "stock_pool_observation_manifest.json").write_text(
+                json.dumps({"signal_date": "2026-05-26", "generated": [], "skipped": []}),
+                encoding="utf-8",
+            )
+            (new_dir / "stock_pool_observation_manifest.json").write_text(
+                json.dumps(
+                    {
+                        "signal_date": "2026-06-05",
+                        "generated": [
+                            {
+                                "pool_id": "large_cap_best_v20260605",
+                                "pool_name": "AI中大型權值股池最佳版 v20260605",
+                                "top_display": "聯發科(2454)",
+                                "action_state": "watch_candidate",
+                            }
+                        ],
+                        "skipped": [],
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+
+            state = load_latest_observation_state(root)
+
+            self.assertEqual(state["status"], "ready")
+            self.assertEqual(state["manifest"]["signal_date"], "2026-06-05")
+
+            server = ThreadingHTTPServer(
+                ("127.0.0.1", 0),
+                create_handler(
+                    store=PortfolioStore(tmp_path / "store.json"),
+                    pool_store=StockPoolStore(tmp_path / "stock_pools.json"),
+                    signal_root=str(tmp_path / "signals"),
+                    observation_root=str(root),
+                    asset_types={"2454.TW": "stock"},
+                    cost_model=TaiwanCostModel(),
+                    command_runner=lambda *args, **kwargs: _Completed(),
+                ),
+            )
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                response = _request(server.server_address[1], "GET", "/api/observations")
+                self.assertEqual(response["manifest"]["generated"][0]["top_display"], "聯發科(2454)")
             finally:
                 server.shutdown()
                 server.server_close()

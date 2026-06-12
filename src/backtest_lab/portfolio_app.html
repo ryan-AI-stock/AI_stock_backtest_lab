@@ -3,257 +3,311 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AI 股票紀律工作台</title>
+  <title>AI 股票池管理中控台</title>
   <style>
     :root {
       --ink: #182026;
-      --muted: #64717a;
-      --line: #dce2e6;
+      --muted: #66737d;
+      --line: #dce3e8;
       --panel: #ffffff;
-      --canvas: #f3f5f6;
-      --green: #13795b;
-      --red: #b42318;
-      --amber: #a15c00;
+      --canvas: #f3f6f7;
+      --navy: #16232d;
+      --green: #11795b;
       --blue: #2457a7;
+      --amber-bg: #fff7e6;
+      --amber-line: #f0d89a;
+      --red: #b42318;
     }
     * { box-sizing: border-box; }
     body { margin: 0; background: var(--canvas); color: var(--ink); font-family: "Microsoft JhengHei", "Noto Sans TC", sans-serif; font-size: 14px; }
-    header { background: #17212a; color: white; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-    h1 { margin: 0; font-size: 20px; font-weight: 700; }
+    header { background: var(--navy); color: white; padding: 18px 24px; display: flex; justify-content: space-between; gap: 16px; align-items: center; }
+    h1 { margin: 0; font-size: 21px; }
     h2 { margin: 0; font-size: 16px; }
-    .subtle { color: #b7c3cc; margin-top: 4px; font-size: 12px; }
-    .badge { border: 1px solid #60717f; padding: 5px 8px; border-radius: 4px; font-size: 12px; white-space: nowrap; }
-    main { max-width: 1360px; margin: 0 auto; padding: 18px; display: grid; gap: 14px; }
-    .summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
-    .metric, section { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
-    .metric { padding: 13px 14px; min-width: 0; }
-    .metric-label { color: var(--muted); font-size: 12px; }
-    .metric-value { margin-top: 5px; font-size: 19px; font-weight: 700; overflow-wrap: anywhere; }
+    h3 { margin: 0; font-size: 15px; }
+    button, input, textarea, select { font: inherit; }
+    button { min-height: 36px; border: 1px solid var(--navy); border-radius: 5px; background: var(--navy); color: white; padding: 7px 12px; font-weight: 700; cursor: pointer; }
+    button.secondary { background: white; color: var(--navy); }
+    button.danger { background: white; color: var(--red); border-color: var(--red); }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    input, textarea, select { width: 100%; border: 1px solid #c8d2d9; border-radius: 5px; padding: 9px 10px; background: white; color: var(--ink); }
+    textarea { min-height: 180px; resize: vertical; line-height: 1.55; }
+    main { max-width: 1400px; margin: 0 auto; padding: 18px; display: grid; gap: 14px; }
+    .subtle { color: #b9c5cd; font-size: 12px; margin-top: 4px; }
+    .badge { border: 1px solid #60717f; border-radius: 5px; padding: 6px 9px; font-size: 12px; white-space: nowrap; }
+    .notice { background: var(--amber-bg); border: 1px solid var(--amber-line); border-radius: 6px; padding: 12px 14px; color: #7a4b00; line-height: 1.65; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(360px, .85fr); gap: 14px; align-items: start; }
+    section, .pool-card { background: var(--panel); border: 1px solid var(--line); border-radius: 7px; }
     section { padding: 15px; }
-    .section-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
-    .layout { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(320px, 0.8fr); gap: 14px; align-items: start; }
-    .stack { display: grid; gap: 14px; }
-    .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
-    th { color: var(--muted); font-size: 12px; font-weight: 600; background: #f8f9fa; }
-    td.num, th.num { text-align: right; }
-    .buy { color: var(--red); font-weight: 700; }
-    .sell { color: var(--green); font-weight: 700; }
-    .hold { color: var(--blue); font-weight: 700; }
-    form { display: grid; gap: 10px; }
-    .fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
-    label { display: grid; gap: 5px; color: var(--muted); font-size: 12px; }
-    input, select { width: 100%; min-height: 36px; border: 1px solid #c8d1d7; border-radius: 4px; padding: 7px 8px; color: var(--ink); background: white; }
-    button { min-height: 36px; border: 1px solid #17212a; border-radius: 4px; background: #17212a; color: white; padding: 7px 12px; font-weight: 700; cursor: pointer; }
-    button.secondary { background: white; color: #17212a; }
-    .actions { display: flex; justify-content: flex-end; gap: 8px; }
+    .section-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .pool-list { display: grid; gap: 10px; }
+    .pool-card { padding: 14px; display: grid; gap: 10px; cursor: pointer; }
+    .pool-card.selected { border-color: #6a93ca; box-shadow: 0 0 0 2px rgba(36, 87, 167, .10); }
+    .pool-meta { display: flex; flex-wrap: wrap; gap: 7px; }
+    .pill { border: 1px solid #c7d2da; background: #f8fafb; border-radius: 999px; padding: 4px 8px; color: var(--muted); font-size: 12px; }
+    .pill.green { color: var(--green); border-color: #acd9ca; background: #eefaf6; }
+    .pill.blue { color: var(--blue); border-color: #bfd1ec; background: #f0f5ff; }
+    .symbols { display: flex; flex-wrap: wrap; gap: 6px; }
+    .symbol { border: 1px solid #d8e1e7; background: #fbfcfd; border-radius: 5px; padding: 6px 8px; }
+    .observation-list { display: grid; gap: 8px; margin-bottom: 12px; }
+    .observation-row { border: 1px solid var(--line); border-radius: 6px; background: #fbfcfd; padding: 10px; display: grid; gap: 6px; }
+    .observation-row.skipped { background: #fff7f5; border-color: #f1c3bd; }
+    .observation-title { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+    .observation-title strong { overflow-wrap: anywhere; }
+    .empty { color: var(--muted); padding: 10px 0; }
+    form { display: grid; gap: 11px; }
+    label { display: grid; gap: 6px; color: var(--muted); font-size: 12px; }
+    .actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
     .status { min-height: 18px; color: var(--green); font-size: 12px; }
-    .warning { color: var(--amber); }
-    .empty { padding: 18px 8px; color: var(--muted); text-align: center; }
-    .position-grid { display: grid; gap: 7px; }
-    .position-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; align-items: end; }
-    .position-row strong { padding-bottom: 10px; }
-    @media (max-width: 900px) {
-      .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .error { color: var(--red); }
+    .detail-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .metric { background: #f8fafb; border: 1px solid var(--line); border-radius: 6px; padding: 11px; min-width: 0; }
+    .metric-label { color: var(--muted); font-size: 12px; }
+    .metric-value { margin-top: 5px; font-weight: 800; overflow-wrap: anywhere; }
+    @media (max-width: 980px) {
       .layout { grid-template-columns: 1fr; }
-      .fields { grid-template-columns: 1fr 1fr; }
+      .detail-grid { grid-template-columns: 1fr; }
     }
-    @media (max-width: 560px) {
+    @media (max-width: 620px) {
       header { align-items: flex-start; padding: 14px; }
       main { padding: 10px; }
-      .summary, .fields { grid-template-columns: 1fr; }
-      .position-row { grid-template-columns: 1fr 1fr; }
-      .position-row strong { grid-column: 1 / -1; padding: 0; }
+      .section-head { align-items: flex-start; flex-direction: column; }
     }
   </style>
 </head>
 <body>
   <header>
     <div>
-      <h1>AI 股票紀律工作台</h1>
-      <div class="subtle" id="signal-meta">載入每日最佳策略訊號...</div>
+      <h1>AI 股票池管理中控台</h1>
+      <div class="subtle" id="signal-meta">讀取模型訊號與股票池設定...</div>
     </div>
-    <div class="badge">最佳版 v20260605 · 人工決策</div>
+    <div class="badge">Pool Manager · 8765</div>
   </header>
+
   <main>
-    <div class="summary">
-      <div class="metric"><div class="metric-label">模型目標</div><div class="metric-value" id="target">--</div></div>
-      <div class="metric"><div class="metric-label">市場環境</div><div class="metric-value" id="regime">--</div></div>
-      <div class="metric"><div class="metric-label">可用現金</div><div class="metric-value" id="cash">--</div></div>
-      <div class="metric"><div class="metric-label">組合估值</div><div class="metric-value" id="total">--</div></div>
+    <div class="notice">
+      這個頁面取代舊版「AI 股票紀律工作台」。目前目標是管理不同股票池，讓每日報告、回測與未來私有部署都能依股票池設定執行。內建池會被保護；自訂池可以新增、修改與刪除。
     </div>
 
     <div class="layout">
-      <div class="stack">
-        <section>
-          <div class="section-head"><h2>下一交易日模型建議</h2><span class="subtle">收盤價估算 · 支援零股</span></div>
-          <div class="table-wrap"><table>
-            <thead><tr><th>動作</th><th>標的</th><th class="num">參考股數</th><th class="num">目標比例</th><th class="num">參考金額</th><th>原因</th></tr></thead>
-            <tbody id="recommendations"></tbody>
-          </table></div>
-        </section>
+      <section>
+        <div class="section-head">
+          <h2>股票池列表</h2>
+          <button class="secondary" type="button" id="new-pool">新增自訂池</button>
+        </div>
+        <div class="detail-grid" id="summary"></div>
+        <div class="section-head">
+          <h2>最新觀察結果</h2>
+          <span class="pill" id="observation-date">尚未讀取</span>
+        </div>
+        <div class="observation-list" id="observation-list"></div>
+        <div class="pool-list" id="pool-list"></div>
+      </section>
 
-        <section>
-          <div class="section-head"><h2>目前持倉</h2><span class="subtle">只有手動儲存或登錄成交才會改變</span></div>
-          <div class="table-wrap"><table>
-            <thead><tr><th>標的</th><th class="num">股數</th><th class="num">平均成本</th><th class="num">參考價</th><th class="num">市值</th><th class="num">未實現損益</th><th class="num">扣預估券商買賣成本後損益</th></tr></thead>
-            <tbody id="positions"></tbody>
-          </table></div>
-        </section>
-
-        <section>
-          <div class="section-head"><h2>成交紀錄</h2><span class="subtle">最新紀錄優先</span></div>
-          <div class="table-wrap"><table>
-            <thead><tr><th>日期</th><th>動作</th><th>標的</th><th class="num">股數</th><th class="num">成交價</th><th class="num">成本</th><th class="num">已實現損益</th></tr></thead>
-            <tbody id="trades"></tbody>
-          </table></div>
-        </section>
-      </div>
-
-      <div class="stack">
-        <section>
-          <div class="section-head"><h2>設定目前資產</h2></div>
-          <form id="portfolio-form">
-            <label>可用現金<input id="cash-input" type="number" min="0" step="1" required></label>
-            <div class="position-grid" id="position-inputs"></div>
-            <div class="actions"><button type="submit">儲存目前資產</button></div>
-            <div class="status" id="portfolio-status"></div>
-          </form>
-        </section>
-
-        <section>
-          <div class="section-head"><h2>登錄實際成交</h2></div>
-          <form id="trade-form">
-            <div class="fields">
-              <label>日期<input id="trade-date" type="date" required></label>
-              <label>動作<select id="trade-side"><option value="buy">買進</option><option value="sell">賣出</option></select></label>
-              <label>標的<select id="trade-ticker"></select></label>
-              <label>股數<input id="trade-shares" type="number" min="1" step="1" required></label>
-              <label>成交價<input id="trade-price" type="number" min="0.01" step="0.01" required></label>
-              <label>實際費用<input id="trade-costs" type="number" min="0" step="1" placeholder="空白則依台股成本估算"></label>
-            </div>
-            <div class="actions"><button type="submit">登錄成交</button></div>
-            <div class="status" id="trade-status"></div>
-          </form>
-        </section>
-
-        <section>
-          <div class="section-head"><h2>同步與產報</h2><span class="subtle">只在按下後同步</span></div>
-          <p class="subtle" style="color: var(--muted); margin-top: 0;">同步會把目前本機持倉檔更新到此 repo 的 GitHub encrypted secret，不會寫入 repo。</p>
-          <div class="actions">
-            <button class="secondary" type="button" id="sync-secret">同步持倉 Secret</button>
-            <button type="button" id="sync-and-run">同步並產生報告</button>
+      <section>
+        <div class="section-head">
+          <h2>股票池編輯</h2>
+          <span class="pill blue" id="edit-kind">未選取</span>
+        </div>
+        <form id="pool-form">
+          <input id="pool-id" type="hidden">
+          <label>股票池名稱
+            <input id="pool-name" placeholder="例如：我的AI觀察池">
+          </label>
+          <label>策略預設
+            <select id="strategy-preset">
+              <option value="universal_pool_custom">通用股票池預設參數版</option>
+              <option value="best_v20260605">AI中大型權值股最佳版 v20260605</option>
+              <option value="radar_core_mid_small_calibrated_v1">雷達中小型校準版</option>
+              <option value="delayed_public_scorecard_v1">模型延遲公開成績單</option>
+            </select>
+          </label>
+          <label>股票代號，一行一檔
+            <textarea id="symbols-text" placeholder="2330&#10;2454&#10;00631L"></textarea>
+          </label>
+          <label>說明
+            <input id="description" placeholder="這個池的用途">
+          </label>
+          <div class="notice" id="dynamic-note">
+            池3目前設定為：0050、0050正二，加上跟隨「AI中大型權值股池最佳版 v20260605」每日模型第一名的第三檔股票。沒有最新訊號時，預設使用聯發科(2454)。
           </div>
-          <div class="status" id="sync-status"></div>
-        </section>
-      </div>
+          <div class="actions">
+            <button class="danger" type="button" id="delete-pool">刪除自訂池</button>
+            <button type="submit">儲存股票池</button>
+          </div>
+          <div class="status" id="status"></div>
+        </form>
+      </section>
     </div>
   </main>
-  <script>
-    const assets = [
-      ["0050.TW","0050"],["00631L.TW","0050 正二"],["2330.TW","台積電"],["2454.TW","聯發科"],
-      ["2308.TW","台達電"],["2317.TW","鴻海"],["2382.TW","廣達"],["3231.TW","緯創"],["6669.TW","緯穎"]
-    ];
-    const labels = Object.fromEntries(assets);
-    const money = value => new Intl.NumberFormat("zh-TW", { maximumFractionDigits: 0 }).format(value || 0);
-    const money2 = value => new Intl.NumberFormat("zh-TW", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value || 0);
-    const pct = value => `${Math.round((value || 0) * 100)}%`;
-    const actionLabel = action => ({buy:"買進",sell:"賣出",hold:"維持"}[action] || action);
-    let state = null;
 
-    function setupForms() {
-      document.getElementById("trade-date").value = new Date().toISOString().slice(0,10);
-      document.getElementById("trade-ticker").innerHTML = assets.map(([ticker,label]) => `<option value="${ticker}">${label}</option>`).join("");
-      document.getElementById("position-inputs").innerHTML = assets.map(([ticker,label]) => `
-        <div class="position-row"><strong>${label}</strong>
-          <label>股數<input data-shares="${ticker}" type="number" min="0" step="1" value="0"></label>
-          <label>平均成本<input data-cost="${ticker}" type="number" min="0" step="0.01" value="0"></label>
-        </div>`).join("");
-    }
+  <script>
+    let state = { pools: [], latest_signal: null };
+    let observationState = { status: "loading", manifest: null };
+    let selectedPoolId = null;
+
+    const byId = id => document.getElementById(id);
+    const kindLabel = pool => pool.locked ? "內建保護" : (pool.kind === "task" ? "任務池" : "自訂池");
+    const symbolText = symbols => symbols.map(item => item.symbol).join("\n");
 
     async function refresh() {
-      const response = await fetch("/api/state");
+      const response = await fetch("/api/pools");
       state = await response.json();
+      const observationResponse = await fetch("/api/observations");
+      observationState = await observationResponse.json();
+      if (!selectedPoolId && state.pools.length) selectedPoolId = state.pools[0].pool_id;
       render();
     }
 
     function render() {
-      const signal = state.signal;
-      const portfolio = state.portfolio;
-      document.getElementById("signal-meta").textContent = signal ? `訊號日 ${signal.signal_date} · ${signal.action}` : "尚未找到正式最佳策略日報";
-      document.getElementById("target").textContent = signal ? `${labels[signal.target_ticker] || "現金"} ${pct(signal.target_exposure)}` : "--";
-      document.getElementById("regime").textContent = signal ? signal.market_regime_label : "--";
-      document.getElementById("cash").textContent = `$${money(portfolio.cash_twd)}`;
-      document.getElementById("total").textContent = `$${money(portfolio.total_value_twd)}`;
-      document.getElementById("cash-input").value = state.user.cash_twd;
-
-      for (const [ticker] of assets) {
-        const position = state.user.positions[ticker] || {shares:0,avg_cost:0};
-        document.querySelector(`[data-shares="${ticker}"]`).value = position.shares;
-        document.querySelector(`[data-cost="${ticker}"]`).value = position.avg_cost;
-      }
-
-      document.getElementById("recommendations").innerHTML = state.recommendations.length ? state.recommendations.map(row => `
-        <tr><td class="${row.action}">${actionLabel(row.action)}</td><td>${labels[row.ticker] || row.ticker}</td>
-        <td class="num">${money(row.shares)}</td><td class="num">${pct(row.target_exposure)}</td>
-        <td class="num">$${money(row.estimated_gross_twd)}</td><td>${row.reason}</td></tr>`).join("") : `<tr><td class="empty" colspan="6">目前沒有可計算的模型調整建議</td></tr>`;
-
-      document.getElementById("positions").innerHTML = portfolio.positions.length ? portfolio.positions.map(row => `
-        <tr><td>${labels[row.ticker] || row.ticker}</td><td class="num">${money(row.shares)}</td>
-        <td class="num">$${money2(row.avg_cost)}</td><td class="num">$${money2(row.reference_price)}</td>
-        <td class="num">$${money2(row.market_value_twd)}</td><td class="num">${row.unrealized_pnl_twd >= 0 ? "+" : ""}$${money2(row.unrealized_pnl_twd)}</td>
-        <td class="num">${row.net_unrealized_pnl_twd >= 0 ? "+" : ""}$${money2(row.net_unrealized_pnl_twd)}</td></tr>`).join("") : `<tr><td class="empty" colspan="7">尚未輸入持倉</td></tr>`;
-
-      const trades = [...state.user.trades].reverse();
-      document.getElementById("trades").innerHTML = trades.length ? trades.map(row => `
-        <tr><td>${row.date}</td><td class="${row.side}">${actionLabel(row.side)}</td><td>${labels[row.ticker] || row.ticker}</td>
-        <td class="num">${money(row.shares)}</td><td class="num">$${money2(row.price)}</td><td class="num">$${money2(row.costs_twd)}</td>
-        <td class="num">${row.realized_pnl_twd == null ? "--" : `${row.realized_pnl_twd >= 0 ? "+" : ""}$${money2(row.realized_pnl_twd)}`}</td></tr>`).join("") : `<tr><td class="empty" colspan="7">尚未登錄成交</td></tr>`;
+      const signal = state.latest_signal;
+      byId("signal-meta").textContent = signal
+        ? `最新模型訊號：${signal.signal_date} · ${signal.target_ticker || "現金"}`
+        : "尚未讀到最新模型訊號，動態池會使用 fallback。";
+      byId("summary").innerHTML = `
+        <div class="metric"><div class="metric-label">股票池數量</div><div class="metric-value">${state.pools.length}</div></div>
+        <div class="metric"><div class="metric-label">內建保護池</div><div class="metric-value">${state.pools.filter(pool => pool.locked).length}</div></div>
+        <div class="metric"><div class="metric-label">動態跟隨池</div><div class="metric-value">${state.pools.filter(pool => pool.dynamic_binding).length}</div></div>`;
+      renderObservations();
+      byId("pool-list").innerHTML = state.pools.map(pool => poolCard(pool)).join("");
+      document.querySelectorAll("[data-pool-id]").forEach(node => {
+        node.addEventListener("click", () => {
+          selectedPoolId = node.dataset.poolId;
+          render();
+        });
+      });
+      renderEditor();
     }
 
-    document.getElementById("portfolio-form").addEventListener("submit", async event => {
+    function renderObservations() {
+      const manifest = observationState.manifest;
+      if (!manifest) {
+        byId("observation-date").textContent = observationState.status === "error" ? "讀取失敗" : "尚無資料";
+        byId("observation-list").innerHTML = `<div class="empty">${observationState.message || "尚未產出股票池觀察結果。"}</div>`;
+        return;
+      }
+      byId("observation-date").textContent = `訊號日 ${manifest.signal_date}`;
+      const generated = (manifest.generated || []).map(item => observationRow(item, false)).join("");
+      const skipped = (manifest.skipped || []).map(item => observationRow(item, true)).join("");
+      byId("observation-list").innerHTML = generated + skipped || `<div class="empty">manifest 沒有可顯示項目。</div>`;
+    }
+
+    function observationRow(item, skipped) {
+      const missing = item.missing_price_tickers?.length
+        ? `<span class="pill">缺價 ${item.missing_price_tickers.join(", ")}</span>`
+        : "";
+      const status = skipped
+        ? `<span class="pill">跳過：${item.reason}</span>`
+        : `<span class="pill green">${item.action_state}</span>`;
+      const target = skipped ? "未產出" : `${item.top_display || item.top_ticker || "無合格候選"}`;
+      return `<div class="observation-row${skipped ? " skipped" : ""}">
+        <div class="observation-title"><strong>${item.pool_name}</strong>${status}</div>
+        <div class="pool-meta">
+          <span class="pill blue">${target}</span>
+          ${missing}
+        </div>
+      </div>`;
+    }
+
+    function poolCard(pool) {
+      const selected = pool.pool_id === selectedPoolId ? " selected" : "";
+      const symbols = pool.resolved_symbols || pool.symbols || [];
+      const symbolHtml = symbols.length
+        ? symbols.map(item => `<span class="symbol">${item.display}${item.source === "dynamic" ? " · 動態" : ""}</span>`).join("")
+        : `<span class="empty">此池由雷達 snapshot 動態產生候選股，非固定清單。</span>`;
+      return `<article class="pool-card${selected}" data-pool-id="${pool.pool_id}">
+        <div class="section-head"><h3>${pool.name}</h3><span class="pill ${pool.locked ? "green" : "blue"}">${kindLabel(pool)}</span></div>
+        <div class="pool-meta">
+          <span class="pill">${pool.strategy_preset}</span>
+          <span class="pill">${symbols.length} 檔</span>
+          ${pool.dynamic_binding ? `<span class="pill blue">跟隨 ${pool.dynamic_binding.source_pool_id}</span>` : ""}
+        </div>
+        <div class="symbols">${symbolHtml}</div>
+        <div class="empty">${pool.description || ""}</div>
+      </article>`;
+    }
+
+    function renderEditor() {
+      const pool = state.pools.find(item => item.pool_id === selectedPoolId);
+      if (!pool) {
+        byId("pool-id").value = "";
+        byId("pool-name").value = "";
+        byId("symbols-text").value = "";
+        byId("description").value = "";
+        byId("edit-kind").textContent = "新增";
+        byId("delete-pool").disabled = true;
+        return;
+      }
+      byId("pool-id").value = pool.pool_id;
+      byId("pool-name").value = pool.name;
+      byId("strategy-preset").value = pool.strategy_preset;
+      byId("symbols-text").value = symbolText(pool.symbols || []);
+      byId("description").value = pool.description || "";
+      byId("edit-kind").textContent = kindLabel(pool);
+      const locked = Boolean(pool.locked);
+      byId("pool-name").disabled = locked;
+      byId("strategy-preset").disabled = locked;
+      byId("symbols-text").disabled = locked;
+      byId("description").disabled = locked;
+      byId("delete-pool").disabled = locked;
+    }
+
+    byId("new-pool").addEventListener("click", () => {
+      selectedPoolId = null;
+      byId("pool-id").value = "";
+      byId("pool-name").value = "";
+      byId("strategy-preset").value = "universal_pool_custom";
+      byId("symbols-text").value = "";
+      byId("description").value = "";
+      byId("edit-kind").textContent = "新增";
+      byId("pool-name").disabled = false;
+      byId("strategy-preset").disabled = false;
+      byId("symbols-text").disabled = false;
+      byId("description").disabled = false;
+      byId("delete-pool").disabled = true;
+    });
+
+    byId("pool-form").addEventListener("submit", async event => {
       event.preventDefault();
-      const positions = assets.map(([ticker]) => ({ticker, shares:Number(document.querySelector(`[data-shares="${ticker}"]`).value), avg_cost:Number(document.querySelector(`[data-cost="${ticker}"]`).value)}));
-      await send("/api/portfolio", {cash_twd:Number(document.getElementById("cash-input").value), positions}, "portfolio-status");
-    });
-
-    document.getElementById("trade-form").addEventListener("submit", async event => {
-      event.preventDefault();
-      const costs = document.getElementById("trade-costs").value;
-      await send("/api/trades", {
-        date:document.getElementById("trade-date").value, side:document.getElementById("trade-side").value,
-        ticker:document.getElementById("trade-ticker").value, shares:Number(document.getElementById("trade-shares").value),
-        price:Number(document.getElementById("trade-price").value), costs_twd:costs === "" ? null : Number(costs)
-      }, "trade-status");
-    });
-
-    document.getElementById("sync-secret").addEventListener("click", async () => {
-      await send("/api/sync-secret", {}, "sync-status");
-    });
-
-    document.getElementById("sync-and-run").addEventListener("click", async () => {
-      await send("/api/sync-secret-and-run", {}, "sync-status");
-    });
-
-    async function send(url, payload, statusId) {
-      const status = document.getElementById(statusId);
-      status.textContent = "處理中...";
+      const status = byId("status");
+      status.textContent = "儲存中...";
       status.className = "status";
-      const response = await fetch(url, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)});
+      const payload = {
+        pool_id: byId("pool-id").value,
+        name: byId("pool-name").value,
+        strategy_preset: byId("strategy-preset").value,
+        symbols_text: byId("symbols-text").value,
+        description: byId("description").value,
+      };
+      const response = await fetch("/api/pools", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload) });
       const data = await response.json();
       if (!response.ok) {
-        status.textContent = data.error || "操作失敗";
-        status.className = "status warning";
+        status.textContent = data.error || "儲存失敗";
+        status.className = "status error";
         return;
       }
       state = data;
-      const messages = [data.sync_result?.message, data.action_result?.message].filter(Boolean);
-      status.textContent = messages.length ? messages.join(" ") : "已更新";
+      selectedPoolId = payload.pool_id || state.pools[state.pools.length - 1].pool_id;
+      status.textContent = "已儲存";
       render();
-    }
+    });
 
-    setupForms();
+    byId("delete-pool").addEventListener("click", async () => {
+      if (!selectedPoolId) return;
+      const status = byId("status");
+      status.textContent = "刪除中...";
+      const response = await fetch(`/api/pools?pool_id=${encodeURIComponent(selectedPoolId)}`, { method: "DELETE" });
+      const data = await response.json();
+      if (!response.ok) {
+        status.textContent = data.error || "刪除失敗";
+        status.className = "status error";
+        return;
+      }
+      state = data;
+      selectedPoolId = state.pools[0]?.pool_id || null;
+      status.textContent = "已刪除";
+      render();
+    });
+
     refresh();
   </script>
 </body>

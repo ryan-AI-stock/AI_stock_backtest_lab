@@ -1,0 +1,157 @@
+name: Stock Pool Observation
+
+on:
+  workflow_dispatch:
+    inputs:
+      signal_date:
+        description: "Signal date in YYYY-MM-DD. Defaults to shared schedule target date."
+        required: false
+        type: string
+      pool_id:
+        description: "Stock pool id, or all."
+        required: false
+        type: string
+        default: "all"
+      radar_snapshot_dir:
+        description: "Optional local radar snapshot dir inside the workspace."
+        required: false
+        type: string
+  schedule:
+    # Run after the best-strategy report and delayed scorecard windows.
+    - cron: "40 8 * * 1-5"
+
+jobs:
+  stock-pool-observation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Checkout shared schedule rules
+        uses: actions/checkout@v4
+        with:
+          repository: ryan-AI-stock/AI_stock_schedule_rules
+          path: AI_stock_schedule_rules
+
+      - name: Checkout rotation radar snapshots
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: ryan-AI-stock/AI_stock_rotation_radar
+          path: AI_stock_rotation_radar
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Shared daily schedule gate
+        id: schedule-gate
+        shell: bash
+        working-directory: AI_stock_schedule_rules
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          manual_args=""
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            manual_args="--manual-dispatch"
+          fi
+          python -m stock_schedule_rules.gate \
+            --profile daily \
+            $manual_args \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Skip observation when schedule gate is closed
+        if: steps.schedule-gate.outputs.should_run != 'true'
+        run: |
+          echo "Schedule gate closed: ${{ steps.schedule-gate.outputs.reason }}"
+          echo "No stock-pool observation generated for this run."
+
+      - name: Install dependencies and Chinese font
+        if: steps.schedule-gate.outputs.should_run == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fonts-noto-cjk
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Resolve observation inputs
+        if: steps.schedule-gate.outputs.should_run == 'true'
+        id: observation-inputs
+        shell: bash
+        env:
+          INPUT_SIGNAL_DATE: ${{ inputs.signal_date }}
+          INPUT_POOL_ID: ${{ inputs.pool_id }}
+          INPUT_RADAR_SNAPSHOT_DIR: ${{ inputs.radar_snapshot_dir }}
+          VAR_RADAR_SNAPSHOT_DIR: ${{ vars.RADAR_SNAPSHOT_DIR }}
+        run: |
+          if [ -n "$INPUT_SIGNAL_DATE" ]; then
+            echo "signal_date=$INPUT_SIGNAL_DATE" >> "$GITHUB_OUTPUT"
+          elif [ -n "${{ steps.schedule-gate.outputs.target_date }}" ]; then
+            echo "signal_date=${{ steps.schedule-gate.outputs.target_date }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "signal_date=$(TZ=Asia/Taipei date +%F)" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -n "$INPUT_POOL_ID" ]; then
+            echo "pool_id=$INPUT_POOL_ID" >> "$GITHUB_OUTPUT"
+          else
+            echo "pool_id=all" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -n "$INPUT_RADAR_SNAPSHOT_DIR" ]; then
+            echo "radar_snapshot_dir=$INPUT_RADAR_SNAPSHOT_DIR" >> "$GITHUB_OUTPUT"
+          elif [ -n "$VAR_RADAR_SNAPSHOT_DIR" ]; then
+            echo "radar_snapshot_dir=$VAR_RADAR_SNAPSHOT_DIR" >> "$GITHUB_OUTPUT"
+          elif [ -d "AI_stock_rotation_radar/data/history" ]; then
+            echo "radar_snapshot_dir=AI_stock_rotation_radar/data/history" >> "$GITHUB_OUTPUT"
+          else
+            echo "radar_snapshot_dir=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Generate stock-pool observations
+        if: steps.schedule-gate.outputs.should_run == 'true'
+        shell: bash
+        env:
+          PYTHONPATH: src
+          RADAR_SNAPSHOT_DIR: ${{ steps.observation-inputs.outputs.radar_snapshot_dir }}
+        run: |
+          date_key="${{ steps.observation-inputs.outputs.signal_date }}"
+          date_key="${date_key//-/}"
+          rm -rf "outputs/stock_pool_observations/${date_key}"
+          radar_args=()
+          if [ -n "$RADAR_SNAPSHOT_DIR" ]; then
+            radar_args+=(--radar-snapshot-dir "$RADAR_SNAPSHOT_DIR")
+          fi
+          python -m backtest_lab.stock_pool_observation \
+            --pool-id "${{ steps.observation-inputs.outputs.pool_id }}" \
+            --signal-date "${{ steps.observation-inputs.outputs.signal_date }}" \
+            --warmup-start 2020-01-02 \
+            --cache-dir backtest_cache/stock_pool_observations \
+            --output-root outputs/stock_pool_observations \
+            "${radar_args[@]}"
+
+      - name: Publish latest PDF to Google Drive
+        if: steps.schedule-gate.outputs.should_run == 'true'
+        env:
+          PYTHONPATH: src
+          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+          GOOGLE_OAUTH_REFRESH_TOKEN: ${{ secrets.GOOGLE_OAUTH_REFRESH_TOKEN }}
+          STOCK_POOL_OBSERVATION_DRIVE_FOLDER_ID: ${{ secrets.STOCK_POOL_OBSERVATION_DRIVE_FOLDER_ID || vars.STOCK_POOL_OBSERVATION_DRIVE_FOLDER_ID || '1O6Se-HfI7ZDTQ-LWeAO6f8vtvoLcCzIj' }}
+          STOCK_POOL_OBSERVATION_DRIVE_FILE_ID: ${{ secrets.STOCK_POOL_OBSERVATION_DRIVE_FILE_ID || vars.STOCK_POOL_OBSERVATION_DRIVE_FILE_ID }}
+        run: |
+          python -m backtest_lab.drive_publish \
+            --folder-id "$STOCK_POOL_OBSERVATION_DRIVE_FOLDER_ID" \
+            --file-id "$STOCK_POOL_OBSERVATION_DRIVE_FILE_ID" \
+            --remote-name "AI股票池觀察總覽_最新版_v20260612.pdf" \
+            --file "outputs/stock_pool_observations/$(echo '${{ steps.observation-inputs.outputs.signal_date }}' | tr -d '-')/AI股票池觀察總覽_最新版_v20260612.pdf"
+
+      - name: Upload observation artifact
+        if: steps.schedule-gate.outputs.should_run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: stock-pool-observations-${{ steps.observation-inputs.outputs.signal_date }}
+          path: outputs/stock_pool_observations/
+          if-no-files-found: error

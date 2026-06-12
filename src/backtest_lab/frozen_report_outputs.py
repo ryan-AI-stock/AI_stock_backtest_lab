@@ -54,6 +54,11 @@ def write_report_outputs(
         index=False,
         encoding="utf-8-sig",
     )
+    pd.DataFrame(shadow_mode_rows(signal)).to_csv(
+        output_dir / "shadow_mode_comparison.csv",
+        index=False,
+        encoding="utf-8-sig",
+    )
     report = markdown_report(signal)
     dated_md = output_dir / report_filename(report_name, report_version, "md", signal.signal_date)
     latest_md = output_dir / report_filename(report_name, report_version, "md", latest=True)
@@ -82,6 +87,7 @@ def daily_status_row(signal: object, report_mode_value: str, personal_summary: d
         "attack_gate_active": signal.attack_gate_active,
         "attack_gate_ever_activated": signal.attack_gate_ever_activated,
         "risk_off_active": signal.risk_off_active,
+        "shadow_mode_count": len(signal.shadow_modes or []),
         "report_mode": report_mode_value,
         "personal_portfolio_attached": signal.personal_portfolio is not None,
         "personal_total_value_twd": personal_summary["total_value_twd"] if personal_summary else "",
@@ -90,6 +96,35 @@ def daily_status_row(signal: object, report_mode_value: str, personal_summary: d
         "personal_target_actual_exposure": personal_summary["target_actual_exposure"] if personal_summary else "",
         "personal_target_gap_exposure": personal_summary["target_gap_exposure"] if personal_summary else "",
     }
+
+
+def shadow_mode_rows(signal: object) -> list[dict]:
+    rows = []
+    for rank, shadow in enumerate(signal.shadow_modes or [], start=1):
+        rows.append(
+            {
+                "rank": rank,
+                "signal_date": signal.signal_date,
+                "shadow_id": shadow.shadow_id,
+                "shadow_label": shadow.shadow_label,
+                "strategy_name": shadow.strategy_name,
+                "current_ticker": shadow.current_ticker,
+                "current_label": shadow.current_label,
+                "current_exposure": shadow.current_exposure,
+                "target_ticker": shadow.target_ticker,
+                "target_label": shadow.target_label,
+                "target_exposure": shadow.target_exposure,
+                "action": shadow.action,
+                "model_target_status": shadow.model_target_status,
+                "model_total_value_twd": shadow.model_total_value_twd,
+                "primary_model_total_value_twd": signal.model_total_value_twd,
+                "value_diff_twd": shadow.value_diff_twd,
+                "value_diff_pct": shadow.value_diff_pct,
+                "target_differs_from_primary": shadow.target_ticker != signal.target_ticker
+                or abs(shadow.target_exposure - signal.target_exposure) >= 0.02,
+            }
+        )
+    return rows
 
 
 def report_filename(

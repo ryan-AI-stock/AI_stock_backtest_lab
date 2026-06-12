@@ -12,6 +12,8 @@ from backtest_lab.config import load_config
 from backtest_lab.portfolio_app_settings import (
     DEFAULT_GITHUB_REF,
     DEFAULT_GITHUB_REPO,
+    DEFAULT_OBSERVATION_ROOT,
+    DEFAULT_POOL_STORE_PATH,
     DEFAULT_SIGNAL_ROOT,
     DEFAULT_STORE_PATH,
     DEFAULT_USER_ID,
@@ -21,12 +23,15 @@ from backtest_lab.portfolio_app_settings import (
 from backtest_lab.portfolio_dashboard import _max_affordable_shares, build_dashboard, load_latest_signal
 from backtest_lab.portfolio_github import sync_portfolio_secret, trigger_report_workflow
 from backtest_lab.portfolio_store import PortfolioStore
+from backtest_lab.stock_pool_store import KNOWN_SYMBOLS, StockPoolStore
 
 
 def create_handler(
     *,
     store: PortfolioStore,
+    pool_store: StockPoolStore | None = None,
     signal_root: str,
+    observation_root: str = DEFAULT_OBSERVATION_ROOT,
     asset_types: dict[str, str],
     cost_model,
     github_repo: str = DEFAULT_GITHUB_REPO,
@@ -35,12 +40,19 @@ def create_handler(
     command_runner=subprocess.run,
 ):
     html = Path(__file__).with_name("portfolio_app.html").read_text(encoding="utf-8")
+    pool_store = pool_store or StockPoolStore(DEFAULT_POOL_STORE_PATH)
 
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
             path = urlparse(self.path).path
             if path == "/":
                 self._send(html, "text/html; charset=utf-8")
+                return
+            if path == "/api/pools":
+                self._json(_pool_state())
+                return
+            if path == "/api/observations":
+                self._json(load_latest_observation_state(observation_root))
                 return
             if path == "/api/state":
                 user = store.get_user()
@@ -54,6 +66,10 @@ def create_handler(
             try:
                 payload = self._read_json()
                 user_id = str(payload.get("user_id") or DEFAULT_USER_ID)
+                if path == "/api/pools":
+                    pool_store.upsert_pool(payload)
+                    self._json(_pool_state())
+                    return
                 if path == "/api/portfolio":
                     store.replace_portfolio(
                         user_id=user_id,
@@ -101,6 +117,18 @@ def create_handler(
             except (ValueError, TypeError, json.JSONDecodeError) as error:
                 self._json({"error": str(error)}, status=HTTPStatus.BAD_REQUEST)
 
+        def do_DELETE(self) -> None:
+            parsed = urlparse(self.path)
+            if parsed.path != "/api/pools":
+                self.send_error(HTTPStatus.NOT_FOUND)
+                return
+            try:
+                query = dict(pair.split("=", 1) for pair in parsed.query.split("&") if "=" in pair)
+                pool_store.delete_pool(str(query.get("pool_id") or ""))
+                self._json(_pool_state())
+            except ValueError as error:
+                self._json({"error": str(error)}, status=HTTPStatus.BAD_REQUEST)
+
         def _read_json(self) -> dict:
             length = int(self.headers.get("Content-Length", "0"))
             return json.loads(self.rfile.read(length).decode("utf-8"))
@@ -120,6 +148,14 @@ def create_handler(
         def log_message(self, format: str, *args) -> None:
             print(f"portfolio_app: {format % args}")
 
+    def _pool_state() -> dict:
+        signal = load_latest_signal(signal_root)
+        return {
+            "latest_signal": signal,
+            "known_symbols": KNOWN_SYMBOLS,
+            "pools": pool_store.list_pools(latest_signal=signal),
+        }
+
     return Handler
 
 
@@ -128,6 +164,8 @@ def main() -> None:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--store", default=DEFAULT_STORE_PATH)
+    parser.add_argument("--pool-store", default=DEFAULT_POOL_STORE_PATH)
+    parser.add_argument("--observation-root", default=DEFAULT_OBSERVATION_ROOT)
     parser.add_argument("--signal-root", default=DEFAULT_SIGNAL_ROOT)
     parser.add_argument("--config", default="configs/ep05_universe.json")
     parser.add_argument("--group-id", default="group_c_0050_00631l_plus_mega_caps")
@@ -141,7 +179,9 @@ def main() -> None:
     asset_types = {asset.ticker: asset.asset_type for asset in group.assets}
     handler = create_handler(
         store=PortfolioStore(args.store),
+        pool_store=StockPoolStore(args.pool_store),
         signal_root=args.signal_root,
+        observation_root=args.observation_root,
         asset_types=asset_types,
         cost_model=config.cost_model,
         github_repo=args.github_repo,
@@ -151,6 +191,32 @@ def main() -> None:
     server = ThreadingHTTPServer((args.host, args.port), handler)
     print(f"PORTFOLIO_APP_URL=http://{args.host}:{args.port}")
     server.serve_forever()
+
+
+def load_latest_observation_state(root: str | Path) -> dict:
+    base = Path(root)
+    manifests = sorted(base.glob("*/stock_pool_observation_manifest.json"))
+    if not manifests:
+        return {
+            "status": "missing",
+            "message": "尚未產出股票池觀察結果。",
+            "manifest": None,
+        }
+    latest = manifests[-1]
+    try:
+        manifest = json.loads(latest.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        return {
+            "status": "error",
+            "message": f"股票池觀察 manifest 讀取失敗：{error}",
+            "manifest_path": str(latest),
+            "manifest": None,
+        }
+    return {
+        "status": "ready",
+        "manifest_path": str(latest),
+        "manifest": manifest,
+    }
 
 
 if __name__ == "__main__":

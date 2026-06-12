@@ -49,6 +49,7 @@ class RegimeModeSwitchVariant:
     market_risk_off_defense_rule: str = "ma245"
     market_risk_off_defense_ticker: str | None = None
     market_risk_off_exposure: float | None = None
+    market_risk_off_exposure_selector: str | None = None
     market_risk_off_exit_confirmation_days: int = 0
     market_risk_off_only_when_attack_gate_inactive: bool = False
     market_risk_off_only_before_first_attack_activation: bool = False
@@ -2241,6 +2242,72 @@ def cycle_proven_preproof_exposure_variants() -> tuple[RegimeModeSwitchVariant, 
     return tuple(variants)
 
 
+def cycle_proven_preproof_dynamic_exposure_variants() -> tuple[RegimeModeSwitchVariant, ...]:
+    """Dynamically choose pre-proof residual leveraged exposure by market health."""
+    base = cycle_proven_history_init_variants()[0]
+    variants: list[RegimeModeSwitchVariant] = []
+    for selector in (
+        "00631l_above_ma120_to_75pct_else_cash",
+        "00631l_above_ma200_to_75pct_else_cash",
+        "0050_above_ma120_to_75pct_else_cash",
+        "0050_above_ma200_to_75pct_else_cash",
+        "0050_above_ma200_to_50pct_else_cash",
+        "0050_above_ma200_bull_regime_to_25pct_else_cash",
+        "0050_above_ma200_bull_regime_to_50pct_else_cash",
+        "0050_above_ma200_bull_regime_to_75pct_else_cash",
+    ):
+        variants.append(
+            RegimeModeSwitchVariant(
+                **{
+                    **base.__dict__,
+                    "name": f"cycle_preproof_dynamic_{selector}",
+                    "market_risk_off_mode": MODE_0050_DEFENSE,
+                    "market_risk_off_defense_ticker": "00631L.TW",
+                    "market_risk_off_defense_rule": "ma200",
+                    "market_risk_off_exposure": None,
+                    "market_risk_off_exposure_selector": selector,
+                }
+            )
+        )
+    for exposure in (25, 50, 75):
+        selector = f"0050_above_ma200_bull_regime_to_{exposure}pct_else_cash"
+        variants.append(
+            RegimeModeSwitchVariant(
+                **{
+                    **base.__dict__,
+                    "name": f"cycle_preproof_dynamic_m20_{selector}",
+                    "market_risk_off_mode": MODE_0050_DEFENSE,
+                    "market_risk_off_defense_ticker": "00631L.TW",
+                    "market_risk_off_defense_rule": "ma200",
+                    "market_risk_off_exposure": None,
+                    "market_risk_off_exposure_selector": selector,
+                    "attack_gate_margin_over_fallback": 0.20,
+                }
+            )
+        )
+    for acceleration in (0.40, 0.60, 0.80):
+        selector = "0050_above_ma200_bull_regime_to_75pct_else_cash"
+        variants.append(
+            RegimeModeSwitchVariant(
+                **{
+                    **base.__dict__,
+                    "name": (
+                        f"cycle_preproof_dynamic_m20_initial_accel{int(acceleration * 100)}_"
+                        f"{selector}"
+                    ),
+                    "market_risk_off_mode": MODE_0050_DEFENSE,
+                    "market_risk_off_defense_ticker": "00631L.TW",
+                    "market_risk_off_defense_rule": "ma200",
+                    "market_risk_off_exposure": None,
+                    "market_risk_off_exposure_selector": selector,
+                    "attack_gate_margin_over_fallback": 0.20,
+                    "attack_gate_min_short_to_medium_momentum_ratio": acceleration,
+                }
+            )
+        )
+    return tuple(variants)
+
+
 def frozen_cycle_proven_top1_v1_variant() -> RegimeModeSwitchVariant:
     """Return the immutable production baseline used by reports and challengers."""
     base = cycle_proven_preproof_exposure_variants()[1]
@@ -2621,8 +2688,11 @@ def simulate_regime_mode_switch(
         if risk_off_active:
             mode = variant.market_risk_off_mode
             exposure = (
-                variant.market_risk_off_exposure
+                _market_risk_off_dynamic_exposure(prices_by_ticker, signal_date, regime, variant)
+                if variant.market_risk_off_exposure_selector
+                else variant.market_risk_off_exposure
                 if variant.market_risk_off_exposure is not None
+                or variant.market_risk_off_exposure_selector
                 else 1.0 if mode == MODE_0050_DEFENSE else 0.0
             )
             defense_override_rule = variant.market_risk_off_defense_rule
@@ -2929,6 +2999,55 @@ def _market_risk_off(market_prices: pd.DataFrame, signal_date: pd.Timestamp, fil
     if filter_name == "ma120_ret20":
         return close < ma120 and return_20 < 0
     raise ValueError(f"Unsupported market risk-off filter: {filter_name}")
+
+
+def _market_risk_off_dynamic_exposure(
+    prices_by_ticker: dict[str, pd.DataFrame],
+    signal_date: pd.Timestamp,
+    regime: str,
+    variant: RegimeModeSwitchVariant,
+) -> float:
+    selector = variant.market_risk_off_exposure_selector
+    if selector is None:
+        return variant.market_risk_off_exposure or 0.0
+
+    selector_parts = selector.split("_to_")
+    if len(selector_parts) != 2:
+        raise ValueError(f"Unsupported market risk-off exposure selector: {selector}")
+    condition_name, exposure_name = selector_parts
+    exposure_token = exposure_name.removesuffix("_else_cash")
+    if not exposure_token.endswith("pct"):
+        raise ValueError(f"Unsupported market risk-off exposure selector: {selector}")
+    risk_on_exposure = float(exposure_token.removesuffix("pct")) / 100
+
+    if condition_name == "0050_above_ma200_bull_regime":
+        return risk_on_exposure if regime in {"strong_bull", "recovery_bull"} and _ticker_above_ma(
+            prices_by_ticker, "0050.TW", signal_date, 200
+        ) else 0.0
+    if condition_name == "0050_above_ma200":
+        return risk_on_exposure if _ticker_above_ma(prices_by_ticker, "0050.TW", signal_date, 200) else 0.0
+    if condition_name == "0050_above_ma120":
+        return risk_on_exposure if _ticker_above_ma(prices_by_ticker, "0050.TW", signal_date, 120) else 0.0
+    if condition_name == "00631l_above_ma200":
+        return risk_on_exposure if _ticker_above_ma(prices_by_ticker, "00631L.TW", signal_date, 200) else 0.0
+    if condition_name == "00631l_above_ma120":
+        return risk_on_exposure if _ticker_above_ma(prices_by_ticker, "00631L.TW", signal_date, 120) else 0.0
+    raise ValueError(f"Unsupported market risk-off exposure selector: {selector}")
+
+
+def _ticker_above_ma(
+    prices_by_ticker: dict[str, pd.DataFrame],
+    ticker: str,
+    signal_date: pd.Timestamp,
+    window: int,
+) -> bool:
+    prices = prices_by_ticker.get(ticker)
+    if prices is None:
+        return False
+    history = prices.loc[prices.index <= signal_date, "adj_close"].dropna()
+    if len(history) < window:
+        return False
+    return float(history.iloc[-1]) > float(history.iloc[-window:].mean())
 
 
 def _update_risk_off_state(

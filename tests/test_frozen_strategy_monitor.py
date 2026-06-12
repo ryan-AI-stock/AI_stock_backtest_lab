@@ -14,6 +14,7 @@ from backtest_lab.frozen_strategy_monitor import (
     DETAIL_BOTTOM_Y,
     DETAIL_START_Y,
     FrozenStrategySignal,
+    ShadowModeSignal,
     _action,
     _append_projection_row,
     _cash_account_reference,
@@ -28,6 +29,8 @@ from backtest_lab.frozen_strategy_monitor import (
     _ranking_rows,
     _score_band,
     _score_guide_lines,
+    _shadow_mode_pdf_section,
+    _shadow_mode_variants,
     _target_is_actionable,
     _write_signal_pdf,
     attach_personal_portfolio,
@@ -132,6 +135,46 @@ class FrozenStrategyMonitorTest(unittest.TestCase):
 
         self.assertEqual(_report_mode(signal), "general")
         self.assertIn("一般版", _report_mode_label(signal))
+
+    def test_shadow_mode_variants_are_limited_to_three(self) -> None:
+        variants = _shadow_mode_variants()
+
+        self.assertLessEqual(len(variants), 3)
+        self.assertEqual(
+            [variant_id for variant_id, _, _ in variants],
+            ["attack_hybrid_best_m20", "risk_overlay_dd5_cash", "challenger_pre0_m20"],
+        )
+
+    def test_shadow_mode_pdf_section_summarizes_candidate_value(self) -> None:
+        signal = replace(
+            _sample_signal(),
+            shadow_modes=[
+                ShadowModeSignal(
+                    shadow_id="candidate_b_m20_accel60_dynamic_preproof",
+                    shadow_label="Shadow 1：候選版B",
+                    strategy_name="cycle_preproof_dynamic_m20_initial_accel60",
+                    current_ticker="2330.TW",
+                    current_label="台積電",
+                    current_exposure=1.0,
+                    target_ticker="2330.TW",
+                    target_label="台積電",
+                    target_exposure=1.0,
+                    action="維持目前模型部位",
+                    target_is_actionable=True,
+                    model_target_status="有合格模型目標",
+                    model_total_value_twd=1_100_000,
+                    value_diff_twd=100_000,
+                    value_diff_pct=0.10,
+                    projected_trades=[],
+                )
+            ],
+        )
+
+        title, lines = _shadow_mode_pdf_section(signal)
+
+        self.assertEqual(title, "Shadow Mode 對照")
+        self.assertTrue(any("候選版B" in line for line in lines))
+        self.assertTrue(any("100,000" in line for line in lines))
 
     def test_signal_pdf_is_written_as_image_backed_pdf(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

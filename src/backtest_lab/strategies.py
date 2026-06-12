@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import pandas as pd
 
+from backtest_lab.universal_pool_strategy import universal_stock_score, window_return
+
 
 def previous_available_date(prices_by_ticker: dict[str, pd.DataFrame], trade_date: pd.Timestamp) -> pd.Timestamp:
     candidates: list[pd.Timestamp] = []
@@ -35,9 +37,15 @@ def relative_strength_scores(
         history = prices.loc[prices.index <= signal_date, "adj_close"].dropna()
         if len(history) <= max(windows):
             continue
-        short_return = history.iloc[-1] / history.iloc[-windows[0]] - 1
-        long_return = history.iloc[-1] / history.iloc[-windows[1]] - 1
-        scores[ticker] = (0.4 * short_return) + (0.6 * long_return)
+        short_return = window_return(history, windows[0])
+        long_return = window_return(history, windows[1])
+        scores[ticker] = universal_stock_score(
+            ret20=short_return,
+            ret60=long_return,
+            ret120=0.0,
+            vol20=0.0,
+            mode="relative_strength",
+        )
     return scores
 
 

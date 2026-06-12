@@ -32,6 +32,7 @@ from backtest_lab.regime_mode_switch import (
     cycle_proven_robustness_variants,
     cycle_proven_history_init_variants,
     cycle_proven_preproof_exposure_variants,
+    cycle_proven_preproof_dynamic_exposure_variants,
     cycle_proven_cadence_variants,
     cycle_proven_asset_role_variants,
     cycle_proven_market_exposure_ladder_variants,
@@ -83,6 +84,7 @@ def main() -> None:
             "cycle-proven-robustness",
             "cycle-proven-history-init",
             "cycle-proven-preproof-exposure",
+            "cycle-proven-preproof-dynamic-exposure",
             "cycle-proven-cadence",
             "cycle-proven-asset-role",
             "cycle-proven-market-exposure-ladder",
@@ -277,6 +279,8 @@ def _run_period(
         variants = cycle_proven_history_init_variants()
     elif variant_set == "cycle-proven-preproof-exposure":
         variants = cycle_proven_preproof_exposure_variants()
+    elif variant_set == "cycle-proven-preproof-dynamic-exposure":
+        variants = cycle_proven_preproof_dynamic_exposure_variants()
     elif variant_set == "cycle-proven-cadence":
         variants = cycle_proven_cadence_variants()
     elif variant_set == "cycle-proven-asset-role":

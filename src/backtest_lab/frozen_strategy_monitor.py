@@ -26,6 +26,7 @@ from backtest_lab.frozen_report_content import (
     personal_pdf_section as _content_personal_pdf_section,
     report_mode as _content_report_mode,
     report_mode_label as _content_report_mode_label,
+    shadow_mode_pdf_section as _content_shadow_mode_pdf_section,
 )
 from backtest_lab.frozen_report_pdf import (
     DETAIL_BOTTOM_Y,
@@ -47,6 +48,9 @@ from backtest_lab.frozen_report_outputs import (
 )
 from backtest_lab.market_regime import classify_market_regime
 from backtest_lab.regime_mode_switch import (
+    MODE_CASH,
+    RegimeModeSwitchVariant,
+    cycle_proven_robustness_variants,
     frozen_cycle_proven_top1_v1_variant,
     simulate_regime_mode_switch,
 )
@@ -61,6 +65,32 @@ REPORT_VARIANT_LABEL = f"最佳版 {REPORT_VERSION}"
 DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1O6Se-HfI7ZDTQ-LWeAO6f8vtvoLcCzIj"
 DEFAULT_REPLAY_START = "2020-01-02"
 NO_DATA_EXIT_CODE = 3
+MAX_SHADOW_MODES = 3
+DEFAULT_SHADOW_MODE_IDS = (
+    "attack_hybrid_best_m20",
+    "risk_overlay_dd5_cash",
+    "challenger_pre0_m20",
+)
+
+
+@dataclass(frozen=True)
+class ShadowModeSignal:
+    shadow_id: str
+    shadow_label: str
+    strategy_name: str
+    current_ticker: str
+    current_label: str
+    current_exposure: float
+    target_ticker: str
+    target_label: str
+    target_exposure: float
+    action: str
+    target_is_actionable: bool
+    model_target_status: str
+    model_total_value_twd: float
+    value_diff_twd: float
+    value_diff_pct: float
+    projected_trades: list[dict]
 
 
 @dataclass(frozen=True)
@@ -87,6 +117,7 @@ class FrozenStrategySignal:
     close_prices: dict[str, float]
     ranking: list[dict]
     projected_trades: list[dict]
+    shadow_modes: list[ShadowModeSignal] | None = None
     personal_portfolio: dict | None = None
     personal_recommendations: list[dict] | None = None
 
@@ -222,6 +253,18 @@ def build_frozen_strategy_signal(
         signal_ts,
         universe_prices=prices_by_ticker,
     )
+    shadow_modes = build_shadow_mode_signals(
+        signal_date=signal_date,
+        replay_start=replay_start,
+        projected_prices=projected_prices,
+        projection_ts=projection_ts,
+        labels=labels,
+        asset_types=asset_types,
+        initial_cash=initial_cash,
+        cost_model=cost_model,
+        dividends=dividends,
+        primary_model_value=float(current["total_value"]),
+    )
     return FrozenStrategySignal(
         strategy_id=STRATEGY_ID,
         signal_date=signal_date,
@@ -248,7 +291,129 @@ def build_frozen_strategy_signal(
         },
         ranking=ranking,
         projected_trades=projected_trades,
+        shadow_modes=shadow_modes,
     )
+
+
+def build_shadow_mode_signals(
+    *,
+    signal_date: str,
+    replay_start: str,
+    projected_prices: dict[str, pd.DataFrame],
+    projection_ts: pd.Timestamp,
+    labels: dict[str, str],
+    asset_types: dict[str, str],
+    initial_cash: float,
+    cost_model,
+    dividends: dict[str, pd.Series],
+    primary_model_value: float,
+) -> list[ShadowModeSignal]:
+    shadows: list[ShadowModeSignal] = []
+    for shadow_id, shadow_label, variant in _shadow_mode_variants()[:MAX_SHADOW_MODES]:
+        result = simulate_regime_mode_switch(
+            name=shadow_id,
+            prices_by_ticker=projected_prices,
+            asset_types=asset_types,
+            market_prices=projected_prices["0050.TW"],
+            start_date=replay_start,
+            end_date=projection_ts.strftime("%Y-%m-%d"),
+            initial_cash=initial_cash,
+            cost_model=cost_model,
+            variant=variant,
+            dividend_series_by_ticker=dividends,
+        )
+        signal_ts = pd.Timestamp(signal_date)
+        current = result.equity_curve.loc[signal_ts]
+        target = result.equity_curve.loc[projection_ts]
+        current_ticker = str(current["current_ticker"])
+        target_ticker = str(target["current_ticker"])
+        current_exposure = float(current["current_exposure"])
+        target_exposure = float(target["current_exposure"])
+        model_value = float(current["total_value"])
+        value_diff = model_value - primary_model_value
+        projected_trades = [
+            {
+                "ticker": trade.ticker,
+                "label": labels.get(trade.ticker, trade.ticker),
+                "action": trade.action,
+                "shares": trade.shares,
+                "reference_price": round(trade.price, 4),
+                "gross_amount_twd": round(trade.gross_amount, 2),
+                "estimated_costs_twd": trade.costs,
+                "reason": trade.reason,
+            }
+            for trade in result.trades
+            if trade.date == projection_ts.strftime("%Y-%m-%d") and trade.action in {"buy", "sell"}
+        ]
+        shadows.append(
+            ShadowModeSignal(
+                shadow_id=shadow_id,
+                shadow_label=shadow_label,
+                strategy_name=variant.name,
+                current_ticker=current_ticker,
+                current_label=_label(current_ticker, labels),
+                current_exposure=current_exposure,
+                target_ticker=target_ticker,
+                target_label=_label(target_ticker, labels),
+                target_exposure=target_exposure,
+                action=_action(current_ticker, target_ticker, current_exposure, target_exposure),
+                target_is_actionable=_target_is_actionable(target_ticker, target_exposure),
+                model_target_status=_model_target_status(target_ticker, target_exposure),
+                model_total_value_twd=model_value,
+                value_diff_twd=value_diff,
+                value_diff_pct=value_diff / primary_model_value if primary_model_value else 0.0,
+                projected_trades=projected_trades,
+            )
+        )
+    return shadows
+
+
+def _shadow_mode_variants() -> list[tuple[str, str, RegimeModeSwitchVariant]]:
+    robustness_variants = {
+        variant.name: variant
+        for variant in cycle_proven_robustness_variants()
+    }
+    challenger_pre0_m20 = (
+        "cycle_robust_m20_persist10of10_reentry_m20_accel40_"
+        "00631l_ma200_preproof_risk2of3_to_cash_exit5_stop12"
+    )
+    challenger = robustness_variants[challenger_pre0_m20]
+    attack_hybrid = replace(
+        frozen_cycle_proven_top1_v1_variant(),
+        name="shadow_attack_hybrid_best_m20",
+        attack_gate_margin_over_fallback=0.20,
+        attack_gate_min_top_days=10,
+        attack_gate_reentry_margin_over_fallback=0.20,
+        attack_gate_reentry_min_short_to_medium_momentum_ratio=0.40,
+        attack_selection_exclude_tickers=("0050.TW", "00631L.TW"),
+    )
+    risk_overlay = replace(
+        challenger,
+        name="shadow_risk_overlay_dd5_cash",
+        market_risk_off_filter="dd5_ma60_ret20",
+        market_risk_off_mode=MODE_CASH,
+        market_risk_off_defense_ticker=None,
+        market_risk_off_exposure=0.0,
+        market_risk_off_exit_confirmation_days=3,
+        market_risk_off_only_before_first_attack_activation=False,
+    )
+    return [
+        (
+            "attack_hybrid_best_m20",
+            "Shadow 1：攻擊型候選 混合F",
+            attack_hybrid,
+        ),
+        (
+            "risk_overlay_dd5_cash",
+            "Shadow 2：風控型候選 dd5轉現金",
+            risk_overlay,
+        ),
+        (
+            "challenger_pre0_m20",
+            "Shadow 3：挑戰版 pre0 m20",
+            challenger,
+        )
+    ]
 
 
 def attach_personal_portfolio(
@@ -409,11 +574,16 @@ def _write_signal_pdf(path: Path, signal: FrozenStrategySignal) -> None:
         report_mode_label=_report_mode_label,
         personal_exposure_summary=_personal_exposure_summary,
         personal_pdf_section=_personal_pdf_section,
+        shadow_pdf_section=_shadow_mode_pdf_section,
     )
 
 
 def _detail_sections(signal: FrozenStrategySignal) -> list[tuple[str, list[str]]]:
-    return _pdf_detail_sections(signal, personal_pdf_section=_personal_pdf_section)
+    return _pdf_detail_sections(
+        signal,
+        personal_pdf_section=_personal_pdf_section,
+        shadow_pdf_section=_shadow_mode_pdf_section,
+    )
 
 
 def _paginate_detail_sections(sections: list[tuple[str, list[str]]]) -> list[list[tuple[str, list[str]]]]:
@@ -426,6 +596,10 @@ def _detail_section_height(lines: list[str]) -> float:
 
 def _personal_pdf_section(signal: FrozenStrategySignal) -> tuple[str, list[str]]:
     return _content_personal_pdf_section(signal)
+
+
+def _shadow_mode_pdf_section(signal: FrozenStrategySignal) -> tuple[str, list[str]]:
+    return _content_shadow_mode_pdf_section(signal)
 
 
 if __name__ == "__main__":
