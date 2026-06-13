@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import io
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -17,6 +18,64 @@ from backtest_lab.stock_pool_store import normalize_ticker
 DEFAULT_SEED_PATH = Path("data/tw50_constituents.seed.csv")
 DEFAULT_OUTPUT_PATH = Path("data/tw50_constituents.csv")
 REQUIRED_OUTPUT_COLUMNS = ["effective_date", "ticker", "name", "source", "source_updated_at"]
+FTSE_TW50_PDF_MARKER = b"%PDF"
+FTSE_TW50_DEFAULT_URL = (
+    "https://research.ftserussell.com/analytics/factsheets/Home/"
+    "DownloadConstituentsWeights/?indexdetails=TW50"
+)
+
+
+FTSE_TW50_NAME_ALIASES: dict[str, tuple[str, str]] = {
+    "acctontechnology": ("2345.TW", "智邦"),
+    "advantech": ("2395.TW", "研華"),
+    "alchiptechnologiesinc": ("3661.TW", "世芯-KY"),
+    "asetechnologyholding": ("3711.TW", "日月光投控"),
+    "asiavitalcomponents": ("3017.TW", "奇鋐"),
+    "asustekcomputerinc": ("2357.TW", "華碩"),
+    "caliwaybiopharmaceuticals": ("6919.TW", "康霈*"),
+    "cathayfinancialholding": ("2882.TW", "國泰金"),
+    "chinasteel": ("2002.TW", "中鋼"),
+    "chromaate": ("2360.TW", "致茂"),
+    "chunghwatelecom": ("2412.TW", "中華電"),
+    "ctbcfinancialholding": ("2891.TW", "中信金"),
+    "deltaelectronics": ("2308.TW", "台達電"),
+    "esunfinancialholding": ("2884.TW", "玉山金"),
+    "elitematerial": ("2383.TW", "台光電"),
+    "evergreenmarine": ("2603.TW", "長榮"),
+    "fareastonetelecommunications": ("4904.TW", "遠傳"),
+    "firstfinancialholding": ("2892.TW", "第一金"),
+    "formosapetrochemical": ("6505.TW", "台塑化"),
+    "formosaplasticscorp": ("1301.TW", "台塑"),
+    "fubonfinancialholdings": ("2881.TW", "富邦金"),
+    "goldcircuitelectronics": ("2368.TW", "金像電"),
+    "honhaiprecisionindustry": ("2317.TW", "鴻海"),
+    "honprecision": ("7769.TW", "鴻勁"),
+    "hotaimotor": ("2207.TW", "和泰車"),
+    "huananfinancialholdings": ("2880.TW", "華南金"),
+    "jentechprecisionindustrial": ("3653.TW", "健策"),
+    "kgifinancialholding": ("2883.TW", "凱基金"),
+    "kingslideworks": ("2059.TW", "川湖"),
+    "kingyuanelectronics": ("2449.TW", "京元電子"),
+    "larganprecision": ("3008.TW", "大立光"),
+    "liteontechnology": ("2301.TW", "光寶科"),
+    "mediatek": ("2454.TW", "聯發科"),
+    "megafinancialholding": ("2886.TW", "兆豐金"),
+    "nanyaplastics": ("1303.TW", "南亞"),
+    "nanyatechnology": ("2408.TW", "南亞科"),
+    "quantacomputer": ("2382.TW", "廣達"),
+    "sinopacfinancialholdingscoltd": ("2890.TW", "永豐金"),
+    "taiwancooperativefinancialholding": ("5880.TW", "合庫金"),
+    "taiwanmobile": ("3045.TW", "台灣大"),
+    "taiwansemiconductormanufacturing": ("2330.TW", "台積電"),
+    "tsfinancialholding": ("2887.TW", "台新新光金"),
+    "unipresidententerprises": ("1216.TW", "統一"),
+    "unitedmicroelectronics": ("2303.TW", "聯電"),
+    "winbondelectronics": ("2344.TW", "華邦電"),
+    "wistroncorp": ("3231.TW", "緯創"),
+    "wiwynn": ("6669.TW", "緯穎"),
+    "yageo": ("2327.TW", "國巨*"),
+    "yuantafinancialholding": ("2885.TW", "元大金"),
+}
 
 
 @dataclass(frozen=True)
@@ -149,12 +208,112 @@ def _read_primary_source(*, source_csv: str | Path | None, source_url: str | Non
         path = Path(source_csv)
         if not path.exists():
             raise FileNotFoundError(f"TW50 source CSV not found: {path}")
-        return pd.read_csv(path), f"csv:{path}"
+        payload = path.read_bytes()
+        if _looks_like_pdf(payload):
+            return parse_ftse_tw50_pdf(payload), f"pdf:{path}"
+        return pd.read_csv(io.BytesIO(payload)), f"csv:{path}"
     if source_url:
         with urlopen(source_url, timeout=30) as response:
             payload = response.read()
+        if _looks_like_pdf(payload):
+            return parse_ftse_tw50_pdf(payload), f"ftse_pdf:{source_url}"
         return pd.read_csv(io.BytesIO(payload)), f"url:{source_url}"
     return None, ""
+
+
+def parse_ftse_tw50_pdf(payload: bytes) -> pd.DataFrame:
+    try:
+        from pypdf import PdfReader
+    except ImportError as error:  # pragma: no cover - exercised only when dependency is missing.
+        raise ValueError("pypdf is required to parse FTSE TWSE 50 constituent PDF.") from error
+
+    reader = PdfReader(io.BytesIO(payload))
+    text = "\n".join(page.extract_text() or "" for page in reader.pages)
+    return parse_ftse_tw50_text(text)
+
+
+def parse_ftse_tw50_text(text: str, *, min_count: int = 45, max_count: int = 60) -> pd.DataFrame:
+    names = _extract_ftse_tw50_names(text, min_count=min_count, max_count=max_count)
+    rows: list[dict[str, str]] = []
+    missing: list[str] = []
+    seen: set[str] = set()
+    for name in names:
+        key = _normalize_ftse_name_key(name)
+        mapped = FTSE_TW50_NAME_ALIASES.get(key)
+        if mapped is None:
+            missing.append(name)
+            continue
+        ticker, chinese_name = mapped
+        if ticker in seen:
+            continue
+        rows.append({"ticker": ticker, "name": chinese_name})
+        seen.add(ticker)
+    if missing:
+        raise ValueError(f"Unmapped FTSE TWSE 50 constituent names: {', '.join(missing)}")
+    if len(rows) != len(names):
+        raise ValueError(f"FTSE TWSE 50 constituent duplicate mapping: {len(rows)} mapped from {len(names)} names")
+    return pd.DataFrame(rows)
+
+
+def _extract_ftse_tw50_names(text: str, *, min_count: int = 45, max_count: int = 60) -> list[str]:
+    names: list[str] = []
+    pending: list[str] = []
+    in_table = False
+    for raw_line in text.splitlines():
+        line = " ".join(raw_line.strip().split())
+        if not line:
+            continue
+        if "Country/Market" in line:
+            in_table = True
+            pending = []
+            continue
+        if not in_table:
+            continue
+        if line.startswith("Data Explanation") or line.startswith("Source: FTSE Russell"):
+            break
+        if _is_ftse_header_or_footer(line):
+            continue
+        match = re.match(r"^(?P<name>.+?)\s+(?P<weight><?\d+(?:\.\s*\d+)?)\s+TAIWAN$", line)
+        if match:
+            name_parts = pending + [match.group("name")]
+            names.append(_normalize_ftse_display_name(" ".join(name_parts)))
+            pending = []
+            continue
+        weight_only = re.match(r"^(?P<weight><?\d+(?:\.\s*\d+)?)\s+TAIWAN$", line)
+        if weight_only and pending:
+            names.append(_normalize_ftse_display_name(" ".join(pending)))
+            pending = []
+            continue
+        pending.append(line)
+    if not (min_count <= len(names) <= max_count):
+        raise ValueError(f"FTSE TWSE 50 PDF parse expected {min_count}-{max_count} names, got {len(names)}")
+    return names
+
+
+def _is_ftse_header_or_footer(line: str) -> bool:
+    if line in {"Constituent", "Index weight", "(%)", "Country/Market", "CORPORATE"}:
+        return True
+    if re.fullmatch(r"\d+", line):
+        return True
+    if re.fullmatch(r"\d{1,2}\s+[A-Za-z]+\s+\d{4}", line):
+        return True
+    if line.startswith("F TSE TWSE") or line.startswith("FTSE Russell Publications"):
+        return True
+    if line.startswith("Indicative Index Weight Data"):
+        return True
+    return False
+
+
+def _normalize_ftse_display_name(value: str) -> str:
+    return " ".join(value.replace(" - ", "-").split())
+
+
+def _normalize_ftse_name_key(value: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", value.lower())
+
+
+def _looks_like_pdf(payload: bytes) -> bool:
+    return payload.lstrip().startswith(FTSE_TW50_PDF_MARKER)
 
 
 def _merge_with_existing(output_path: Path, new_rows: pd.DataFrame) -> pd.DataFrame:

@@ -10,7 +10,11 @@ import pandas as pd
 import test_paths  # noqa: F401
 
 from backtest_lab.tw50_constituents import load_tw50_constituents_for_date
-from backtest_lab.tw50_constituents_update import normalize_constituent_frame, update_tw50_constituents
+from backtest_lab.tw50_constituents_update import (
+    normalize_constituent_frame,
+    parse_ftse_tw50_text,
+    update_tw50_constituents,
+)
 
 
 class Tw50ConstituentsUpdateTest(unittest.TestCase):
@@ -94,6 +98,83 @@ class Tw50ConstituentsUpdateTest(unittest.TestCase):
         self.assertFalse(result.used_fallback)
         self.assertEqual(set(frame["effective_date"].astype(str)), {"2026-06-01", "2026-06-12"})
         self.assertEqual(result.total_row_count, 3)
+
+    def test_parses_ftse_tw50_constituent_text(self) -> None:
+        names = [
+            "Accton Technology",
+            "Advantech",
+            "Alchip Technologies Inc.",
+            "ASE Technology Holding",
+            "Asia Vital Components",
+            "Asustek Computer Inc",
+            "Caliway Biophar maceuticals",
+            "Cathay Financial Holding",
+            "China Steel",
+            "Chroma Ate",
+            "Chunghwa Telecom",
+            "CTBC Financial Holding",
+            "Delta Electronics",
+            "E.Sun Financial Holding",
+            "Elite Mater ial",
+            "Evergreen Marine",
+            "Far EasTone Telecommunications",
+            "First Financial Holding",
+            "Formosa Petrochemical",
+            "Formosa Plastics Corp",
+            "Fubon Financial Holdings",
+            "Gold Circuit Electroni cs",
+            "Hon Hai Precision Industry",
+            "HonPrecision",
+            "Hotai Motor",
+            "Hua Nan Financial Holdings",
+            "Jentech Precision Industrial",
+            "KGI Financial Holding",
+            "King Slide Works",
+            "King  Yuan Electronics",
+            "Largan Precision",
+            "Lite - On Technology",
+            "MediaTek",
+            "Mega Financial Holding",
+            "Nan Ya Plastics",
+            "Nanya Technology",
+            "Quanta Computer",
+            "Taiwan Mobile",
+            "Uni - president Enterprises",
+            "United Microelectronics",
+            "Winbond Electronics",
+            "Wistron Corp",
+            "Wiwynn",
+            "Yageo",
+            "Yuanta Financial Holding",
+        ]
+        lines = [
+            "Constituent",
+            "Index weight",
+            "(%)",
+            "Country/Market",
+        ]
+        lines.extend(f"{name}  0.1  TAIWAN" for name in names)
+        lines.extend(
+            [
+                "SinoPac Financial Holdings Co.",
+                "Ltd.",
+                "0.58  TAIWAN",
+                "Taiwan Cooperative Financial",
+                "Holding",
+                "0.36  TAIWAN",
+                "Taiwan Semiconductor",
+                "Manufacturing",
+                "63.55  TAIWAN",
+                "TS Financial Holding  0.79  TAIWAN",
+                "Data Explanation",
+            ]
+        )
+
+        frame = parse_ftse_tw50_text("\n".join(lines))
+
+        self.assertEqual(len(frame), 49)
+        self.assertIn("2330.TW", set(frame["ticker"]))
+        self.assertEqual(frame.loc[frame["ticker"] == "7769.TW", "name"].iloc[0], "鴻勁")
 
 
 if __name__ == "__main__":

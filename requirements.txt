@@ -1,6 +1,7 @@
 matplotlib>=3.8
 numpy>=1.26
 pandas>=2.2
+pypdf>=4.0
 yfinance>=0.2.40
 google-api-python-client>=2.170
 google-auth>=2.40
