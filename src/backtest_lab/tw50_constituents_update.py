@@ -4,7 +4,7 @@ import argparse
 import io
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 from urllib.error import URLError
@@ -87,6 +87,7 @@ class UpdateResult:
     total_row_count: int
     used_fallback: bool
     message: str
+    warnings: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -97,6 +98,7 @@ class UpdateResult:
             "total_row_count": self.total_row_count,
             "used_fallback": self.used_fallback,
             "message": self.message,
+            "warnings": self.warnings,
         }
 
 
@@ -148,6 +150,11 @@ def update_tw50_constituents(
     )
     if source_error and used_fallback:
         message = f"{message} Primary source failed: {source_error}"
+    warnings: list[str] = []
+    if len(normalized) != 50:
+        warnings.append(
+            f"TW50 constituent snapshot has {len(normalized)} mapped rows; official index target count is 50, review source parsing."
+        )
     return UpdateResult(
         output_path=str(output),
         source=source_label,
@@ -156,6 +163,7 @@ def update_tw50_constituents(
         total_row_count=len(merged),
         used_fallback=used_fallback,
         message=message,
+        warnings=warnings,
     )
 
 

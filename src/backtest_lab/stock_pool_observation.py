@@ -24,7 +24,7 @@ from backtest_lab.frozen_strategy_monitor import (
     build_frozen_strategy_signal,
 )
 from backtest_lab.regime_mode_switch import RegimeModeSwitchVariant, frozen_cycle_proven_top1_v1_variant
-from backtest_lab.stock_pool_consensus import write_consensus_outputs
+from backtest_lab.stock_pool_consensus import build_consensus, write_consensus_outputs
 from backtest_lab.stock_pool_store import KNOWN_SYMBOLS, StockPoolStore
 from backtest_lab.strategy_preset_dispatcher import dispatch_pool, resolve_strategy_preset
 from backtest_lab.tw50_constituents import load_tw50_constituents_for_date
@@ -380,6 +380,7 @@ def run_stock_pool_observation_batch(
                     "reason": str(error),
                 }
             )
+    manifest["consensus"] = build_consensus(manifest)
     (root / "stock_pool_observation_manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2),
         encoding="utf-8",
@@ -441,12 +442,15 @@ def write_stock_pool_observation_batch_summary(root: Path, manifest: dict[str, A
 
 
 def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[str, Any]]) -> str:
+    consensus = manifest.get("consensus") or {}
     lines = [
         "# 股票池觀察摘要",
         "",
         f"- 訊號日：{manifest.get('signal_date', '')}",
         f"- 已產出股票池：{len(manifest.get('generated', []))}",
         f"- 跳過股票池：{len(manifest.get('skipped', []))}",
+        f"- 三池共識：{consensus.get('winner_display') or '沒有形成明確共識'}",
+        f"- 表決原因：{consensus.get('reason') or '尚未產生三池表決結果'}",
         "",
         "| 狀態 | 股票池 | 前三名 / 跳過原因 | 來源摘要 | 缺價股票 |",
         "| --- | --- | --- | --- | --- |",
@@ -481,8 +485,10 @@ def write_stock_pool_observation_batch_pdf(path: Path, manifest: dict[str, Any],
 def _draw_observation_pdf_page(ax, manifest: dict[str, Any], rows: list[dict[str, Any]]) -> None:
     generated_count = len(manifest.get("generated", []))
     skipped_count = len(manifest.get("skipped", []))
-    first_generated = next((row for row in rows if row["status"] == "generated"), None)
-    top_label = (first_generated or {}).get("top_display") or (first_generated or {}).get("top_ticker") or "無"
+    consensus = manifest.get("consensus") or {}
+    top_label = consensus.get("winner_display") or "模型分歧"
+    consensus_state = consensus.get("result_state") or "no_vote"
+    consensus_reason = consensus.get("reason") or "尚未產生三池表決結果"
 
     ax.add_patch(plt.Rectangle((0, 0.86), 1, 0.14, color="#17212a", transform=ax.transAxes))
     ax.text(0.06, 0.94, REPORT_NAME, color="white", fontsize=20, fontweight="bold", transform=ax.transAxes)
@@ -497,7 +503,7 @@ def _draw_observation_pdf_page(ax, manifest: dict[str, Any], rows: list[dict[str
     cards = [
         ("已產出股票池", f"{generated_count}", "#13795b"),
         ("跳過股票池", f"{skipped_count}", "#b42318" if skipped_count else "#13795b"),
-        ("第一個池第一名", top_label, "#2457a7"),
+        ("三池共識", top_label, "#2457a7" if consensus_state == "consensus" else "#b42318"),
         ("使用邊界", "觀察，不是建議", "#17212a"),
     ]
     for index, (label, value, color) in enumerate(cards):
@@ -508,7 +514,8 @@ def _draw_observation_pdf_page(ax, manifest: dict[str, Any], rows: list[dict[str
         ax.text(x + 0.014, 0.795, label, color="#66737d", fontsize=9.5, transform=ax.transAxes)
         ax.text(x + 0.014, 0.767, str(value)[:18], color=color, fontsize=11.2, fontweight="bold", transform=ax.transAxes)
 
-    ax.text(0.06, 0.675, "股票池前三名與原因", color="#17212a", fontsize=16, fontweight="bold", transform=ax.transAxes)
+    ax.text(0.06, 0.69, f"表決原因：{consensus_reason[:42]}", color="#52616b", fontsize=9.6, transform=ax.transAxes)
+    ax.text(0.06, 0.655, "股票池前三名與原因", color="#17212a", fontsize=16, fontweight="bold", transform=ax.transAxes)
     bottom_y = _draw_pool_top3_sections(ax, rows)
     ax.text(0.06, bottom_y - 0.035, "使用邊界", color="#17212a", fontsize=14, fontweight="bold", transform=ax.transAxes)
     notes = [

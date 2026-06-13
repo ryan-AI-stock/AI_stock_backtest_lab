@@ -349,8 +349,14 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertEqual(len(manifest["generated"]), 1)
             self.assertEqual(manifest["generated"][0]["top_ticker"], "2330.TW")
             self.assertEqual(manifest["generated"][0]["vote_group"], "three_perspective_v1")
+            self.assertEqual(manifest["consensus"]["result_state"], "divergent")
+            self.assertIsNone(manifest["consensus"]["winner_ticker"])
+            manifest_payload = (Path(manifest["output_root"]) / "stock_pool_observation_manifest.json").read_text(encoding="utf-8")
+            self.assertIn('"consensus"', manifest_payload)
             report = (Path(manifest["output_root"]) / "stock_pool_consensus_report.md").read_text(encoding="utf-8")
             self.assertIn("三立場股票池表決摘要", report)
+            summary_report = (Path(manifest["output_root"]) / "stock_pool_observation_report.md").read_text(encoding="utf-8")
+            self.assertIn("三池共識", summary_report)
 
     def test_batch_generates_pool_with_partial_price_coverage(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)

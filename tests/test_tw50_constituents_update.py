@@ -68,6 +68,7 @@ class Tw50ConstituentsUpdateTest(unittest.TestCase):
 
         self.assertTrue(result.used_fallback)
         self.assertEqual(result.row_count, 2)
+        self.assertIn("official index target count is 50", result.warnings[0])
         self.assertEqual([entry["ticker"] for entry in entries], ["2330.TW", "2454.TW"])
 
     def test_primary_source_appends_new_effective_snapshot(self) -> None:
@@ -98,6 +99,7 @@ class Tw50ConstituentsUpdateTest(unittest.TestCase):
         self.assertFalse(result.used_fallback)
         self.assertEqual(set(frame["effective_date"].astype(str)), {"2026-06-01", "2026-06-12"})
         self.assertEqual(result.total_row_count, 3)
+        self.assertIn("official index target count is 50", result.warnings[0])
 
     def test_parses_ftse_tw50_constituent_text(self) -> None:
         names = [
