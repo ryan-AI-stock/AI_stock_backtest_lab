@@ -40,9 +40,19 @@ from backtest_lab.universal_pool_strategy import (
 
 DEFAULT_OUTPUT_ROOT = "outputs/stock_pool_observations"
 REPORT_NAME = "AI股票池觀察總覽"
+REPORT_TITLE = "AI股票池三池表決觀察總覽"
 REPORT_VERSION = "v20260612"
 REPORT_LATEST_FILENAME = f"{REPORT_NAME}_最新版_{REPORT_VERSION}.pdf"
 FROZEN_BEST_GROUP_ID = "group_c_0050_00631l_plus_mega_caps"
+POOL_SHORT_NAMES = {
+    "ai_theme_large_cap_v20260613": "AI權值池",
+    "tw50_dynamic_constituents_v0": "0050動態池",
+    "large_core_bluechip_v0": "核心權值池",
+}
+TRIANGLE_DIVERGENT_COLORS = ("#2457a7", "#7a3db8", "#c77917")
+TRIANGLE_WINNER_COLOR = "#13795b"
+TRIANGLE_MINOR_COLOR = "#c77917"
+TRIANGLE_NEUTRAL_COLOR = "#6b7780"
 
 
 @dataclass(frozen=True)
@@ -398,6 +408,7 @@ def write_stock_pool_observation_batch_summary(root: Path, manifest: dict[str, A
                 "status": "generated",
                 "pool_id": item.get("pool_id", ""),
                 "pool_name": item.get("pool_name", ""),
+                "pool_short_name": _short_pool_name(item),
                 "signal_date": item.get("signal_date", manifest.get("signal_date", "")),
                 "top_display": item.get("top_display", ""),
                 "top_ticker": item.get("top_ticker", ""),
@@ -418,6 +429,7 @@ def write_stock_pool_observation_batch_summary(root: Path, manifest: dict[str, A
                 "status": "skipped",
                 "pool_id": item.get("pool_id", ""),
                 "pool_name": item.get("pool_name", ""),
+                "pool_short_name": _short_pool_name(item),
                 "signal_date": manifest.get("signal_date", ""),
                 "top_display": "",
                 "top_ticker": "",
@@ -462,7 +474,7 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
         else:
             target = row["reason"] or "skipped"
             missing = "-"
-        lines.append(f"| {row['status']} | {row['pool_name']} | {target} | {row.get('source_summary') or '-'} | {missing} |")
+        lines.append(f"| {row['status']} | {row.get('pool_short_name') or row['pool_name']} | {target} | {row.get('source_summary') or '-'} | {missing} |")
     lines.extend(
         [
             "",
@@ -478,11 +490,17 @@ def write_stock_pool_observation_batch_pdf(path: Path, manifest: dict[str, Any],
         fig = plt.figure(figsize=(8.27, 11.69), facecolor="#f4f6f8")
         ax = fig.add_axes((0, 0, 1, 1))
         ax.axis("off")
-        _draw_observation_pdf_page(ax, manifest, rows)
+        _draw_observation_summary_pdf_page(ax, manifest, rows)
+        _save_figure_as_raster_pdf_page(pdf, fig)
+
+        fig = plt.figure(figsize=(8.27, 11.69), facecolor="#f4f6f8")
+        ax = fig.add_axes((0, 0, 1, 1))
+        ax.axis("off")
+        _draw_observation_detail_pdf_page(ax, manifest, rows)
         _save_figure_as_raster_pdf_page(pdf, fig)
 
 
-def _draw_observation_pdf_page(ax, manifest: dict[str, Any], rows: list[dict[str, Any]]) -> None:
+def _draw_observation_summary_pdf_page(ax, manifest: dict[str, Any], rows: list[dict[str, Any]]) -> None:
     generated_count = len(manifest.get("generated", []))
     skipped_count = len(manifest.get("skipped", []))
     consensus = manifest.get("consensus") or {}
@@ -491,7 +509,7 @@ def _draw_observation_pdf_page(ax, manifest: dict[str, Any], rows: list[dict[str
     consensus_reason = consensus.get("reason") or "尚未產生三池表決結果"
 
     ax.add_patch(plt.Rectangle((0, 0.86), 1, 0.14, color="#17212a", transform=ax.transAxes))
-    ax.text(0.06, 0.94, REPORT_NAME, color="white", fontsize=20, fontweight="bold", transform=ax.transAxes)
+    ax.text(0.06, 0.94, REPORT_TITLE, color="white", fontsize=20, fontweight="bold", transform=ax.transAxes)
     ax.text(
         0.06,
         0.895,
@@ -514,30 +532,103 @@ def _draw_observation_pdf_page(ax, manifest: dict[str, Any], rows: list[dict[str
         ax.text(x + 0.014, 0.795, label, color="#66737d", fontsize=9.5, transform=ax.transAxes)
         ax.text(x + 0.014, 0.767, str(value)[:18], color=color, fontsize=11.2, fontweight="bold", transform=ax.transAxes)
 
-    ax.text(0.06, 0.69, f"表決原因：{consensus_reason[:42]}", color="#52616b", fontsize=9.6, transform=ax.transAxes)
-    ax.text(0.06, 0.655, "股票池前三名與原因", color="#17212a", fontsize=16, fontweight="bold", transform=ax.transAxes)
-    bottom_y = _draw_pool_top3_sections(ax, rows)
-    ax.text(0.06, bottom_y - 0.035, "使用邊界", color="#17212a", fontsize=14, fontweight="bold", transform=ax.transAxes)
+    ax.text(0.06, 0.69, f"表決原因：{consensus_reason[:48]}", color="#52616b", fontsize=10, transform=ax.transAxes)
+    _draw_vote_triangle(ax, manifest, rows)
+    _draw_vote_summary_cards(ax, manifest, rows)
+    ax.text(0.06, 0.17, "使用邊界", color="#17212a", fontsize=14, fontweight="bold", transform=ax.transAxes)
     notes = [
-        "本報告用同一套觀察框架讀取不同股票池，方便比較各池目前第一順位與資料缺口。",
-        "強弱排名是觀察清單，不是買入資格清單；實際操作仍需搭配策略規則、交易成本與風險承受度。",
-        "若出現缺價股票，代表該檔未納入當次分數計算，後續需補資料或確認資料源。",
+        "三池共識是模型觀察結論；若沒有 2/3 以上同標的，報告會標示為模型分歧。",
+        "各池前三名是觀察清單，不是買入資格清單；實際操作仍需搭配交易成本與風險承受度。",
+        "本報告固定使用同一套資料口徑與股票池設定，方便後續追蹤模型是否穩定。",
         "本報告為 AI 輔助市場觀察與回測工作流輸出，不是投資建議。",
     ]
     for index, note in enumerate(notes):
-        ax.text(0.075, bottom_y - 0.065 - index * 0.028, f"• {note}", color="#4d5b66", fontsize=10.2, transform=ax.transAxes)
-    ax.text(0.06, 0.04, f"{REPORT_NAME} · {manifest.get('signal_date', '')}", color="#9aa7b1", fontsize=8.5, transform=ax.transAxes)
+        ax.text(0.075, 0.126 - index * 0.026, f"• {note}", color="#4d5b66", fontsize=9.6, transform=ax.transAxes)
+    ax.text(0.06, 0.026, f"{REPORT_TITLE} · {manifest.get('signal_date', '')}", color="#9aa7b1", fontsize=8.5, transform=ax.transAxes)
+    ax.text(0.94, 0.026, "AI_stock_backtest_lab", color="#9aa7b1", fontsize=8.5, ha="right", transform=ax.transAxes)
+
+
+def _draw_observation_detail_pdf_page(ax, manifest: dict[str, Any], rows: list[dict[str, Any]]) -> None:
+    ax.add_patch(plt.Rectangle((0, 0.9), 1, 0.1, color="#17212a", transform=ax.transAxes))
+    ax.text(0.06, 0.958, "三池前三名與程式判斷原因", color="white", fontsize=18, fontweight="bold", transform=ax.transAxes)
+    ax.text(
+        0.06,
+        0.92,
+        f"訊號日 {manifest.get('signal_date', '')} · 表格頁 · {REPORT_VERSION}",
+        color="#c8d5df",
+        fontsize=10.5,
+        transform=ax.transAxes,
+    )
+    bottom_y = _draw_pool_top3_sections(ax, rows, start_y=0.84)
+    ax.text(0.06, max(bottom_y - 0.03, 0.08), "提醒：表格列出的是各池內部排序與程式原因；正式總結以第一頁三池表決為準。", color="#52616b", fontsize=9.5, transform=ax.transAxes)
+    ax.text(0.06, 0.04, f"{REPORT_TITLE} · {manifest.get('signal_date', '')}", color="#9aa7b1", fontsize=8.5, transform=ax.transAxes)
     ax.text(0.94, 0.04, "AI_stock_backtest_lab", color="#9aa7b1", fontsize=8.5, ha="right", transform=ax.transAxes)
 
 
-def _draw_pool_top3_sections(ax, rows: list[dict[str, Any]]) -> float:
+def _draw_vote_triangle(ax, manifest: dict[str, Any], rows: list[dict[str, Any]]) -> None:
+    generated_rows = [row for row in rows if row["status"] == "generated"][:3]
+    positions = [(0.50, 0.64), (0.22, 0.45), (0.78, 0.45)]
+    if len(generated_rows) >= 3:
+        ax.add_patch(
+            plt.Polygon(
+                positions,
+                closed=True,
+                facecolor="#eef5f9",
+                edgecolor="#9fb2c2",
+                linewidth=1.6,
+                transform=ax.transAxes,
+            )
+        )
+    consensus = manifest.get("consensus") or {}
+    winner = consensus.get("winner_ticker")
+    state = consensus.get("result_state")
+    for index, row in enumerate(generated_rows):
+        x, y = positions[index]
+        color = _vote_color(row, consensus, index)
+        ax.scatter([x], [y], s=920, color=color, edgecolors="white", linewidths=2.2, transform=ax.transAxes, zorder=3)
+        ax.text(
+            x,
+            y,
+            _triangle_node_label(row),
+            color="white",
+            fontsize=9.6,
+            fontweight="bold",
+            ha="center",
+            va="center",
+            transform=ax.transAxes,
+            zorder=4,
+        )
+        badge = "共識票" if state == "consensus" and row.get("top_ticker") == winner else ("分歧票" if state != "consensus" else "少數票")
+        ax.text(x, y - 0.047, badge, color=color, fontsize=9.2, fontweight="bold", ha="center", transform=ax.transAxes)
+    center_label = consensus.get("winner_display") or "三方分歧"
+    ax.text(0.50, 0.545, "表決結果", color="#52616b", fontsize=10, ha="center", transform=ax.transAxes)
+    ax.text(0.50, 0.515, _compact_display(center_label, limit=20), color="#17212a", fontsize=15, fontweight="bold", ha="center", transform=ax.transAxes)
+    ax.text(0.50, 0.488, str(consensus.get("reason") or "尚未形成共識")[:30], color="#66737d", fontsize=9.2, ha="center", transform=ax.transAxes)
+
+
+def _draw_vote_summary_cards(ax, manifest: dict[str, Any], rows: list[dict[str, Any]]) -> None:
+    generated_rows = [row for row in rows if row["status"] == "generated"][:3]
+    consensus = manifest.get("consensus") or {}
+    y = 0.265
+    ax.text(0.06, y + 0.055, "三池角色與第一順位", color="#17212a", fontsize=14, fontweight="bold", transform=ax.transAxes)
+    for index, row in enumerate(generated_rows):
+        x = 0.06 + index * 0.305
+        color = _vote_color(row, consensus, index)
+        ax.add_patch(plt.Rectangle((x, y - 0.025), 0.275, 0.07, facecolor="white", edgecolor="#d9e0e5", linewidth=1, transform=ax.transAxes))
+        ax.add_patch(plt.Rectangle((x, y - 0.025), 0.012, 0.07, facecolor=color, edgecolor=color, transform=ax.transAxes))
+        ax.text(x + 0.022, y + 0.017, _short_pool_name(row), color="#17212a", fontsize=10.2, fontweight="bold", transform=ax.transAxes)
+        ax.text(x + 0.022, y - 0.007, _compact_display(row.get("top_display") or row.get("top_ticker") or "無", limit=18), color=color, fontsize=9.6, fontweight="bold", transform=ax.transAxes)
+
+
+def _draw_pool_top3_sections(ax, rows: list[dict[str, Any]], *, start_y: float = 0.635) -> float:
     x0 = 0.06
-    y = 0.635
+    y = start_y
     generated_rows = [row for row in rows if row["status"] == "generated"]
     skipped_rows = [row for row in rows if row["status"] != "generated"]
     for row in generated_rows[:3]:
         ax.add_patch(plt.Rectangle((x0, y - 0.025), 0.88, 0.035, facecolor="#e9f0f5", edgecolor="#d7e0e7", transform=ax.transAxes))
-        ax.text(x0 + 0.012, y - 0.013, row["pool_name"], color="#17212a", fontsize=11.2, fontweight="bold", transform=ax.transAxes)
+        title = f"{row.get('pool_short_name') or row['pool_name']}｜{row['pool_name']}"
+        ax.text(x0 + 0.012, y - 0.013, title[:34], color="#17212a", fontsize=11.2, fontweight="bold", transform=ax.transAxes)
         ax.text(
             0.93,
             y - 0.013,
@@ -657,6 +748,51 @@ def _top_candidates_text(candidates: list[dict[str, Any]]) -> str:
         f"{row.get('rank')}.{row.get('display')}({float(row.get('score') or 0):.2f})"
         for row in candidates[:3]
     )
+
+
+def _short_pool_name(item: dict[str, Any]) -> str:
+    pool_id = str(item.get("pool_id") or "")
+    if pool_id in POOL_SHORT_NAMES:
+        return POOL_SHORT_NAMES[pool_id]
+    name = str(item.get("pool_name") or item.get("name") or pool_id or "股票池")
+    replacements = [
+        ("AI中大型權值股池最佳版", "AI權值池"),
+        ("動態0050成分股池", "0050動態池"),
+        ("大型核心權值股池", "核心權值池"),
+        ("雷達中小型校準版", "雷達池"),
+    ]
+    for old, new in replacements:
+        if old in name:
+            return new
+    return name[:8]
+
+
+def _triangle_node_label(item: dict[str, Any]) -> str:
+    short_name = _short_pool_name(item)
+    if short_name == "AI權值池":
+        return "AI\n權值"
+    if short_name == "0050動態池":
+        return "0050\n動態"
+    if short_name == "核心權值池":
+        return "核心\n權值"
+    if short_name == "雷達池":
+        return "雷達"
+    return short_name[:4]
+
+
+def _vote_color(row: dict[str, Any], consensus: dict[str, Any], index: int) -> str:
+    state = consensus.get("result_state")
+    winner = consensus.get("winner_ticker")
+    if state == "consensus":
+        return TRIANGLE_WINNER_COLOR if row.get("top_ticker") == winner else TRIANGLE_MINOR_COLOR
+    if state == "divergent":
+        return TRIANGLE_DIVERGENT_COLORS[index % len(TRIANGLE_DIVERGENT_COLORS)]
+    return TRIANGLE_NEUTRAL_COLOR
+
+
+def _compact_display(value: str, *, limit: int = 16) -> str:
+    text = str(value).replace("（", "(").replace("）", ")").strip()
+    return text if len(text) <= limit else text[: limit - 1] + "…"
 
 
 def main() -> None:

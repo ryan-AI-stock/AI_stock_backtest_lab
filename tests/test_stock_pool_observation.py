@@ -357,6 +357,7 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertIn("三立場股票池表決摘要", report)
             summary_report = (Path(manifest["output_root"]) / "stock_pool_observation_report.md").read_text(encoding="utf-8")
             self.assertIn("三池共識", summary_report)
+            self.assertIn("0050動態池", summary_report)
 
     def test_batch_generates_pool_with_partial_price_coverage(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)
