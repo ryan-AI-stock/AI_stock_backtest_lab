@@ -10,7 +10,7 @@ from typing import Any
 import pandas as pd
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
-from matplotlib.patches import FancyArrowPatch, RegularPolygon
+from matplotlib.patches import FancyArrowPatch
 
 from backtest_lab.config import load_config
 from backtest_lab.data import download_yfinance_prices
@@ -569,104 +569,111 @@ def _draw_observation_detail_pdf_page(ax, manifest: dict[str, Any], rows: list[d
 def _draw_vote_triangle(ax, manifest: dict[str, Any], rows: list[dict[str, Any]]) -> None:
     generated_rows = [row for row in rows if row["status"] == "generated"][:3]
     panel_x, panel_y, panel_w, panel_h = 0.065, 0.355, 0.87, 0.325
-    positions = [(0.50, 0.622), (0.205, 0.425), (0.795, 0.425)]
-    center = (0.50, 0.505)
+    label_positions = [(0.50, 0.598), (0.315, 0.442), (0.685, 0.442)]
+    top_segment = [(0.50, 0.662), (0.652, 0.525), (0.585, 0.493), (0.545, 0.526), (0.50, 0.55), (0.455, 0.526), (0.415, 0.493), (0.348, 0.525)]
+    left_segment = [(0.16, 0.392), (0.392, 0.392), (0.443, 0.482), (0.37, 0.515), (0.302, 0.462), (0.205, 0.422)]
+    right_segment = [(0.84, 0.392), (0.608, 0.392), (0.557, 0.482), (0.63, 0.515), (0.698, 0.462), (0.795, 0.422)]
+    segments = [top_segment, left_segment, right_segment]
+    center_triangle = [(0.50, 0.535), (0.435, 0.462), (0.565, 0.462)]
     ax.add_patch(
         plt.Rectangle(
             (panel_x, panel_y),
             panel_w,
             panel_h,
-            facecolor="#101a22",
-            edgecolor="#294458",
-            linewidth=1.3,
+            facecolor="#fbfcfd",
+            edgecolor="#dde7ee",
+            linewidth=1.1,
             transform=ax.transAxes,
         )
     )
-    for grid_index in range(1, 6):
-        gx = panel_x + panel_w * grid_index / 6
-        gy = panel_y + panel_h * grid_index / 6
-        ax.plot([gx, gx], [panel_y, panel_y + panel_h], color="#203545", linewidth=0.45, alpha=0.42, transform=ax.transAxes, zorder=1)
-        ax.plot([panel_x, panel_x + panel_w], [gy, gy], color="#203545", linewidth=0.45, alpha=0.42, transform=ax.transAxes, zorder=1)
-    ax.text(panel_x + 0.018, panel_y + panel_h - 0.032, "三池制衡決策盤", color="#d8e7ef", fontsize=11.2, fontweight="bold", transform=ax.transAxes)
-    ax.text(panel_x + panel_w - 0.018, panel_y + panel_h - 0.032, "2/3 共識優先", color="#8fb3c7", fontsize=9.2, ha="right", transform=ax.transAxes)
+    ax.text(panel_x + 0.018, panel_y + panel_h - 0.032, "三池鼎立表決圖", color="#17212a", fontsize=11.4, fontweight="bold", transform=ax.transAxes)
+    ax.text(panel_x + panel_w - 0.018, panel_y + panel_h - 0.032, "2/3 共識優先", color="#52616b", fontsize=9.2, ha="right", transform=ax.transAxes)
     if len(generated_rows) >= 3:
-        sector_colors = [_vote_color(row, manifest.get("consensus") or {}, index) for index, row in enumerate(generated_rows)]
-        for index, row in enumerate(generated_rows):
-            current = positions[index]
-            previous = positions[index - 1]
-            next_position = positions[(index + 1) % len(positions)]
-            color = sector_colors[index]
-            sector = [current, center, ((previous[0] + next_position[0]) / 2, (previous[1] + next_position[1]) / 2)]
-            ax.add_patch(plt.Polygon(sector, closed=True, facecolor=color, alpha=0.105, edgecolor="none", transform=ax.transAxes, zorder=1))
-        ax.add_patch(
-            plt.Polygon(
-                positions,
-                closed=True,
-                facecolor="#142532",
-                edgecolor="#79a9bf",
-                linewidth=1.2,
-                alpha=0.96,
-                transform=ax.transAxes,
-                zorder=2,
-            )
-        )
-        for start, end in ((positions[0], positions[1]), (positions[1], positions[2]), (positions[2], positions[0])):
+        for segment in segments:
+            shadow = [(x + 0.006, y - 0.006) for x, y in segment]
+            ax.add_patch(plt.Polygon(shadow, closed=True, facecolor="#1f2a33", alpha=0.12, edgecolor="none", transform=ax.transAxes, zorder=1))
+        consensus = manifest.get("consensus") or {}
+        for index, (row, segment) in enumerate(zip(generated_rows, segments)):
+            color = _vote_color(row, consensus, index)
+            ax.add_patch(plt.Polygon(segment, closed=True, facecolor=color, alpha=0.96, edgecolor="white", linewidth=4.0, transform=ax.transAxes, zorder=2))
+            ax.add_patch(plt.Polygon(segment, closed=True, facecolor="none", edgecolor=_lighten_hex(color, 0.35), linewidth=1.2, transform=ax.transAxes, zorder=3))
+        ax.add_patch(plt.Polygon(center_triangle, closed=True, facecolor="#f4f6f8", edgecolor="#d0dae2", linewidth=2.4, transform=ax.transAxes, zorder=5))
+        ax.add_patch(plt.Polygon(center_triangle, closed=True, facecolor="#ffffff", alpha=0.55, edgecolor="none", transform=ax.transAxes, zorder=6))
+        for start, end in (((0.66, 0.545), (0.82, 0.405)), ((0.58, 0.385), (0.22, 0.385)), ((0.18, 0.42), (0.34, 0.55))):
             ax.add_patch(
                 FancyArrowPatch(
                     start,
                     end,
-                    arrowstyle="<->",
+                    arrowstyle="-|>",
                     mutation_scale=9,
-                    linewidth=1.15,
-                    color="#8db8cb",
-                    alpha=0.72,
+                    linewidth=1.2,
+                    color="#7fa0b2",
+                    alpha=0.78,
                     transform=ax.transAxes,
-                    zorder=3,
+                    zorder=4,
+                )
+            )
+            ax.add_patch(
+                FancyArrowPatch(
+                    start,
+                    end,
+                    arrowstyle="-",
+                    linestyle=(0, (2, 3)),
+                    mutation_scale=1,
+                    linewidth=0.8,
+                    color="#7fa0b2",
+                    alpha=0.42,
+                    transform=ax.transAxes,
+                    zorder=4,
                 )
             )
     consensus = manifest.get("consensus") or {}
     winner = consensus.get("winner_ticker")
     state = consensus.get("result_state")
-    center_edge = TRIANGLE_WINNER_COLOR if state == "consensus" else "#7ab8d6"
-    ax.add_patch(
-        RegularPolygon(
-            center,
-            numVertices=6,
-            radius=0.067,
-            orientation=0.52,
-            facecolor="#17212a",
-            edgecolor=center_edge,
-            linewidth=1.8,
-            alpha=0.98,
-            transform=ax.transAxes,
-            zorder=4,
-        )
-    )
-    ax.text(center[0], center[1] + 0.025, "共識核心", color="#d8e7ef", fontsize=9.4, fontweight="bold", ha="center", transform=ax.transAxes, zorder=5)
     center_label = consensus.get("winner_display") or "三方分歧"
-    ax.text(center[0], center[1] - 0.002, _compact_display(center_label, limit=16), color="white", fontsize=11.5, fontweight="bold", ha="center", transform=ax.transAxes, zorder=5)
-    ax.text(center[0], center[1] - 0.026, str(consensus.get("reason") or "尚未形成共識")[:22], color="#a9bdc8", fontsize=7.7, ha="center", transform=ax.transAxes, zorder=5)
+    ax.text(0.50, 0.497, "共識核心", color="#52616b", fontsize=8.2, fontweight="bold", ha="center", transform=ax.transAxes, zorder=7)
+    ax.text(0.50, 0.476, _visual_display_name(center_label, limit=8), color="#17212a", fontsize=9.6, fontweight="bold", ha="center", transform=ax.transAxes, zorder=7)
+    ax.text(0.50, 0.456, "三池表決", color="#7c8993", fontsize=7.0, ha="center", transform=ax.transAxes, zorder=7)
     for index, row in enumerate(generated_rows):
-        x, y = positions[index]
+        x, y = label_positions[index]
         color = _vote_color(row, consensus, index)
-        ax.plot([x, center[0]], [y, center[1]], color=color, linewidth=1.0, alpha=0.82, transform=ax.transAxes, zorder=3)
-        ax.scatter([x], [y], s=2600, color=color, alpha=0.12, edgecolors="none", transform=ax.transAxes, zorder=4)
-        ax.scatter([x], [y], s=1350, color=color, alpha=0.24, edgecolors="none", transform=ax.transAxes, zorder=5)
-        ax.scatter([x], [y], s=820, color=color, edgecolors="#e9f4f8", linewidths=2.0, transform=ax.transAxes, zorder=6)
+        badge = "共識票" if state == "consensus" and row.get("top_ticker") == winner else ("分歧票" if state != "consensus" else "少數票")
+        pool_y = y + (0.024 if index == 0 else 0.01)
+        stock_y = y - (0.013 if index == 0 else 0.016)
+        badge_y = y - (0.034 if index == 0 else 0.036)
         ax.text(
             x,
-            y,
-            _triangle_node_label(row),
+            pool_y,
+            _triangle_node_label(row).replace("\n", ""),
             color="white",
-            fontsize=9.6,
+            fontsize=8.4,
             fontweight="bold",
             ha="center",
             va="center",
             transform=ax.transAxes,
             zorder=7,
         )
-        badge = "共識票" if state == "consensus" and row.get("top_ticker") == winner else ("分歧票" if state != "consensus" else "少數票")
-        ax.text(x, y - 0.052, badge, color="#d8e7ef" if row.get("top_ticker") == winner else "#f0c48a", fontsize=9.0, fontweight="bold", ha="center", transform=ax.transAxes, zorder=7)
+        ax.text(
+            x,
+            stock_y,
+            _visual_display_name(row.get("top_display") or row.get("top_ticker") or "無", limit=9),
+            color="white",
+            fontsize=8.8,
+            fontweight="bold",
+            ha="center",
+            transform=ax.transAxes,
+            zorder=7,
+        )
+        ax.text(
+            x,
+            badge_y,
+            badge,
+            color="#eef7fa",
+            fontsize=8.1,
+            ha="center",
+            transform=ax.transAxes,
+            zorder=7,
+        )
 
 
 def _draw_vote_summary_cards(ax, manifest: dict[str, Any], rows: list[dict[str, Any]]) -> None:
@@ -851,6 +858,24 @@ def _vote_color(row: dict[str, Any], consensus: dict[str, Any], index: int) -> s
     if state == "divergent":
         return TRIANGLE_DIVERGENT_COLORS[index % len(TRIANGLE_DIVERGENT_COLORS)]
     return TRIANGLE_NEUTRAL_COLOR
+
+
+def _lighten_hex(color: str, amount: float) -> str:
+    color = color.strip().lstrip("#")
+    if len(color) != 6:
+        return "#ffffff"
+    rgb = [int(color[index : index + 2], 16) for index in (0, 2, 4)]
+    lightened = [round(channel + (255 - channel) * amount) for channel in rgb]
+    return "#" + "".join(f"{max(0, min(255, channel)):02x}" for channel in lightened)
+
+
+def _visual_display_name(value: str, *, limit: int = 9) -> str:
+    text = str(value).replace("（", "(").replace("）", ")").strip()
+    if "(" in text:
+        text = text.split("(", 1)[0].strip()
+    if " " in text:
+        text = text.split(" ", 1)[0].strip()
+    return text if len(text) <= limit else text[: limit - 1] + "…"
 
 
 def _compact_display(value: str, *, limit: int = 16) -> str:
