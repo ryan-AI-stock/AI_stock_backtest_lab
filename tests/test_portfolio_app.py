@@ -173,6 +173,7 @@ class PortfolioAppTest(unittest.TestCase):
         self.assertNotIn("--body", args)
         self.assertNotIn("2454.TW", " ".join(args))
         self.assertIn("2454.TW", kwargs["input"])
+        self.assertIn("ai_theme_large_cap_v20260613", kwargs["input"])
 
     def test_trigger_stock_pool_observation_workflow_uses_pool_id_all(self) -> None:
         calls = []

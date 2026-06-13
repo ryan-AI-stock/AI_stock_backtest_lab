@@ -11,6 +11,20 @@ from backtest_lab.strategy_preset_dispatcher import dispatch_pool, resolve_strat
 KNOWN_SYMBOLS: dict[str, dict[str, str]] = {
     "0050.TW": {"symbol": "0050", "name": "0050", "asset_type": "etf"},
     "00631L.TW": {"symbol": "00631L", "name": "0050正二", "asset_type": "etf"},
+    "1216.TW": {"symbol": "1216", "name": "統一", "asset_type": "stock"},
+    "1301.TW": {"symbol": "1301", "name": "台塑", "asset_type": "stock"},
+    "1303.TW": {"symbol": "1303", "name": "南亞", "asset_type": "stock"},
+    "2002.TW": {"symbol": "2002", "name": "中鋼", "asset_type": "stock"},
+    "2207.TW": {"symbol": "2207", "name": "和泰車", "asset_type": "stock"},
+    "2412.TW": {"symbol": "2412", "name": "中華電", "asset_type": "stock"},
+    "2603.TW": {"symbol": "2603", "name": "長榮", "asset_type": "stock"},
+    "2609.TW": {"symbol": "2609", "name": "陽明", "asset_type": "stock"},
+    "2881.TW": {"symbol": "2881", "name": "富邦金", "asset_type": "stock"},
+    "2882.TW": {"symbol": "2882", "name": "國泰金", "asset_type": "stock"},
+    "2891.TW": {"symbol": "2891", "name": "中信金", "asset_type": "stock"},
+    "2892.TW": {"symbol": "2892", "name": "第一金", "asset_type": "stock"},
+    "2912.TW": {"symbol": "2912", "name": "統一超", "asset_type": "stock"},
+    "3045.TW": {"symbol": "3045", "name": "台灣大", "asset_type": "stock"},
     "2330.TW": {"symbol": "2330", "name": "台積電", "asset_type": "stock"},
     "2454.TW": {"symbol": "2454", "name": "聯發科", "asset_type": "stock"},
     "2308.TW": {"symbol": "2308", "name": "台達電", "asset_type": "stock"},
@@ -49,13 +63,28 @@ class StockPoolStore:
         with self.lock:
             data = self._load()
             existing = next((pool for pool in data["pools"] if pool["pool_id"] == pool_id), None)
-            if existing and existing.get("locked"):
+            if existing and existing.get("locked") and existing.get("ui_section") != "official_core":
                 raise ValueError("內建股票池不可覆蓋，請另建自訂池。")
+            if existing and existing.get("locked") and existing.get("ui_section") == "official_core":
+                pool = {
+                    **existing,
+                    "name": name,
+                    "strategy_preset": preset.preset,
+                    "operational_observation": preset.operational_observation,
+                    "description": str(payload.get("description") or ""),
+                    "symbols": symbols,
+                }
+                if dynamic_binding:
+                    pool["dynamic_binding"] = dynamic_binding
+                data["pools"] = [pool if item["pool_id"] == pool_id else item for item in data["pools"]]
+                self._save(data)
+                return pool
             pool = {
                 "pool_id": pool_id,
                 "name": name,
                 "kind": str(payload.get("kind") or "custom"),
                 "locked": False,
+                "ui_section": str(payload.get("ui_section") or "experiment"),
                 "strategy_preset": preset.preset,
                 "operational_observation": preset.operational_observation,
                 "description": str(payload.get("description") or ""),
@@ -86,7 +115,7 @@ class StockPoolStore:
         data = json.loads(self.path.read_text(encoding="utf-8"))
         if data.get("schema_version") != 1 or "pools" not in data:
             raise ValueError("股票池設定檔格式不支援。")
-        return data
+        return merge_default_pools(data)
 
     def _save(self, data: dict[str, Any]) -> None:
         temporary = self.path.with_suffix(".tmp")
@@ -125,14 +154,74 @@ def default_stock_pool_data() -> dict[str, Any]:
         "3231.TW",
         "6669.TW",
     ]
+    core_symbols = [
+        "0050.TW",
+        "00631L.TW",
+        "2330.TW",
+        "2412.TW",
+        "3045.TW",
+        "1216.TW",
+        "2912.TW",
+        "2881.TW",
+        "2882.TW",
+        "2891.TW",
+        "2892.TW",
+        "1301.TW",
+        "1303.TW",
+        "2002.TW",
+        "2207.TW",
+        "2603.TW",
+        "2609.TW",
+    ]
     return {
         "schema_version": 1,
         "pools": [
+            {
+                "pool_id": "ai_theme_large_cap_v20260613",
+                "name": "AI中大型權值股池最佳版 v20260613",
+                "kind": "built_in",
+                "locked": True,
+                "ui_section": "official_core",
+                "strategy_preset": "ai_theme_large_cap_v20260613",
+                "operational_observation": True,
+                "vote_group": "three_perspective_v1",
+                "description": "AI 主題實戰池：0050、0050正二與七檔 AI 中大型權值股，使用 v20260613 challenger 規則。",
+                "symbols": [symbol_entry(ticker, source="fixed") for ticker in large_symbols],
+            },
+            {
+                "pool_id": "tw50_dynamic_constituents_v0",
+                "name": "動態0050成分股池 v0",
+                "kind": "built_in",
+                "locked": True,
+                "ui_section": "official_core",
+                "strategy_preset": "universal_pool_custom",
+                "operational_observation": True,
+                "vote_group": "three_perspective_v1",
+                "description": "讀取帶有效日期的台灣50/0050歷史成分股表。若資料不存在，批次報告會明確跳過，不用現代成分股硬回推。",
+                "symbols": [],
+                "dynamic_constituents": {
+                    "source": "tw50_history_csv",
+                    "path": "data/tw50_constituents.csv",
+                },
+            },
+            {
+                "pool_id": "large_core_bluechip_v0",
+                "name": "大型核心權值股池 v0",
+                "kind": "built_in",
+                "locked": True,
+                "ui_section": "official_core",
+                "strategy_preset": "universal_pool_custom",
+                "operational_observation": True,
+                "vote_group": "three_perspective_v1",
+                "description": "跨金融、電信、消費、傳產、航運與半導體核心的中大型權值代理池；台積電在此視為市場核心股，不是純 AI 題材股。",
+                "symbols": [symbol_entry(ticker, source="fixed") for ticker in core_symbols],
+            },
             {
                 "pool_id": "large_cap_best_v20260605",
                 "name": "AI中大型權值股池最佳版 v20260605",
                 "kind": "built_in",
                 "locked": True,
+                "ui_section": "legacy",
                 "strategy_preset": "best_v20260605",
                 "operational_observation": True,
                 "description": "正式最佳版使用的 0050、0050正二與七檔 AI 中大型權值股。",
@@ -143,6 +232,7 @@ def default_stock_pool_data() -> dict[str, Any]:
                 "name": "雷達中小型校準版",
                 "kind": "built_in",
                 "locked": True,
+                "ui_section": "legacy",
                 "strategy_preset": "radar_core_mid_small_calibrated_v1",
                 "operational_observation": True,
                 "description": "由 AI_stock_rotation_radar snapshot 與雷達核心成員池 v1 動態決定候選股，不在介面寫死成固定清單。",
@@ -153,6 +243,7 @@ def default_stock_pool_data() -> dict[str, Any]:
                 "name": "模型延遲公開成績單池",
                 "kind": "task",
                 "locked": False,
+                "ui_section": "experiment",
                 "strategy_preset": "delayed_public_scorecard_v1",
                 "operational_observation": False,
                 "description": "0050、0050正二，加上跟隨池1每日模型第一名的第三檔股票。",
@@ -163,12 +254,36 @@ def default_stock_pool_data() -> dict[str, Any]:
                 ],
                 "dynamic_binding": {
                     "source": "latest_model_top1",
-                    "source_pool_id": "large_cap_best_v20260605",
+                    "source_pool_id": "ai_theme_large_cap_v20260613",
                     "replace_index": 2,
                     "fallback_ticker": "2454.TW",
                 },
             },
         ],
+    }
+
+
+def merge_default_pools(data: dict[str, Any]) -> dict[str, Any]:
+    defaults = default_stock_pool_data()
+    current = {pool["pool_id"]: pool for pool in data.get("pools", [])}
+    merged = []
+    for default_pool in defaults["pools"]:
+        pool_id = default_pool["pool_id"]
+        if pool_id in current:
+            pool = {**default_pool, **current[pool_id]}
+            if pool.get("ui_section") is None:
+                pool["ui_section"] = default_pool.get("ui_section", "experiment")
+            merged.append(pool)
+        else:
+            merged.append(default_pool)
+    default_ids = {pool["pool_id"] for pool in defaults["pools"]}
+    for pool in data.get("pools", []):
+        if pool["pool_id"] not in default_ids:
+            merged.append(pool)
+    return {
+        **data,
+        "schema_version": 1,
+        "pools": merged,
     }
 
 

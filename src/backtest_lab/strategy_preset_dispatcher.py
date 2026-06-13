@@ -19,6 +19,14 @@ class StrategyPresetSpec:
 
 
 PRESET_SPECS: dict[str, StrategyPresetSpec] = {
+    "ai_theme_large_cap_v20260613": StrategyPresetSpec(
+        preset="ai_theme_large_cap_v20260613",
+        label="AI中大型權值股池最佳版 v20260613",
+        engine_module="backtest_lab.stock_pool_observation",
+        workflow_file="stock_pool_observation.yml",
+        report_line="stock_pool_observation",
+        operational_observation=True,
+    ),
     "best_v20260605": StrategyPresetSpec(
         preset="best_v20260605",
         label="AI中大型權值股最佳版 v20260605",

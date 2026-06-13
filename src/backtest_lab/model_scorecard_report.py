@@ -2,17 +2,17 @@ from __future__ import annotations
 
 import argparse
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 
 import pandas as pd
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
-from backtest_lab.config import load_config
-from backtest_lab.data import download_yfinance_prices, split_adjusted_dividends
+from backtest_lab.config import BacktestConfig, load_config
+from backtest_lab.data import download_yfinance_prices
+from backtest_lab.frozen_strategy_engine import build_frozen_strategy_context, simulate_frozen_baseline
 from backtest_lab.frozen_report_pdf import _configure_chinese_font, _save_figure_as_raster_pdf_page
-from backtest_lab.regime_mode_switch import frozen_cycle_proven_top1_v1_variant, simulate_regime_mode_switch
 from backtest_lab.simulation import simulate_buy_and_hold
 
 
@@ -101,6 +101,7 @@ def main() -> None:
         asset_types=asset_types,
         manual_splits=config.manual_splits,
         cost_model=config.cost_model,
+        config=config,
         report_date=args.report_date,
         tracking_start=args.tracking_start,
         data_end=data_end,
@@ -147,23 +148,27 @@ def build_scorecard_report(
     initial_cash: float,
     delay_days: int,
     tracking_case_ticker: str,
+    group_id: str = "group_c_0050_00631l_plus_mega_caps",
+    config: BacktestConfig | None = None,
 ) -> ScorecardReport:
     prices_by_ticker = _truncate_prices(prices_by_ticker, data_end)
-    dividends = {
-        ticker: split_adjusted_dividends(frame, (manual_splits or {}).get(ticker, ()))
-        for ticker, frame in prices_by_ticker.items()
-    }
-    model_result = simulate_regime_mode_switch(
-        name="scorecard_best_v20260605",
+    frozen_config = replace(
+        config or load_config("configs/ep05_universe.json"),
+        cost_model=cost_model,
+        manual_splits=manual_splits or {},
+    )
+    frozen_context = build_frozen_strategy_context(
+        config=frozen_config,
+        group_id=group_id,
         prices_by_ticker=prices_by_ticker,
-        asset_types=asset_types,
-        market_prices=prices_by_ticker["0050.TW"],
+    )
+    dividends = frozen_context.dividends_by_ticker
+    model_result = simulate_frozen_baseline(
+        context=frozen_context,
+        name="scorecard_best_v20260605",
         start_date=tracking_start,
         end_date=data_end,
         initial_cash=initial_cash,
-        cost_model=cost_model,
-        variant=frozen_cycle_proven_top1_v1_variant(),
-        dividend_series_by_ticker=dividends,
     )
     holding_records = _model_holding_records(model_result.equity_curve, labels)
     current_model_ticker = _current_model_ticker(model_result.equity_curve)

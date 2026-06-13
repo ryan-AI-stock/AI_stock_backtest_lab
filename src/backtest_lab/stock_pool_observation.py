@@ -17,9 +17,17 @@ from backtest_lab.formal_radar_candidates import formal_radar_candidates_to_symb
 from backtest_lab.market_cap_source import load_first_available_market_caps
 from backtest_lab.risk_factor_source import RiskFactorSignal, load_first_available_risk_factors
 from backtest_lab.frozen_report_pdf import _configure_chinese_font, _save_figure_as_raster_pdf_page
-from backtest_lab.frozen_strategy_monitor import build_frozen_strategy_signal
+from backtest_lab.frozen_strategy_monitor import (
+    AI_THEME_STRATEGY_ID,
+    STRATEGY_ID,
+    ai_theme_large_cap_v20260613_signal_variant,
+    build_frozen_strategy_signal,
+)
+from backtest_lab.regime_mode_switch import RegimeModeSwitchVariant, frozen_cycle_proven_top1_v1_variant
+from backtest_lab.stock_pool_consensus import write_consensus_outputs
 from backtest_lab.stock_pool_store import KNOWN_SYMBOLS, StockPoolStore
 from backtest_lab.strategy_preset_dispatcher import dispatch_pool, resolve_strategy_preset
+from backtest_lab.tw50_constituents import load_tw50_constituents_for_date
 from backtest_lab.universal_pool_strategy import (
     PoolProfile,
     UniversalCandidateScore,
@@ -147,8 +155,13 @@ def build_dispatched_stock_pool_observation(
     require_exact_signal_date: bool = False,
 ) -> StockPoolObservation:
     spec = resolve_strategy_preset(pool.get("strategy_preset"))
-    if spec.preset == "best_v20260605":
-        return _build_best_v20260605_observation(
+    if spec.preset in {"best_v20260605", "ai_theme_large_cap_v20260613"}:
+        variant = (
+            ai_theme_large_cap_v20260613_signal_variant()
+            if spec.preset == "ai_theme_large_cap_v20260613"
+            else frozen_cycle_proven_top1_v1_variant()
+        )
+        return _build_regime_signal_observation(
             pool=pool,
             prices_by_ticker=prices_by_ticker,
             signal_date=signal_date,
@@ -156,6 +169,8 @@ def build_dispatched_stock_pool_observation(
             market_cap_by_ticker=market_cap_by_ticker,
             risk_signal_by_ticker=risk_signal_by_ticker,
             require_exact_signal_date=require_exact_signal_date,
+            variant=variant,
+            strategy_id=AI_THEME_STRATEGY_ID if spec.preset == "ai_theme_large_cap_v20260613" else STRATEGY_ID,
         )
     return build_stock_pool_observation(
         pool=pool,
@@ -170,6 +185,13 @@ def build_dispatched_stock_pool_observation(
 
 
 def _build_pool_source_metadata(pool: dict[str, Any], symbols: list[dict[str, Any]]) -> dict[str, Any]:
+    if pool.get("dynamic_constituents", {}).get("source") == "tw50_history_csv":
+        return {
+            "source_type": "tw50_constituents",
+            "source_path": pool.get("tw50_constituent_source", pool.get("dynamic_constituents", {}).get("path", "")),
+            "candidate_count": len(symbols),
+            "candidate_displays": [symbol.get("display") or symbol.get("ticker") for symbol in symbols],
+        }
     if pool.get("strategy_preset") != "radar_core_mid_small_calibrated_v1":
         return {}
     formal_dates = sorted(
@@ -216,7 +238,9 @@ def _source_summary(metadata: dict[str, Any]) -> str:
         date_text = ",".join(metadata.get("formal_report_dates") or []) or "未標日期"
         candidates = "、".join(metadata.get("candidate_displays") or [])
         return f"RADAR正式候選 {date_text}：{candidates}"
-    if metadata.get("source_type") == "best_v20260605_signal":
+    if metadata.get("source_type") == "tw50_constituents":
+        return f"動態0050成分股：{metadata.get('candidate_count', 0)}檔，來源 {metadata.get('source_path') or '未標'}"
+    if metadata.get("source_type") in {"best_v20260605_signal", "ai_theme_large_cap_v20260613_signal"}:
         gate_text = "個股攻擊閘門已開啟" if metadata.get("attack_gate_active") else "個股攻擊閘門未開啟"
         return f"最佳版正式引擎：{metadata.get('market_regime_label') or '市場環境未標'}，{gate_text}"
     return str(metadata.get("source_type") or "")
@@ -251,6 +275,7 @@ def run_stock_pool_observation_batch(
     borrow_lending_data: str | Path | None = None,
     day_trading_data: str | Path | None = None,
     sentiment_data: str | Path | None = None,
+    tw50_constituents_path: str | Path | None = None,
     radar_top_n: int = 20,
     require_exact_signal_date: bool = False,
     operational_only: bool = True,
@@ -292,6 +317,7 @@ def run_stock_pool_observation_batch(
             radar_snapshot_dir=radar_snapshot_dir,
             radar_data_dir=radar_data_dir,
             radar_top_n=radar_top_n,
+            tw50_constituents_path=tw50_constituents_path,
         )
         tickers = [symbol["ticker"] for symbol in pool.get("resolved_symbols", [])]
         if not tickers:
@@ -340,6 +366,7 @@ def run_stock_pool_observation_batch(
                     "action_state": observation.action_state,
                     "top_candidates": _top_candidate_rows(observation),
                     "source_metadata": observation.source_metadata,
+                    "vote_group": pool.get("vote_group", ""),
                     "missing_price_tickers": missing_price_tickers,
                     "output_dir": str(pool_dir),
                 }
@@ -358,6 +385,7 @@ def run_stock_pool_observation_batch(
         encoding="utf-8",
     )
     write_stock_pool_observation_batch_summary(root, manifest)
+    write_consensus_outputs(root, manifest)
     return manifest
 
 
@@ -596,7 +624,7 @@ def _candidate_display(observation: StockPoolObservation, ticker: str) -> str:
 
 
 def _candidate_reason(observation: StockPoolObservation, candidate: UniversalCandidateScore) -> str:
-    if observation.strategy_preset == "best_v20260605":
+    if observation.strategy_preset in {"best_v20260605", "ai_theme_large_cap_v20260613"}:
         metadata = observation.source_metadata or {}
         regime = metadata.get("market_regime_label") or "目前市場環境"
         gate_text = "個股攻擊閘門已開啟" if metadata.get("attack_gate_active") else "個股攻擊閘門未開啟"
@@ -640,6 +668,7 @@ def main() -> None:
     parser.add_argument("--borrow-lending-data", default=os.getenv("BORROW_LENDING_DATA_PATH", ""))
     parser.add_argument("--day-trading-data", default=os.getenv("DAY_TRADING_DATA_PATH", ""))
     parser.add_argument("--sentiment-data", default=os.getenv("SENTIMENT_DATA_PATH", ""))
+    parser.add_argument("--tw50-constituents", default=os.getenv("TW50_CONSTITUENTS_PATH", ""))
     parser.add_argument("--radar-top-n", type=int, default=20)
     parser.add_argument("--require-exact-signal-date", action="store_true")
     parser.add_argument(
@@ -666,6 +695,7 @@ def main() -> None:
             borrow_lending_data=args.borrow_lending_data or None,
             day_trading_data=args.day_trading_data or None,
             sentiment_data=args.sentiment_data or None,
+            tw50_constituents_path=args.tw50_constituents or None,
             radar_top_n=args.radar_top_n,
             require_exact_signal_date=args.require_exact_signal_date,
             operational_only=not args.include_non_operational_pools,
@@ -681,6 +711,7 @@ def main() -> None:
         radar_snapshot_dir=args.radar_snapshot_dir or None,
         radar_data_dir=args.radar_data_dir or None,
         radar_top_n=args.radar_top_n,
+        tw50_constituents_path=args.tw50_constituents or None,
     )
     tickers = [symbol["ticker"] for symbol in pool.get("resolved_symbols", [])]
     if not tickers:
@@ -737,7 +768,7 @@ def _resolve_signal_date(prices_by_ticker: dict[str, pd.DataFrame], requested: p
     return max(common)
 
 
-def _build_best_v20260605_observation(
+def _build_regime_signal_observation(
     *,
     pool: dict[str, Any],
     prices_by_ticker: dict[str, pd.DataFrame],
@@ -746,6 +777,8 @@ def _build_best_v20260605_observation(
     market_cap_by_ticker: dict[str, float] | None,
     risk_signal_by_ticker: dict[str, RiskFactorSignal] | None,
     require_exact_signal_date: bool,
+    variant: RegimeModeSwitchVariant,
+    strategy_id: str,
 ) -> StockPoolObservation:
     requested_ts = pd.Timestamp(signal_date)
     signal_ts = _resolve_signal_date(prices_by_ticker, requested_ts)
@@ -773,6 +806,8 @@ def _build_best_v20260605_observation(
         initial_cash=config.initial_cash_twd,
         cost_model=config.cost_model,
         manual_splits=config.manual_splits,
+        variant=variant,
+        strategy_id=strategy_id,
     )
     profile = infer_pool_profile(prices_by_ticker, signal_ts)
     params = default_parameters_for_profile(profile)
@@ -853,7 +888,7 @@ def _build_best_v20260605_observation(
         action_state=signal.model_target_status,
         candidates=candidates,
         source_metadata={
-            "source_type": "best_v20260605_signal",
+            "source_type": f"{strategy_id}_signal",
             "market_regime_label": signal.market_regime_label,
             "attack_gate_active": signal.attack_gate_active,
             "attack_gate_ever_activated": signal.attack_gate_ever_activated,
@@ -900,7 +935,7 @@ def _load_observation_price_frames(
 
 
 def _price_start_for_pool(pool: dict[str, Any], warmup_start: str) -> str:
-    if pool.get("strategy_preset") == "best_v20260605":
+    if pool.get("strategy_preset") in {"best_v20260605", "ai_theme_large_cap_v20260613"}:
         return (pd.Timestamp(warmup_start) - pd.DateOffset(years=2)).strftime("%Y-%m-%d")
     return warmup_start
 
@@ -912,7 +947,20 @@ def _resolve_dynamic_observation_pool(
     radar_snapshot_dir: str | Path | None,
     radar_data_dir: str | Path | None,
     radar_top_n: int,
+    tw50_constituents_path: str | Path | None,
 ) -> dict[str, Any]:
+    dynamic = pool.get("dynamic_constituents") or {}
+    if not pool.get("resolved_symbols") and dynamic.get("source") == "tw50_history_csv":
+        path = tw50_constituents_path or dynamic.get("path")
+        if not path:
+            return pool
+        updated = json.loads(json.dumps(pool, ensure_ascii=False))
+        try:
+            updated["resolved_symbols"] = load_tw50_constituents_for_date(path, signal_date)
+        except (FileNotFoundError, ValueError):
+            return pool
+        updated["tw50_constituent_source"] = str(path)
+        return updated
     if pool.get("resolved_symbols") or pool.get("strategy_preset") != "radar_core_mid_small_calibrated_v1":
         return pool
     data_dir = _resolve_radar_data_dir(radar_data_dir=radar_data_dir, radar_snapshot_dir=radar_snapshot_dir)

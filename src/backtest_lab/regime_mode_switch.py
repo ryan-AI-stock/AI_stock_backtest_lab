@@ -34,7 +34,15 @@ class RegimeModeSwitchVariant:
     regime_exposures: dict[str, float]
     weekly_signal_weekday: int | None = None
     normal_rebalance_weekday: int | None = None
+    normal_rebalance_weekday_by_regime: dict[str, int] | None = None
+    normal_rebalance_min_regime_streak_days: int = 0
+    normal_rebalance_last_trading_day_of_week: bool = False
+    normal_rebalance_last_trading_day_regimes: tuple[str, ...] = ()
     state_evaluation_weekday: int | None = None
+    defer_rebalance_on_adverse_open_gap_pct: float | None = None
+    early_rebalance_regimes: tuple[str, ...] = ()
+    early_rebalance_min_gap_over_current: float | None = None
+    early_rebalance_min_top_gap: float | None = None
     portfolio_stop_drawdown_pct: float | None = None
     portfolio_stop_cooldown_days: int = 0
     portfolio_stop_latch_mode: str | None = None
@@ -2320,6 +2328,20 @@ def frozen_cycle_proven_top1_v1_variant() -> RegimeModeSwitchVariant:
     )
 
 
+def ai_theme_large_cap_v20260613_variant() -> RegimeModeSwitchVariant:
+    """Return the current AI large-cap challenger used for three-perspective voting."""
+    target_name = "cycle_mature_bull_cadence_bull_wed_after20d_breakout_gap10"
+    for variant in cycle_proven_mature_bull_cadence_variants():
+        if variant.name == target_name:
+            return RegimeModeSwitchVariant(
+                **{
+                    **variant.__dict__,
+                    "name": "ai_theme_large_cap_v20260613",
+                }
+            )
+    raise RuntimeError(f"Missing regime variant: {target_name}")
+
+
 def cycle_proven_cadence_variants() -> tuple[RegimeModeSwitchVariant, ...]:
     """Compare daily analysis with daily-risk/weekly-rotation and full-weekly operation."""
     base = cycle_proven_preproof_exposure_variants()[1]
@@ -2353,6 +2375,150 @@ def cycle_proven_cadence_variants() -> tuple[RegimeModeSwitchVariant, ...]:
                     "name": f"cycle_cadence_full_weekly_{weekday_name}",
                     "normal_rebalance_weekday": weekday,
                     "state_evaluation_weekday": weekday,
+                }
+            )
+        )
+    variants.extend(
+        [
+            RegimeModeSwitchVariant(
+                **{
+                    **base_values,
+                    "name": "cycle_cadence_daily_risk_weekly_rotation_last_trading_day",
+                    "normal_rebalance_last_trading_day_of_week": True,
+                }
+            ),
+            RegimeModeSwitchVariant(
+                **{
+                    **base_values,
+                    "name": "cycle_cadence_daily_risk_weekly_rotation_fri_gap2_guard",
+                    "normal_rebalance_weekday": 4,
+                    "defer_rebalance_on_adverse_open_gap_pct": 0.02,
+                }
+            ),
+            RegimeModeSwitchVariant(
+                **{
+                    **base_values,
+                    "name": "cycle_cadence_daily_risk_weekly_rotation_last_trading_day_gap2_guard",
+                    "normal_rebalance_last_trading_day_of_week": True,
+                    "defer_rebalance_on_adverse_open_gap_pct": 0.02,
+                }
+            ),
+            RegimeModeSwitchVariant(
+                **{
+                    **base_values,
+                    "name": "cycle_cadence_daily_risk_weekly_rotation_last_trading_day_gap3_guard",
+                    "normal_rebalance_last_trading_day_of_week": True,
+                    "defer_rebalance_on_adverse_open_gap_pct": 0.03,
+                }
+            ),
+        ]
+    )
+    return tuple(variants)
+
+
+def cycle_proven_adaptive_cadence_variants() -> tuple[RegimeModeSwitchVariant, ...]:
+    """Switch only the normal rotation cadence by market regime."""
+    base = cycle_proven_preproof_exposure_variants()[1]
+    base_values = {
+        **base.__dict__,
+        "attack_selection_exclude_tickers": ("0050.TW", "00631L.TW"),
+    }
+    regime_sets = (
+        ("strong_bull_wed_rest_daily", {"strong_bull": 2}),
+        ("bull_wed_rest_daily", {"strong_bull": 2, "recovery_bull": 2}),
+        ("non_bear_wed_rest_daily", {"strong_bull": 2, "recovery_bull": 2, "range_bound": 2}),
+        (
+            "bull_wed_range_last_day_rest_daily",
+            {"strong_bull": 2, "recovery_bull": 2},
+        ),
+    )
+    variants: list[RegimeModeSwitchVariant] = []
+    for name, weekday_by_regime in regime_sets:
+        values = {
+            **base_values,
+            "name": f"cycle_adaptive_cadence_{name}",
+            "normal_rebalance_weekday_by_regime": weekday_by_regime,
+        }
+        if name == "bull_wed_range_last_day_rest_daily":
+            values["normal_rebalance_last_trading_day_regimes"] = ("range_bound",)
+        variants.append(RegimeModeSwitchVariant(**values))
+    variants.append(
+        RegimeModeSwitchVariant(
+            **{
+                **base_values,
+                "name": "cycle_adaptive_cadence_bull_wed_rest_daily_gap2_guard",
+                "normal_rebalance_weekday_by_regime": {"strong_bull": 2, "recovery_bull": 2},
+                "defer_rebalance_on_adverse_open_gap_pct": 0.02,
+            }
+        )
+    )
+    return tuple(variants)
+
+
+def cycle_proven_adaptive_cadence_breakout_variants() -> tuple[RegimeModeSwitchVariant, ...]:
+    """Allow an off-cadence switch when leadership clearly changes."""
+    base = cycle_proven_preproof_exposure_variants()[1]
+    base_values = {
+        **base.__dict__,
+        "attack_selection_exclude_tickers": ("0050.TW", "00631L.TW"),
+    }
+    variants: list[RegimeModeSwitchVariant] = []
+    templates = (
+        ("strong_bull_wed_rest_daily", {"strong_bull": 2}, ("strong_bull",)),
+        ("bull_wed_rest_daily", {"strong_bull": 2, "recovery_bull": 2}, ("strong_bull", "recovery_bull")),
+    )
+    for template_name, weekday_by_regime, early_regimes in templates:
+        for gap in (0.05, 0.10, 0.15, 0.20, 0.25):
+            variants.append(
+                RegimeModeSwitchVariant(
+                    **{
+                        **base_values,
+                        "name": f"cycle_adaptive_breakout_{template_name}_gap{int(gap * 100)}",
+                        "normal_rebalance_weekday_by_regime": weekday_by_regime,
+                        "early_rebalance_regimes": early_regimes,
+                        "early_rebalance_min_gap_over_current": gap,
+                        "early_rebalance_min_top_gap": gap,
+                    }
+                )
+            )
+    return tuple(variants)
+
+
+def cycle_proven_mature_bull_cadence_variants() -> tuple[RegimeModeSwitchVariant, ...]:
+    """Keep daily rotation early in a bull regime, then switch to weekly cadence after it matures."""
+    base = cycle_proven_preproof_exposure_variants()[1]
+    base_values = {
+        **base.__dict__,
+        "attack_selection_exclude_tickers": ("0050.TW", "00631L.TW"),
+    }
+    variants: list[RegimeModeSwitchVariant] = []
+    templates = (
+        ("strong_bull_wed", {"strong_bull": 2}),
+        ("bull_wed", {"strong_bull": 2, "recovery_bull": 2}),
+    )
+    for name, weekday_by_regime in templates:
+        for streak_days in (10, 20, 30):
+            variants.append(
+                RegimeModeSwitchVariant(
+                    **{
+                        **base_values,
+                        "name": f"cycle_mature_bull_cadence_{name}_after{streak_days}d",
+                        "normal_rebalance_weekday_by_regime": weekday_by_regime,
+                        "normal_rebalance_min_regime_streak_days": streak_days,
+                    }
+                )
+            )
+    for gap in (0.10, 0.15):
+        variants.append(
+            RegimeModeSwitchVariant(
+                **{
+                    **base_values,
+                    "name": f"cycle_mature_bull_cadence_bull_wed_after20d_breakout_gap{int(gap * 100)}",
+                    "normal_rebalance_weekday_by_regime": {"strong_bull": 2, "recovery_bull": 2},
+                    "normal_rebalance_min_regime_streak_days": 20,
+                    "early_rebalance_regimes": ("strong_bull", "recovery_bull"),
+                    "early_rebalance_min_gap_over_current": gap,
+                    "early_rebalance_min_top_gap": gap,
                 }
             )
         )
@@ -2532,6 +2698,8 @@ def simulate_regime_mode_switch(
     attack_gate_ever_activated = attack_gate_active or prior_attack_activation
     attack_gate_stop_latch_active = False
     attack_gate_stop_release_streak = 0
+    current_regime: str | None = None
+    regime_streak_days = 0
 
     for index, trade_date in enumerate(trade_dates):
         stop_triggered_today = False
@@ -2593,6 +2761,11 @@ def simulate_regime_mode_switch(
                     stop_triggered_today = True
 
         regime = classify_market_regime(market_prices, signal_date, universe_prices=prices_by_ticker).regime
+        if regime == current_regime:
+            regime_streak_days += 1
+        else:
+            current_regime = regime
+            regime_streak_days = 1
         mode = variant.regime_modes[regime]
         exposure = variant.regime_exposures[regime]
         defense_override_rule: str | None = None
@@ -2709,8 +2882,27 @@ def simulate_regime_mode_switch(
                 mode = variant.daily_health_fail_mode
                 exposure = 1.0 if mode == MODE_0050_DEFENSE else 0.0
         should_check = mode in {MODE_DAILY, MODE_CASH, MODE_0050_DEFENSE}
-        if mode == MODE_DAILY and variant.normal_rebalance_weekday is not None:
+        normal_rebalance_rule_applied = False
+        if (
+            mode == MODE_DAILY
+            and variant.normal_rebalance_weekday_by_regime is not None
+            and regime in variant.normal_rebalance_weekday_by_regime
+            and regime_streak_days >= variant.normal_rebalance_min_regime_streak_days
+        ):
+            should_check = signal_date.weekday() == variant.normal_rebalance_weekday_by_regime[regime]
+            normal_rebalance_rule_applied = True
+        elif mode == MODE_DAILY and variant.normal_rebalance_weekday is not None:
             should_check = signal_date.weekday() == variant.normal_rebalance_weekday
+            normal_rebalance_rule_applied = True
+        if (
+            mode == MODE_DAILY
+            and not normal_rebalance_rule_applied
+            and (
+                variant.normal_rebalance_last_trading_day_of_week
+                or regime in variant.normal_rebalance_last_trading_day_regimes
+            )
+        ):
+            should_check = _is_last_trading_day_of_week(trade_dates, signal_date)
         if mode == MODE_WEEKLY:
             week_key = (signal_date.isocalendar().year, signal_date.isocalendar().week)
             should_check = week_key != last_week_key
@@ -2722,6 +2914,30 @@ def simulate_regime_mode_switch(
         if index <= cooldown_until_index:
             should_check = False
         if variant.state_evaluation_weekday is not None and not state_evaluation_day:
+            should_check = False
+        if (
+            not should_check
+            and mode == MODE_DAILY
+            and regime in variant.early_rebalance_regimes
+            and _early_rebalance_signal(
+                prices_by_ticker=prices_by_ticker,
+                signal_date=signal_date,
+                current_ticker=account.ticker,
+                variant=variant,
+            )
+        ):
+            should_check = True
+        if (
+            should_check
+            and mode == MODE_DAILY
+            and variant.defer_rebalance_on_adverse_open_gap_pct is not None
+            and _has_adverse_open_gap(
+                market_prices=market_prices,
+                signal_date=signal_date,
+                trade_date=trade_date,
+                threshold_pct=variant.defer_rebalance_on_adverse_open_gap_pct,
+            )
+        ):
             should_check = False
 
         if should_check:
@@ -2765,6 +2981,7 @@ def simulate_regime_mode_switch(
                 "cash_balance": account.cash,
                 "current_exposure": position_value / total_value if total_value > 0 else 0.0,
                 "regime": regime,
+                "regime_streak_days": regime_streak_days,
                 "mode": mode,
                 "risk_off_active": risk_off_active,
                 "risk_off_clear_streak": risk_off_clear_streak,
@@ -2853,6 +3070,46 @@ def _select_target(
     if mode in {MODE_CASH, MODE_HOLD}:
         return None
     raise ValueError(f"Unsupported mode: {mode}")
+
+
+def _early_rebalance_signal(
+    *,
+    prices_by_ticker: dict[str, pd.DataFrame],
+    signal_date: pd.Timestamp,
+    current_ticker: str | None,
+    variant: RegimeModeSwitchVariant,
+) -> bool:
+    if current_ticker is None:
+        return False
+    scores = relative_strength_scores(prices_by_ticker, signal_date)
+    eligible = {
+        ticker: score
+        for ticker, score in scores.items()
+        if (
+            ticker not in variant.attack_selection_exclude_tickers
+            and (
+                variant.candidate_trend_filter is None
+                or _passes_candidate_filter(prices_by_ticker[ticker], signal_date, variant.candidate_trend_filter)
+            )
+        )
+    }
+    if len(eligible) < 2:
+        return False
+    ranked = sorted(eligible.items(), key=lambda item: (item[1], item[0]), reverse=True)
+    top_ticker, top_score = ranked[0]
+    if top_ticker == current_ticker:
+        return False
+    second_score = ranked[1][1]
+    min_top_gap = variant.early_rebalance_min_top_gap
+    if min_top_gap is not None and top_score - second_score < min_top_gap:
+        return False
+    min_gap_over_current = variant.early_rebalance_min_gap_over_current
+    if min_gap_over_current is None:
+        return True
+    current_score = eligible.get(current_ticker)
+    if current_score is None:
+        return top_score - second_score >= min_gap_over_current
+    return top_score - current_score >= min_gap_over_current
 
 
 def _defense_target_and_exposure(
@@ -3048,6 +3305,34 @@ def _ticker_above_ma(
     if len(history) < window:
         return False
     return float(history.iloc[-1]) > float(history.iloc[-window:].mean())
+
+
+def _is_last_trading_day_of_week(trade_dates: list[pd.Timestamp], signal_date: pd.Timestamp) -> bool:
+    signal_week = (signal_date.isocalendar().year, signal_date.isocalendar().week)
+    later_dates = [date for date in trade_dates if date > signal_date]
+    if not later_dates:
+        return True
+    next_trade_date = later_dates[0]
+    next_week = (next_trade_date.isocalendar().year, next_trade_date.isocalendar().week)
+    return next_week != signal_week
+
+
+def _has_adverse_open_gap(
+    *,
+    market_prices: pd.DataFrame,
+    signal_date: pd.Timestamp,
+    trade_date: pd.Timestamp,
+    threshold_pct: float,
+) -> bool:
+    if signal_date not in market_prices.index or trade_date not in market_prices.index:
+        return False
+    signal_close = float(market_prices.loc[signal_date, "adj_close"])
+    open_column = "open" if "open" in market_prices.columns else "adj_close"
+    trade_open = float(market_prices.loc[trade_date, open_column])
+    if signal_close <= 0:
+        return False
+    open_gap = trade_open / signal_close - 1
+    return open_gap <= -abs(threshold_pct)
 
 
 def _update_risk_off_state(

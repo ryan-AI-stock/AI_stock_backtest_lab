@@ -184,10 +184,16 @@ def create_handler(
 
     def _pool_state() -> dict:
         signal = load_latest_signal(signal_root)
+        pools = pool_store.list_pools(latest_signal=signal)
         return {
             "latest_signal": signal,
             "known_symbols": KNOWN_SYMBOLS,
-            "pools": pool_store.list_pools(latest_signal=signal),
+            "pools": pools,
+            "pool_sections": {
+                "official_core": [pool for pool in pools if pool.get("ui_section") == "official_core"],
+                "experiment": [pool for pool in pools if pool.get("ui_section") == "experiment"],
+                "legacy": [pool for pool in pools if pool.get("ui_section") == "legacy"],
+            },
         }
 
     return Handler

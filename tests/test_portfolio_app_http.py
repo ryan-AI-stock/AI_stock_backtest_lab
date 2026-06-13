@@ -107,6 +107,10 @@ class PortfolioAppHttpTest(unittest.TestCase):
                 port = server.server_address[1]
                 state = _request(port, "GET", "/api/pools")
                 self.assertEqual(state["latest_signal"]["target_ticker"], "2330.TW")
+                self.assertEqual(
+                    {pool["pool_id"] for pool in state["pool_sections"]["official_core"]},
+                    {"ai_theme_large_cap_v20260613", "tw50_dynamic_constituents_v0", "large_core_bluechip_v0"},
+                )
                 scorecard = next(pool for pool in state["pools"] if pool["pool_id"] == "model_scorecard_ep10")
                 self.assertEqual(scorecard["resolved_symbols"][2]["ticker"], "2330.TW")
 
@@ -117,6 +121,7 @@ class PortfolioAppHttpTest(unittest.TestCase):
                     {"name": "自訂觀察池", "symbols_text": "2330\n2454", "strategy_preset": "universal_pool_custom"},
                 )
                 self.assertIn("自訂觀察池", {pool["name"] for pool in updated["pools"]})
+                self.assertIn("自訂觀察池", {pool["name"] for pool in updated["pool_sections"]["experiment"]})
 
                 synced = _request(port, "POST", "/api/sync-pools-secret-and-run", {"signal_date": "2026-06-04"})
                 self.assertTrue(synced["sync_result"]["ok"])

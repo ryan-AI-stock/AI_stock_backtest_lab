@@ -10,14 +10,22 @@ from backtest_lab.stock_pool_store import StockPoolStore, normalize_ticker, pars
 
 
 class StockPoolStoreTest(unittest.TestCase):
-    def test_default_pools_include_large_cap_radar_and_scorecard(self) -> None:
+    def test_default_pools_include_core_experiment_legacy_sections(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             pools = StockPoolStore(Path(tmp) / "stock_pools.json").list_pools()
 
         pool_ids = {pool["pool_id"] for pool in pools}
+        self.assertIn("ai_theme_large_cap_v20260613", pool_ids)
+        self.assertIn("tw50_dynamic_constituents_v0", pool_ids)
+        self.assertIn("large_core_bluechip_v0", pool_ids)
         self.assertIn("large_cap_best_v20260605", pool_ids)
         self.assertIn("radar_mid_small_calibrated_v1", pool_ids)
         self.assertIn("model_scorecard_ep10", pool_ids)
+        core_ids = {pool["pool_id"] for pool in pools if pool["ui_section"] == "official_core"}
+        self.assertEqual(
+            core_ids,
+            {"ai_theme_large_cap_v20260613", "tw50_dynamic_constituents_v0", "large_core_bluechip_v0"},
+        )
         large = next(pool for pool in pools if pool["pool_id"] == "large_cap_best_v20260605")
         scorecard = next(pool for pool in pools if pool["pool_id"] == "model_scorecard_ep10")
         self.assertEqual(len(large["resolved_symbols"]), 9)
@@ -35,6 +43,7 @@ class StockPoolStoreTest(unittest.TestCase):
         scorecard = next(pool for pool in pools if pool["pool_id"] == "model_scorecard_ep10")
         self.assertEqual([item["ticker"] for item in scorecard["resolved_symbols"]], ["0050.TW", "00631L.TW", "2330.TW"])
         self.assertEqual(scorecard["resolved_symbols"][2]["display"], "台積電(2330)")
+        self.assertEqual(scorecard["dynamic_binding"]["source_pool_id"], "ai_theme_large_cap_v20260613")
 
     def test_custom_pool_upsert_and_delete(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -51,6 +60,38 @@ class StockPoolStoreTest(unittest.TestCase):
             store = StockPoolStore(Path(tmp) / "stock_pools.json")
             with self.assertRaisesRegex(ValueError, "Unsupported strategy_preset"):
                 store.upsert_pool({"name": "錯誤池", "symbols_text": "2330", "strategy_preset": "bad_preset"})
+
+    def test_official_core_pool_is_editable_but_not_deletable(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            store = StockPoolStore(Path(tmp) / "stock_pools.json")
+            store.upsert_pool(
+                {
+                    "pool_id": "large_core_bluechip_v0",
+                    "name": "大型核心權值股池 v0",
+                    "strategy_preset": "universal_pool_custom",
+                    "symbols_text": "0050\n00631L\n2330",
+                    "description": "updated",
+                }
+            )
+            pool = next(pool for pool in store.list_pools() if pool["pool_id"] == "large_core_bluechip_v0")
+            self.assertTrue(pool["locked"])
+            self.assertEqual([item["ticker"] for item in pool["symbols"]], ["0050.TW", "00631L.TW", "2330.TW"])
+            with self.assertRaisesRegex(ValueError, "不可刪除"):
+                store.delete_pool("large_core_bluechip_v0")
+
+    def test_existing_store_merges_new_default_core_pools(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "stock_pools.json"
+            path.write_text(
+                '{"schema_version": 1, "pools": [{"pool_id": "model_scorecard_ep10", "name": "old", "kind": "task", "locked": false, "strategy_preset": "delayed_public_scorecard_v1", "operational_observation": false, "symbols": []}]}',
+                encoding="utf-8",
+            )
+            pools = StockPoolStore(path).list_pools()
+
+        pool_ids = {pool["pool_id"] for pool in pools}
+        self.assertIn("ai_theme_large_cap_v20260613", pool_ids)
+        self.assertIn("tw50_dynamic_constituents_v0", pool_ids)
+        self.assertIn("large_core_bluechip_v0", pool_ids)
 
     def test_normalize_manual_ticker_input(self) -> None:
         self.assertEqual(normalize_ticker("台積電(2330)"), "2330.TW")

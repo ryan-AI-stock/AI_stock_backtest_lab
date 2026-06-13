@@ -127,7 +127,7 @@ class StockPoolObservationTest(unittest.TestCase):
             signal_date=dates[-1],
         )
 
-        with patch("backtest_lab.stock_pool_observation._build_best_v20260605_observation", return_value=expected) as mocked:
+        with patch("backtest_lab.stock_pool_observation._build_regime_signal_observation", return_value=expected) as mocked:
             observation = build_dispatched_stock_pool_observation(
                 pool=pool,
                 prices_by_ticker=prices,
@@ -309,6 +309,48 @@ class StockPoolObservationTest(unittest.TestCase):
             report = (Path(manifest["output_root"]) / "stock_pool_observation_report.md").read_text(encoding="utf-8")
             self.assertIn("RADAR正式候選", report)
             self.assertIn("測試記憶體(1111)", report)
+
+    def test_batch_resolves_dynamic_tw50_constituents_from_point_in_time_csv(self) -> None:
+        dates = pd.bdate_range("2025-01-02", periods=160)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache_dir = root / "cache"
+            cache_dir.mkdir()
+            _trend_frame(dates, start=100, step=0.4, volume=20_000_000).reset_index(names="date").to_csv(
+                cache_dir / "2330_TW.csv",
+                index=False,
+            )
+            tw50_path = root / "tw50_constituents.csv"
+            pd.DataFrame(
+                [
+                    {"effective_date": "2025-01-01", "ticker": "2330.TW", "name": "台積電"},
+                    {"effective_date": "2026-01-01", "ticker": "2454.TW", "name": "聯發科"},
+                ]
+            ).to_csv(tw50_path, index=False, encoding="utf-8-sig")
+
+            manifest = run_stock_pool_observation_batch(
+                pools=[
+                    {
+                        "pool_id": "tw50_dynamic_constituents_v0",
+                        "name": "動態0050成分股池 v0",
+                        "strategy_preset": "universal_pool_custom",
+                        "operational_observation": True,
+                        "vote_group": "three_perspective_v1",
+                        "resolved_symbols": [],
+                        "dynamic_constituents": {"source": "tw50_history_csv", "path": str(tw50_path)},
+                    }
+                ],
+                signal_date=dates[-1].strftime("%Y-%m-%d"),
+                warmup_start=dates[0].strftime("%Y-%m-%d"),
+                cache_dir=cache_dir,
+                output_root=root / "out",
+            )
+
+            self.assertEqual(len(manifest["generated"]), 1)
+            self.assertEqual(manifest["generated"][0]["top_ticker"], "2330.TW")
+            self.assertEqual(manifest["generated"][0]["vote_group"], "three_perspective_v1")
+            report = (Path(manifest["output_root"]) / "stock_pool_consensus_report.md").read_text(encoding="utf-8")
+            self.assertIn("三立場股票池表決摘要", report)
 
     def test_batch_generates_pool_with_partial_price_coverage(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)

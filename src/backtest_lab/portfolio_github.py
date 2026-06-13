@@ -12,7 +12,7 @@ from backtest_lab.portfolio_app_settings import (
     STOCK_POOL_OBSERVATION_WORKFLOW_FILE,
     STOCK_POOLS_SECRET_NAME,
 )
-from backtest_lab.stock_pool_store import default_stock_pool_data
+from backtest_lab.stock_pool_store import default_stock_pool_data, merge_default_pools
 
 
 def sync_portfolio_secret(
@@ -54,11 +54,12 @@ def sync_stock_pools_secret(
     runner=subprocess.run,
 ) -> dict:
     path = Path(pool_store_path)
-    secret_body = (
-        path.read_text(encoding="utf-8")
+    pool_data = (
+        merge_default_pools(json.loads(path.read_text(encoding="utf-8")))
         if path.exists()
-        else json.dumps(default_stock_pool_data(), ensure_ascii=False)
+        else default_stock_pool_data()
     )
+    secret_body = json.dumps(pool_data, ensure_ascii=False)
     result = _run_gh(
         [
             "gh",

@@ -139,6 +139,32 @@ jobs:
             printf '%s' "$STOCK_POOLS_JSON" > work/stock_pools/stock_pools.json
           fi
 
+      - name: Update TW50 constituent snapshot
+        if: steps.schedule-gate.outputs.should_run == 'true'
+        shell: bash
+        env:
+          PYTHONPATH: src
+          TW50_CONSTITUENTS_SOURCE_URL: ${{ secrets.TW50_CONSTITUENTS_SOURCE_URL || vars.TW50_CONSTITUENTS_SOURCE_URL }}
+          TW50_CONSTITUENTS_SOURCE_CSV: ${{ vars.TW50_CONSTITUENTS_SOURCE_CSV }}
+        run: |
+          date_key="${{ steps.observation-inputs.outputs.signal_date }}"
+          date_key="${date_key//-/}"
+          output_dir="outputs/stock_pool_observations/${date_key}"
+          mkdir -p "$output_dir"
+          source_args=()
+          if [ -n "$TW50_CONSTITUENTS_SOURCE_CSV" ]; then
+            source_args+=(--source-csv "$TW50_CONSTITUENTS_SOURCE_CSV")
+          elif [ -n "$TW50_CONSTITUENTS_SOURCE_URL" ]; then
+            source_args+=(--source-url "$TW50_CONSTITUENTS_SOURCE_URL")
+          fi
+          python -m backtest_lab.tw50_constituents_update \
+            --as-of-date "${{ steps.observation-inputs.outputs.signal_date }}" \
+            --output data/tw50_constituents.csv \
+            --seed data/tw50_constituents.seed.csv \
+            --status-json "${output_dir}/tw50_constituents_update.json" \
+            --allow-seed-fallback \
+            "${source_args[@]}"
+
       - name: Generate stock-pool observations
         if: steps.schedule-gate.outputs.should_run == 'true'
         shell: bash
@@ -187,6 +213,7 @@ jobs:
             --warmup-start 2020-01-02 \
             --cache-dir backtest_cache/stock_pool_observations \
             --output-root outputs/stock_pool_observations \
+            --tw50-constituents data/tw50_constituents.csv \
             --require-exact-signal-date \
             "${radar_args[@]}"
 

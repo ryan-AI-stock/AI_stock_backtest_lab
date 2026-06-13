@@ -57,6 +57,9 @@
     form { display: grid; gap: 11px; }
     label { display: grid; gap: 6px; color: var(--muted); font-size: 12px; }
     .actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+    .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 12px; }
+    .tab { background: white; color: var(--navy); border-color: #9caeba; }
+    .tab.active { background: var(--navy); color: white; border-color: var(--navy); }
     .status { min-height: 18px; color: var(--green); font-size: 12px; }
     .error { color: var(--red); }
     .detail-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
@@ -85,18 +88,22 @@
 
   <main>
     <div class="notice">
-      這個頁面取代舊版「AI 股票紀律工作台」。目前目標是管理不同股票池，讓每日報告、回測與未來私有部署都能依股票池設定執行。內建池會被保護；自訂池可以新增、修改與刪除。
+      此頁面分成「正式三池」與「實驗池」。正式三池是每日正式分析與表決的基礎，池本身不可刪除，但內容可由程式自動更新或手動調整；實驗池用來放額外驗證、影片題目與臨時研究。
     </div>
 
     <div class="layout">
       <section>
         <div class="section-head">
-          <h2>股票池列表</h2>
+          <h2 id="pool-section-title">正式三池</h2>
           <div class="actions">
             <button class="secondary" type="button" id="sync-pools">同步股票池</button>
             <button class="secondary" type="button" id="sync-pools-run">同步並產報告</button>
             <button class="secondary" type="button" id="new-pool">新增自訂池</button>
           </div>
+        </div>
+        <div class="tabs">
+          <button class="tab active" type="button" data-view="official_core">正式三池</button>
+          <button class="tab" type="button" data-view="experiment">實驗池</button>
         </div>
         <div class="detail-grid" id="summary"></div>
         <div class="section-head">
@@ -120,6 +127,7 @@
           <label>策略預設
             <select id="strategy-preset">
               <option value="universal_pool_custom">通用股票池預設參數版</option>
+              <option value="ai_theme_large_cap_v20260613">AI中大型權值股池最佳版 v20260613</option>
               <option value="best_v20260605">AI中大型權值股最佳版 v20260605</option>
               <option value="radar_core_mid_small_calibrated_v1">雷達中小型校準版</option>
               <option value="delayed_public_scorecard_v1">模型延遲公開成績單</option>
@@ -132,7 +140,7 @@
             <input id="description" placeholder="這個池的用途">
           </label>
           <div class="notice" id="dynamic-note">
-            池3目前設定為：0050、0050正二，加上跟隨「AI中大型權值股池最佳版 v20260605」每日模型第一名的第三檔股票。沒有最新訊號時，預設使用聯發科(2454)。
+            正式三池是每日正式分析來源；實驗池可用來追蹤延遲公開成績單、影片題材或臨時策略。動態池會依模型訊號或指定資料源更新候選標的。
           </div>
           <div class="actions">
             <button class="danger" type="button" id="delete-pool">刪除自訂池</button>
@@ -148,9 +156,24 @@
     let state = { pools: [], latest_signal: null };
     let observationState = { status: "loading", manifest: null };
     let selectedPoolId = null;
+    let currentView = "official_core";
 
     const byId = id => document.getElementById(id);
-    const kindLabel = pool => pool.locked ? "內建保護" : (pool.kind === "task" ? "任務池" : "自訂池");
+    const kindLabel = pool => {
+      if (pool.ui_section === "official_core") return "正式核心";
+      if (pool.ui_section === "experiment" || pool.kind === "task") return "實驗/任務";
+      if (pool.locked) return "內建保護";
+      return "自訂池";
+    };
+    const currentPools = () => (state.pool_sections?.[currentView] || [])
+      .filter(pool => pool.ui_section !== "legacy");
+    const sectionByPoolId = () => {
+      const mapping = {};
+      for (const [section, pools] of Object.entries(state.pool_sections || {})) {
+        for (const pool of pools) mapping[pool.pool_id] = section;
+      }
+      return mapping;
+    };
     const symbolText = symbols => symbols.map(item => item.symbol).join("\n");
 
     async function refresh() {
@@ -158,21 +181,35 @@
       state = await response.json();
       const observationResponse = await fetch("/api/observations");
       observationState = await observationResponse.json();
-      if (!selectedPoolId && state.pools.length) selectedPoolId = state.pools[0].pool_id;
+      if (!selectedPoolId && currentPools().length) selectedPoolId = currentPools()[0].pool_id;
+      render();
+    }
+
+    function setView(view) {
+      currentView = view;
+      document.querySelectorAll("[data-view]").forEach(node => {
+        node.classList.toggle("active", node.dataset.view === currentView);
+      });
+      const pools = currentPools();
+      if (!pools.some(pool => pool.pool_id === selectedPoolId)) selectedPoolId = pools[0]?.pool_id || null;
       render();
     }
 
     function render() {
+      const pools = currentPools();
       const signal = state.latest_signal;
       byId("signal-meta").textContent = signal
         ? `最新模型訊號：${signal.signal_date} · ${signal.target_ticker || "現金"}`
         : "尚未讀到最新模型訊號，動態池會使用 fallback。";
+      byId("pool-section-title").textContent = currentView === "official_core" ? "正式三池" : "實驗池";
       byId("summary").innerHTML = `
-        <div class="metric"><div class="metric-label">股票池數量</div><div class="metric-value">${state.pools.length}</div></div>
-        <div class="metric"><div class="metric-label">內建保護池</div><div class="metric-value">${state.pools.filter(pool => pool.locked).length}</div></div>
-        <div class="metric"><div class="metric-label">動態跟隨池</div><div class="metric-value">${state.pools.filter(pool => pool.dynamic_binding).length}</div></div>`;
+        <div class="metric"><div class="metric-label">目前頁籤池數</div><div class="metric-value">${pools.length}</div></div>
+        <div class="metric"><div class="metric-label">不可刪除池</div><div class="metric-value">${pools.filter(pool => pool.locked).length}</div></div>
+        <div class="metric"><div class="metric-label">自動更新池</div><div class="metric-value">${pools.filter(pool => pool.dynamic_binding || pool.dynamic_constituents).length}</div></div>`;
       renderObservations();
-      byId("pool-list").innerHTML = state.pools.map(pool => poolCard(pool)).join("");
+      byId("pool-list").innerHTML = pools.length
+        ? pools.map(pool => poolCard(pool)).join("")
+        : `<div class="empty">此頁籤目前沒有股票池。</div>`;
       document.querySelectorAll("[data-pool-id]").forEach(node => {
         node.addEventListener("click", () => {
           selectedPoolId = node.dataset.poolId;
@@ -190,8 +227,13 @@
         return;
       }
       byId("observation-date").textContent = `訊號日 ${manifest.signal_date}`;
-      const generated = (manifest.generated || []).map(item => observationRow(item, false)).join("");
-      const skipped = (manifest.skipped || []).map(item => observationRow(item, true)).join("");
+      const sections = sectionByPoolId();
+      const generated = (manifest.generated || [])
+        .filter(item => sections[item.pool_id] === currentView)
+        .map(item => observationRow(item, false)).join("");
+      const skipped = (manifest.skipped || [])
+        .filter(item => sections[item.pool_id] === currentView)
+        .map(item => observationRow(item, true)).join("");
       byId("observation-list").innerHTML = generated + skipped || `<div class="empty">manifest 沒有可顯示項目。</div>`;
     }
 
@@ -217,7 +259,9 @@
       const symbols = pool.resolved_symbols || pool.symbols || [];
       const symbolHtml = symbols.length
         ? symbols.map(item => `<span class="symbol">${item.display}${item.source === "dynamic" ? " · 動態" : ""}</span>`).join("")
-        : `<span class="empty">此池由雷達 snapshot 動態產生候選股，非固定清單。</span>`;
+        : pool.dynamic_constituents
+          ? `<span class="empty">此池由動態成分股資料產生候選股。</span>`
+          : `<span class="empty">此池由雷達 snapshot 動態產生候選股，非固定清單。</span>`;
       return `<article class="pool-card${selected}" data-pool-id="${pool.pool_id}">
         <div class="section-head"><h3>${pool.name}</h3><span class="pill ${pool.locked ? "green" : "blue"}">${kindLabel(pool)}</span></div>
         <div class="pool-meta">
@@ -225,6 +269,7 @@
           <span class="pill">${pool.dispatch?.report_line || "未分派"}</span>
           <span class="pill">${symbols.length} 檔</span>
           ${pool.dynamic_binding ? `<span class="pill blue">跟隨 ${pool.dynamic_binding.source_pool_id}</span>` : ""}
+          ${pool.dynamic_constituents ? `<span class="pill blue">成分股自動更新</span>` : ""}
         </div>
         <div class="symbols">${symbolHtml}</div>
         <div class="empty">${pool.description || ""}</div>
@@ -249,14 +294,20 @@
       byId("description").value = pool.description || "";
       byId("edit-kind").textContent = kindLabel(pool);
       const locked = Boolean(pool.locked);
-      byId("pool-name").disabled = locked;
-      byId("strategy-preset").disabled = locked;
-      byId("symbols-text").disabled = locked;
-      byId("description").disabled = locked;
+      const editableOfficial = pool.ui_section === "official_core";
+      byId("pool-name").disabled = locked && !editableOfficial;
+      byId("strategy-preset").disabled = locked && !editableOfficial;
+      byId("symbols-text").disabled = locked && !editableOfficial;
+      byId("description").disabled = locked && !editableOfficial;
       byId("delete-pool").disabled = locked;
     }
 
+    document.querySelectorAll("[data-view]").forEach(node => {
+      node.addEventListener("click", () => setView(node.dataset.view));
+    });
+
     byId("new-pool").addEventListener("click", () => {
+      setView("experiment");
       selectedPoolId = null;
       byId("pool-id").value = "";
       byId("pool-name").value = "";
@@ -279,6 +330,7 @@
       const payload = {
         pool_id: byId("pool-id").value,
         name: byId("pool-name").value,
+        ui_section: currentView === "official_core" ? "official_core" : "experiment",
         strategy_preset: byId("strategy-preset").value,
         symbols_text: byId("symbols-text").value,
         description: byId("description").value,
@@ -291,7 +343,7 @@
         return;
       }
       state = data;
-      selectedPoolId = payload.pool_id || state.pools[state.pools.length - 1].pool_id;
+      selectedPoolId = payload.pool_id || currentPools().at(-1)?.pool_id || state.pools[state.pools.length - 1].pool_id;
       status.textContent = "已儲存";
       render();
     });
@@ -308,7 +360,7 @@
         return;
       }
       state = data;
-      selectedPoolId = state.pools[0]?.pool_id || null;
+      selectedPoolId = currentPools()[0]?.pool_id || null;
       status.textContent = "已刪除";
       render();
     });

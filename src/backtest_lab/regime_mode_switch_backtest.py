@@ -34,6 +34,9 @@ from backtest_lab.regime_mode_switch import (
     cycle_proven_preproof_exposure_variants,
     cycle_proven_preproof_dynamic_exposure_variants,
     cycle_proven_cadence_variants,
+    cycle_proven_adaptive_cadence_variants,
+    cycle_proven_adaptive_cadence_breakout_variants,
+    cycle_proven_mature_bull_cadence_variants,
     cycle_proven_asset_role_variants,
     cycle_proven_market_exposure_ladder_variants,
     strategy_health_attack_defense_variants,
@@ -86,6 +89,9 @@ def main() -> None:
             "cycle-proven-preproof-exposure",
             "cycle-proven-preproof-dynamic-exposure",
             "cycle-proven-cadence",
+            "cycle-proven-adaptive-cadence",
+            "cycle-proven-adaptive-cadence-breakout",
+            "cycle-proven-mature-bull-cadence",
             "cycle-proven-asset-role",
             "cycle-proven-market-exposure-ladder",
         ),
@@ -283,6 +289,12 @@ def _run_period(
         variants = cycle_proven_preproof_dynamic_exposure_variants()
     elif variant_set == "cycle-proven-cadence":
         variants = cycle_proven_cadence_variants()
+    elif variant_set == "cycle-proven-adaptive-cadence":
+        variants = cycle_proven_adaptive_cadence_variants()
+    elif variant_set == "cycle-proven-adaptive-cadence-breakout":
+        variants = cycle_proven_adaptive_cadence_breakout_variants()
+    elif variant_set == "cycle-proven-mature-bull-cadence":
+        variants = cycle_proven_mature_bull_cadence_variants()
     elif variant_set == "cycle-proven-asset-role":
         variants = cycle_proven_asset_role_variants()
     elif variant_set == "cycle-proven-market-exposure-ladder":

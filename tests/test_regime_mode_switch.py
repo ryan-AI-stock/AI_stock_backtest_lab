@@ -6,6 +6,9 @@ import pandas as pd
 
 from backtest_lab.regime_mode_switch import (
     _market_risk_off,
+    _has_adverse_open_gap,
+    _early_rebalance_signal,
+    _is_last_trading_day_of_week,
     _update_attack_gate_state,
     _update_latch_release_state,
     _update_health_gate_state,
@@ -23,6 +26,9 @@ from backtest_lab.regime_mode_switch import (
     cycle_proven_history_init_variants,
     cycle_proven_preproof_exposure_variants,
     cycle_proven_cadence_variants,
+    cycle_proven_adaptive_cadence_variants,
+    cycle_proven_adaptive_cadence_breakout_variants,
+    cycle_proven_mature_bull_cadence_variants,
     cycle_proven_asset_role_variants,
     cycle_proven_market_exposure_ladder_variants,
 )
@@ -252,8 +258,15 @@ class RegimeModeSwitchTest(unittest.TestCase):
     def test_cycle_proven_cadence_matrix_covers_daily_hybrid_and_full_weekly(self) -> None:
         variants = cycle_proven_cadence_variants()
 
-        self.assertEqual(len(variants), 11)
-        self.assertEqual(sum(variant.normal_rebalance_weekday is None for variant in variants), 1)
+        self.assertEqual(len(variants), 15)
+        self.assertEqual(
+            sum(
+                variant.normal_rebalance_weekday is None
+                and not variant.normal_rebalance_last_trading_day_of_week
+                for variant in variants
+            ),
+            1,
+        )
         self.assertEqual(
             {variant.normal_rebalance_weekday for variant in variants if variant.normal_rebalance_weekday is not None},
             {0, 1, 2, 3, 4},
@@ -264,6 +277,117 @@ class RegimeModeSwitchTest(unittest.TestCase):
         )
         self.assertTrue(
             all(variant.attack_selection_exclude_tickers == ("0050.TW", "00631L.TW") for variant in variants)
+        )
+        self.assertEqual(
+            sum(variant.normal_rebalance_last_trading_day_of_week for variant in variants),
+            3,
+        )
+        self.assertEqual(
+            {
+                variant.defer_rebalance_on_adverse_open_gap_pct
+                for variant in variants
+                if variant.defer_rebalance_on_adverse_open_gap_pct is not None
+            },
+            {0.02, 0.03},
+        )
+
+    def test_cycle_proven_adaptive_cadence_changes_only_rotation_timing(self) -> None:
+        variants = cycle_proven_adaptive_cadence_variants()
+
+        self.assertEqual(len(variants), 5)
+        self.assertTrue(all(variant.attack_selection_exclude_tickers == ("0050.TW", "00631L.TW") for variant in variants))
+        self.assertTrue(all(variant.normal_rebalance_weekday_by_regime for variant in variants))
+        self.assertEqual(
+            {variant.normal_rebalance_weekday_by_regime["strong_bull"] for variant in variants},
+            {2},
+        )
+        self.assertEqual(
+            {
+                variant.normal_rebalance_last_trading_day_regimes
+                for variant in variants
+                if variant.normal_rebalance_last_trading_day_regimes
+            },
+            {("range_bound",)},
+        )
+
+    def test_cycle_proven_adaptive_cadence_breakout_adds_leadership_exception(self) -> None:
+        variants = cycle_proven_adaptive_cadence_breakout_variants()
+
+        self.assertEqual(len(variants), 10)
+        self.assertEqual(
+            {variant.early_rebalance_min_gap_over_current for variant in variants},
+            {0.05, 0.10, 0.15, 0.20, 0.25},
+        )
+        self.assertTrue(all(variant.early_rebalance_regimes for variant in variants))
+
+    def test_cycle_proven_mature_bull_cadence_delays_weekly_cadence_until_regime_matures(self) -> None:
+        variants = cycle_proven_mature_bull_cadence_variants()
+
+        self.assertEqual(len(variants), 8)
+        self.assertEqual({variant.normal_rebalance_min_regime_streak_days for variant in variants}, {10, 20, 30})
+        self.assertTrue(all(variant.normal_rebalance_weekday_by_regime for variant in variants))
+        self.assertEqual(
+            {variant.normal_rebalance_weekday_by_regime["strong_bull"] for variant in variants},
+            {2},
+        )
+        self.assertEqual(
+            {variant.early_rebalance_min_gap_over_current for variant in variants if variant.early_rebalance_regimes},
+            {0.10, 0.15},
+        )
+
+    def test_early_rebalance_signal_requires_clear_new_leader(self) -> None:
+        dates = pd.bdate_range("2025-01-01", periods=90)
+        prices_by_ticker = {
+            "AAA.TW": pd.DataFrame({"adj_close": [100 + index * 0.5 for index in range(90)]}, index=dates),
+            "BBB.TW": pd.DataFrame({"adj_close": [100 + index * 1.5 for index in range(90)]}, index=dates),
+            "CCC.TW": pd.DataFrame({"adj_close": [100 + index * 0.4 for index in range(90)]}, index=dates),
+        }
+        variant = cycle_proven_adaptive_cadence_breakout_variants()[0]
+
+        self.assertTrue(
+            _early_rebalance_signal(
+                prices_by_ticker=prices_by_ticker,
+                signal_date=dates[-1],
+                current_ticker="AAA.TW",
+                variant=variant,
+            )
+        )
+        self.assertFalse(
+            _early_rebalance_signal(
+                prices_by_ticker=prices_by_ticker,
+                signal_date=dates[-1],
+                current_ticker="BBB.TW",
+                variant=variant,
+            )
+        )
+
+    def test_last_trading_day_of_week_handles_friday_holiday(self) -> None:
+        trade_dates = list(pd.to_datetime(["2026-01-05", "2026-01-06", "2026-01-07", "2026-01-08", "2026-01-12"]))
+
+        self.assertTrue(_is_last_trading_day_of_week(trade_dates, pd.Timestamp("2026-01-08")))
+        self.assertFalse(_is_last_trading_day_of_week(trade_dates, pd.Timestamp("2026-01-07")))
+
+    def test_adverse_open_gap_guard_uses_next_open(self) -> None:
+        market_prices = pd.DataFrame(
+            {"adj_close": [100.0, 99.0], "open": [100.0, 97.9]},
+            index=pd.to_datetime(["2026-06-12", "2026-06-15"]),
+        )
+
+        self.assertTrue(
+            _has_adverse_open_gap(
+                market_prices=market_prices,
+                signal_date=pd.Timestamp("2026-06-12"),
+                trade_date=pd.Timestamp("2026-06-15"),
+                threshold_pct=0.02,
+            )
+        )
+        self.assertFalse(
+            _has_adverse_open_gap(
+                market_prices=market_prices,
+                signal_date=pd.Timestamp("2026-06-12"),
+                trade_date=pd.Timestamp("2026-06-15"),
+                threshold_pct=0.03,
+            )
         )
 
     def test_cycle_proven_asset_roles_keep_etfs_in_universe_but_can_exclude_them_from_attack_ranking(self) -> None:

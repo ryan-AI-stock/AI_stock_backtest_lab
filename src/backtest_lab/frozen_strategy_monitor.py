@@ -50,6 +50,7 @@ from backtest_lab.market_regime import classify_market_regime
 from backtest_lab.regime_mode_switch import (
     MODE_CASH,
     RegimeModeSwitchVariant,
+    ai_theme_large_cap_v20260613_variant,
     cycle_proven_robustness_variants,
     frozen_cycle_proven_top1_v1_variant,
     simulate_regime_mode_switch,
@@ -59,6 +60,7 @@ from backtest_lab.strategies import relative_strength_scores
 
 
 STRATEGY_ID = "frozen_cycle_proven_top1_v1"
+AI_THEME_STRATEGY_ID = "ai_theme_large_cap_v20260613"
 REPORT_VERSION = "v20260605"
 REPORT_NAME = "AI股票最佳策略每日觀察報告"
 REPORT_VARIANT_LABEL = f"最佳版 {REPORT_VERSION}"
@@ -198,9 +200,12 @@ def build_frozen_strategy_signal(
     initial_cash: float,
     cost_model,
     manual_splits: dict[str, tuple[dict[str, float | str], ...]] | None = None,
+    variant: RegimeModeSwitchVariant | None = None,
+    strategy_id: str = STRATEGY_ID,
 ) -> FrozenStrategySignal:
     signal_ts = pd.Timestamp(signal_date)
     projection_ts = signal_ts + pd.offsets.BDay(1)
+    active_variant = variant or frozen_cycle_proven_top1_v1_variant()
     projected_prices = {
         ticker: _append_projection_row(frame, signal_ts, projection_ts)
         for ticker, frame in prices_by_ticker.items()
@@ -211,7 +216,7 @@ def build_frozen_strategy_signal(
         for ticker, frame in projected_prices.items()
     }
     result = simulate_regime_mode_switch(
-        name=STRATEGY_ID,
+        name=strategy_id,
         prices_by_ticker=projected_prices,
         asset_types=asset_types,
         market_prices=projected_prices["0050.TW"],
@@ -219,7 +224,7 @@ def build_frozen_strategy_signal(
         end_date=projection_ts.strftime("%Y-%m-%d"),
         initial_cash=initial_cash,
         cost_model=cost_model,
-        variant=frozen_cycle_proven_top1_v1_variant(),
+        variant=active_variant,
         dividend_series_by_ticker=dividends,
     )
     current = result.equity_curve.loc[signal_ts]
@@ -262,7 +267,7 @@ def build_frozen_strategy_signal(
         primary_model_value=float(current["total_value"]),
     )
     return FrozenStrategySignal(
-        strategy_id=STRATEGY_ID,
+        strategy_id=strategy_id,
         signal_date=signal_date,
         execution_timing="下一個台股交易日，由投資人自行決定是否執行",
         market_regime=regime.regime,
@@ -289,6 +294,10 @@ def build_frozen_strategy_signal(
         projected_trades=projected_trades,
         shadow_modes=shadow_modes,
     )
+
+
+def ai_theme_large_cap_v20260613_signal_variant() -> RegimeModeSwitchVariant:
+    return ai_theme_large_cap_v20260613_variant()
 
 
 def build_shadow_mode_signals(
