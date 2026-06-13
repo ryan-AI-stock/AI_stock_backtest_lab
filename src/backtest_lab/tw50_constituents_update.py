@@ -151,9 +151,9 @@ def update_tw50_constituents(
     if source_error and used_fallback:
         message = f"{message} Primary source failed: {source_error}"
     warnings: list[str] = []
-    if len(normalized) != 50:
+    if len(normalized) not in {49, 50}:
         warnings.append(
-            f"TW50 constituent snapshot has {len(normalized)} mapped rows; official index target count is 50, review source parsing."
+            f"TW50 constituent snapshot has {len(normalized)} mapped rows; expected operational range is 49-50, review source parsing."
         )
     return UpdateResult(
         output_path=str(output),

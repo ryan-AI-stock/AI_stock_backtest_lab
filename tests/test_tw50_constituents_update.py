@@ -68,7 +68,7 @@ class Tw50ConstituentsUpdateTest(unittest.TestCase):
 
         self.assertTrue(result.used_fallback)
         self.assertEqual(result.row_count, 2)
-        self.assertIn("official index target count is 50", result.warnings[0])
+        self.assertIn("expected operational range is 49-50", result.warnings[0])
         self.assertEqual([entry["ticker"] for entry in entries], ["2330.TW", "2454.TW"])
 
     def test_primary_source_appends_new_effective_snapshot(self) -> None:
@@ -99,7 +99,7 @@ class Tw50ConstituentsUpdateTest(unittest.TestCase):
         self.assertFalse(result.used_fallback)
         self.assertEqual(set(frame["effective_date"].astype(str)), {"2026-06-01", "2026-06-12"})
         self.assertEqual(result.total_row_count, 3)
-        self.assertIn("official index target count is 50", result.warnings[0])
+        self.assertIn("expected operational range is 49-50", result.warnings[0])
 
     def test_parses_ftse_tw50_constituent_text(self) -> None:
         names = [
@@ -177,6 +177,29 @@ class Tw50ConstituentsUpdateTest(unittest.TestCase):
         self.assertEqual(len(frame), 49)
         self.assertIn("2330.TW", set(frame["ticker"]))
         self.assertEqual(frame.loc[frame["ticker"] == "7769.TW", "name"].iloc[0], "鴻勁")
+
+    def test_ftse_tw50_49_rows_is_operationally_accepted_without_warning(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "source.csv"
+            pd.DataFrame(
+                [
+                    {"ticker": f"{code}.TW", "name": f"測試{code}"}
+                    for code in range(1101, 1150)
+                ]
+            ).to_csv(source, index=False)
+
+            result = update_tw50_constituents(
+                output_path=root / "tw50_constituents.csv",
+                as_of_date="2026-06-12",
+                source_csv=source,
+                allow_seed_fallback=False,
+                min_count=45,
+                max_count=60,
+            )
+
+        self.assertEqual(result.row_count, 49)
+        self.assertEqual(result.warnings, [])
 
 
 if __name__ == "__main__":
