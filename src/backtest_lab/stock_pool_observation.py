@@ -10,6 +10,7 @@ from typing import Any
 import pandas as pd
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+from matplotlib.patches import FancyArrowPatch, RegularPolygon
 
 from backtest_lab.config import load_config
 from backtest_lab.data import download_yfinance_prices
@@ -567,25 +568,91 @@ def _draw_observation_detail_pdf_page(ax, manifest: dict[str, Any], rows: list[d
 
 def _draw_vote_triangle(ax, manifest: dict[str, Any], rows: list[dict[str, Any]]) -> None:
     generated_rows = [row for row in rows if row["status"] == "generated"][:3]
-    positions = [(0.50, 0.64), (0.22, 0.45), (0.78, 0.45)]
+    panel_x, panel_y, panel_w, panel_h = 0.065, 0.355, 0.87, 0.325
+    positions = [(0.50, 0.622), (0.205, 0.425), (0.795, 0.425)]
+    center = (0.50, 0.505)
+    ax.add_patch(
+        plt.Rectangle(
+            (panel_x, panel_y),
+            panel_w,
+            panel_h,
+            facecolor="#101a22",
+            edgecolor="#294458",
+            linewidth=1.3,
+            transform=ax.transAxes,
+        )
+    )
+    for grid_index in range(1, 6):
+        gx = panel_x + panel_w * grid_index / 6
+        gy = panel_y + panel_h * grid_index / 6
+        ax.plot([gx, gx], [panel_y, panel_y + panel_h], color="#203545", linewidth=0.45, alpha=0.42, transform=ax.transAxes, zorder=1)
+        ax.plot([panel_x, panel_x + panel_w], [gy, gy], color="#203545", linewidth=0.45, alpha=0.42, transform=ax.transAxes, zorder=1)
+    ax.text(panel_x + 0.018, panel_y + panel_h - 0.032, "三池制衡決策盤", color="#d8e7ef", fontsize=11.2, fontweight="bold", transform=ax.transAxes)
+    ax.text(panel_x + panel_w - 0.018, panel_y + panel_h - 0.032, "2/3 共識優先", color="#8fb3c7", fontsize=9.2, ha="right", transform=ax.transAxes)
     if len(generated_rows) >= 3:
+        sector_colors = [_vote_color(row, manifest.get("consensus") or {}, index) for index, row in enumerate(generated_rows)]
+        for index, row in enumerate(generated_rows):
+            current = positions[index]
+            previous = positions[index - 1]
+            next_position = positions[(index + 1) % len(positions)]
+            color = sector_colors[index]
+            sector = [current, center, ((previous[0] + next_position[0]) / 2, (previous[1] + next_position[1]) / 2)]
+            ax.add_patch(plt.Polygon(sector, closed=True, facecolor=color, alpha=0.105, edgecolor="none", transform=ax.transAxes, zorder=1))
         ax.add_patch(
             plt.Polygon(
                 positions,
                 closed=True,
-                facecolor="#eef5f9",
-                edgecolor="#9fb2c2",
-                linewidth=1.6,
+                facecolor="#142532",
+                edgecolor="#79a9bf",
+                linewidth=1.2,
+                alpha=0.96,
                 transform=ax.transAxes,
+                zorder=2,
             )
         )
+        for start, end in ((positions[0], positions[1]), (positions[1], positions[2]), (positions[2], positions[0])):
+            ax.add_patch(
+                FancyArrowPatch(
+                    start,
+                    end,
+                    arrowstyle="<->",
+                    mutation_scale=9,
+                    linewidth=1.15,
+                    color="#8db8cb",
+                    alpha=0.72,
+                    transform=ax.transAxes,
+                    zorder=3,
+                )
+            )
     consensus = manifest.get("consensus") or {}
     winner = consensus.get("winner_ticker")
     state = consensus.get("result_state")
+    center_edge = TRIANGLE_WINNER_COLOR if state == "consensus" else "#7ab8d6"
+    ax.add_patch(
+        RegularPolygon(
+            center,
+            numVertices=6,
+            radius=0.067,
+            orientation=0.52,
+            facecolor="#17212a",
+            edgecolor=center_edge,
+            linewidth=1.8,
+            alpha=0.98,
+            transform=ax.transAxes,
+            zorder=4,
+        )
+    )
+    ax.text(center[0], center[1] + 0.025, "共識核心", color="#d8e7ef", fontsize=9.4, fontweight="bold", ha="center", transform=ax.transAxes, zorder=5)
+    center_label = consensus.get("winner_display") or "三方分歧"
+    ax.text(center[0], center[1] - 0.002, _compact_display(center_label, limit=16), color="white", fontsize=11.5, fontweight="bold", ha="center", transform=ax.transAxes, zorder=5)
+    ax.text(center[0], center[1] - 0.026, str(consensus.get("reason") or "尚未形成共識")[:22], color="#a9bdc8", fontsize=7.7, ha="center", transform=ax.transAxes, zorder=5)
     for index, row in enumerate(generated_rows):
         x, y = positions[index]
         color = _vote_color(row, consensus, index)
-        ax.scatter([x], [y], s=920, color=color, edgecolors="white", linewidths=2.2, transform=ax.transAxes, zorder=3)
+        ax.plot([x, center[0]], [y, center[1]], color=color, linewidth=1.0, alpha=0.82, transform=ax.transAxes, zorder=3)
+        ax.scatter([x], [y], s=2600, color=color, alpha=0.12, edgecolors="none", transform=ax.transAxes, zorder=4)
+        ax.scatter([x], [y], s=1350, color=color, alpha=0.24, edgecolors="none", transform=ax.transAxes, zorder=5)
+        ax.scatter([x], [y], s=820, color=color, edgecolors="#e9f4f8", linewidths=2.0, transform=ax.transAxes, zorder=6)
         ax.text(
             x,
             y,
@@ -596,14 +663,10 @@ def _draw_vote_triangle(ax, manifest: dict[str, Any], rows: list[dict[str, Any]]
             ha="center",
             va="center",
             transform=ax.transAxes,
-            zorder=4,
+            zorder=7,
         )
         badge = "共識票" if state == "consensus" and row.get("top_ticker") == winner else ("分歧票" if state != "consensus" else "少數票")
-        ax.text(x, y - 0.047, badge, color=color, fontsize=9.2, fontweight="bold", ha="center", transform=ax.transAxes)
-    center_label = consensus.get("winner_display") or "三方分歧"
-    ax.text(0.50, 0.545, "表決結果", color="#52616b", fontsize=10, ha="center", transform=ax.transAxes)
-    ax.text(0.50, 0.515, _compact_display(center_label, limit=20), color="#17212a", fontsize=15, fontweight="bold", ha="center", transform=ax.transAxes)
-    ax.text(0.50, 0.488, str(consensus.get("reason") or "尚未形成共識")[:30], color="#66737d", fontsize=9.2, ha="center", transform=ax.transAxes)
+        ax.text(x, y - 0.052, badge, color="#d8e7ef" if row.get("top_ticker") == winner else "#f0c48a", fontsize=9.0, fontweight="bold", ha="center", transform=ax.transAxes, zorder=7)
 
 
 def _draw_vote_summary_cards(ax, manifest: dict[str, Any], rows: list[dict[str, Any]]) -> None:
