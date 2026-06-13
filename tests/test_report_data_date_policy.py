@@ -27,6 +27,18 @@ class ReportDataDatePolicyTest(unittest.TestCase):
         self.assertNotIn("--report-date", observation_workflow)
         self.assertIn("AI股票池觀察總覽_最新版_v20260612.pdf", observation_workflow)
 
+    def test_report_workflows_opt_into_node24_actions_runtime(self) -> None:
+        workflow_paths = [
+            Path(".github/workflows/model_scorecard_report.yml"),
+            Path(".github/workflows/frozen_strategy_daily_report.yml"),
+            Path(".github/workflows/stock_pool_observation.yml"),
+        ]
+
+        for path in workflow_paths:
+            with self.subTest(path=path):
+                workflow = path.read_text(encoding="utf-8")
+                self.assertIn("FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true", workflow)
+
 
 if __name__ == "__main__":
     unittest.main()
