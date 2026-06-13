@@ -29,7 +29,7 @@ class StockPoolStoreTest(unittest.TestCase):
         large = next(pool for pool in pools if pool["pool_id"] == "large_cap_best_v20260605")
         scorecard = next(pool for pool in pools if pool["pool_id"] == "model_scorecard_ep10")
         self.assertEqual(len(large["resolved_symbols"]), 9)
-        self.assertTrue(large["operational_observation"])
+        self.assertFalse(large["operational_observation"])
         self.assertFalse(scorecard["operational_observation"])
         self.assertEqual(large["dispatch"]["workflow_file"], "stock_pool_observation.yml")
         self.assertEqual(scorecard["dispatch"]["workflow_file"], "model_scorecard_report.yml")
@@ -83,7 +83,7 @@ class StockPoolStoreTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "stock_pools.json"
             path.write_text(
-                '{"schema_version": 1, "pools": [{"pool_id": "model_scorecard_ep10", "name": "old", "kind": "task", "locked": false, "strategy_preset": "delayed_public_scorecard_v1", "operational_observation": false, "symbols": []}]}',
+                '{"schema_version": 1, "pools": [{"pool_id": "model_scorecard_ep10", "name": "old", "kind": "task", "locked": false, "strategy_preset": "delayed_public_scorecard_v1", "operational_observation": false, "symbols": []}, {"pool_id": "large_cap_best_v20260605", "name": "old legacy", "kind": "built_in", "locked": true, "strategy_preset": "best_v20260605", "operational_observation": true, "symbols": []}]}',
                 encoding="utf-8",
             )
             pools = StockPoolStore(path).list_pools()
@@ -92,6 +92,8 @@ class StockPoolStoreTest(unittest.TestCase):
         self.assertIn("ai_theme_large_cap_v20260613", pool_ids)
         self.assertIn("tw50_dynamic_constituents_v0", pool_ids)
         self.assertIn("large_core_bluechip_v0", pool_ids)
+        legacy = next(pool for pool in pools if pool["pool_id"] == "large_cap_best_v20260605")
+        self.assertFalse(legacy["operational_observation"])
 
     def test_normalize_manual_ticker_input(self) -> None:
         self.assertEqual(normalize_ticker("台積電(2330)"), "2330.TW")

@@ -223,7 +223,7 @@ def default_stock_pool_data() -> dict[str, Any]:
                 "locked": True,
                 "ui_section": "legacy",
                 "strategy_preset": "best_v20260605",
-                "operational_observation": True,
+                "operational_observation": False,
                 "description": "正式最佳版使用的 0050、0050正二與七檔 AI 中大型權值股。",
                 "symbols": [symbol_entry(ticker, source="fixed") for ticker in large_symbols],
             },
@@ -234,7 +234,7 @@ def default_stock_pool_data() -> dict[str, Any]:
                 "locked": True,
                 "ui_section": "legacy",
                 "strategy_preset": "radar_core_mid_small_calibrated_v1",
-                "operational_observation": True,
+                "operational_observation": False,
                 "description": "由 AI_stock_rotation_radar snapshot 與雷達核心成員池 v1 動態決定候選股，不在介面寫死成固定清單。",
                 "symbols": [],
             },
@@ -273,6 +273,8 @@ def merge_default_pools(data: dict[str, Any]) -> dict[str, Any]:
             pool = {**default_pool, **current[pool_id]}
             if pool.get("ui_section") is None:
                 pool["ui_section"] = default_pool.get("ui_section", "experiment")
+            if pool.get("ui_section") == "legacy":
+                pool["operational_observation"] = False
             merged.append(pool)
         else:
             merged.append(default_pool)

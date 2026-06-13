@@ -150,6 +150,7 @@ jobs:
           date_key="${{ steps.observation-inputs.outputs.signal_date }}"
           date_key="${date_key//-/}"
           output_dir="outputs/stock_pool_observations/${date_key}"
+          rm -rf "$output_dir"
           mkdir -p "$output_dir"
           source_args=()
           if [ -n "$TW50_CONSTITUENTS_SOURCE_CSV" ]; then
@@ -181,7 +182,6 @@ jobs:
         run: |
           date_key="${{ steps.observation-inputs.outputs.signal_date }}"
           date_key="${date_key//-/}"
-          rm -rf "outputs/stock_pool_observations/${date_key}"
           radar_args=()
           if [ -n "$RADAR_SNAPSHOT_DIR" ]; then
             radar_args+=(--radar-snapshot-dir "$RADAR_SNAPSHOT_DIR")
