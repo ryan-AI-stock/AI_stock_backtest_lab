@@ -55,6 +55,29 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertEqual(scores["2454.TW"].size_profile, "mid_cap")
         self.assertEqual(scores["2454.TW"].market_cap_twd, 200_000_000_000)
 
+    def test_core_defensive_preset_applies_stricter_overheat_filter(self) -> None:
+        dates = pd.bdate_range("2025-01-02", periods=160)
+        tsmc = symbol_entry("2330.TW", source="manual")
+        tsmc["market_cap_twd"] = 2_000_000_000_000
+        pool = {
+            "pool_id": "large_core_bluechip_v0",
+            "name": "核心防守風格池 v1",
+            "strategy_preset": "core_defensive_style_v1",
+            "resolved_symbols": [tsmc],
+        }
+        prices = {"2330.TW": _late_surge_frame(dates, volume=20_000_000)}
+
+        observation = build_stock_pool_observation(
+            pool=pool,
+            prices_by_ticker=prices,
+            signal_date=dates[-1],
+        )
+
+        candidate = observation.candidates[0]
+        self.assertFalse(candidate.passed)
+        self.assertEqual(candidate.reason, "20日漲幅過熱")
+        self.assertEqual(candidate.applied_score_mode, "risk_adjusted")
+
     def test_observation_resolves_to_previous_common_trading_date(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)
         pool = {
@@ -357,7 +380,7 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertIn("三立場股票池表決摘要", report)
             summary_report = (Path(manifest["output_root"]) / "stock_pool_observation_report.md").read_text(encoding="utf-8")
             self.assertIn("三池共識", summary_report)
-            self.assertIn("0050動態池", summary_report)
+            self.assertIn("大型廣度池", summary_report)
 
     def test_batch_generates_pool_with_partial_price_coverage(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)
@@ -443,6 +466,23 @@ class StockPoolObservationTest(unittest.TestCase):
 
 def _trend_frame(dates: pd.DatetimeIndex, *, start: float, step: float, volume: int) -> pd.DataFrame:
     closes = [start + index * step for index in range(len(dates))]
+    return pd.DataFrame(
+        {
+            "open": closes,
+            "high": [value * 1.01 for value in closes],
+            "low": [value * 0.99 for value in closes],
+            "close": closes,
+            "adj_close": closes,
+            "volume": [volume] * len(dates),
+            "dividend": [0.0] * len(dates),
+            "stock_split": [0.0] * len(dates),
+        },
+        index=dates,
+    )
+
+
+def _late_surge_frame(dates: pd.DatetimeIndex, *, volume: int) -> pd.DataFrame:
+    closes = [100.0] * (len(dates) - 20) + [100.0 + index * 3.0 for index in range(1, 21)]
     return pd.DataFrame(
         {
             "open": closes,

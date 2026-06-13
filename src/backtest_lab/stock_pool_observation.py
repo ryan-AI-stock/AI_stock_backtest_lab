@@ -32,6 +32,7 @@ from backtest_lab.universal_pool_strategy import (
     PoolProfile,
     UniversalCandidateScore,
     UniversalPoolParameters,
+    core_defensive_parameters_for_profile,
     default_parameters_for_profile,
     infer_pool_profile,
     score_universal_candidates,
@@ -45,9 +46,9 @@ REPORT_VERSION = "v20260612"
 REPORT_LATEST_FILENAME = f"{REPORT_NAME}_最新版_{REPORT_VERSION}.pdf"
 FROZEN_BEST_GROUP_ID = "group_c_0050_00631l_plus_mega_caps"
 POOL_SHORT_NAMES = {
-    "ai_theme_large_cap_v20260613": "AI權值池",
-    "tw50_dynamic_constituents_v0": "0050動態池",
-    "large_core_bluechip_v0": "核心權值池",
+    "ai_theme_large_cap_v20260613": "AI主線池",
+    "tw50_dynamic_constituents_v0": "大型廣度池",
+    "large_core_bluechip_v0": "核心防守池",
 }
 VOTE_DIVERGENT_COLORS = ("#2457a7", "#7a3db8", "#c77917")
 VOTE_WINNER_COLOR = "#13795b"
@@ -110,7 +111,7 @@ def build_stock_pool_observation(
         for symbol in available_symbols
     }
     profile = infer_pool_profile(candidate_prices, signal_ts, theme_by_ticker=theme_by_ticker)
-    params = default_parameters_for_profile(profile)
+    params, enforce_pool_parameters = _parameters_for_pool_strategy(pool, profile)
     scored = score_universal_candidates(
         candidate_prices,
         signal_ts,
@@ -121,6 +122,7 @@ def build_stock_pool_observation(
             **_market_cap_by_ticker(available_symbols),
         },
         risk_signal_by_ticker=risk_signal_by_ticker,
+        enforce_pool_parameters=enforce_pool_parameters,
     )
     candidates = sorted(
         scored.values(),
@@ -232,6 +234,13 @@ def _market_cap_by_ticker(symbols: list[dict[str, Any]]) -> dict[str, float]:
         if market_cap > 0:
             result[ticker] = market_cap
     return result
+
+
+def _parameters_for_pool_strategy(pool: dict[str, Any], profile: PoolProfile) -> tuple[UniversalPoolParameters, bool]:
+    preset = str(pool.get("strategy_preset") or "universal_pool_custom")
+    if preset == "core_defensive_style_v1":
+        return core_defensive_parameters_for_profile(profile), True
+    return default_parameters_for_profile(profile), False
 
 
 def _number(value: object) -> float:
@@ -780,9 +789,10 @@ def _short_pool_name(item: dict[str, Any]) -> str:
         return POOL_SHORT_NAMES[pool_id]
     name = str(item.get("pool_name") or item.get("name") or pool_id or "股票池")
     replacements = [
-        ("AI中大型權值股池最佳版", "AI權值池"),
-        ("動態0050成分股池", "0050動態池"),
-        ("大型核心權值股池", "核心權值池"),
+        ("AI中大型權值股池最佳版", "AI主線池"),
+        ("動態0050成分股池", "大型廣度池"),
+        ("大型核心權值股池", "核心防守池"),
+        ("核心防守風格池", "核心防守池"),
         ("雷達中小型校準版", "雷達池"),
     ]
     for old, new in replacements:

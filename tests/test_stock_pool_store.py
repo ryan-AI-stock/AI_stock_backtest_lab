@@ -27,8 +27,14 @@ class StockPoolStoreTest(unittest.TestCase):
             {"ai_theme_large_cap_v20260613", "tw50_dynamic_constituents_v0", "large_core_bluechip_v0"},
         )
         large = next(pool for pool in pools if pool["pool_id"] == "large_cap_best_v20260605")
+        core = next(pool for pool in pools if pool["pool_id"] == "large_core_bluechip_v0")
         scorecard = next(pool for pool in pools if pool["pool_id"] == "model_scorecard_ep10")
+        official = {pool["pool_id"]: pool for pool in pools if pool["ui_section"] == "official_core"}
         self.assertEqual(len(large["resolved_symbols"]), 9)
+        self.assertEqual(official["ai_theme_large_cap_v20260613"]["role_name"], "主線攻擊專家")
+        self.assertEqual(official["tw50_dynamic_constituents_v0"]["role_name"], "市場廣度專家")
+        self.assertEqual(core["role_name"], "核心防守與風格轉移專家")
+        self.assertEqual(core["strategy_preset"], "core_defensive_style_v1")
         self.assertFalse(large["operational_observation"])
         self.assertFalse(scorecard["operational_observation"])
         self.assertEqual(large["dispatch"]["workflow_file"], "stock_pool_observation.yml")
@@ -68,7 +74,7 @@ class StockPoolStoreTest(unittest.TestCase):
                 {
                     "pool_id": "large_core_bluechip_v0",
                     "name": "大型核心權值股池 v0",
-                    "strategy_preset": "universal_pool_custom",
+                    "strategy_preset": "core_defensive_style_v1",
                     "symbols_text": "0050\n00631L\n2330",
                     "description": "updated",
                 }

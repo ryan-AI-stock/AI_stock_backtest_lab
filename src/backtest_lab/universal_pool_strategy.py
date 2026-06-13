@@ -135,6 +135,20 @@ def default_parameters_for_profile(profile: PoolProfile) -> UniversalPoolParamet
     )
 
 
+def core_defensive_parameters_for_profile(profile: PoolProfile) -> UniversalPoolParameters:
+    base = default_parameters_for_profile(profile)
+    return replace(
+        base,
+        min_avg_turnover_twd=max(base.min_avg_turnover_twd, 60_000_000),
+        min_stock_score=max(base.min_stock_score, 0.02),
+        overheated_20d_return=min(base.overheated_20d_return, 0.45),
+        require_ma60=True,
+        score_mode="risk_adjusted",
+        max_stock_drawdown_20d=max(base.max_stock_drawdown_20d, -0.18),
+        risk_signal_weight=0.20,
+    )
+
+
 def score_universal_candidates(
     prices_by_ticker: dict[str, pd.DataFrame],
     signal_date: pd.Timestamp,
@@ -144,6 +158,7 @@ def score_universal_candidates(
     market_cap_by_ticker: dict[str, float] | None = None,
     risk_signal_by_ticker: dict[str, RiskFactorSignal] | None = None,
     size_thresholds: SizeClassificationThresholds = SizeClassificationThresholds(),
+    enforce_pool_parameters: bool = False,
 ) -> dict[str, UniversalCandidateScore]:
     scores: dict[str, UniversalCandidateScore] = {}
     conviction_by_ticker = conviction_by_ticker or {}
@@ -158,7 +173,19 @@ def score_universal_candidates(
             thresholds=size_thresholds,
         )
         candidate_params = parameters_for_candidate_route(size_profile, liquidity_profile)
-        candidate_params = replace(candidate_params, risk_signal_weight=params.risk_signal_weight)
+        if enforce_pool_parameters:
+            candidate_params = replace(
+                candidate_params,
+                min_avg_turnover_twd=max(candidate_params.min_avg_turnover_twd, params.min_avg_turnover_twd),
+                min_stock_score=max(candidate_params.min_stock_score, params.min_stock_score),
+                overheated_20d_return=min(candidate_params.overheated_20d_return, params.overheated_20d_return),
+                require_ma60=candidate_params.require_ma60 or params.require_ma60,
+                score_mode=params.score_mode,
+                max_stock_drawdown_20d=max(candidate_params.max_stock_drawdown_20d, params.max_stock_drawdown_20d),
+                risk_signal_weight=params.risk_signal_weight,
+            )
+        else:
+            candidate_params = replace(candidate_params, risk_signal_weight=params.risk_signal_weight)
         scores[ticker] = score_universal_candidate(
             ticker=ticker,
             prices=prices,

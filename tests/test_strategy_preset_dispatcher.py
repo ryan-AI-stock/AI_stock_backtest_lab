@@ -28,6 +28,13 @@ class StrategyPresetDispatcherTest(unittest.TestCase):
         self.assertFalse(spec.operational_observation)
         self.assertTrue(spec.public_scorecard)
 
+    def test_core_defensive_preset_is_operational_observation(self) -> None:
+        spec = resolve_strategy_preset("core_defensive_style_v1")
+
+        self.assertEqual(spec.label, "核心防守風格池 v1")
+        self.assertEqual(spec.workflow_file, "stock_pool_observation.yml")
+        self.assertTrue(spec.operational_observation)
+
     def test_rejects_unknown_preset(self) -> None:
         with self.assertRaisesRegex(ValueError, "Unsupported strategy_preset"):
             resolve_strategy_preset("unknown_strategy")
