@@ -10,7 +10,6 @@ from typing import Any
 import pandas as pd
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
-from matplotlib.patches import FancyArrowPatch
 
 from backtest_lab.config import load_config
 from backtest_lab.data import download_yfinance_prices
@@ -50,10 +49,10 @@ POOL_SHORT_NAMES = {
     "tw50_dynamic_constituents_v0": "0050動態池",
     "large_core_bluechip_v0": "核心權值池",
 }
-TRIANGLE_DIVERGENT_COLORS = ("#2457a7", "#7a3db8", "#c77917")
-TRIANGLE_WINNER_COLOR = "#13795b"
-TRIANGLE_MINOR_COLOR = "#c77917"
-TRIANGLE_NEUTRAL_COLOR = "#6b7780"
+VOTE_DIVERGENT_COLORS = ("#2457a7", "#7a3db8", "#c77917")
+VOTE_WINNER_COLOR = "#13795b"
+VOTE_MINOR_COLOR = "#c77917"
+VOTE_NEUTRAL_COLOR = "#6b7780"
 
 
 @dataclass(frozen=True)
@@ -534,8 +533,7 @@ def _draw_observation_summary_pdf_page(ax, manifest: dict[str, Any], rows: list[
         ax.text(x + 0.014, 0.767, str(value)[:18], color=color, fontsize=11.2, fontweight="bold", transform=ax.transAxes)
 
     ax.text(0.06, 0.69, f"表決原因：{consensus_reason[:48]}", color="#52616b", fontsize=10, transform=ax.transAxes)
-    _draw_vote_triangle(ax, manifest, rows)
-    _draw_vote_summary_cards(ax, manifest, rows)
+    _draw_consensus_decision_panel(ax, manifest, rows)
     ax.text(0.06, 0.17, "使用邊界", color="#17212a", fontsize=14, fontweight="bold", transform=ax.transAxes)
     notes = [
         "三池共識是模型觀察結論；若沒有 2/3 以上同標的，報告會標示為模型分歧。",
@@ -566,7 +564,7 @@ def _draw_observation_detail_pdf_page(ax, manifest: dict[str, Any], rows: list[d
     ax.text(0.94, 0.04, "AI_stock_backtest_lab", color="#9aa7b1", fontsize=8.5, ha="right", transform=ax.transAxes)
 
 
-def _draw_vote_triangle(ax, manifest: dict[str, Any], rows: list[dict[str, Any]]) -> None:
+def _draw_consensus_decision_panel(ax, manifest: dict[str, Any], rows: list[dict[str, Any]]) -> None:
     generated_rows = [row for row in rows if row["status"] == "generated"][:3]
     panel_x, panel_y, panel_w, panel_h = 0.065, 0.355, 0.87, 0.325
     ax.add_patch(
@@ -580,30 +578,44 @@ def _draw_vote_triangle(ax, manifest: dict[str, Any], rows: list[dict[str, Any]]
             transform=ax.transAxes,
         )
     )
-    ax.text(panel_x + 0.018, panel_y + panel_h - 0.032, "三池表決總覽", color="#17212a", fontsize=11.4, fontweight="bold", transform=ax.transAxes)
-    ax.text(panel_x + panel_w - 0.018, panel_y + panel_h - 0.032, "2/3 共識優先", color="#52616b", fontsize=9.2, ha="right", transform=ax.transAxes)
+    ax.text(panel_x + 0.018, panel_y + panel_h - 0.032, "三池表決總覽", color="#17212a", fontsize=12.0, fontweight="bold", transform=ax.transAxes)
+    ax.text(panel_x + panel_w - 0.018, panel_y + panel_h - 0.032, "先看結論，再看三池來源", color="#52616b", fontsize=9.2, ha="right", transform=ax.transAxes)
     consensus = manifest.get("consensus") or {}
     winner = consensus.get("winner_ticker")
     state = consensus.get("result_state")
     center_label = consensus.get("winner_display") or "三方分歧"
+    reason = consensus.get("reason") or "尚未形成明確共識。"
 
-    winner_color = TRIANGLE_WINNER_COLOR if state == "consensus" else "#2457a7"
-    ax.add_patch(plt.Rectangle((0.335, 0.575), 0.33, 0.06, facecolor="#17212a", edgecolor=winner_color, linewidth=1.8, transform=ax.transAxes, zorder=3))
-    ax.text(0.50, 0.613, "三池共識", color="#c8d5df", fontsize=8.3, ha="center", transform=ax.transAxes, zorder=4)
-    ax.text(0.50, 0.591, _compact_display(center_label, limit=18), color="white", fontsize=11.6, fontweight="bold", ha="center", transform=ax.transAxes, zorder=4)
+    winner_color = VOTE_WINNER_COLOR if state == "consensus" else "#2457a7"
+    ax.add_patch(
+        plt.Rectangle(
+            (panel_x + 0.03, panel_y + 0.19),
+            panel_w - 0.06,
+            0.075,
+            facecolor="#17212a",
+            edgecolor=winner_color,
+            linewidth=1.8,
+            transform=ax.transAxes,
+            zorder=3,
+        )
+    )
+    ax.add_patch(plt.Rectangle((panel_x + 0.03, panel_y + 0.19), 0.012, 0.075, facecolor=winner_color, edgecolor=winner_color, transform=ax.transAxes, zorder=4))
+    ax.text(panel_x + 0.055, panel_y + 0.236, "表決結論", color="#c8d5df", fontsize=8.8, transform=ax.transAxes, zorder=4)
+    ax.text(panel_x + 0.055, panel_y + 0.209, _compact_display(center_label, limit=24), color="white", fontsize=13.2, fontweight="bold", transform=ax.transAxes, zorder=4)
+    ax.text(panel_x + panel_w - 0.04, panel_y + 0.224, _compact_display(reason, limit=28), color="#d6e1e8", fontsize=9.2, ha="right", transform=ax.transAxes, zorder=4)
 
-    card_specs = [(0.10, 0.43), (0.39, 0.43), (0.68, 0.43)]
+    card_specs = [(0.095, 0.435), (0.385, 0.435), (0.675, 0.435)]
     for index, row in enumerate(generated_rows):
         x, y = card_specs[index]
         color = _vote_color(row, consensus, index)
         badge = "共識票" if state == "consensus" and row.get("top_ticker") == winner else ("分歧票" if state != "consensus" else "少數票")
         is_winner = state == "consensus" and row.get("top_ticker") == winner
         fill = "#f4fbf8" if is_winner else "#fff8ef"
-        ax.add_patch(plt.Rectangle((x, y), 0.22, 0.105, facecolor=fill, edgecolor="#d5e0e6", linewidth=1.0, transform=ax.transAxes, zorder=2))
-        ax.add_patch(plt.Rectangle((x, y + 0.094), 0.22, 0.011, facecolor=color, edgecolor=color, transform=ax.transAxes, zorder=3))
+        ax.add_patch(plt.Rectangle((x, y), 0.235, 0.108, facecolor=fill, edgecolor="#d5e0e6", linewidth=1.0, transform=ax.transAxes, zorder=2))
+        ax.add_patch(plt.Rectangle((x, y), 0.012, 0.108, facecolor=color, edgecolor=color, transform=ax.transAxes, zorder=3))
         ax.text(
-            x + 0.014,
-            y + 0.071,
+            x + 0.022,
+            y + 0.078,
             _short_pool_name(row),
             color="#17212a",
             fontsize=9.5,
@@ -612,8 +624,8 @@ def _draw_vote_triangle(ax, manifest: dict[str, Any], rows: list[dict[str, Any]]
             zorder=4,
         )
         ax.text(
-            x + 0.014,
-            y + 0.045,
+            x + 0.022,
+            y + 0.05,
             _compact_display(row.get("top_display") or row.get("top_ticker") or "無", limit=16),
             color=color,
             fontsize=9.3,
@@ -622,41 +634,14 @@ def _draw_vote_triangle(ax, manifest: dict[str, Any], rows: list[dict[str, Any]]
             zorder=4,
         )
         ax.text(
-            x + 0.014,
-            y + 0.019,
+            x + 0.022,
+            y + 0.023,
             badge,
             color="#52616b",
             fontsize=8.1,
             transform=ax.transAxes,
             zorder=4,
         )
-        ax.add_patch(
-            FancyArrowPatch(
-                (x + 0.11, y + 0.105),
-                (0.50, 0.575),
-                arrowstyle="-|>",
-                mutation_scale=8,
-                linewidth=0.9,
-                color=color,
-                alpha=0.45,
-                transform=ax.transAxes,
-                zorder=1,
-            )
-        )
-
-
-def _draw_vote_summary_cards(ax, manifest: dict[str, Any], rows: list[dict[str, Any]]) -> None:
-    generated_rows = [row for row in rows if row["status"] == "generated"][:3]
-    consensus = manifest.get("consensus") or {}
-    y = 0.265
-    ax.text(0.06, y + 0.055, "三池角色與第一順位", color="#17212a", fontsize=14, fontweight="bold", transform=ax.transAxes)
-    for index, row in enumerate(generated_rows):
-        x = 0.06 + index * 0.305
-        color = _vote_color(row, consensus, index)
-        ax.add_patch(plt.Rectangle((x, y - 0.025), 0.275, 0.07, facecolor="white", edgecolor="#d9e0e5", linewidth=1, transform=ax.transAxes))
-        ax.add_patch(plt.Rectangle((x, y - 0.025), 0.012, 0.07, facecolor=color, edgecolor=color, transform=ax.transAxes))
-        ax.text(x + 0.022, y + 0.017, _short_pool_name(row), color="#17212a", fontsize=10.2, fontweight="bold", transform=ax.transAxes)
-        ax.text(x + 0.022, y - 0.007, _compact_display(row.get("top_display") or row.get("top_ticker") or "無", limit=18), color=color, fontsize=9.6, fontweight="bold", transform=ax.transAxes)
 
 
 def _draw_pool_top3_sections(ax, rows: list[dict[str, Any]], *, start_y: float = 0.635) -> float:
@@ -806,27 +791,14 @@ def _short_pool_name(item: dict[str, Any]) -> str:
     return name[:8]
 
 
-def _triangle_node_label(item: dict[str, Any]) -> str:
-    short_name = _short_pool_name(item)
-    if short_name == "AI權值池":
-        return "AI\n權值"
-    if short_name == "0050動態池":
-        return "0050\n動態"
-    if short_name == "核心權值池":
-        return "核心\n權值"
-    if short_name == "雷達池":
-        return "雷達"
-    return short_name[:4]
-
-
 def _vote_color(row: dict[str, Any], consensus: dict[str, Any], index: int) -> str:
     state = consensus.get("result_state")
     winner = consensus.get("winner_ticker")
     if state == "consensus":
-        return TRIANGLE_WINNER_COLOR if row.get("top_ticker") == winner else TRIANGLE_MINOR_COLOR
+        return VOTE_WINNER_COLOR if row.get("top_ticker") == winner else VOTE_MINOR_COLOR
     if state == "divergent":
-        return TRIANGLE_DIVERGENT_COLORS[index % len(TRIANGLE_DIVERGENT_COLORS)]
-    return TRIANGLE_NEUTRAL_COLOR
+        return VOTE_DIVERGENT_COLORS[index % len(VOTE_DIVERGENT_COLORS)]
+    return VOTE_NEUTRAL_COLOR
 
 
 def _compact_display(value: str, *, limit: int = 16) -> str:
