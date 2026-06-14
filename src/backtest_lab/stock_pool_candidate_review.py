@@ -6,6 +6,8 @@ from typing import Any
 
 import pandas as pd
 
+from backtest_lab.stock_pool_store import normalize_ticker
+
 
 def build_candidate_review(
     pool: dict[str, Any],
@@ -16,10 +18,11 @@ def build_candidate_review(
     frequency = str(pool.get("candidate_review_frequency") or "").strip() or "unspecified"
     config = pool.get("candidate_review_config") or {}
     source_mode = str(config.get("source_mode") or _default_source_mode(pool)).strip()
-    source_status = _source_status(pool, source_mode=source_mode)
     symbols = resolved_symbols if resolved_symbols is not None else pool.get("resolved_symbols") or pool.get("symbols") or []
+    source_payload = _source_payload(pool, source_mode=source_mode, signal_date=signal_date)
+    source_status = source_payload["source_status"]
     decision = _review_decision(frequency=frequency, source_status=source_status)
-    return {
+    review = {
         "pool_id": pool.get("pool_id", ""),
         "pool_name": pool.get("name", ""),
         "review_date": signal_date,
@@ -28,6 +31,10 @@ def build_candidate_review(
         "source_status": source_status,
         "decision": decision,
         "candidate_count": len(symbols),
+        "source_candidate_count": source_payload.get("source_candidate_count", 0),
+        "source_active_count": source_payload.get("source_active_count", 0),
+        "source_watch_count": source_payload.get("source_watch_count", 0),
+        "source_path": source_payload.get("source_path", ""),
         "required_evidence": list(config.get("required_evidence") or _default_required_evidence(pool)),
         "current_candidates": [
             {
@@ -39,6 +46,9 @@ def build_candidate_review(
         ],
         "policy": pool.get("candidate_update_policy", ""),
     }
+    if source_payload.get("source_candidates"):
+        review["source_candidates"] = source_payload["source_candidates"]
+    return review
 
 
 def write_candidate_reviews(root: Path, manifest: dict[str, Any]) -> None:
@@ -65,6 +75,10 @@ def write_candidate_reviews(root: Path, manifest: dict[str, Any]) -> None:
                 "source_status": review.get("source_status", ""),
                 "decision": review.get("decision", ""),
                 "candidate_count": review.get("candidate_count", 0),
+                "source_candidate_count": review.get("source_candidate_count", 0),
+                "source_active_count": review.get("source_active_count", 0),
+                "source_watch_count": review.get("source_watch_count", 0),
+                "source_path": review.get("source_path", ""),
                 "required_evidence": "；".join(review.get("required_evidence") or []),
                 "policy": review.get("policy", ""),
             }
@@ -81,6 +95,10 @@ def _default_source_mode(pool: dict[str, Any]) -> str:
 
 
 def _source_status(pool: dict[str, Any], *, source_mode: str) -> str:
+    if source_mode == "ai_theme_candidate_csv":
+        config = pool.get("candidate_review_config") or {}
+        source_path = str(config.get("path") or "").strip()
+        return "source_ready" if source_path and Path(source_path).exists() else "source_missing"
     if source_mode == "point_in_time_constituents":
         return "source_ready" if pool.get("dynamic_constituents", {}).get("path") else "source_missing"
     if source_mode == "formal_radar_candidates":
@@ -88,6 +106,62 @@ def _source_status(pool: dict[str, Any], *, source_mode: str) -> str:
     if source_mode == "manual_evidence_gate":
         return "manual_review_required"
     return "source_unspecified"
+
+
+def _source_payload(pool: dict[str, Any], *, source_mode: str, signal_date: str) -> dict[str, Any]:
+    config = pool.get("candidate_review_config") or {}
+    if source_mode != "ai_theme_candidate_csv":
+        return {"source_status": _source_status(pool, source_mode=source_mode)}
+    path = Path(str(config.get("path") or ""))
+    if not path.exists():
+        return {"source_status": "source_missing", "source_path": str(path)}
+    candidates = load_ai_theme_candidate_source(path, signal_date=signal_date)
+    return {
+        "source_status": "source_ready",
+        "source_path": str(path),
+        "source_candidate_count": len(candidates),
+        "source_active_count": sum(1 for item in candidates if item.get("review_status") == "active"),
+        "source_watch_count": sum(1 for item in candidates if item.get("review_status") == "watch"),
+        "source_candidates": candidates,
+    }
+
+
+def load_ai_theme_candidate_source(path: str | Path, *, signal_date: str) -> list[dict[str, Any]]:
+    frame = pd.read_csv(path, dtype=str).fillna("")
+    if frame.empty:
+        return []
+    if "effective_date" in frame.columns:
+        signal_ts = pd.Timestamp(signal_date)
+        frame["_effective_ts"] = pd.to_datetime(frame["effective_date"], errors="coerce")
+        frame = frame[(frame["_effective_ts"].isna()) | (frame["_effective_ts"] <= signal_ts)]
+    rows = []
+    for _, row in frame.iterrows():
+        ticker = normalize_ticker(str(row.get("ticker") or row.get("symbol") or ""))
+        rows.append(
+            {
+                "ticker": ticker,
+                "display": _display_from_row(row, ticker),
+                "theme_role": str(row.get("theme_role") or "").strip(),
+                "review_status": str(row.get("review_status") or "").strip().lower() or "watch",
+                "is_current_member": _truthy(row.get("is_current_member")),
+                "ai_exposure_score": _number(row.get("ai_exposure_score")),
+                "liquidity_score": _number(row.get("liquidity_score")),
+                "fundamental_score": _number(row.get("fundamental_score")),
+                "theme_strength_score": _number(row.get("theme_strength_score")),
+                "review_reason": str(row.get("review_reason") or "").strip(),
+            }
+        )
+    rows.sort(
+        key=lambda item: (
+            item["review_status"] == "active",
+            item["ai_exposure_score"],
+            item["theme_strength_score"],
+            item["liquidity_score"],
+            item["ticker"],
+        ),
+        reverse=True,
+    )
+    return rows
 
 
 def _review_decision(*, frequency: str, source_status: str) -> str:
@@ -98,6 +172,23 @@ def _review_decision(*, frequency: str, source_status: str) -> str:
     if source_status == "manual_review_required":
         return "keep_current_until_monthly_evidence_review"
     return "keep_current_until_source_ready"
+
+
+def _display_from_row(row: pd.Series, ticker: str) -> str:
+    symbol = str(row.get("symbol") or ticker.split(".")[0]).strip()
+    name = str(row.get("name") or symbol).strip()
+    return f"{name}({symbol})"
+
+
+def _truthy(value: object) -> bool:
+    return str(value).strip().lower() in {"1", "true", "yes", "y", "是", "active"}
+
+
+def _number(value: object) -> float:
+    try:
+        return float(str(value).replace(",", "").strip() or 0)
+    except ValueError:
+        return 0.0
 
 
 def _default_required_evidence(pool: dict[str, Any]) -> tuple[str, ...]:

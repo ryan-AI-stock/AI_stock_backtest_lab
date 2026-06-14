@@ -38,7 +38,8 @@ class StockPoolStoreTest(unittest.TestCase):
             {pool["candidate_review_frequency"] for pool in official.values()},
             {"monthly"},
         )
-        self.assertEqual(official["ai_theme_large_cap_v20260613"]["candidate_review_config"]["source_mode"], "manual_evidence_gate")
+        self.assertEqual(official["ai_theme_large_cap_v20260613"]["candidate_review_config"]["source_mode"], "ai_theme_candidate_csv")
+        self.assertEqual(official["ai_theme_large_cap_v20260613"]["candidate_review_config"]["path"], "data/ai_theme_candidates.csv")
         self.assertEqual(official["tw50_dynamic_constituents_v0"]["candidate_review_config"]["source_mode"], "point_in_time_constituents")
         self.assertEqual(official["large_core_bluechip_v0"]["candidate_review_config"]["source_mode"], "manual_evidence_gate")
         self.assertEqual(core["strategy_preset"], "core_defensive_style_v1")

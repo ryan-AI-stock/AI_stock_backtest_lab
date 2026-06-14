@@ -8,12 +8,16 @@ import pandas as pd
 
 import test_paths  # noqa: F401
 
-from backtest_lab.stock_pool_candidate_review import build_candidate_review, write_candidate_reviews
+from backtest_lab.stock_pool_candidate_review import (
+    build_candidate_review,
+    load_ai_theme_candidate_source,
+    write_candidate_reviews,
+)
 from backtest_lab.stock_pool_store import StockPoolStore, symbol_entry
 
 
 class StockPoolCandidateReviewTest(unittest.TestCase):
-    def test_ai_theme_pool_uses_monthly_manual_evidence_gate(self) -> None:
+    def test_ai_theme_pool_uses_monthly_candidate_csv_source(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             pool = next(
                 item
@@ -24,11 +28,31 @@ class StockPoolCandidateReviewTest(unittest.TestCase):
         review = build_candidate_review(pool, signal_date="2026-06-12")
 
         self.assertEqual(review["frequency"], "monthly")
-        self.assertEqual(review["source_mode"], "manual_evidence_gate")
-        self.assertEqual(review["source_status"], "manual_review_required")
-        self.assertEqual(review["decision"], "keep_current_until_monthly_evidence_review")
+        self.assertEqual(review["source_mode"], "ai_theme_candidate_csv")
+        self.assertEqual(review["source_status"], "source_ready")
+        self.assertEqual(review["decision"], "monthly_auto_review_available")
         self.assertIn("AI主線受惠程度", review["required_evidence"])
         self.assertEqual(review["candidate_count"], 9)
+        self.assertEqual(review["source_active_count"], 7)
+        self.assertGreaterEqual(review["source_watch_count"], 1)
+
+    def test_ai_theme_candidate_source_ignores_future_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "ai_theme_candidates.csv"
+            path.write_text(
+                "\n".join(
+                    [
+                        "effective_date,ticker,symbol,name,theme_role,review_status,is_current_member,ai_exposure_score,liquidity_score,fundamental_score,theme_strength_score,review_reason",
+                        "2026-06-01,2330.TW,2330,台積電,AI半導體核心製造,active,true,95,98,92,95,ready",
+                        "2026-07-01,9999.TW,9999,未來股,測試,watch,false,99,99,99,99,future",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            candidates = load_ai_theme_candidate_source(path, signal_date="2026-06-12")
+
+        self.assertEqual([item["ticker"] for item in candidates], ["2330.TW"])
 
     def test_tw50_pool_marks_point_in_time_source_ready(self) -> None:
         pool = {
@@ -54,10 +78,14 @@ class StockPoolCandidateReviewTest(unittest.TestCase):
                         "pool_name": "AI主線攻擊池 v20260613",
                         "review_date": "2026-06-12",
                         "frequency": "monthly",
-                        "source_mode": "manual_evidence_gate",
-                        "source_status": "manual_review_required",
-                        "decision": "keep_current_until_monthly_evidence_review",
+                        "source_mode": "ai_theme_candidate_csv",
+                        "source_status": "source_ready",
+                        "decision": "monthly_auto_review_available",
                         "candidate_count": 9,
+                        "source_candidate_count": 11,
+                        "source_active_count": 7,
+                        "source_watch_count": 4,
+                        "source_path": "data/ai_theme_candidates.csv",
                         "required_evidence": ["AI主線受惠程度"],
                         "policy": "月頻檢查候選名單",
                     }
@@ -72,7 +100,8 @@ class StockPoolCandidateReviewTest(unittest.TestCase):
             self.assertTrue((root / "stock_pool_candidate_reviews.json").exists())
             rows = pd.read_csv(root / "stock_pool_candidate_reviews.csv")
             self.assertEqual(rows.loc[0, "frequency"], "monthly")
-            self.assertEqual(rows.loc[0, "source_status"], "manual_review_required")
+            self.assertEqual(rows.loc[0, "source_status"], "source_ready")
+            self.assertEqual(rows.loc[0, "source_active_count"], 7)
 
 
 if __name__ == "__main__":

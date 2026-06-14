@@ -189,7 +189,8 @@ def default_stock_pool_data() -> dict[str, Any]:
                 "role_description": "檢查 AI/半導體/伺服器供應鏈主線是否仍值得攻擊，重視已驗證的實戰策略與市場環境切換。",
                 "candidate_review_frequency": "monthly",
                 "candidate_review_config": {
-                    "source_mode": "manual_evidence_gate",
+                    "source_mode": "ai_theme_candidate_csv",
+                    "path": "data/ai_theme_candidates.csv",
                     "required_evidence": [
                         "AI主線受惠程度",
                         "中大型市值或足夠成交金額",
