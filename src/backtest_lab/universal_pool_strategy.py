@@ -5,6 +5,7 @@ from dataclasses import dataclass, replace
 import pandas as pd
 
 from backtest_lab.risk_factor_source import RiskFactorSignal
+from backtest_lab.valuation_source import ValuationSignal
 
 
 POOL_HIGH_LIQUIDITY = "high_liquidity"
@@ -35,6 +36,8 @@ class UniversalPoolParameters:
     score_mode: str = "risk_adjusted"
     max_stock_drawdown_20d: float = -0.25
     risk_signal_weight: float = 0.0
+    valuation_signal_weight: float = 0.0
+    require_valuation_gate: bool = False
 
 
 @dataclass(frozen=True)
@@ -74,6 +77,13 @@ class UniversalCandidateScore:
     flow_risk_reasons: str = ""
     flow_source_dates: str = ""
     flow_source_kinds: str = ""
+    valuation_score_adjustment: float = 0.0
+    valuation_gate_passed: bool = True
+    valuation_safety_margin_pct: float = 0.0
+    valuation_fair_price: float = 0.0
+    valuation_buy_price: float = 0.0
+    valuation_reason: str = ""
+    valuation_source_date: str = ""
 
 
 def infer_pool_profile(
@@ -157,6 +167,7 @@ def score_universal_candidates(
     conviction_by_ticker: dict[str, float] | None = None,
     market_cap_by_ticker: dict[str, float] | None = None,
     risk_signal_by_ticker: dict[str, RiskFactorSignal] | None = None,
+    valuation_signal_by_ticker: dict[str, ValuationSignal] | None = None,
     size_thresholds: SizeClassificationThresholds = SizeClassificationThresholds(),
     enforce_pool_parameters: bool = False,
 ) -> dict[str, UniversalCandidateScore]:
@@ -164,6 +175,7 @@ def score_universal_candidates(
     conviction_by_ticker = conviction_by_ticker or {}
     market_cap_by_ticker = market_cap_by_ticker or {}
     risk_signal_by_ticker = risk_signal_by_ticker or {}
+    valuation_signal_by_ticker = valuation_signal_by_ticker or {}
     for ticker, prices in prices_by_ticker.items():
         liquidity_profile = classify_candidate_liquidity_profile(prices, signal_date)
         size_profile, market_cap_twd, size_basis = classify_candidate_size_profile(
@@ -193,6 +205,7 @@ def score_universal_candidates(
             params=candidate_params,
             conviction_bonus=conviction_by_ticker.get(ticker, 0.0),
             risk_signal=risk_signal_by_ticker.get(ticker),
+            valuation_signal=valuation_signal_by_ticker.get(ticker),
             liquidity_profile=liquidity_profile,
             size_profile=size_profile,
             market_cap_twd=market_cap_twd,
@@ -209,6 +222,7 @@ def score_universal_candidate(
     params: UniversalPoolParameters,
     conviction_bonus: float = 0.0,
     risk_signal: RiskFactorSignal | None = None,
+    valuation_signal: ValuationSignal | None = None,
     liquidity_profile: str = "",
     size_profile: str = SIZE_UNKNOWN,
     market_cap_twd: float = 0.0,
@@ -225,6 +239,7 @@ def score_universal_candidate(
             size_basis=size_basis,
             applied_score_mode=params.score_mode,
             risk_signal=risk_signal,
+            valuation_signal=valuation_signal,
         )
 
     close = float(history["adj_close"].iloc[-1])
@@ -240,6 +255,7 @@ def score_universal_candidate(
             size_basis=size_basis,
             applied_score_mode=params.score_mode,
             risk_signal=risk_signal,
+            valuation_signal=valuation_signal,
         )
     if params.require_ma60 and close < ma60:
         return _candidate_reject(
@@ -251,6 +267,7 @@ def score_universal_candidate(
             size_basis=size_basis,
             applied_score_mode=params.score_mode,
             risk_signal=risk_signal,
+            valuation_signal=valuation_signal,
         )
 
     volume = history["volume"].fillna(0) if "volume" in history.columns else pd.Series(0, index=history.index)
@@ -266,6 +283,7 @@ def score_universal_candidate(
             size_basis=size_basis,
             applied_score_mode=params.score_mode,
             risk_signal=risk_signal,
+            valuation_signal=valuation_signal,
         )
 
     ret20 = window_return(history["adj_close"], 20)
@@ -287,6 +305,7 @@ def score_universal_candidate(
             size_basis=size_basis,
             applied_score_mode=params.score_mode,
             risk_signal=risk_signal,
+            valuation_signal=valuation_signal,
         )
     if drawdown20 < params.max_stock_drawdown_20d:
         return _candidate_reject(
@@ -303,10 +322,33 @@ def score_universal_candidate(
             size_basis=size_basis,
             applied_score_mode=params.score_mode,
             risk_signal=risk_signal,
+            valuation_signal=valuation_signal,
+        )
+    if params.require_valuation_gate and valuation_signal and not valuation_signal.gate_passed:
+        return _candidate_reject(
+            ticker,
+            "估值安全邊際不足",
+            ret20=ret20,
+            ret60=ret60,
+            ret120=ret120,
+            avg_turnover_twd=avg_turnover,
+            drawdown20=drawdown20,
+            liquidity_profile=liquidity_profile,
+            size_profile=size_profile,
+            market_cap_twd=market_cap_twd,
+            size_basis=size_basis,
+            applied_score_mode=params.score_mode,
+            risk_signal=risk_signal,
+            valuation_signal=valuation_signal,
         )
 
     vol20 = float(history["adj_close"].pct_change().dropna().iloc[-20:].std() * (252**0.5))
     flow_score_adjustment = (risk_signal.score_adjustment * params.risk_signal_weight) if risk_signal else 0.0
+    valuation_score_adjustment = (
+        valuation_signal.score_adjustment * params.valuation_signal_weight
+        if valuation_signal
+        else 0.0
+    )
     score = universal_stock_score(
         ret20=ret20,
         ret60=ret60,
@@ -314,7 +356,7 @@ def score_universal_candidate(
         vol20=vol20,
         mode=params.score_mode,
         conviction_bonus=conviction_bonus,
-    ) + flow_score_adjustment
+    ) + flow_score_adjustment + valuation_score_adjustment
     if score < params.min_stock_score:
         return _attach_risk_signal(
             UniversalCandidateScore(
@@ -335,8 +377,10 @@ def score_universal_candidate(
                 profile_type=liquidity_profile,
                 applied_score_mode=params.score_mode,
                 flow_score_adjustment=flow_score_adjustment,
+                valuation_score_adjustment=valuation_score_adjustment,
             ),
             risk_signal,
+            valuation_signal,
         )
     return _attach_risk_signal(
         UniversalCandidateScore(
@@ -356,8 +400,10 @@ def score_universal_candidate(
             profile_type=liquidity_profile,
             applied_score_mode=params.score_mode,
             flow_score_adjustment=flow_score_adjustment,
+            valuation_score_adjustment=valuation_score_adjustment,
         ),
         risk_signal,
+        valuation_signal,
     )
 
 
@@ -487,6 +533,7 @@ def _candidate_reject(
     profile_type: str = "",
     applied_score_mode: str = "",
     risk_signal: RiskFactorSignal | None = None,
+    valuation_signal: ValuationSignal | None = None,
 ) -> UniversalCandidateScore:
     profile_type = profile_type or liquidity_profile
     return _attach_risk_signal(
@@ -509,13 +556,16 @@ def _candidate_reject(
             applied_score_mode=applied_score_mode,
         ),
         risk_signal,
+        valuation_signal,
     )
 
 
 def _attach_risk_signal(
     candidate: UniversalCandidateScore,
     risk_signal: RiskFactorSignal | None,
+    valuation_signal: ValuationSignal | None = None,
 ) -> UniversalCandidateScore:
+    candidate = _attach_valuation_signal(candidate, valuation_signal)
     if risk_signal is None:
         return candidate
     return UniversalCandidateScore(
@@ -547,4 +597,56 @@ def _attach_risk_signal(
         flow_risk_reasons=risk_signal.reason_text,
         flow_source_dates=",".join(risk_signal.source_dates),
         flow_source_kinds=",".join(risk_signal.source_kinds),
+        valuation_score_adjustment=candidate.valuation_score_adjustment,
+        valuation_gate_passed=candidate.valuation_gate_passed,
+        valuation_safety_margin_pct=candidate.valuation_safety_margin_pct,
+        valuation_fair_price=candidate.valuation_fair_price,
+        valuation_buy_price=candidate.valuation_buy_price,
+        valuation_reason=candidate.valuation_reason,
+        valuation_source_date=candidate.valuation_source_date,
+    )
+
+
+def _attach_valuation_signal(
+    candidate: UniversalCandidateScore,
+    valuation_signal: ValuationSignal | None,
+) -> UniversalCandidateScore:
+    if valuation_signal is None:
+        return candidate
+    return UniversalCandidateScore(
+        ticker=candidate.ticker,
+        score=candidate.score,
+        ret20=candidate.ret20,
+        ret60=candidate.ret60,
+        ret120=candidate.ret120,
+        vol20=candidate.vol20,
+        avg_turnover_twd=candidate.avg_turnover_twd,
+        drawdown20=candidate.drawdown20,
+        passed=candidate.passed,
+        reason=candidate.reason,
+        liquidity_profile=candidate.liquidity_profile,
+        size_profile=candidate.size_profile,
+        market_cap_twd=candidate.market_cap_twd,
+        size_basis=candidate.size_basis,
+        profile_type=candidate.profile_type,
+        applied_score_mode=candidate.applied_score_mode,
+        flow_risk_score=candidate.flow_risk_score,
+        institutional_risk=candidate.institutional_risk,
+        margin_risk=candidate.margin_risk,
+        borrow_risk=candidate.borrow_risk,
+        day_trading_risk=candidate.day_trading_risk,
+        sentiment_risk=candidate.sentiment_risk,
+        bullish_flow_score=candidate.bullish_flow_score,
+        sentiment_score=candidate.sentiment_score,
+        flow_score_adjustment=candidate.flow_score_adjustment,
+        flow_risk_reasons=candidate.flow_risk_reasons,
+        flow_source_dates=candidate.flow_source_dates,
+        flow_source_kinds=candidate.flow_source_kinds,
+        valuation_score_adjustment=candidate.valuation_score_adjustment,
+        valuation_gate_passed=valuation_signal.gate_passed,
+        valuation_safety_margin_pct=valuation_signal.safety_margin_pct,
+        valuation_fair_price=valuation_signal.fair_price,
+        valuation_buy_price=valuation_signal.buy_price,
+        valuation_reason=valuation_signal.reason,
+        valuation_source_date=valuation_signal.signal_date,
     )

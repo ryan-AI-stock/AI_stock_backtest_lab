@@ -4,6 +4,8 @@ import unittest
 
 import pandas as pd
 
+import test_paths  # noqa: F401
+
 from backtest_lab.risk_factor_source import RiskFactorSignal
 from backtest_lab.universal_pool_strategy import (
     POOL_HIGH_LIQUIDITY,
@@ -23,6 +25,7 @@ from backtest_lab.universal_pool_strategy import (
     score_universal_candidates,
     universal_stock_score,
 )
+from backtest_lab.valuation_source import ValuationSignal
 
 
 class UniversalPoolStrategyTest(unittest.TestCase):
@@ -199,6 +202,86 @@ class UniversalPoolStrategyTest(unittest.TestCase):
         self.assertEqual(size_profile, SIZE_MID_CAP)
         self.assertEqual(market_cap, 80_000_000_000)
         self.assertEqual(size_basis, "market_cap_twd")
+
+    def test_valuation_gate_can_block_overpriced_candidate(self) -> None:
+        dates = pd.bdate_range("2024-01-02", periods=150)
+        prices = _price_frame(dates, close=100, volume=20_000_000)
+        params = UniversalPoolParameters(
+            min_avg_turnover_twd=0.0,
+            min_stock_score=-1.0,
+            overheated_20d_return=0.90,
+            score_mode="relative_strength",
+            require_valuation_gate=True,
+        )
+        valuation = ValuationSignal(
+            ticker="2317.TW",
+            fair_price=90,
+            buy_price=88,
+            gate_passed=False,
+            score_adjustment=-0.05,
+            reason="現價高於合理買點",
+            signal_date="2024-07-01",
+        )
+
+        score = score_universal_candidate(
+            ticker="2317.TW",
+            prices=prices,
+            signal_date=dates[-1],
+            params=params,
+            valuation_signal=valuation,
+        )
+
+        self.assertFalse(score.passed)
+        self.assertEqual(score.reason, "估值安全邊際不足")
+        self.assertFalse(score.valuation_gate_passed)
+        self.assertEqual(score.valuation_reason, "現價高於合理買點")
+
+    def test_valuation_signal_is_diagnostic_until_weight_or_gate_is_enabled(self) -> None:
+        dates = pd.bdate_range("2024-01-02", periods=150)
+        prices = _price_frame(dates, close=100, volume=20_000_000)
+        valuation = ValuationSignal(
+            ticker="2317.TW",
+            fair_price=120,
+            buy_price=110,
+            gate_passed=True,
+            score_adjustment=0.08,
+            reason="估值仍有安全邊際",
+            signal_date="2024-07-01",
+        )
+        base_params = UniversalPoolParameters(
+            min_avg_turnover_twd=0.0,
+            min_stock_score=-1.0,
+            overheated_20d_return=0.90,
+            score_mode="relative_strength",
+            valuation_signal_weight=0.0,
+        )
+        weighted_params = UniversalPoolParameters(
+            min_avg_turnover_twd=0.0,
+            min_stock_score=-1.0,
+            overheated_20d_return=0.90,
+            score_mode="relative_strength",
+            valuation_signal_weight=1.0,
+        )
+
+        diagnostic = score_universal_candidate(
+            ticker="2317.TW",
+            prices=prices,
+            signal_date=dates[-1],
+            params=base_params,
+            valuation_signal=valuation,
+        )
+        weighted = score_universal_candidate(
+            ticker="2317.TW",
+            prices=prices,
+            signal_date=dates[-1],
+            params=weighted_params,
+            valuation_signal=valuation,
+        )
+
+        self.assertEqual(diagnostic.valuation_reason, "估值仍有安全邊際")
+        self.assertEqual(diagnostic.valuation_score_adjustment, 0.0)
+        self.assertGreater(weighted.score, diagnostic.score)
+        self.assertEqual(weighted.valuation_score_adjustment, 0.08)
 
 
 def _price_frame(dates: pd.DatetimeIndex, *, close: float, volume: int) -> pd.DataFrame:

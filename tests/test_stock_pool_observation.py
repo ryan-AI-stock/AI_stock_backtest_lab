@@ -16,6 +16,7 @@ from backtest_lab.stock_pool_observation import (
     write_stock_pool_observation,
 )
 from backtest_lab.stock_pool_store import symbol_entry
+from backtest_lab.valuation_source import ValuationSignal
 
 
 class StockPoolObservationTest(unittest.TestCase):
@@ -54,6 +55,42 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertEqual(scores["2330.TW"].size_profile, "large_cap")
         self.assertEqual(scores["2454.TW"].size_profile, "mid_cap")
         self.assertEqual(scores["2454.TW"].market_cap_twd, 200_000_000_000)
+
+    def test_build_observation_preserves_valuation_signal_fields(self) -> None:
+        dates = pd.bdate_range("2025-01-02", periods=160)
+        tsmc = symbol_entry("2330.TW", source="manual")
+        tsmc["market_cap_twd"] = 2_000_000_000_000
+        pool = {
+            "pool_id": "custom_ai_pool",
+            "name": "自訂AI觀察池",
+            "strategy_preset": "universal_pool_custom",
+            "resolved_symbols": [tsmc],
+        }
+        prices = {"2330.TW": _trend_frame(dates, start=100, step=0.2, volume=20_000_000)}
+
+        observation = build_stock_pool_observation(
+            pool=pool,
+            prices_by_ticker=prices,
+            signal_date=dates[-1],
+            valuation_signal_by_ticker={
+                "2330.TW": ValuationSignal(
+                    ticker="2330.TW",
+                    fair_price=1200,
+                    buy_price=1080,
+                    safety_margin_pct=0.12,
+                    gate_passed=True,
+                    score_adjustment=0.02,
+                    reason="估值仍有安全邊際",
+                    signal_date="2025-08-01",
+                )
+            },
+        )
+
+        candidate = observation.candidates[0]
+        self.assertEqual(candidate.valuation_reason, "估值仍有安全邊際")
+        self.assertEqual(candidate.valuation_fair_price, 1200)
+        self.assertEqual(candidate.valuation_buy_price, 1080)
+        self.assertEqual(candidate.valuation_source_date, "2025-08-01")
 
     def test_core_defensive_preset_applies_stricter_overheat_filter(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)

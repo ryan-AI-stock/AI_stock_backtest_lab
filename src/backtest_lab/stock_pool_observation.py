@@ -38,6 +38,7 @@ from backtest_lab.universal_pool_strategy import (
     infer_pool_profile,
     score_universal_candidates,
 )
+from backtest_lab.valuation_source import ValuationSignal, load_valuation_signals
 
 
 DEFAULT_OUTPUT_ROOT = "outputs/stock_pool_observations"
@@ -93,6 +94,7 @@ def build_stock_pool_observation(
     conviction_by_ticker: dict[str, float] | None = None,
     market_cap_by_ticker: dict[str, float] | None = None,
     risk_signal_by_ticker: dict[str, RiskFactorSignal] | None = None,
+    valuation_signal_by_ticker: dict[str, ValuationSignal] | None = None,
     require_exact_signal_date: bool = False,
 ) -> StockPoolObservation:
     requested_ts = pd.Timestamp(signal_date)
@@ -123,6 +125,7 @@ def build_stock_pool_observation(
             **_market_cap_by_ticker(available_symbols),
         },
         risk_signal_by_ticker=risk_signal_by_ticker,
+        valuation_signal_by_ticker=valuation_signal_by_ticker,
         enforce_pool_parameters=enforce_pool_parameters,
     )
     candidates = sorted(
@@ -165,6 +168,7 @@ def build_dispatched_stock_pool_observation(
     conviction_by_ticker: dict[str, float] | None = None,
     market_cap_by_ticker: dict[str, float] | None = None,
     risk_signal_by_ticker: dict[str, RiskFactorSignal] | None = None,
+    valuation_signal_by_ticker: dict[str, ValuationSignal] | None = None,
     require_exact_signal_date: bool = False,
 ) -> StockPoolObservation:
     spec = resolve_strategy_preset(pool.get("strategy_preset"))
@@ -181,6 +185,7 @@ def build_dispatched_stock_pool_observation(
             warmup_start=warmup_start,
             market_cap_by_ticker=market_cap_by_ticker,
             risk_signal_by_ticker=risk_signal_by_ticker,
+            valuation_signal_by_ticker=valuation_signal_by_ticker,
             require_exact_signal_date=require_exact_signal_date,
             variant=variant,
             strategy_id=AI_THEME_STRATEGY_ID if spec.preset == "ai_theme_large_cap_v20260613" else STRATEGY_ID,
@@ -193,6 +198,7 @@ def build_dispatched_stock_pool_observation(
         conviction_by_ticker=conviction_by_ticker,
         market_cap_by_ticker=market_cap_by_ticker,
         risk_signal_by_ticker=risk_signal_by_ticker,
+        valuation_signal_by_ticker=valuation_signal_by_ticker,
         require_exact_signal_date=require_exact_signal_date,
     )
 
@@ -295,6 +301,7 @@ def run_stock_pool_observation_batch(
     borrow_lending_data: str | Path | None = None,
     day_trading_data: str | Path | None = None,
     sentiment_data: str | Path | None = None,
+    valuation_data: str | Path | None = None,
     tw50_constituents_path: str | Path | None = None,
     radar_top_n: int = 20,
     require_exact_signal_date: bool = False,
@@ -326,6 +333,7 @@ def run_stock_pool_observation_batch(
         "market_cap_count": len(market_caps),
         "risk_factor_sources": risk_sources,
         "risk_factor_count": len(risk_signals),
+        "valuation_source": str(valuation_data or ""),
         "output_root": str(root),
         "generated": [],
         "skipped": [],
@@ -373,6 +381,11 @@ def run_stock_pool_observation_batch(
             )
             if not prices:
                 raise ValueError(f"No price data available for pool tickers: {', '.join(tickers)}")
+            valuation_signals = load_valuation_signals(
+                valuation_data,
+                signal_date=signal_date,
+                current_price_by_ticker=_current_close_by_ticker(prices, signal_date),
+            )
             observation = build_dispatched_stock_pool_observation(
                 pool=pool,
                 prices_by_ticker=prices,
@@ -380,6 +393,7 @@ def run_stock_pool_observation_batch(
                 warmup_start=warmup_start,
                 market_cap_by_ticker=market_caps,
                 risk_signal_by_ticker=risk_signals,
+                valuation_signal_by_ticker=valuation_signals,
                 require_exact_signal_date=require_exact_signal_date,
             )
             pool_dir = root / str(pool["pool_id"])
@@ -898,6 +912,7 @@ def main() -> None:
     parser.add_argument("--borrow-lending-data", default=os.getenv("BORROW_LENDING_DATA_PATH", ""))
     parser.add_argument("--day-trading-data", default=os.getenv("DAY_TRADING_DATA_PATH", ""))
     parser.add_argument("--sentiment-data", default=os.getenv("SENTIMENT_DATA_PATH", ""))
+    parser.add_argument("--valuation-data", default=os.getenv("VALUATION_DATA_PATH", ""))
     parser.add_argument("--tw50-constituents", default=os.getenv("TW50_CONSTITUENTS_PATH", ""))
     parser.add_argument("--radar-top-n", type=int, default=20)
     parser.add_argument("--require-exact-signal-date", action="store_true")
@@ -925,6 +940,7 @@ def main() -> None:
             borrow_lending_data=args.borrow_lending_data or None,
             day_trading_data=args.day_trading_data or None,
             sentiment_data=args.sentiment_data or None,
+            valuation_data=args.valuation_data or None,
             tw50_constituents_path=args.tw50_constituents or None,
             radar_top_n=args.radar_top_n,
             require_exact_signal_date=args.require_exact_signal_date,
@@ -972,6 +988,13 @@ def main() -> None:
     )
     if risk_sources:
         print(f"STOCK_POOL_OBSERVATION_RISK_FACTOR_SOURCES={json.dumps(risk_sources, ensure_ascii=False)}")
+    valuation_signals = load_valuation_signals(
+        args.valuation_data or None,
+        signal_date=args.signal_date,
+        current_price_by_ticker=_current_close_by_ticker(prices, args.signal_date),
+    )
+    if valuation_signals:
+        print(f"STOCK_POOL_OBSERVATION_VALUATION_SOURCE={Path(args.valuation_data).resolve()}")
     observation = build_dispatched_stock_pool_observation(
         pool=pool,
         prices_by_ticker=prices,
@@ -979,6 +1002,7 @@ def main() -> None:
         warmup_start=args.warmup_start,
         market_cap_by_ticker=market_caps,
         risk_signal_by_ticker=risk_signals,
+        valuation_signal_by_ticker=valuation_signals,
         require_exact_signal_date=args.require_exact_signal_date,
     )
     if missing_price_tickers:
@@ -998,6 +1022,21 @@ def _resolve_signal_date(prices_by_ticker: dict[str, pd.DataFrame], requested: p
     return max(common)
 
 
+def _current_close_by_ticker(prices_by_ticker: dict[str, pd.DataFrame], signal_date: str | pd.Timestamp) -> dict[str, float]:
+    signal_ts = pd.Timestamp(signal_date).normalize()
+    closes: dict[str, float] = {}
+    for ticker, frame in prices_by_ticker.items():
+        history = frame.loc[frame.index <= signal_ts]
+        if history.empty:
+            continue
+        column = "adj_close" if "adj_close" in history.columns else "close"
+        close = pd.to_numeric(history[column], errors="coerce").dropna()
+        if close.empty:
+            continue
+        closes[ticker] = float(close.iloc[-1])
+    return closes
+
+
 def _build_regime_signal_observation(
     *,
     pool: dict[str, Any],
@@ -1006,6 +1045,7 @@ def _build_regime_signal_observation(
     warmup_start: str,
     market_cap_by_ticker: dict[str, float] | None,
     risk_signal_by_ticker: dict[str, RiskFactorSignal] | None,
+    valuation_signal_by_ticker: dict[str, ValuationSignal] | None,
     require_exact_signal_date: bool,
     variant: RegimeModeSwitchVariant,
     strategy_id: str,
@@ -1047,6 +1087,7 @@ def _build_regime_signal_observation(
         params,
         market_cap_by_ticker=market_cap_by_ticker,
         risk_signal_by_ticker=risk_signal_by_ticker,
+        valuation_signal_by_ticker=valuation_signal_by_ticker,
     )
     candidates: list[UniversalCandidateScore] = []
     for row in signal.ranking:
@@ -1094,6 +1135,13 @@ def _build_regime_signal_observation(
                 flow_risk_reasons=base.flow_risk_reasons,
                 flow_source_dates=base.flow_source_dates,
                 flow_source_kinds=base.flow_source_kinds,
+                valuation_score_adjustment=base.valuation_score_adjustment,
+                valuation_gate_passed=base.valuation_gate_passed,
+                valuation_safety_margin_pct=base.valuation_safety_margin_pct,
+                valuation_fair_price=base.valuation_fair_price,
+                valuation_buy_price=base.valuation_buy_price,
+                valuation_reason=base.valuation_reason,
+                valuation_source_date=base.valuation_source_date,
             )
         )
     top_ticker = signal.target_ticker if signal.target_is_actionable else None
