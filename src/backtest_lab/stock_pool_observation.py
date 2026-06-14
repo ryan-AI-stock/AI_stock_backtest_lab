@@ -24,6 +24,7 @@ from backtest_lab.frozen_strategy_monitor import (
     build_frozen_strategy_signal,
 )
 from backtest_lab.regime_mode_switch import RegimeModeSwitchVariant, frozen_cycle_proven_top1_v1_variant
+from backtest_lab.stock_pool_candidate_review import build_candidate_review, write_candidate_reviews
 from backtest_lab.stock_pool_consensus import build_consensus, write_consensus_outputs
 from backtest_lab.stock_pool_store import KNOWN_SYMBOLS, StockPoolStore
 from backtest_lab.strategy_preset_dispatcher import dispatch_pool, resolve_strategy_preset
@@ -349,6 +350,15 @@ def run_stock_pool_observation_batch(
                 {
                     "pool_id": pool.get("pool_id"),
                     "pool_name": pool.get("name"),
+                    "role_name": pool.get("role_name", ""),
+                    "role_description": pool.get("role_description", ""),
+                    "candidate_review_frequency": pool.get("candidate_review_frequency", ""),
+                    "candidate_update_policy": pool.get("candidate_update_policy", ""),
+                    "candidate_review": build_candidate_review(
+                        pool,
+                        signal_date=signal_date,
+                        resolved_symbols=pool.get("resolved_symbols", []),
+                    ),
                     "dispatch": dispatch_pool(pool),
                     "reason": reason,
                 }
@@ -382,6 +392,11 @@ def run_stock_pool_observation_batch(
                     "role_description": pool.get("role_description", ""),
                     "candidate_review_frequency": pool.get("candidate_review_frequency", ""),
                     "candidate_update_policy": pool.get("candidate_update_policy", ""),
+                    "candidate_review": build_candidate_review(
+                        pool,
+                        signal_date=observation.signal_date,
+                        resolved_symbols=pool.get("resolved_symbols", []),
+                    ),
                     "dispatch": dispatch_pool(pool),
                     "signal_date": observation.signal_date,
                     "top_ticker": observation.top_ticker,
@@ -403,6 +418,11 @@ def run_stock_pool_observation_batch(
                     "role_description": pool.get("role_description", ""),
                     "candidate_review_frequency": pool.get("candidate_review_frequency", ""),
                     "candidate_update_policy": pool.get("candidate_update_policy", ""),
+                    "candidate_review": build_candidate_review(
+                        pool,
+                        signal_date=signal_date,
+                        resolved_symbols=pool.get("resolved_symbols", []),
+                    ),
                     "dispatch": dispatch_pool(pool),
                     "reason": str(error),
                 }
@@ -414,6 +434,7 @@ def run_stock_pool_observation_batch(
     )
     write_stock_pool_observation_batch_summary(root, manifest)
     write_consensus_outputs(root, manifest)
+    write_candidate_reviews(root, manifest)
     return manifest
 
 
