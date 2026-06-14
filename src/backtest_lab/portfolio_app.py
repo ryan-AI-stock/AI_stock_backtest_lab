@@ -8,10 +8,14 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
 
-from backtest_lab.candidate_review_decision_draft import build_candidate_review_decision_draft
+from backtest_lab.candidate_review_decision_draft import (
+    apply_candidate_review_decision_draft,
+    build_candidate_review_decision_draft,
+)
 from backtest_lab.candidate_review_decision_store import CandidateReviewDecisionStore
 from backtest_lab.config import load_config
 from backtest_lab.portfolio_app_settings import (
+    DEFAULT_CANDIDATE_REVIEW_BACKUP_ROOT,
     DEFAULT_CANDIDATE_REVIEW_DECISION_PATH,
     DEFAULT_GITHUB_REF,
     DEFAULT_GITHUB_REPO,
@@ -40,6 +44,7 @@ def create_handler(
     store: PortfolioStore,
     pool_store: StockPoolStore | None = None,
     candidate_decision_store: CandidateReviewDecisionStore | None = None,
+    candidate_review_backup_root: str | Path = DEFAULT_CANDIDATE_REVIEW_BACKUP_ROOT,
     signal_root: str,
     observation_root: str = DEFAULT_OBSERVATION_ROOT,
     asset_types: dict[str, str],
@@ -95,6 +100,9 @@ def create_handler(
                     response = candidate_decision_store.state()
                     response["recorded"] = decision
                     self._json(response)
+                    return
+                if path == "/api/candidate-review-decision-draft/apply":
+                    self._json(_apply_candidate_review_decision_draft())
                     return
                 if path == "/api/portfolio":
                     store.replace_portfolio(
@@ -248,6 +256,16 @@ def create_handler(
             decisions=list(decision_state.get("decisions") or []),
         )
 
+    def _apply_candidate_review_decision_draft() -> dict:
+        signal = load_latest_signal(signal_root)
+        pools = pool_store.list_pools(latest_signal=signal)
+        decision_state = candidate_decision_store.state()
+        return apply_candidate_review_decision_draft(
+            pools=pools,
+            decisions=list(decision_state.get("decisions") or []),
+            backup_root=candidate_review_backup_root,
+        )
+
     return Handler
 
 
@@ -258,6 +276,7 @@ def main() -> None:
     parser.add_argument("--store", default=DEFAULT_STORE_PATH)
     parser.add_argument("--pool-store", default=DEFAULT_POOL_STORE_PATH)
     parser.add_argument("--candidate-review-decisions", default=DEFAULT_CANDIDATE_REVIEW_DECISION_PATH)
+    parser.add_argument("--candidate-review-backup-root", default=DEFAULT_CANDIDATE_REVIEW_BACKUP_ROOT)
     parser.add_argument("--observation-root", default=DEFAULT_OBSERVATION_ROOT)
     parser.add_argument("--signal-root", default=DEFAULT_SIGNAL_ROOT)
     parser.add_argument("--config", default="configs/ep05_universe.json")
@@ -274,6 +293,7 @@ def main() -> None:
         store=PortfolioStore(args.store),
         pool_store=StockPoolStore(args.pool_store),
         candidate_decision_store=CandidateReviewDecisionStore(args.candidate_review_decisions),
+        candidate_review_backup_root=args.candidate_review_backup_root,
         signal_root=args.signal_root,
         observation_root=args.observation_root,
         asset_types=asset_types,

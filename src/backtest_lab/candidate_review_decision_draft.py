@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import csv
+import json
+import shutil
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -40,6 +43,51 @@ def build_candidate_review_decision_draft(
         "changes": changes,
         "skipped": skipped,
     }
+
+
+def apply_candidate_review_decision_draft(
+    *,
+    pools: list[dict[str, Any]],
+    decisions: list[dict[str, Any]],
+    backup_root: str | Path,
+) -> dict[str, Any]:
+    draft = build_candidate_review_decision_draft(pools=pools, decisions=decisions)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_dir = Path(backup_root) / timestamp
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    applied: list[dict[str, Any]] = []
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for change in draft.get("changes", []):
+        grouped.setdefault(str(change.get("source_path") or ""), []).append(change)
+    for source_path_text, changes in grouped.items():
+        source_path = Path(source_path_text)
+        backup_path = backup_dir / source_path.name
+        shutil.copy2(source_path, backup_path)
+        rows = _read_rows(source_path)
+        fieldnames = _fieldnames_for_apply(rows, changes)
+        rows = _apply_changes_to_rows(rows, changes, fieldnames)
+        _write_rows(source_path, rows, fieldnames)
+        applied.append(
+            {
+                "source_path": str(source_path),
+                "backup_path": str(backup_path),
+                "change_count": len(changes),
+                "tickers": [str(change.get("ticker") or "") for change in changes],
+            }
+        )
+    result = {
+        "status": "applied",
+        "applied_at": timestamp,
+        "applied_source_count": len(applied),
+        "applied_change_count": sum(item["change_count"] for item in applied),
+        "applied": applied,
+        "skipped": draft.get("skipped", []),
+    }
+    (backup_dir / "candidate_review_apply_log.json").write_text(
+        json.dumps(result, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    return result
 
 
 def _draft_csv_change(*, decision: dict[str, Any], pool: dict[str, Any], source_path: Path) -> dict[str, Any]:
@@ -105,6 +153,52 @@ def _decision_ref(decision: dict[str, Any]) -> dict[str, str]:
 def _read_rows(path: Path) -> list[dict[str, str]]:
     with path.open("r", encoding="utf-8-sig", newline="") as handle:
         return list(csv.DictReader(handle))
+
+
+def _write_rows(path: Path, rows: list[dict[str, str]], fieldnames: list[str]) -> None:
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    with temporary.open("w", encoding="utf-8-sig", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({field: row.get(field, "") for field in fieldnames})
+    temporary.replace(path)
+
+
+def _fieldnames_for_apply(rows: list[dict[str, str]], changes: list[dict[str, Any]]) -> list[str]:
+    fieldnames = list(rows[0].keys()) if rows else []
+    for change in changes:
+        for field in (change.get("row_preview") or {}).keys():
+            if field not in fieldnames:
+                fieldnames.append(field)
+    return fieldnames
+
+
+def _apply_changes_to_rows(
+    rows: list[dict[str, str]],
+    changes: list[dict[str, Any]],
+    fieldnames: list[str],
+) -> list[dict[str, str]]:
+    output = [dict(row) for row in rows]
+    for change in changes:
+        ticker = normalize_ticker(str(change.get("ticker") or ""))
+        row_preview = {field: str(value) for field, value in (change.get("row_preview") or {}).items()}
+        existing_index = next(
+            (
+                index
+                for index, row in enumerate(output)
+                if normalize_ticker(str(row.get("ticker") or row.get("symbol") or "")) == ticker
+            ),
+            None,
+        )
+        row_preview = {field: row_preview.get(field, "") for field in fieldnames}
+        if existing_index is None:
+            output.append(row_preview)
+        else:
+            merged = {field: output[existing_index].get(field, "") for field in fieldnames}
+            merged.update(row_preview)
+            output[existing_index] = merged
+    return output
 
 
 def _name_from_display(display: str) -> str:

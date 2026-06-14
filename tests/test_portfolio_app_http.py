@@ -49,6 +49,7 @@ class PortfolioAppHttpTest(unittest.TestCase):
                     store=PortfolioStore(tmp_path / "store.json"),
                     pool_store=StockPoolStore(tmp_path / "stock_pools.json"),
                     candidate_decision_store=CandidateReviewDecisionStore(tmp_path / "candidate_review_decisions.json"),
+                    candidate_review_backup_root=tmp_path / "candidate_review_backups",
                     signal_root=str(tmp_path / "signals"),
                     observation_root=str(tmp_path / "observations"),
                     asset_types={"2454.TW": "stock"},
@@ -198,6 +199,11 @@ class PortfolioAppHttpTest(unittest.TestCase):
                 self.assertEqual(draft["change_count"], 1)
                 self.assertEqual(draft["changes"][0]["ticker"], "2412.TW")
                 self.assertEqual(draft["changes"][0]["draft_status"], "active")
+
+                applied = _request(server.server_address[1], "POST", "/api/candidate-review-decision-draft/apply", {})
+                self.assertEqual(applied["status"], "applied")
+                self.assertEqual(applied["applied_change_count"], 1)
+                self.assertTrue(Path(applied["applied"][0]["backup_path"]).exists())
             finally:
                 server.shutdown()
                 server.server_close()
