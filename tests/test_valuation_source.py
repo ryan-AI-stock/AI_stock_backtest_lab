@@ -33,6 +33,26 @@ class ValuationSourceTest(unittest.TestCase):
             self.assertEqual(signal.reason, "現價高於合理買點")
             self.assertLess(signal.score_adjustment, 0)
 
+    def test_cannot_buy_action_forces_gate_block(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "valuation.csv"
+            path.write_text(
+                "source_date,symbol,eps_estimate_low,eps_estimate_high,valuation_action\n"
+                "2026-06-14,2454,75,80,cannot_buy\n",
+                encoding="utf-8",
+            )
+
+            signals = load_valuation_signals(
+                path,
+                signal_date="2026-06-15",
+                current_price_by_ticker={"2454.TW": 4200},
+            )
+
+            signal = signals["2454.TW"]
+            self.assertFalse(signal.gate_passed)
+            self.assertEqual(signal.reason, "估值來源標示不能買")
+            self.assertEqual(signal.score_adjustment, -0.08)
+
 
 if __name__ == "__main__":
     unittest.main()

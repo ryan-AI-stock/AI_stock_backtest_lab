@@ -38,6 +38,7 @@ class ValuationSignalImporterTest(unittest.TestCase):
         self.assertEqual(row["fair_pe"], "14")
         self.assertEqual(row["fair_price"], "266")
         self.assertEqual(row["buy_price"], "252")
+        self.assertEqual(row["valuation_action"], "buy_zone")
 
     def test_import_appends_and_deduplicates_by_source_date_and_ticker(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -66,6 +67,24 @@ class ValuationSignalImporterTest(unittest.TestCase):
         self.assertEqual(manifest["skipped_rows"], [])
         self.assertEqual(normalized.iloc[0]["source_date"], "2026-06-14")
         self.assertEqual(normalized.iloc[0]["ticker"], "2382.TW")
+
+    def test_normalizes_cannot_buy_action(self) -> None:
+        frame = pd.DataFrame(
+            [
+                {
+                    "source_date": "2026-06-14",
+                    "symbol": "2454",
+                    "name": "聯發科",
+                    "eps_estimate_range": "75~80",
+                    "valuation_action": "不能買",
+                }
+            ]
+        )
+
+        normalized, _ = normalize_valuation_input_frame(frame)
+
+        self.assertEqual(normalized.iloc[0]["ticker"], "2454.TW")
+        self.assertEqual(normalized.iloc[0]["valuation_action"], "cannot_buy")
 
 
 if __name__ == "__main__":

@@ -21,6 +21,7 @@ CANONICAL_COLUMNS = [
     "fair_pe",
     "fair_price",
     "buy_price",
+    "valuation_action",
     "source_name",
     "source_url",
     "notes",
@@ -37,6 +38,7 @@ ALIASES = {
     "fair_pe": ("fair_pe", "target_pe", "本益比", "合理本益比", "pe"),
     "fair_price": ("fair_price", "target_price", "合理價", "目標價"),
     "buy_price": ("buy_price", "max_entry_price", "買點", "可買價", "回到幾倍買", "entry_price"),
+    "valuation_action": ("valuation_action", "entry_status", "買賣狀態", "動作", "是否可買"),
     "source_name": ("source_name", "資料來源", "來源"),
     "source_url": ("source_url", "來源網址", "url"),
     "notes": ("notes", "備註", "說明"),
@@ -122,6 +124,9 @@ def _normalize_row(row: pd.Series, *, default_source_date: str) -> dict[str, Any
     if fair_price <= 0 and fair_pe > 0 and max(eps_low, eps_high) > 0:
         fair_price = _midpoint(eps_low, eps_high) * fair_pe
     buy_price = _number(_first(row, "buy_price"))
+    valuation_action = _normalize_action(_first(row, "valuation_action"))
+    if not valuation_action:
+        valuation_action = "buy_zone" if buy_price > 0 else "diagnostic"
     return {
         "source_date": pd.Timestamp(source_date).strftime("%Y-%m-%d"),
         "ticker": ticker,
@@ -132,6 +137,7 @@ def _normalize_row(row: pd.Series, *, default_source_date: str) -> dict[str, Any
         "fair_pe": _format_number(fair_pe),
         "fair_price": _format_number(fair_price),
         "buy_price": _format_number(buy_price),
+        "valuation_action": valuation_action,
         "source_name": _text(_first(row, "source_name")),
         "source_url": _text(_first(row, "source_url")),
         "notes": _text(_first(row, "notes")),
@@ -186,6 +192,17 @@ def _format_number(value: float) -> str:
         return ""
     rounded = round(value, 4)
     return str(int(rounded)) if rounded.is_integer() else f"{rounded:.4f}".rstrip("0").rstrip(".")
+
+
+def _normalize_action(value: object) -> str:
+    text = _text(value).lower()
+    if not text:
+        return ""
+    if any(token in text for token in ("不能買", "不可買", "no buy", "cannot", "blocked")):
+        return "cannot_buy"
+    if any(token in text for token in ("可買", "買點", "buy")):
+        return "buy_zone"
+    return text
 
 
 def main() -> None:

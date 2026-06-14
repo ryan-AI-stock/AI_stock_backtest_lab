@@ -23,6 +23,7 @@ class ValuationSignal:
     score_adjustment: float = 0.0
     reason: str = ""
     source: str = ""
+    valuation_action: str = ""
 
 
 def load_valuation_signals(
@@ -76,6 +77,7 @@ def _row_to_signal(row: pd.Series, *, current_price: float | None, source: str) 
     fair_pe = _number(row.get("fair_pe") or row.get("target_pe"))
     fair_price = _number(row.get("fair_price") or row.get("target_price"))
     buy_price = _number(row.get("buy_price") or row.get("max_entry_price"))
+    valuation_action = str(row.get("valuation_action") or row.get("entry_status") or "").strip().lower()
     if fair_price <= 0 and fair_pe > 0:
         eps_mid = _midpoint(eps_low, eps_high)
         fair_price = eps_mid * fair_pe if eps_mid > 0 else 0.0
@@ -86,7 +88,11 @@ def _row_to_signal(row: pd.Series, *, current_price: float | None, source: str) 
     gate_passed = True
     adjustment = 0.0
     reason = "估值資料僅供診斷"
-    if current_price_value > 0 and fair_price > 0:
+    if valuation_action in {"cannot_buy", "no_buy", "blocked"}:
+        gate_passed = False
+        reason = "估值來源標示不能買"
+        adjustment = -0.08
+    elif current_price_value > 0 and fair_price > 0:
         safety_margin = fair_price / current_price_value - 1
         if buy_price > 0 and current_price_value > buy_price:
             gate_passed = False
@@ -114,6 +120,7 @@ def _row_to_signal(row: pd.Series, *, current_price: float | None, source: str) 
         score_adjustment=adjustment,
         reason=reason,
         source=source,
+        valuation_action=valuation_action,
     )
 
 
