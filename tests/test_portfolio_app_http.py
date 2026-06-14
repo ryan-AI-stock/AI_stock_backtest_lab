@@ -132,6 +132,49 @@ class PortfolioAppHttpTest(unittest.TestCase):
                 server.server_close()
                 thread.join(timeout=5)
 
+    def test_candidate_review_api_lists_official_monthly_sources(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            signal_dir = tmp_path / "signals" / "20260612"
+            signal_dir.mkdir(parents=True)
+            (signal_dir / "frozen_strategy_signal.json").write_text(
+                json.dumps({"status": "ready", "signal": {"signal_date": "2026-06-12", "target_ticker": "00631L.TW"}}),
+                encoding="utf-8",
+            )
+            server = ThreadingHTTPServer(
+                ("127.0.0.1", 0),
+                create_handler(
+                    store=PortfolioStore(tmp_path / "store.json"),
+                    pool_store=StockPoolStore(tmp_path / "stock_pools.json"),
+                    signal_root=str(tmp_path / "signals"),
+                    observation_root=str(tmp_path / "observations"),
+                    asset_types={"2454.TW": "stock"},
+                    cost_model=TaiwanCostModel(),
+                    command_runner=lambda *args, **kwargs: _Completed(),
+                ),
+            )
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                response = _request(server.server_address[1], "GET", "/api/candidate-reviews")
+                self.assertEqual(response["status"], "ready")
+                self.assertEqual(response["signal_date"], "2026-06-12")
+                self.assertEqual(
+                    {review["pool_id"] for review in response["reviews"]},
+                    {"ai_theme_large_cap_v20260613", "tw50_dynamic_constituents_v0", "large_core_bluechip_v0"},
+                )
+                core_review = next(
+                    review for review in response["reviews"] if review["pool_id"] == "large_core_bluechip_v0"
+                )
+                self.assertEqual(core_review["source_mode"], "core_defensive_candidate_csv")
+                self.assertEqual(core_review["source_status"], "source_ready")
+                self.assertEqual(core_review["source_active_count"], 17)
+                self.assertEqual(core_review["source_watch_count"], 5)
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=5)
+
     def test_observation_api_reads_latest_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)

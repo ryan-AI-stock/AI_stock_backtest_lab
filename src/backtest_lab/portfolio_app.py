@@ -28,6 +28,7 @@ from backtest_lab.portfolio_github import (
     trigger_stock_pool_observation_workflow,
 )
 from backtest_lab.portfolio_store import PortfolioStore
+from backtest_lab.stock_pool_candidate_review import build_candidate_review
 from backtest_lab.stock_pool_store import KNOWN_SYMBOLS, StockPoolStore
 
 
@@ -55,6 +56,9 @@ def create_handler(
                 return
             if path == "/api/pools":
                 self._json(_pool_state())
+                return
+            if path == "/api/candidate-reviews":
+                self._json(_candidate_review_state())
                 return
             if path == "/api/observations":
                 self._json(load_latest_observation_state(observation_root))
@@ -194,6 +198,28 @@ def create_handler(
                 "experiment": [pool for pool in pools if pool.get("ui_section") == "experiment"],
                 "legacy": [pool for pool in pools if pool.get("ui_section") == "legacy"],
             },
+        }
+
+    def _candidate_review_state() -> dict:
+        signal = load_latest_signal(signal_root)
+        signal_date = str((signal or {}).get("signal_date") or "")
+        pools = pool_store.list_pools(latest_signal=signal)
+        if not signal_date:
+            return {
+                "status": "missing_signal",
+                "message": "尚未讀到最新模型訊號日，無法產生月頻候選審核狀態。",
+                "signal_date": "",
+                "reviews": [],
+            }
+        reviews = [
+            build_candidate_review(pool, signal_date=signal_date, resolved_symbols=pool.get("resolved_symbols") or [])
+            for pool in pools
+            if pool.get("ui_section") == "official_core"
+        ]
+        return {
+            "status": "ready",
+            "signal_date": signal_date,
+            "reviews": reviews,
         }
 
     return Handler

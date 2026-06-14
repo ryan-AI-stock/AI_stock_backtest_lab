@@ -53,6 +53,13 @@
     .observation-row.skipped { background: #fff7f5; border-color: #f1c3bd; }
     .observation-title { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
     .observation-title strong { overflow-wrap: anywhere; }
+    .review-list { display: grid; gap: 8px; margin-bottom: 12px; }
+    .review-row { border: 1px solid var(--line); border-radius: 6px; background: #ffffff; padding: 11px; display: grid; gap: 8px; }
+    .review-row.ready { border-left: 5px solid var(--green); }
+    .review-row.waiting { border-left: 5px solid #c78912; }
+    .review-body { display: grid; gap: 6px; color: var(--muted); line-height: 1.55; }
+    .review-candidates { display: flex; flex-wrap: wrap; gap: 6px; }
+    .review-candidate { border: 1px solid #d8e1e7; background: #fbfcfd; border-radius: 5px; padding: 5px 7px; color: var(--ink); font-size: 12px; }
     .empty { color: var(--muted); padding: 10px 0; }
     form { display: grid; gap: 11px; }
     label { display: grid; gap: 6px; color: var(--muted); font-size: 12px; }
@@ -111,6 +118,11 @@
           <span class="pill" id="observation-date">尚未讀取</span>
         </div>
         <div class="observation-list" id="observation-list"></div>
+        <div class="section-head">
+          <h2>月頻候選審核</h2>
+          <span class="pill" id="candidate-review-date">尚未讀取</span>
+        </div>
+        <div class="review-list" id="candidate-review-list"></div>
         <div class="pool-list" id="pool-list"></div>
       </section>
 
@@ -156,6 +168,7 @@
   <script>
     let state = { pools: [], latest_signal: null };
     let observationState = { status: "loading", manifest: null };
+    let candidateReviewState = { status: "loading", reviews: [] };
     let selectedPoolId = null;
     let currentView = "official_core";
 
@@ -182,6 +195,8 @@
       state = await response.json();
       const observationResponse = await fetch("/api/observations");
       observationState = await observationResponse.json();
+      const candidateReviewResponse = await fetch("/api/candidate-reviews");
+      candidateReviewState = await candidateReviewResponse.json();
       if (!selectedPoolId && currentPools().length) selectedPoolId = currentPools()[0].pool_id;
       render();
     }
@@ -208,6 +223,7 @@
         <div class="metric"><div class="metric-label">不可刪除池</div><div class="metric-value">${pools.filter(pool => pool.locked).length}</div></div>
         <div class="metric"><div class="metric-label">自動更新池</div><div class="metric-value">${pools.filter(pool => pool.dynamic_binding || pool.dynamic_constituents).length}</div></div>`;
       renderObservations();
+      renderCandidateReviews();
       byId("pool-list").innerHTML = pools.length
         ? pools.map(pool => poolCard(pool)).join("")
         : `<div class="empty">此頁籤目前沒有股票池。</div>`;
@@ -236,6 +252,47 @@
         .filter(item => sections[item.pool_id] === currentView)
         .map(item => observationRow(item, true)).join("");
       byId("observation-list").innerHTML = generated + skipped || `<div class="empty">manifest 沒有可顯示項目。</div>`;
+    }
+
+    function renderCandidateReviews() {
+      if (currentView !== "official_core") {
+        byId("candidate-review-date").textContent = "正式三池限定";
+        byId("candidate-review-list").innerHTML = `<div class="empty">實驗池不參與三池月頻候選審核。</div>`;
+        return;
+      }
+      const reviews = candidateReviewState.reviews || [];
+      if (!reviews.length) {
+        byId("candidate-review-date").textContent = candidateReviewState.status === "missing_signal" ? "缺訊號日" : "尚無資料";
+        byId("candidate-review-list").innerHTML = `<div class="empty">${candidateReviewState.message || "尚未產生候選審核狀態。"}</div>`;
+        return;
+      }
+      byId("candidate-review-date").textContent = `訊號日 ${candidateReviewState.signal_date}`;
+      byId("candidate-review-list").innerHTML = reviews.map(reviewRow).join("");
+    }
+
+    function reviewRow(review) {
+      const ready = review.source_status === "source_ready";
+      const candidates = (review.source_candidates || []).slice(0, 5);
+      const candidateHtml = candidates.length
+        ? candidates.map(item => `<span class="review-candidate">${item.display}${item.review_status === "watch" ? " · watch" : ""}</span>`).join("")
+        : `<span class="empty">此來源不提供候選明細，依目前池成員或外部成分股資料判斷。</span>`;
+      return `<div class="review-row ${ready ? "ready" : "waiting"}">
+        <div class="observation-title">
+          <strong>${review.pool_name}</strong>
+          <span class="pill ${ready ? "green" : ""}">${review.decision}</span>
+        </div>
+        <div class="pool-meta">
+          <span class="pill">${review.frequency}</span>
+          <span class="pill">${review.source_mode}</span>
+          <span class="pill">${review.source_status}</span>
+          <span class="pill">目前 ${review.candidate_count} 檔</span>
+          <span class="pill">來源 active ${review.source_active_count || 0} / watch ${review.source_watch_count || 0}</span>
+        </div>
+        <div class="review-body">
+          <div>來源：${review.source_path || "由動態成分股或現有池設定提供"}</div>
+          <div class="review-candidates">${candidateHtml}</div>
+        </div>
+      </div>`;
     }
 
     function observationRow(item, skipped) {
