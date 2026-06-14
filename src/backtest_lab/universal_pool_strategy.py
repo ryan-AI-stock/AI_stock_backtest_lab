@@ -195,9 +195,16 @@ def score_universal_candidates(
                 score_mode=params.score_mode,
                 max_stock_drawdown_20d=max(candidate_params.max_stock_drawdown_20d, params.max_stock_drawdown_20d),
                 risk_signal_weight=params.risk_signal_weight,
+                valuation_signal_weight=params.valuation_signal_weight,
+                require_valuation_gate=params.require_valuation_gate,
             )
         else:
-            candidate_params = replace(candidate_params, risk_signal_weight=params.risk_signal_weight)
+            candidate_params = replace(
+                candidate_params,
+                risk_signal_weight=params.risk_signal_weight,
+                valuation_signal_weight=params.valuation_signal_weight,
+                require_valuation_gate=params.require_valuation_gate,
+            )
         scores[ticker] = score_universal_candidate(
             ticker=ticker,
             prices=prices,
