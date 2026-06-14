@@ -178,6 +178,7 @@ class StockPoolObservationTest(unittest.TestCase):
                         "strategy_preset": "universal_pool_custom",
                         "role_name": "測試專家",
                         "role_description": "確認角色會進入輸出",
+                        "candidate_review_frequency": "monthly",
                         "candidate_update_policy": "測試更新政策",
                         "resolved_symbols": [symbol_entry("2330.TW", source="manual")],
                     },
@@ -196,6 +197,7 @@ class StockPoolObservationTest(unittest.TestCase):
 
             self.assertEqual(len(manifest["generated"]), 1)
             self.assertEqual(manifest["generated"][0]["role_name"], "測試專家")
+            self.assertEqual(manifest["generated"][0]["candidate_review_frequency"], "monthly")
             self.assertEqual(manifest["generated"][0]["candidate_update_policy"], "測試更新政策")
             self.assertEqual(len(manifest["generated"][0]["top_candidates"]), 1)
             self.assertEqual(manifest["generated"][0]["top_candidates"][0]["display"], "台積電(2330)")
@@ -207,6 +209,7 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertTrue((Path(manifest["output_root"]) / "stock_pool_observation_report.md").exists())
             report_text = (Path(manifest["output_root"]) / "stock_pool_observation_report.md").read_text(encoding="utf-8")
             self.assertIn("測試專家", report_text)
+            self.assertIn("月頻", report_text)
             self.assertTrue((Path(manifest["output_root"]) / "AI股票池觀察總覽_最新版_v20260612.pdf").exists())
             self.assertTrue(
                 (Path(manifest["generated"][0]["output_dir"]) / "stock_pool_observation.json").exists()

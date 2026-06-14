@@ -380,6 +380,7 @@ def run_stock_pool_observation_batch(
                     "pool_name": observation.pool_name,
                     "role_name": pool.get("role_name", ""),
                     "role_description": pool.get("role_description", ""),
+                    "candidate_review_frequency": pool.get("candidate_review_frequency", ""),
                     "candidate_update_policy": pool.get("candidate_update_policy", ""),
                     "dispatch": dispatch_pool(pool),
                     "signal_date": observation.signal_date,
@@ -400,6 +401,7 @@ def run_stock_pool_observation_batch(
                     "pool_name": pool.get("name"),
                     "role_name": pool.get("role_name", ""),
                     "role_description": pool.get("role_description", ""),
+                    "candidate_review_frequency": pool.get("candidate_review_frequency", ""),
                     "candidate_update_policy": pool.get("candidate_update_policy", ""),
                     "dispatch": dispatch_pool(pool),
                     "reason": str(error),
@@ -426,6 +428,7 @@ def write_stock_pool_observation_batch_summary(root: Path, manifest: dict[str, A
                 "pool_short_name": _short_pool_name(item),
                 "role_name": item.get("role_name", ""),
                 "role_description": item.get("role_description", ""),
+                "candidate_review_frequency": item.get("candidate_review_frequency", ""),
                 "candidate_update_policy": item.get("candidate_update_policy", ""),
                 "signal_date": item.get("signal_date", manifest.get("signal_date", "")),
                 "top_display": item.get("top_display", ""),
@@ -450,6 +453,7 @@ def write_stock_pool_observation_batch_summary(root: Path, manifest: dict[str, A
                 "pool_short_name": _short_pool_name(item),
                 "role_name": item.get("role_name", ""),
                 "role_description": item.get("role_description", ""),
+                "candidate_review_frequency": item.get("candidate_review_frequency", ""),
                 "candidate_update_policy": item.get("candidate_update_policy", ""),
                 "signal_date": manifest.get("signal_date", ""),
                 "top_display": "",
@@ -485,8 +489,8 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
         f"- 三池共識：{consensus.get('winner_display') or '沒有形成明確共識'}",
         f"- 表決原因：{consensus.get('reason') or '尚未產生三池表決結果'}",
         "",
-        "| 狀態 | 股票池 | 角色 | 前三名 / 跳過原因 | 來源摘要 | 缺價股票 |",
-        "| --- | --- | --- | --- | --- | --- |",
+        "| 狀態 | 股票池 | 角色 | 成員檢查 | 前三名 / 跳過原因 | 來源摘要 | 缺價股票 |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
     ]
     for row in rows:
         if row["status"] == "generated":
@@ -496,7 +500,8 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
             target = row["reason"] or "skipped"
             missing = "-"
         role = row.get("role_name") or "-"
-        lines.append(f"| {row['status']} | {row.get('pool_short_name') or row['pool_name']} | {role} | {target} | {row.get('source_summary') or '-'} | {missing} |")
+        review_frequency = _candidate_review_label(row.get("candidate_review_frequency"))
+        lines.append(f"| {row['status']} | {row.get('pool_short_name') or row['pool_name']} | {role} | {review_frequency} | {target} | {row.get('source_summary') or '-'} | {missing} |")
     lines.extend(
         [
             "",
@@ -694,7 +699,10 @@ def _draw_pool_top3_sections(ax, rows: list[dict[str, Any]], *, start_y: float =
             transform=ax.transAxes,
         )
         y -= 0.054
+        review_label = _candidate_review_label(row.get("candidate_review_frequency"))
         role_line = "：".join(part for part in [row.get("role_name") or "", row.get("role_description") or ""] if part)
+        if review_label != "-":
+            role_line = f"{role_line}｜成員檢查：{review_label}" if role_line else f"成員檢查：{review_label}"
         if role_line:
             ax.text(x0 + 0.012, y + 0.015, role_line[:72], color="#52616b", fontsize=8.3, transform=ax.transAxes)
             y -= 0.02
@@ -807,6 +815,17 @@ def _top_candidates_text(candidates: list[dict[str, Any]]) -> str:
         f"{row.get('rank')}.{row.get('display')}({float(row.get('score') or 0):.2f})"
         for row in candidates[:3]
     )
+
+
+def _candidate_review_label(value: object) -> str:
+    key = str(value or "").strip().lower()
+    if key == "monthly":
+        return "月頻"
+    if key == "weekly":
+        return "週頻"
+    if key == "daily":
+        return "日頻"
+    return str(value or "").strip() or "-"
 
 
 def _short_pool_name(item: dict[str, Any]) -> str:

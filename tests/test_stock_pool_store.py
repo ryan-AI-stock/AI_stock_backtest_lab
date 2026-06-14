@@ -34,6 +34,10 @@ class StockPoolStoreTest(unittest.TestCase):
         self.assertEqual(official["ai_theme_large_cap_v20260613"]["role_name"], "主線攻擊專家")
         self.assertEqual(official["tw50_dynamic_constituents_v0"]["role_name"], "市場廣度專家")
         self.assertEqual(core["role_name"], "核心防守與風格轉移專家")
+        self.assertEqual(
+            {pool["candidate_review_frequency"] for pool in official.values()},
+            {"monthly"},
+        )
         self.assertEqual(core["strategy_preset"], "core_defensive_style_v1")
         self.assertFalse(large["operational_observation"])
         self.assertFalse(scorecard["operational_observation"])
