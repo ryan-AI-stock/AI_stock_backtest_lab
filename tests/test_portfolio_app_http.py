@@ -11,6 +11,7 @@ from pathlib import Path
 import test_paths  # noqa: F401
 
 from backtest_lab.costs import TaiwanCostModel
+from backtest_lab.candidate_review_decision_store import CandidateReviewDecisionStore
 from backtest_lab.portfolio_app import PortfolioStore, create_handler, load_latest_observation_state
 from backtest_lab.stock_pool_store import StockPoolStore
 
@@ -47,6 +48,7 @@ class PortfolioAppHttpTest(unittest.TestCase):
                 create_handler(
                     store=PortfolioStore(tmp_path / "store.json"),
                     pool_store=StockPoolStore(tmp_path / "stock_pools.json"),
+                    candidate_decision_store=CandidateReviewDecisionStore(tmp_path / "candidate_review_decisions.json"),
                     signal_root=str(tmp_path / "signals"),
                     observation_root=str(tmp_path / "observations"),
                     asset_types={"2454.TW": "stock"},
@@ -170,6 +172,27 @@ class PortfolioAppHttpTest(unittest.TestCase):
                 self.assertEqual(core_review["source_status"], "source_ready")
                 self.assertEqual(core_review["source_active_count"], 17)
                 self.assertEqual(core_review["source_watch_count"], 5)
+
+                recorded = _request(
+                    server.server_address[1],
+                    "POST",
+                    "/api/candidate-review-decisions",
+                    {
+                        "pool_id": "large_core_bluechip_v0",
+                        "pool_name": "核心防守風格池 v1",
+                        "ticker": "2412.TW",
+                        "display": "中華電(2412)",
+                        "decision": "keep_current",
+                        "signal_date": "2026-06-12",
+                        "note": "保留作為防守代表",
+                    },
+                )
+                key = "large_core_bluechip_v0|2412.TW"
+                self.assertEqual(recorded["recorded"]["decision_label"], "維持現有")
+                self.assertEqual(recorded["latest_by_key"][key]["note"], "保留作為防守代表")
+
+                decisions = _request(server.server_address[1], "GET", "/api/candidate-review-decisions")
+                self.assertEqual(decisions["latest_by_key"][key]["decision"], "keep_current")
             finally:
                 server.shutdown()
                 server.server_close()

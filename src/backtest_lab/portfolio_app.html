@@ -28,6 +28,9 @@
     button { min-height: 36px; border: 1px solid var(--navy); border-radius: 5px; background: var(--navy); color: white; padding: 7px 12px; font-weight: 700; cursor: pointer; }
     button.secondary { background: white; color: var(--navy); }
     button.danger { background: white; color: var(--red); border-color: var(--red); }
+    button.micro { min-height: 28px; padding: 4px 7px; font-size: 12px; border-color: #9caeba; background: white; color: var(--navy); }
+    button.micro.selected { border-color: var(--green); background: #eefaf6; color: var(--green); }
+    button.micro.reject { border-color: #d69a93; color: var(--red); }
     button:disabled { opacity: .45; cursor: not-allowed; }
     input, textarea, select { width: 100%; border: 1px solid #c8d2d9; border-radius: 5px; padding: 9px 10px; background: white; color: var(--ink); }
     textarea { min-height: 180px; resize: vertical; line-height: 1.55; }
@@ -59,7 +62,10 @@
     .review-row.waiting { border-left: 5px solid #c78912; }
     .review-body { display: grid; gap: 6px; color: var(--muted); line-height: 1.55; }
     .review-candidates { display: flex; flex-wrap: wrap; gap: 6px; }
-    .review-candidate { border: 1px solid #d8e1e7; background: #fbfcfd; border-radius: 5px; padding: 5px 7px; color: var(--ink); font-size: 12px; }
+    .review-candidate { border: 1px solid #d8e1e7; background: #fbfcfd; border-radius: 5px; padding: 7px; color: var(--ink); font-size: 12px; display: grid; gap: 6px; min-width: 170px; }
+    .review-candidate-title { font-weight: 800; }
+    .review-decision { color: var(--green); font-weight: 700; }
+    .mini-actions { display: flex; flex-wrap: wrap; gap: 5px; }
     .empty { color: var(--muted); padding: 10px 0; }
     form { display: grid; gap: 11px; }
     label { display: grid; gap: 6px; color: var(--muted); font-size: 12px; }
@@ -169,6 +175,7 @@
     let state = { pools: [], latest_signal: null };
     let observationState = { status: "loading", manifest: null };
     let candidateReviewState = { status: "loading", reviews: [] };
+    let candidateDecisionState = { decisions: [], latest_by_key: {} };
     let selectedPoolId = null;
     let currentView = "official_core";
 
@@ -197,6 +204,8 @@
       observationState = await observationResponse.json();
       const candidateReviewResponse = await fetch("/api/candidate-reviews");
       candidateReviewState = await candidateReviewResponse.json();
+      const candidateDecisionResponse = await fetch("/api/candidate-review-decisions");
+      candidateDecisionState = await candidateDecisionResponse.json();
       if (!selectedPoolId && currentPools().length) selectedPoolId = currentPools()[0].pool_id;
       render();
     }
@@ -231,6 +240,12 @@
         node.addEventListener("click", () => {
           selectedPoolId = node.dataset.poolId;
           render();
+        });
+      });
+      document.querySelectorAll("[data-review-action]").forEach(node => {
+        node.addEventListener("click", event => {
+          event.stopPropagation();
+          recordCandidateDecision(node);
         });
       });
       renderEditor();
@@ -274,7 +289,7 @@
       const ready = review.source_status === "source_ready";
       const candidates = (review.source_candidates || []).slice(0, 5);
       const candidateHtml = candidates.length
-        ? candidates.map(item => `<span class="review-candidate">${item.display}${item.review_status === "watch" ? " · watch" : ""}</span>`).join("")
+        ? candidates.map(item => reviewCandidate(review, item)).join("")
         : `<span class="empty">此來源不提供候選明細，依目前池成員或外部成分股資料判斷。</span>`;
       return `<div class="review-row ${ready ? "ready" : "waiting"}">
         <div class="observation-title">
@@ -291,6 +306,26 @@
         <div class="review-body">
           <div>來源：${review.source_path || "由動態成分股或現有池設定提供"}</div>
           <div class="review-candidates">${candidateHtml}</div>
+        </div>
+      </div>`;
+    }
+
+    function decisionKey(poolId, ticker) {
+      return `${poolId}|${ticker}`;
+    }
+
+    function reviewCandidate(review, item) {
+      const current = candidateDecisionState.latest_by_key?.[decisionKey(review.pool_id, item.ticker)];
+      const decisionText = current ? `<div class="review-decision">${current.decision_label} · ${current.signal_date}</div>` : "";
+      const selected = decision => current?.decision === decision ? " selected" : "";
+      return `<div class="review-candidate">
+        <div class="review-candidate-title">${item.display}${item.review_status === "watch" ? " · watch" : ""}</div>
+        ${decisionText}
+        <div class="mini-actions">
+          <button class="micro${selected("approve_add")}" type="button" data-review-action="approve_add" data-pool-id="${review.pool_id}" data-pool-name="${review.pool_name}" data-ticker="${item.ticker}" data-display="${item.display}" data-source-status="${review.source_status}">列入</button>
+          <button class="micro${selected("keep_watch")}" type="button" data-review-action="keep_watch" data-pool-id="${review.pool_id}" data-pool-name="${review.pool_name}" data-ticker="${item.ticker}" data-display="${item.display}" data-source-status="${review.source_status}">觀察</button>
+          <button class="micro${selected("keep_current")}" type="button" data-review-action="keep_current" data-pool-id="${review.pool_id}" data-pool-name="${review.pool_name}" data-ticker="${item.ticker}" data-display="${item.display}" data-source-status="${review.source_status}">維持</button>
+          <button class="micro reject${selected("reject")}" type="button" data-review-action="reject" data-pool-id="${review.pool_id}" data-pool-name="${review.pool_name}" data-ticker="${item.ticker}" data-display="${item.display}" data-source-status="${review.source_status}">排除</button>
         </div>
       </div>`;
     }
@@ -447,6 +482,36 @@
 
     byId("sync-pools").addEventListener("click", () => syncPools(false));
     byId("sync-pools-run").addEventListener("click", () => syncPools(true));
+
+    async function recordCandidateDecision(node) {
+      const status = byId("status");
+      const note = window.prompt("補充備註，可留空", "") || "";
+      status.textContent = "記錄候選審核決策中...";
+      status.className = "status";
+      const response = await fetch("/api/candidate-review-decisions", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          pool_id: node.dataset.poolId,
+          pool_name: node.dataset.poolName,
+          ticker: node.dataset.ticker,
+          display: node.dataset.display,
+          decision: node.dataset.reviewAction,
+          signal_date: candidateReviewState.signal_date || state.latest_signal?.signal_date || "",
+          source_status: node.dataset.sourceStatus,
+          note
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        status.textContent = data.error || "候選審核決策記錄失敗";
+        status.className = "status error";
+        return;
+      }
+      candidateDecisionState = data;
+      status.textContent = `已記錄：${data.recorded.display} · ${data.recorded.decision_label}`;
+      render();
+    }
 
     refresh();
   </script>
