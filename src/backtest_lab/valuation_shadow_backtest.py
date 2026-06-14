@@ -19,6 +19,7 @@ from backtest_lab.universal_pool_strategy import (
     infer_pool_profile,
     score_universal_candidates,
 )
+from backtest_lab.valuation_readiness import build_valuation_readiness, write_valuation_readiness_outputs
 from backtest_lab.valuation_source import load_valuation_signals
 
 
@@ -181,6 +182,17 @@ def run_valuation_shadow_backtest(
     asset_types = {symbol["ticker"]: symbol.get("asset_type", "stock") for symbol in pool.get("resolved_symbols", [])}
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
+    readiness = _build_readiness_for_shadow_run(
+        valuation_data=valuation_data,
+        start_date=start_date,
+        end_date=end_date,
+        tickers=tickers,
+    )
+    write_valuation_readiness_outputs(
+        readiness,
+        output_json=output / "valuation_readiness.json",
+        output_csv=output / "valuation_coverage.csv",
+    )
     summary_rows: list[dict[str, Any]] = []
     manifest: dict[str, Any] = {
         "pool_id": pool.get("pool_id", ""),
@@ -189,6 +201,7 @@ def run_valuation_shadow_backtest(
         "end_date": end_date,
         "initial_cash": initial_cash,
         "valuation_data": str(valuation_data or ""),
+        "valuation_readiness": {key: value for key, value in readiness.items() if key != "coverage"},
         "rebalance_frequency": rebalance_frequency,
         "missing_price_tickers": missing,
         "variants": [],
@@ -244,6 +257,8 @@ def _write_report(path: Path, manifest: dict[str, Any], summary_rows: list[dict[
         f"- 股票池：{manifest.get('pool_name')} ({manifest.get('pool_id')})",
         f"- 區間：{manifest.get('start_date')} ~ {manifest.get('end_date')}",
         f"- 估值資料：{manifest.get('valuation_data') or '未提供'}",
+        f"- 估值資料狀態：{(manifest.get('valuation_readiness') or {}).get('status', 'not_ready')}",
+        f"- 估值平均覆蓋率：{(manifest.get('valuation_readiness') or {}).get('average_coverage_ratio', 0.0):.2%}",
         f"- 頻率：{manifest.get('rebalance_frequency')}",
         "",
         "本報告用來檢查 EPS / 合理價 / 買點濾網是否改善策略，不代表正式模型已替換。",
@@ -257,6 +272,36 @@ def _write_report(path: Path, manifest: dict[str, Any], summary_rows: list[dict[
             f"{row['max_drawdown_pct']:.2f}% | {row['trade_count']} | {row['valuation_signal_avg_hits_per_rebalance']:.2f} |"
         )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _build_readiness_for_shadow_run(
+    *,
+    valuation_data: str | Path | None,
+    start_date: str,
+    end_date: str,
+    tickers: list[str],
+) -> dict[str, Any]:
+    if not valuation_data:
+        return {
+            "status": "not_ready",
+            "valuation_data": "",
+            "start_date": start_date,
+            "end_date": end_date,
+            "row_count": 0,
+            "expected_ticker_count": len(tickers),
+            "average_coverage_ratio": 0.0,
+            "min_average_coverage_ratio": 0.0,
+            "first_source_date": "",
+            "last_source_date": "",
+            "warnings": ["valuation_data_not_provided"],
+            "coverage": [],
+        }
+    return build_valuation_readiness(
+        valuation_data=valuation_data,
+        start_date=start_date,
+        end_date=end_date,
+        tickers=tickers,
+    )
 
 
 def _previous_available_date(prices_by_ticker: dict[str, pd.DataFrame], trade_date: pd.Timestamp) -> pd.Timestamp:

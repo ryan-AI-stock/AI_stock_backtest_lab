@@ -100,9 +100,12 @@ class ValuationShadowBacktestTest(unittest.TestCase):
 
             root = Path(tmp) / "out"
             self.assertEqual(manifest["pool_id"], "test_pool")
+            self.assertEqual(manifest["valuation_readiness"]["status"], "partial")
             self.assertTrue((root / "valuation_shadow_summary.csv").exists())
             self.assertTrue((root / "valuation_shadow_manifest.json").exists())
             self.assertTrue((root / "valuation_shadow_report.md").exists())
+            self.assertTrue((root / "valuation_readiness.json").exists())
+            self.assertTrue((root / "valuation_coverage.csv").exists())
             self.assertTrue((root / "valuation_gate" / "signals.csv").exists())
             self.assertTrue((root / "valuation_gate" / "trades.csv").exists())
 
