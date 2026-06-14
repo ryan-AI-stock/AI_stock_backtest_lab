@@ -66,6 +66,8 @@
     .review-candidate-title { font-weight: 800; }
     .review-decision { color: var(--green); font-weight: 700; }
     .mini-actions { display: flex; flex-wrap: wrap; gap: 5px; }
+    .draft-list { display: grid; gap: 6px; margin-top: 8px; }
+    .draft-row { border: 1px dashed #c8d2d9; border-radius: 5px; padding: 8px; background: #fbfcfd; line-height: 1.55; }
     .empty { color: var(--muted); padding: 10px 0; }
     form { display: grid; gap: 11px; }
     label { display: grid; gap: 6px; color: var(--muted); font-size: 12px; }
@@ -126,9 +128,13 @@
         <div class="observation-list" id="observation-list"></div>
         <div class="section-head">
           <h2>月頻候選審核</h2>
-          <span class="pill" id="candidate-review-date">尚未讀取</span>
+          <div class="actions">
+            <span class="pill" id="candidate-review-date">尚未讀取</span>
+            <button class="secondary" type="button" id="preview-review-draft">查看套用草案</button>
+          </div>
         </div>
         <div class="review-list" id="candidate-review-list"></div>
+        <div class="draft-list" id="candidate-review-draft"></div>
         <div class="pool-list" id="pool-list"></div>
       </section>
 
@@ -176,6 +182,7 @@
     let observationState = { status: "loading", manifest: null };
     let candidateReviewState = { status: "loading", reviews: [] };
     let candidateDecisionState = { decisions: [], latest_by_key: {} };
+    let candidateDraftState = null;
     let selectedPoolId = null;
     let currentView = "official_core";
 
@@ -233,6 +240,7 @@
         <div class="metric"><div class="metric-label">自動更新池</div><div class="metric-value">${pools.filter(pool => pool.dynamic_binding || pool.dynamic_constituents).length}</div></div>`;
       renderObservations();
       renderCandidateReviews();
+      renderCandidateDraft();
       byId("pool-list").innerHTML = pools.length
         ? pools.map(pool => poolCard(pool)).join("")
         : `<div class="empty">此頁籤目前沒有股票池。</div>`;
@@ -328,6 +336,32 @@
           <button class="micro reject${selected("reject")}" type="button" data-review-action="reject" data-pool-id="${review.pool_id}" data-pool-name="${review.pool_name}" data-ticker="${item.ticker}" data-display="${item.display}" data-source-status="${review.source_status}">排除</button>
         </div>
       </div>`;
+    }
+
+    function renderCandidateDraft() {
+      const target = byId("candidate-review-draft");
+      if (currentView !== "official_core") {
+        target.innerHTML = "";
+        return;
+      }
+      if (!candidateDraftState) {
+        target.innerHTML = "";
+        return;
+      }
+      const changes = candidateDraftState.changes || [];
+      const skipped = candidateDraftState.skipped || [];
+      if (!changes.length && !skipped.length) {
+        target.innerHTML = `<div class="empty">目前沒有可套用的候選審核決策草案。</div>`;
+        return;
+      }
+      const changeRows = changes.map(item => `<div class="draft-row">
+        <strong>${item.display}</strong> · ${item.pool_name}<br>
+        ${item.action}：${item.current_status || "new"} -> ${item.draft_status}，來源 ${item.source_path}
+      </div>`).join("");
+      const skippedRows = skipped.map(item => `<div class="draft-row">
+        <strong>${item.display || item.ticker}</strong> · 跳過：${item.reason}
+      </div>`).join("");
+      target.innerHTML = changeRows + skippedRows;
     }
 
     function observationRow(item, skipped) {
@@ -482,6 +516,7 @@
 
     byId("sync-pools").addEventListener("click", () => syncPools(false));
     byId("sync-pools-run").addEventListener("click", () => syncPools(true));
+    byId("preview-review-draft").addEventListener("click", previewCandidateDecisionDraft);
 
     async function recordCandidateDecision(node) {
       const status = byId("status");
@@ -509,7 +544,24 @@
         return;
       }
       candidateDecisionState = data;
+      candidateDraftState = null;
       status.textContent = `已記錄：${data.recorded.display} · ${data.recorded.decision_label}`;
+      render();
+    }
+
+    async function previewCandidateDecisionDraft() {
+      const status = byId("status");
+      status.textContent = "產生候選審核套用草案中...";
+      status.className = "status";
+      const response = await fetch("/api/candidate-review-decision-draft");
+      const data = await response.json();
+      if (!response.ok) {
+        status.textContent = data.error || "草案產生失敗";
+        status.className = "status error";
+        return;
+      }
+      candidateDraftState = data;
+      status.textContent = `草案完成：${data.change_count} 筆變更，${data.skipped_count} 筆跳過`;
       render();
     }
 

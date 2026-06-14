@@ -8,6 +8,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
 
+from backtest_lab.candidate_review_decision_draft import build_candidate_review_decision_draft
 from backtest_lab.candidate_review_decision_store import CandidateReviewDecisionStore
 from backtest_lab.config import load_config
 from backtest_lab.portfolio_app_settings import (
@@ -66,6 +67,9 @@ def create_handler(
                 return
             if path == "/api/candidate-review-decisions":
                 self._json(candidate_decision_store.state())
+                return
+            if path == "/api/candidate-review-decision-draft":
+                self._json(_candidate_review_decision_draft())
                 return
             if path == "/api/observations":
                 self._json(load_latest_observation_state(observation_root))
@@ -234,6 +238,15 @@ def create_handler(
             "signal_date": signal_date,
             "reviews": reviews,
         }
+
+    def _candidate_review_decision_draft() -> dict:
+        signal = load_latest_signal(signal_root)
+        pools = pool_store.list_pools(latest_signal=signal)
+        decision_state = candidate_decision_store.state()
+        return build_candidate_review_decision_draft(
+            pools=pools,
+            decisions=list(decision_state.get("decisions") or []),
+        )
 
     return Handler
 

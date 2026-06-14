@@ -193,6 +193,11 @@ class PortfolioAppHttpTest(unittest.TestCase):
 
                 decisions = _request(server.server_address[1], "GET", "/api/candidate-review-decisions")
                 self.assertEqual(decisions["latest_by_key"][key]["decision"], "keep_current")
+
+                draft = _request(server.server_address[1], "GET", "/api/candidate-review-decision-draft")
+                self.assertEqual(draft["change_count"], 1)
+                self.assertEqual(draft["changes"][0]["ticker"], "2412.TW")
+                self.assertEqual(draft["changes"][0]["draft_status"], "active")
             finally:
                 server.shutdown()
                 server.server_close()
