@@ -11,6 +11,7 @@ import test_paths  # noqa: F401
 from backtest_lab.stock_pool_candidate_review import (
     build_candidate_review,
     load_ai_theme_candidate_source,
+    load_core_defensive_candidate_source,
     write_candidate_reviews,
 )
 from backtest_lab.stock_pool_store import StockPoolStore, symbol_entry
@@ -53,6 +54,43 @@ class StockPoolCandidateReviewTest(unittest.TestCase):
             candidates = load_ai_theme_candidate_source(path, signal_date="2026-06-12")
 
         self.assertEqual([item["ticker"] for item in candidates], ["2330.TW"])
+
+    def test_core_defensive_pool_uses_monthly_candidate_csv_source(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            pool = next(
+                item
+                for item in StockPoolStore(Path(tmp) / "stock_pools.json").list_pools()
+                if item["pool_id"] == "large_core_bluechip_v0"
+            )
+
+        review = build_candidate_review(pool, signal_date="2026-06-12")
+
+        self.assertEqual(review["frequency"], "monthly")
+        self.assertEqual(review["source_mode"], "core_defensive_candidate_csv")
+        self.assertEqual(review["source_status"], "source_ready")
+        self.assertEqual(review["decision"], "monthly_auto_review_available")
+        self.assertIn("跨產業代表性", review["required_evidence"])
+        self.assertEqual(review["candidate_count"], 17)
+        self.assertEqual(review["source_active_count"], 17)
+        self.assertGreaterEqual(review["source_watch_count"], 1)
+
+    def test_core_defensive_candidate_source_ignores_future_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "core_defensive_candidates.csv"
+            path.write_text(
+                "\n".join(
+                    [
+                        "effective_date,ticker,symbol,name,style_role,review_status,is_current_member,defensive_score,stability_score,cross_sector_score,fundamental_score,review_reason",
+                        "2026-06-01,2412.TW,2412,中華電,電信防守核心,active,true,92,94,82,84,ready",
+                        "2026-07-01,9999.TW,9999,未來防守股,測試,watch,false,99,99,99,99,future",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            candidates = load_core_defensive_candidate_source(path, signal_date="2026-06-12")
+
+        self.assertEqual([item["ticker"] for item in candidates], ["2412.TW"])
 
     def test_tw50_pool_marks_point_in_time_source_ready(self) -> None:
         pool = {

@@ -95,7 +95,7 @@ def _default_source_mode(pool: dict[str, Any]) -> str:
 
 
 def _source_status(pool: dict[str, Any], *, source_mode: str) -> str:
-    if source_mode == "ai_theme_candidate_csv":
+    if source_mode in {"ai_theme_candidate_csv", "core_defensive_candidate_csv"}:
         config = pool.get("candidate_review_config") or {}
         source_path = str(config.get("path") or "").strip()
         return "source_ready" if source_path and Path(source_path).exists() else "source_missing"
@@ -110,12 +110,15 @@ def _source_status(pool: dict[str, Any], *, source_mode: str) -> str:
 
 def _source_payload(pool: dict[str, Any], *, source_mode: str, signal_date: str) -> dict[str, Any]:
     config = pool.get("candidate_review_config") or {}
-    if source_mode != "ai_theme_candidate_csv":
+    if source_mode not in {"ai_theme_candidate_csv", "core_defensive_candidate_csv"}:
         return {"source_status": _source_status(pool, source_mode=source_mode)}
     path = Path(str(config.get("path") or ""))
     if not path.exists():
         return {"source_status": "source_missing", "source_path": str(path)}
-    candidates = load_ai_theme_candidate_source(path, signal_date=signal_date)
+    if source_mode == "ai_theme_candidate_csv":
+        candidates = load_ai_theme_candidate_source(path, signal_date=signal_date)
+    else:
+        candidates = load_core_defensive_candidate_source(path, signal_date=signal_date)
     return {
         "source_status": "source_ready",
         "source_path": str(path),
@@ -127,6 +130,33 @@ def _source_payload(pool: dict[str, Any], *, source_mode: str, signal_date: str)
 
 
 def load_ai_theme_candidate_source(path: str | Path, *, signal_date: str) -> list[dict[str, Any]]:
+    return _load_candidate_source(
+        path,
+        signal_date=signal_date,
+        role_column="theme_role",
+        score_columns=("ai_exposure_score", "liquidity_score", "fundamental_score", "theme_strength_score"),
+        sort_columns=("ai_exposure_score", "theme_strength_score", "liquidity_score"),
+    )
+
+
+def load_core_defensive_candidate_source(path: str | Path, *, signal_date: str) -> list[dict[str, Any]]:
+    return _load_candidate_source(
+        path,
+        signal_date=signal_date,
+        role_column="style_role",
+        score_columns=("defensive_score", "stability_score", "cross_sector_score", "fundamental_score"),
+        sort_columns=("defensive_score", "stability_score", "cross_sector_score"),
+    )
+
+
+def _load_candidate_source(
+    path: str | Path,
+    *,
+    signal_date: str,
+    role_column: str,
+    score_columns: tuple[str, ...],
+    sort_columns: tuple[str, ...],
+) -> list[dict[str, Any]]:
     frame = pd.read_csv(path, dtype=str).fillna("")
     if frame.empty:
         return []
@@ -137,26 +167,21 @@ def load_ai_theme_candidate_source(path: str | Path, *, signal_date: str) -> lis
     rows = []
     for _, row in frame.iterrows():
         ticker = normalize_ticker(str(row.get("ticker") or row.get("symbol") or ""))
-        rows.append(
-            {
-                "ticker": ticker,
-                "display": _display_from_row(row, ticker),
-                "theme_role": str(row.get("theme_role") or "").strip(),
-                "review_status": str(row.get("review_status") or "").strip().lower() or "watch",
-                "is_current_member": _truthy(row.get("is_current_member")),
-                "ai_exposure_score": _number(row.get("ai_exposure_score")),
-                "liquidity_score": _number(row.get("liquidity_score")),
-                "fundamental_score": _number(row.get("fundamental_score")),
-                "theme_strength_score": _number(row.get("theme_strength_score")),
-                "review_reason": str(row.get("review_reason") or "").strip(),
-            }
-        )
+        payload = {
+            "ticker": ticker,
+            "display": _display_from_row(row, ticker),
+            "role": str(row.get(role_column) or "").strip(),
+            "review_status": str(row.get("review_status") or "").strip().lower() or "watch",
+            "is_current_member": _truthy(row.get("is_current_member")),
+            "review_reason": str(row.get("review_reason") or "").strip(),
+        }
+        for column in score_columns:
+            payload[column] = _number(row.get(column))
+        rows.append(payload)
     rows.sort(
         key=lambda item: (
             item["review_status"] == "active",
-            item["ai_exposure_score"],
-            item["theme_strength_score"],
-            item["liquidity_score"],
+            *[item.get(column, 0.0) for column in sort_columns],
             item["ticker"],
         ),
         reverse=True,

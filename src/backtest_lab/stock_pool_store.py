@@ -240,7 +240,8 @@ def default_stock_pool_data() -> dict[str, Any]:
                 "role_description": "檢查資金是否從主線攻擊轉向金融、電信、消費、傳產、航運或半導體核心股，偏好較不過熱、回撤較受控的核心權值。",
                 "candidate_review_frequency": "monthly",
                 "candidate_review_config": {
-                    "source_mode": "manual_evidence_gate",
+                    "source_mode": "core_defensive_candidate_csv",
+                    "path": "data/core_defensive_candidates.csv",
                     "required_evidence": [
                         "跨產業代表性",
                         "低波動或回撤控制特性",
