@@ -592,7 +592,7 @@ def _draw_observation_summary_pdf_page(ax, manifest: dict[str, Any], rows: list[
             plt.Rectangle((x, 0.74), 0.2, 0.085, facecolor="white", edgecolor="#d9e0e5", linewidth=1, transform=ax.transAxes)
         )
         ax.text(x + 0.014, 0.795, label, color="#66737d", fontsize=9.5, transform=ax.transAxes)
-        ax.text(x + 0.014, 0.767, str(value)[:18], color=color, fontsize=11.2, fontweight="bold", transform=ax.transAxes)
+        ax.text(x + 0.014, 0.767, _compact_display(str(value), limit=18), color=color, fontsize=11.2, fontweight="bold", transform=ax.transAxes)
 
     ax.text(0.06, 0.69, f"表決原因：{consensus_reason[:48]}", color="#52616b", fontsize=10, transform=ax.transAxes)
     _draw_consensus_decision_panel(ax, manifest, rows)
@@ -722,8 +722,8 @@ def _draw_pool_top3_sections(ax, rows: list[dict[str, Any]], *, start_y: float =
     skipped_rows = [row for row in rows if row["status"] != "generated"]
     for row in generated_rows[:3]:
         ax.add_patch(plt.Rectangle((x0, y - 0.025), 0.88, 0.035, facecolor="#e9f0f5", edgecolor="#d7e0e7", transform=ax.transAxes))
-        title = f"{row.get('pool_short_name') or row['pool_name']}｜{row['pool_name']}"
-        ax.text(x0 + 0.012, y - 0.013, title[:34], color="#17212a", fontsize=11.2, fontweight="bold", transform=ax.transAxes)
+        title = row.get("pool_short_name") or _short_pool_name(row)
+        ax.text(x0 + 0.012, y - 0.013, _compact_display(title, limit=18), color="#17212a", fontsize=11.2, fontweight="bold", transform=ax.transAxes)
         ax.text(
             0.93,
             y - 0.013,
@@ -735,14 +735,16 @@ def _draw_pool_top3_sections(ax, rows: list[dict[str, Any]], *, start_y: float =
         )
         y -= 0.054
         review_label = _candidate_review_label(row.get("candidate_review_frequency"))
-        role_line = "：".join(part for part in [row.get("role_name") or "", row.get("role_description") or ""] if part)
+        role_line = str(row.get("role_name") or "")
         if review_label != "-":
             role_line = f"{role_line}｜成員檢查：{review_label}" if role_line else f"成員檢查：{review_label}"
         if role_line:
-            ax.text(x0 + 0.012, y + 0.015, role_line[:72], color="#52616b", fontsize=8.3, transform=ax.transAxes)
-            y -= 0.02
+            ax.text(x0 + 0.012, y + 0.015, _compact_display(role_line, limit=44), color="#52616b", fontsize=8.1, transform=ax.transAxes)
+            y -= 0.018
         headers = ("決策", "強弱", "標的", "分數", "程式判斷原因")
-        widths = (0.07, 0.07, 0.2, 0.1, 0.44)
+        widths = (0.06, 0.06, 0.19, 0.09, 0.48)
+        if role_line:
+            y -= 0.02
         ax.add_patch(plt.Rectangle((x0, y), 0.88, 0.03, facecolor="#f7fafc", edgecolor="#e1e7ec", transform=ax.transAxes))
         x = x0
         for header, width in zip(headers, widths):
@@ -751,24 +753,28 @@ def _draw_pool_top3_sections(ax, rows: list[dict[str, Any]], *, start_y: float =
         y -= 0.035
         for candidate in (row.get("top_candidates") or [])[:3]:
             fill = "#fff7e6" if candidate.get("is_model_target") else "white"
-            ax.add_patch(plt.Rectangle((x0, y), 0.88, 0.039, facecolor=fill, edgecolor="#e1e7ec", transform=ax.transAxes))
+            row_h = 0.043
+            ax.add_patch(plt.Rectangle((x0, y), 0.88, row_h, facecolor=fill, edgecolor="#e1e7ec", transform=ax.transAxes))
+            display = _normalize_display_label(str(candidate.get("display", "")), str(candidate.get("ticker", "")))
+            reason = _compact_display(str(candidate.get("reason", "")), limit=32)
             cells = (
                 str(candidate.get("rank", "")),
                 str(candidate.get("strength_rank", "")),
-                str(candidate.get("display", "")),
+                _compact_display(display, limit=13),
                 f"{float(candidate.get('score') or 0):.4f}",
-                str(candidate.get("reason", "")),
             )
             x = x0
             for cell, width in zip(cells, widths):
-                ax.text(x + 0.008, y + 0.013, cell[:42], color="#26323b", fontsize=8.7, transform=ax.transAxes)
+                ax.text(x + 0.008, y + row_h - 0.021, cell, color="#26323b", fontsize=8.4, transform=ax.transAxes)
                 x += width
-            y -= 0.039
+            reason_x = x0 + sum(widths[:-1]) + 0.008
+            ax.text(reason_x, y + row_h - 0.021, reason, color="#26323b", fontsize=8.0, transform=ax.transAxes)
+            y -= row_h
         missing = row.get("missing_price_tickers") or ""
         source = row.get("source_summary") or ""
         if missing or source:
             note = "；".join(part for part in [f"來源：{source}" if source else "", f"缺價：{missing}" if missing else ""] if part)
-            ax.text(x0 + 0.008, y - 0.003, note[:88], color="#66737d", fontsize=8.2, transform=ax.transAxes)
+            ax.text(x0 + 0.008, y - 0.003, _compact_display(note, limit=70), color="#66737d", fontsize=8.0, transform=ax.transAxes)
             y -= 0.026
         y -= 0.02
     for row in skipped_rows[:3]:
@@ -808,7 +814,7 @@ def _top_candidate_rows(observation: StockPoolObservation, limit: int = 3) -> li
 
 def _candidate_display(observation: StockPoolObservation, ticker: str) -> str:
     if ticker == observation.top_ticker and observation.top_display:
-        return observation.top_display
+        return _normalize_display_label(observation.top_display, ticker)
     symbol = ticker.replace(".TW", "").replace(".TWO", "")
     metadata = observation.source_metadata or {}
     for candidate_symbol, candidate_display in zip(
@@ -816,7 +822,7 @@ def _candidate_display(observation: StockPoolObservation, ticker: str) -> str:
         metadata.get("candidate_displays") or [],
     ):
         if str(candidate_symbol) == symbol and candidate_display:
-            return str(candidate_display)
+            return _normalize_display_label(str(candidate_display), ticker)
     known = KNOWN_SYMBOLS.get(ticker, {})
     symbol = known.get("symbol") or symbol
     name = known.get("name") or symbol
@@ -894,6 +900,22 @@ def _vote_color(row: dict[str, Any], consensus: dict[str, Any], index: int) -> s
 def _compact_display(value: str, *, limit: int = 16) -> str:
     text = str(value).replace("（", "(").replace("）", ")").strip()
     return text if len(text) <= limit else text[: limit - 1] + "…"
+
+
+def _normalize_display_label(value: str, ticker: str) -> str:
+    text = str(value or "").replace("（", "(").replace("）", ")").strip()
+    symbol = str(ticker or "").replace(".TW", "").replace(".TWO", "")
+    known = KNOWN_SYMBOLS.get(ticker, {})
+    name = known.get("name")
+    if name and symbol:
+        return f"{name}({symbol})"
+    if text and "(" in text and ")" in text:
+        return text
+    if text and symbol and symbol not in text:
+        return f"{text}({symbol})"
+    if text:
+        return text
+    return ticker
 
 
 def main() -> None:
