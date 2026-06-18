@@ -37,6 +37,10 @@ from backtest_lab.frozen_strategy_monitor import (
 )
 from backtest_lab.portfolio_app import PortfolioStore
 from backtest_lab.regime_mode_switch import frozen_cycle_proven_top1_v1_variant
+from backtest_lab.regime_mode_switch import (
+    build_frozen_cycle_proven_top1_v1_variant,
+    frozen_cycle_proven_top1_v1_spec,
+)
 
 
 class FrozenStrategyMonitorTest(unittest.TestCase):
@@ -47,6 +51,16 @@ class FrozenStrategyMonitorTest(unittest.TestCase):
         self.assertEqual(variant.attack_selection_exclude_tickers, ("0050.TW", "00631L.TW"))
         self.assertEqual(variant.market_risk_off_exposure, 0.25)
         self.assertEqual(variant.defense_anchor_ticker, "00631L.TW")
+
+    def test_frozen_variant_named_builder_preserves_baseline_parameters(self) -> None:
+        spec = frozen_cycle_proven_top1_v1_spec()
+        legacy = frozen_cycle_proven_top1_v1_variant()
+        rebuilt = build_frozen_cycle_proven_top1_v1_variant(spec)
+
+        self.assertEqual(rebuilt, legacy)
+        self.assertEqual(spec.name, "frozen_cycle_proven_top1_v1")
+        self.assertEqual(spec.base_selector, "market_risk_off_exposure_25pct")
+        self.assertEqual(spec.attack_selection_exclude_tickers, ("0050.TW", "00631L.TW"))
 
     def test_projection_row_uses_signal_close_without_corporate_actions(self) -> None:
         signal_date = pd.Timestamp("2026-05-29")

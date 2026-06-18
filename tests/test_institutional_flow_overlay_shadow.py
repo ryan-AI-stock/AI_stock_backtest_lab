@@ -9,6 +9,7 @@ from backtest_lab.institutional_flow_overlay_shadow import (
     ChipFlowOverlayRule,
     InstitutionalOverlayRule,
     apply_institutional_overlay,
+    build_shadow_challenger_evidence,
     chip_flow_risk_flag,
     institutional_risk_flag,
     price_confirmation_flag,
@@ -213,3 +214,59 @@ class InstitutionalFlowOverlayShadowTest(unittest.TestCase):
 
         self.assertTrue(confirmed)
         self.assertEqual(reason, "price_below_ma10")
+
+    def test_challenger_evidence_compares_against_baseline_without_promoting(self) -> None:
+        summary = pd.DataFrame(
+            [
+                {
+                    "period_id": "bear_2022",
+                    "candidate_id": "best_v20260605",
+                    "strategy_name": "最佳版",
+                    "final_value_twd": 900_000,
+                    "total_return_pct": -10.0,
+                    "max_drawdown_pct": -12.0,
+                },
+                {
+                    "period_id": "bear_2022",
+                    "candidate_id": "chip_flow_overlay_test",
+                    "strategy_name": "測試shadow",
+                    "final_value_twd": 900_000,
+                    "total_return_pct": -10.0,
+                    "max_drawdown_pct": -12.0,
+                },
+                {
+                    "period_id": "year_2023",
+                    "candidate_id": "best_v20260605",
+                    "strategy_name": "最佳版",
+                    "final_value_twd": 3_900_000,
+                    "total_return_pct": 290.0,
+                    "max_drawdown_pct": -21.0,
+                },
+                {
+                    "period_id": "year_2023",
+                    "candidate_id": "chip_flow_overlay_test",
+                    "strategy_name": "測試shadow",
+                    "final_value_twd": 4_100_000,
+                    "total_return_pct": 310.0,
+                    "max_drawdown_pct": -18.0,
+                },
+            ]
+        )
+        run_log = pd.DataFrame(
+            [
+                {"period_id": "bear_2022", "candidate_id": "chip_flow_overlay_test", "risk_flag_days": 0},
+                {"period_id": "year_2023", "candidate_id": "chip_flow_overlay_test", "risk_flag_days": 4},
+            ]
+        )
+
+        evidence = build_shadow_challenger_evidence(summary, run_log)
+        row = evidence[
+            (evidence["period_id"] == "year_2023")
+            & (evidence["candidate_id"] == "chip_flow_overlay_test")
+        ].iloc[0]
+
+        self.assertEqual(row["decision_layer"], "shadow_overlay")
+        self.assertFalse(bool(row["active_in_trade_decision"]))
+        self.assertEqual(row["return_diff_pct"], 20.0)
+        self.assertEqual(row["max_drawdown_diff_pct"], 3.0)
+        self.assertTrue(bool(row["beats_baseline_return"]))

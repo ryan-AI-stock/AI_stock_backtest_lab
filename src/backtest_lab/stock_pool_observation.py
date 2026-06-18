@@ -13,6 +13,13 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 from backtest_lab.config import load_config
 from backtest_lab.data import download_yfinance_prices
+from backtest_lab.decision_layers import (
+    CANDIDATE_SOURCE,
+    FORMAL_TRADE_SIGNAL,
+    DATA_READINESS,
+    default_stock_pool_model_layer_audit,
+    write_model_layer_audit,
+)
 from backtest_lab.formal_radar_candidates import formal_radar_candidates_to_symbols, load_formal_radar_candidates
 from backtest_lab.market_cap_source import load_first_available_market_caps
 from backtest_lab.risk_factor_source import RiskFactorSignal, load_first_available_risk_factors
@@ -76,6 +83,9 @@ class StockPoolObservation:
     action_state: str
     candidates: list[UniversalCandidateScore]
     source_metadata: dict[str, Any] = field(default_factory=dict)
+    decision_layer: str = CANDIDATE_SOURCE
+    active_in_trade_decision: bool = False
+    source_module: str = "stock_pool_observation"
 
     def to_dict(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -155,6 +165,9 @@ def build_stock_pool_observation(
         action_state="watch_candidate" if top else "no_valid_candidate",
         candidates=candidates,
         source_metadata=_build_pool_source_metadata(pool, available_symbols),
+        decision_layer=CANDIDATE_SOURCE,
+        active_in_trade_decision=False,
+        source_module="stock_pool_observation",
     )
 
 
@@ -369,6 +382,10 @@ def run_stock_pool_observation_batch(
                     ),
                     "dispatch": dispatch_pool(pool),
                     "reason": reason,
+                    "decision_layer": DATA_READINESS,
+                    "active_in_trade_decision": False,
+                    "source_module": "stock_pool_observation",
+                    "signal_date": signal_date,
                 }
             )
             continue
@@ -416,6 +433,9 @@ def run_stock_pool_observation_batch(
                     "top_ticker": observation.top_ticker,
                     "top_display": observation.top_display,
                     "action_state": observation.action_state,
+                    "decision_layer": observation.decision_layer,
+                    "active_in_trade_decision": observation.active_in_trade_decision,
+                    "source_module": observation.source_module,
                     "top_candidates": _top_candidate_rows(observation),
                     "source_metadata": observation.source_metadata,
                     "vote_group": pool.get("vote_group", ""),
@@ -439,13 +459,24 @@ def run_stock_pool_observation_batch(
                     ),
                     "dispatch": dispatch_pool(pool),
                     "reason": str(error),
+                    "decision_layer": DATA_READINESS,
+                    "active_in_trade_decision": False,
+                    "source_module": "stock_pool_observation",
+                    "signal_date": signal_date,
                 }
             )
     manifest["consensus"] = build_consensus(manifest)
+    manifest["model_layer_audit"] = default_stock_pool_model_layer_audit(
+        signal_date=signal_date,
+        generated_pools=manifest["generated"],
+        risk_factor_sources=risk_sources,
+        valuation_source=str(valuation_data or ""),
+    )
     (root / "stock_pool_observation_manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
+    write_model_layer_audit(root / "model_layer_audit.json", manifest["model_layer_audit"])
     write_stock_pool_observation_batch_summary(root, manifest)
     write_consensus_outputs(root, manifest)
     write_candidate_reviews(root, manifest)
@@ -469,6 +500,9 @@ def write_stock_pool_observation_batch_summary(root: Path, manifest: dict[str, A
                 "top_display": item.get("top_display", ""),
                 "top_ticker": item.get("top_ticker", ""),
                 "action_state": item.get("action_state", ""),
+                "decision_layer": item.get("decision_layer", ""),
+                "active_in_trade_decision": item.get("active_in_trade_decision", False),
+                "source_module": item.get("source_module", ""),
                 "report_line": (item.get("dispatch") or {}).get("report_line", ""),
                 "workflow_file": (item.get("dispatch") or {}).get("workflow_file", ""),
                 "missing_price_tickers": ",".join(item.get("missing_price_tickers") or []),
@@ -494,6 +528,9 @@ def write_stock_pool_observation_batch_summary(root: Path, manifest: dict[str, A
                 "top_display": "",
                 "top_ticker": "",
                 "action_state": "",
+                "decision_layer": item.get("decision_layer", ""),
+                "active_in_trade_decision": item.get("active_in_trade_decision", False),
+                "source_module": item.get("source_module", ""),
                 "report_line": (item.get("dispatch") or {}).get("report_line", ""),
                 "workflow_file": (item.get("dispatch") or {}).get("workflow_file", ""),
                 "missing_price_tickers": "",
@@ -621,7 +658,8 @@ def _draw_observation_detail_pdf_page(ax, manifest: dict[str, Any], rows: list[d
         transform=ax.transAxes,
     )
     bottom_y = _draw_pool_top3_sections(ax, rows, start_y=0.84)
-    ax.text(0.06, max(bottom_y - 0.03, 0.08), "提醒：表格列出的是各池內部排序與程式原因；正式總結以第一頁三池表決為準。", color="#52616b", fontsize=9.5, transform=ax.transAxes)
+    reminder_y = max(min(bottom_y - 0.018, 0.075), 0.062)
+    ax.text(0.06, reminder_y, "提醒：表格列出的是各池內部排序與程式原因；正式總結以第一頁三池表決為準。", color="#52616b", fontsize=8.6, transform=ax.transAxes)
     ax.text(0.06, 0.04, f"{REPORT_TITLE} · {manifest.get('signal_date', '')}", color="#9aa7b1", fontsize=8.5, transform=ax.transAxes)
     ax.text(0.94, 0.04, "AI_stock_backtest_lab", color="#9aa7b1", fontsize=8.5, ha="right", transform=ax.transAxes)
 
@@ -721,66 +759,69 @@ def _draw_pool_top3_sections(ax, rows: list[dict[str, Any]], *, start_y: float =
     generated_rows = [row for row in rows if row["status"] == "generated"]
     skipped_rows = [row for row in rows if row["status"] != "generated"]
     for row in generated_rows[:3]:
-        ax.add_patch(plt.Rectangle((x0, y - 0.025), 0.88, 0.035, facecolor="#e9f0f5", edgecolor="#d7e0e7", transform=ax.transAxes))
+        ax.add_patch(plt.Rectangle((x0, y - 0.021), 0.88, 0.032, facecolor="#e9f0f5", edgecolor="#d7e0e7", transform=ax.transAxes))
         title = row.get("pool_short_name") or _short_pool_name(row)
-        ax.text(x0 + 0.012, y - 0.013, _compact_display(title, limit=18), color="#17212a", fontsize=11.2, fontweight="bold", transform=ax.transAxes)
+        ax.text(x0 + 0.012, y - 0.011, _compact_display(title, limit=18), color="#17212a", fontsize=10.8, fontweight="bold", transform=ax.transAxes)
         ax.text(
             0.93,
-            y - 0.013,
+            y - 0.011,
             f"資料日 {row['signal_date']}",
             color="#66737d",
-            fontsize=8.5,
+            fontsize=7.8,
             ha="right",
             transform=ax.transAxes,
         )
-        y -= 0.054
+        y -= 0.038
         review_label = _candidate_review_label(row.get("candidate_review_frequency"))
         role_line = str(row.get("role_name") or "")
         if review_label != "-":
             role_line = f"{role_line}｜成員檢查：{review_label}" if role_line else f"成員檢查：{review_label}"
         if role_line:
-            ax.text(x0 + 0.012, y + 0.015, _compact_display(role_line, limit=44), color="#52616b", fontsize=8.1, transform=ax.transAxes)
-            y -= 0.018
+            ax.text(x0 + 0.012, y + 0.008, _compact_display(role_line, limit=42), color="#52616b", fontsize=7.2, transform=ax.transAxes)
+            y -= 0.012
         headers = ("決策", "強弱", "標的", "分數", "程式判斷原因")
         widths = (0.06, 0.06, 0.19, 0.09, 0.48)
         if role_line:
-            y -= 0.02
-        ax.add_patch(plt.Rectangle((x0, y), 0.88, 0.03, facecolor="#f7fafc", edgecolor="#e1e7ec", transform=ax.transAxes))
+            y -= 0.006
+        header_h = 0.025
+        ax.add_patch(plt.Rectangle((x0, y), 0.88, header_h, facecolor="#f7fafc", edgecolor="#e1e7ec", transform=ax.transAxes))
         x = x0
         for header, width in zip(headers, widths):
-            ax.text(x + 0.008, y + 0.01, header, color="#52616b", fontsize=8.8, fontweight="bold", transform=ax.transAxes)
+            ax.text(x + 0.008, y + 0.008, header, color="#52616b", fontsize=8.0, fontweight="bold", transform=ax.transAxes)
             x += width
-        y -= 0.035
+        y -= 0.029
         for candidate in (row.get("top_candidates") or [])[:3]:
             fill = "#fff7e6" if candidate.get("is_model_target") else "white"
-            row_h = 0.043
+            row_h = 0.034
             ax.add_patch(plt.Rectangle((x0, y), 0.88, row_h, facecolor=fill, edgecolor="#e1e7ec", transform=ax.transAxes))
             display = _normalize_display_label(str(candidate.get("display", "")), str(candidate.get("ticker", "")))
-            reason = _compact_display(str(candidate.get("reason", "")), limit=32)
+            reason = _compact_display(str(candidate.get("reason", "")), limit=30)
             cells = (
                 str(candidate.get("rank", "")),
                 str(candidate.get("strength_rank", "")),
-                _compact_display(display, limit=13),
+                _compact_display(display, limit=12),
                 f"{float(candidate.get('score') or 0):.4f}",
             )
             x = x0
             for cell, width in zip(cells, widths):
-                ax.text(x + 0.008, y + row_h - 0.021, cell, color="#26323b", fontsize=8.4, transform=ax.transAxes)
+                ax.text(x + 0.008, y + row_h - 0.018, cell, color="#26323b", fontsize=7.8, transform=ax.transAxes)
                 x += width
             reason_x = x0 + sum(widths[:-1]) + 0.008
-            ax.text(reason_x, y + row_h - 0.021, reason, color="#26323b", fontsize=8.0, transform=ax.transAxes)
+            ax.text(reason_x, y + row_h - 0.018, reason, color="#26323b", fontsize=7.4, transform=ax.transAxes)
             y -= row_h
         missing = row.get("missing_price_tickers") or ""
         source = row.get("source_summary") or ""
         if missing or source:
             note = "；".join(part for part in [f"來源：{source}" if source else "", f"缺價：{missing}" if missing else ""] if part)
-            ax.text(x0 + 0.008, y - 0.003, _compact_display(note, limit=70), color="#66737d", fontsize=8.0, transform=ax.transAxes)
-            y -= 0.026
-        y -= 0.02
+            ax.text(x0 + 0.008, y - 0.004, _compact_display(note, limit=62), color="#66737d", fontsize=7.1, transform=ax.transAxes)
+            y -= 0.018
+        y -= 0.012
     for row in skipped_rows[:3]:
-        ax.text(x0, y, f"跳過：{row['pool_name']}，原因：{row['reason']}", color="#b42318", fontsize=9, transform=ax.transAxes)
-        y -= 0.03
-    return max(y, 0.23)
+        if y < 0.09:
+            break
+        ax.text(x0, y, f"跳過：{row['pool_name']}，原因：{row['reason']}", color="#b42318", fontsize=8.0, transform=ax.transAxes)
+        y -= 0.024
+    return max(y, 0.095)
 
 
 def _top_candidate_rows(observation: StockPoolObservation, limit: int = 3) -> list[dict[str, Any]]:
@@ -1197,6 +1238,9 @@ def _build_regime_signal_observation(
             "target_label": signal.target_label,
             "target_exposure": signal.target_exposure,
         },
+        decision_layer=FORMAL_TRADE_SIGNAL,
+        active_in_trade_decision=True,
+        source_module="frozen_strategy_monitor",
     )
 
 

@@ -4,6 +4,7 @@ import http.client
 import json
 import tempfile
 import threading
+import time
 import unittest
 from http.server import ThreadingHTTPServer
 from pathlib import Path
@@ -271,16 +272,24 @@ class PortfolioAppHttpTest(unittest.TestCase):
 def _request(port: int, method: str, path: str, payload: dict | None = None) -> dict:
     body = json.dumps(payload).encode("utf-8") if payload is not None else None
     headers = {"Content-Type": "application/json"} if body else {}
-    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
-    try:
-        connection.request(method, path, body=body, headers=headers)
-        response = connection.getresponse()
-        data = json.loads(response.read().decode("utf-8"))
-        if response.status >= 400:
-            raise AssertionError(data)
-        return data
-    finally:
-        connection.close()
+    last_error: Exception | None = None
+    for attempt in range(3):
+        connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+        try:
+            connection.request(method, path, body=body, headers=headers)
+            response = connection.getresponse()
+            data = json.loads(response.read().decode("utf-8"))
+            if response.status >= 400:
+                raise AssertionError(data)
+            return data
+        except (ConnectionError, TimeoutError, OSError) as error:
+            last_error = error
+            if attempt == 2:
+                raise
+            time.sleep(0.1)
+        finally:
+            connection.close()
+    raise AssertionError(f"request failed without response: {last_error}")
 
 
 if __name__ == "__main__":

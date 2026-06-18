@@ -7,6 +7,8 @@ from typing import Any
 
 import pandas as pd
 
+from backtest_lab.decision_layers import CANDIDATE_SOURCE
+
 
 DEFAULT_VOTE_GROUP = "three_perspective_v1"
 
@@ -49,6 +51,9 @@ def build_consensus(manifest: dict[str, Any], *, vote_group: str = DEFAULT_VOTE_
             "top_ticker": item.get("top_ticker", ""),
             "top_display": item.get("top_display", ""),
             "action_state": item.get("action_state", ""),
+            "decision_layer": item.get("decision_layer", CANDIDATE_SOURCE),
+            "active_in_trade_decision": bool(item.get("active_in_trade_decision", False)),
+            "source_module": item.get("source_module", ""),
         }
         for item in voters
     ]
@@ -56,6 +61,10 @@ def build_consensus(manifest: dict[str, Any], *, vote_group: str = DEFAULT_VOTE_
         "schema_version": 1,
         "vote_group": vote_group,
         "signal_date": manifest.get("signal_date", ""),
+        "decision_layer": CANDIDATE_SOURCE,
+        "active_in_trade_decision": False,
+        "consensus_type": "consensus_observation",
+        "formal_trade_target": None,
         "result_state": result_state,
         "winner_ticker": winner_ticker,
         "winner_display": winner_display,
@@ -102,6 +111,7 @@ def markdown_consensus_report(consensus: dict[str, Any]) -> str:
         f"- 狀態：{consensus.get('result_state', '')}",
         f"- 結論：{consensus.get('winner_display') or '沒有形成明確共識'}",
         f"- 原因：{consensus.get('reason', '')}",
+        f"- 決策層：{consensus.get('consensus_type', 'consensus_observation')}；正式交易目標：未設定",
         "",
         "| 股票池 | 第一順位 | 狀態 |",
         "| --- | --- | --- |",
@@ -115,4 +125,3 @@ def markdown_consensus_report(consensus: dict[str, Any]) -> str:
         ]
     )
     return "\n".join(lines)
-

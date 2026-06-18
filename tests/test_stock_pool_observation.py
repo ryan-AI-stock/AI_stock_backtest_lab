@@ -9,6 +9,7 @@ import pandas as pd
 
 import test_paths  # noqa: F401
 
+from backtest_lab.decision_layers import CANDIDATE_SOURCE, DATA_READINESS
 from backtest_lab.stock_pool_observation import (
     build_dispatched_stock_pool_observation,
     build_stock_pool_observation,
@@ -48,6 +49,8 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertEqual(observation.signal_date, dates[-1].strftime("%Y-%m-%d"))
         self.assertEqual(observation.candidate_count, 2)
         self.assertEqual(observation.action_state, "watch_candidate")
+        self.assertEqual(observation.decision_layer, CANDIDATE_SOURCE)
+        self.assertFalse(observation.active_in_trade_decision)
         self.assertEqual(observation.top_ticker, "2454.TW")
         self.assertEqual(observation.top_display, "聯發科(2454)")
         self.assertGreaterEqual(observation.passed_count, 1)
@@ -236,15 +239,20 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertEqual(manifest["generated"][0]["role_name"], "測試專家")
             self.assertEqual(manifest["generated"][0]["candidate_review_frequency"], "monthly")
             self.assertEqual(manifest["generated"][0]["candidate_update_policy"], "測試更新政策")
+            self.assertEqual(manifest["generated"][0]["decision_layer"], CANDIDATE_SOURCE)
+            self.assertFalse(manifest["generated"][0]["active_in_trade_decision"])
             self.assertEqual(manifest["generated"][0]["candidate_review"]["frequency"], "monthly")
             self.assertEqual(manifest["generated"][0]["candidate_review"]["source_status"], "manual_review_required")
             self.assertEqual(len(manifest["generated"][0]["top_candidates"]), 1)
             self.assertEqual(manifest["generated"][0]["top_candidates"][0]["display"], "台積電(2330)")
             self.assertEqual(len(manifest["skipped"]), 1)
             self.assertEqual(manifest["skipped"][0]["reason"], "missing_formal_radar_candidates")
+            self.assertEqual(manifest["skipped"][0]["decision_layer"], DATA_READINESS)
             self.assertIn("candidate_review", manifest["skipped"][0])
+            self.assertIn("model_layer_audit", manifest)
             manifest_path = Path(manifest["output_root"]) / "stock_pool_observation_manifest.json"
             self.assertTrue(manifest_path.exists())
+            self.assertTrue((Path(manifest["output_root"]) / "model_layer_audit.json").exists())
             self.assertTrue((Path(manifest["output_root"]) / "stock_pool_observation_summary.csv").exists())
             self.assertTrue((Path(manifest["output_root"]) / "stock_pool_candidate_reviews.csv").exists())
             self.assertTrue((Path(manifest["output_root"]) / "stock_pool_candidate_reviews.json").exists())

@@ -4,6 +4,7 @@ import unittest
 
 import test_paths  # noqa: F401
 
+from backtest_lab.decision_layers import CANDIDATE_SOURCE
 from backtest_lab.stock_pool_consensus import build_consensus
 
 
@@ -24,6 +25,11 @@ class StockPoolConsensusTest(unittest.TestCase):
         self.assertEqual(consensus["result_state"], "consensus")
         self.assertEqual(consensus["winner_ticker"], "2330.TW")
         self.assertIn("2/3", consensus["reason"])
+        self.assertEqual(consensus["consensus_type"], "consensus_observation")
+        self.assertEqual(consensus["decision_layer"], CANDIDATE_SOURCE)
+        self.assertFalse(consensus["active_in_trade_decision"])
+        self.assertIsNone(consensus["formal_trade_target"])
+        self.assertFalse(consensus["voters"][0]["active_in_trade_decision"])
 
     def test_build_consensus_marks_three_way_divergence(self) -> None:
         consensus = build_consensus(
@@ -55,4 +61,3 @@ def _generated(pool_name: str, ticker: str, display: str) -> dict:
 
 if __name__ == "__main__":
     unittest.main()
-

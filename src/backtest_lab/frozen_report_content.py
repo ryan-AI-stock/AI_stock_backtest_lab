@@ -23,7 +23,7 @@ def markdown_report(signal, *, report_name: str, report_variant_label: str, scor
             f"- 報告模式：{report_mode_label(signal)}",
             f"- 訊號日期：{signal.signal_date}",
             f"- 執行時點：{signal.execution_timing}",
-            "- 定位：每日 AI 輔助操作建議，投資人自行判斷，不是自動下單，也不是投資建議。",
+            "- 定位：每日 AI 輔助市場觀察與紀律提醒，投資人自行判斷，不是自動下單，也不是投資建議。",
             "",
             "## 今日結論",
             "",

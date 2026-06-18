@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Callable
 
 import pandas as pd
 
@@ -99,6 +100,27 @@ class RegimeModeSwitchVariant:
     attack_gate_stop_latch_rule: str | None = None
     attack_gate_stop_release_filter: str | None = None
     attack_gate_stop_release_confirmation_days: int = 0
+
+
+@dataclass(frozen=True)
+class FrozenCycleProvenTop1Spec:
+    name: str = "frozen_cycle_proven_top1_v1"
+    base_family: str = "cycle_proven_preproof_exposure_variants"
+    base_selector: str = "market_risk_off_exposure_25pct"
+    market_risk_off_exposure: float = 0.25
+    defense_anchor_ticker: str = "00631L.TW"
+    attack_selection_exclude_tickers: tuple[str, ...] = ("0050.TW", "00631L.TW")
+
+
+@dataclass(frozen=True)
+class ExposureOverlayDecision:
+    adjusted_exposure: float
+    risk_flag: bool = False
+    reason: str = ""
+    signal_date: str = ""
+
+
+ExposureOverlay = Callable[[str | None, pd.Timestamp, pd.Timestamp, float], ExposureOverlayDecision]
 
 
 def default_mode_switch_variants() -> tuple[RegimeModeSwitchVariant, ...]:
@@ -2316,16 +2338,37 @@ def cycle_proven_preproof_dynamic_exposure_variants() -> tuple[RegimeModeSwitchV
     return tuple(variants)
 
 
-def frozen_cycle_proven_top1_v1_variant() -> RegimeModeSwitchVariant:
-    """Return the immutable production baseline used by reports and challengers."""
-    base = cycle_proven_preproof_exposure_variants()[1]
+def frozen_cycle_proven_top1_v1_spec() -> FrozenCycleProvenTop1Spec:
+    """Return the named production-baseline spec without traversing research results."""
+    return FrozenCycleProvenTop1Spec()
+
+
+def build_frozen_cycle_proven_top1_v1_variant(
+    spec: FrozenCycleProvenTop1Spec | None = None,
+) -> RegimeModeSwitchVariant:
+    """Build the frozen baseline from a named spec while preserving behavior."""
+    spec = spec or frozen_cycle_proven_top1_v1_spec()
+    matching = [
+        variant
+        for variant in cycle_proven_preproof_exposure_variants()
+        if variant.market_risk_off_exposure == spec.market_risk_off_exposure
+        and variant.defense_anchor_ticker == spec.defense_anchor_ticker
+    ]
+    if not matching:
+        raise RuntimeError(f"Missing frozen baseline base variant for spec: {spec}")
+    base = matching[0]
     return RegimeModeSwitchVariant(
         **{
             **base.__dict__,
-            "name": "frozen_cycle_proven_top1_v1",
-            "attack_selection_exclude_tickers": ("0050.TW", "00631L.TW"),
+            "name": spec.name,
+            "attack_selection_exclude_tickers": spec.attack_selection_exclude_tickers,
         }
     )
+
+
+def frozen_cycle_proven_top1_v1_variant() -> RegimeModeSwitchVariant:
+    """Return the immutable production baseline used by reports and challengers."""
+    return build_frozen_cycle_proven_top1_v1_variant()
 
 
 def ai_theme_large_cap_v20260613_variant() -> RegimeModeSwitchVariant:
@@ -2670,6 +2713,7 @@ def simulate_regime_mode_switch(
     cost_model: TaiwanCostModel,
     variant: RegimeModeSwitchVariant,
     dividend_series_by_ticker: dict[str, pd.Series] | None = None,
+    exposure_overlay: ExposureOverlay | None = None,
 ) -> BacktestResult:
     trade_dates = _common_trade_dates(prices_by_ticker, start_date, end_date)
     if not trade_dates:
@@ -2703,6 +2747,9 @@ def simulate_regime_mode_switch(
 
     for index, trade_date in enumerate(trade_dates):
         stop_triggered_today = False
+        overlay_risk_flag = False
+        overlay_reason = ""
+        overlay_signal_date = ""
         if account.ticker is not None and dividend_series_by_ticker is not None:
             dividend = float(dividend_series_by_ticker[account.ticker].get(trade_date, 0.0))
             if dividend > 0:
@@ -2939,6 +2986,17 @@ def simulate_regime_mode_switch(
             )
         ):
             should_check = False
+        if exposure_overlay is not None and account.ticker is not None:
+            signal_value = _market_value(account, signal_prices)
+            current_position_value = account.shares * signal_prices[account.ticker]
+            current_exposure = current_position_value / signal_value if signal_value > 0 else 0.0
+            current_overlay = exposure_overlay(account.ticker, trade_date, signal_date, current_exposure)
+            if current_overlay.risk_flag:
+                overlay_risk_flag = True
+                overlay_reason = current_overlay.reason
+                overlay_signal_date = current_overlay.signal_date
+                if current_overlay.adjusted_exposure < current_exposure - 0.02:
+                    should_check = True
 
         if should_check:
             if mode == MODE_0050_DEFENSE:
@@ -2957,6 +3015,14 @@ def simulate_regime_mode_switch(
             if target is None and mode == MODE_CASH and variant.fallback_ticker:
                 target = variant.fallback_ticker
                 target_exposure = variant.fallback_exposure
+            overlay_decision: ExposureOverlayDecision | None = None
+            if exposure_overlay is not None and target is not None and target_exposure > 0:
+                overlay_decision = exposure_overlay(target, trade_date, signal_date, target_exposure)
+                if overlay_decision.risk_flag:
+                    overlay_risk_flag = True
+                    overlay_reason = overlay_decision.reason
+                    overlay_signal_date = overlay_decision.signal_date
+                    target_exposure = min(target_exposure, overlay_decision.adjusted_exposure)
             _rebalance(
                 account=account,
                 trades=trades,
@@ -2966,36 +3032,46 @@ def simulate_regime_mode_switch(
                 prices_by_ticker=prices_by_ticker,
                 asset_types=asset_types,
                 cost_model=cost_model,
-                reason=f"regime_mode_switch_{regime}_{mode}_{variant.name}",
+                reason=(
+                    f"regime_mode_switch_{regime}_{mode}_{variant.name}"
+                    + (f"_overlay_{overlay_reason}" if overlay_decision and overlay_decision.risk_flag else "")
+                ),
             )
 
         close_prices = {ticker: float(prices.loc[trade_date, "close"]) for ticker, prices in prices_by_ticker.items()}
         total_value = _market_value(account, close_prices)
         position_value = account.shares * close_prices[account.ticker] if account.ticker else 0.0
-        equity_rows.append(
-            {
-                "date": trade_date,
-                "total_value": total_value,
-                "current_ticker": account.ticker or "cash",
-                "current_shares": account.shares,
-                "cash_balance": account.cash,
-                "current_exposure": position_value / total_value if total_value > 0 else 0.0,
-                "regime": regime,
-                "regime_streak_days": regime_streak_days,
-                "mode": mode,
-                "risk_off_active": risk_off_active,
-                "risk_off_clear_streak": risk_off_clear_streak,
-                "daily_health_active": daily_health_active,
-                "daily_health_recovery_streak": daily_health_recovery_streak,
-                "stop_latch_active": stop_latch_active,
-                "stop_release_streak": stop_release_streak,
-                "attack_gate_active": attack_gate_active,
-                "attack_gate_activation_streak": attack_gate_activation_streak,
-                "attack_gate_ever_activated": attack_gate_ever_activated,
-                "attack_gate_stop_latch_active": attack_gate_stop_latch_active,
-                "attack_gate_stop_release_streak": attack_gate_stop_release_streak,
-            }
-        )
+        equity_row = {
+            "date": trade_date,
+            "total_value": total_value,
+            "current_ticker": account.ticker or "cash",
+            "current_shares": account.shares,
+            "cash_balance": account.cash,
+            "current_exposure": position_value / total_value if total_value > 0 else 0.0,
+            "regime": regime,
+            "regime_streak_days": regime_streak_days,
+            "mode": mode,
+            "risk_off_active": risk_off_active,
+            "risk_off_clear_streak": risk_off_clear_streak,
+            "daily_health_active": daily_health_active,
+            "daily_health_recovery_streak": daily_health_recovery_streak,
+            "stop_latch_active": stop_latch_active,
+            "stop_release_streak": stop_release_streak,
+            "attack_gate_active": attack_gate_active,
+            "attack_gate_activation_streak": attack_gate_activation_streak,
+            "attack_gate_ever_activated": attack_gate_ever_activated,
+            "attack_gate_stop_latch_active": attack_gate_stop_latch_active,
+            "attack_gate_stop_release_streak": attack_gate_stop_release_streak,
+        }
+        if exposure_overlay is not None:
+            equity_row.update(
+                {
+                    "overlay_risk_flag": overlay_risk_flag,
+                    "overlay_reason": overlay_reason,
+                    "overlay_signal_date": overlay_signal_date,
+                }
+            )
+        equity_rows.append(equity_row)
 
     equity_curve = pd.DataFrame(equity_rows).set_index("date")
     final_value = float(equity_curve["total_value"].iloc[-1])

@@ -9,6 +9,7 @@ import pandas as pd
 
 from backtest_lab.config import load_config
 from backtest_lab.data import download_yfinance_prices, split_adjusted_dividends
+from backtest_lab.overlay_challenger_registry import overlay_challenger_manifest
 from backtest_lab.regime_aware_backtest import PERIODS
 from backtest_lab.regime_mode_switch import frozen_cycle_proven_top1_v1_variant, simulate_regime_mode_switch
 from backtest_lab.regime_mode_switch_backtest import _load_sufficient_cache_prices
@@ -687,12 +688,23 @@ def run_overlay_shadow(
     summary.to_csv(output_path / "institutional_flow_overlay_shadow_summary.csv", index=False, encoding="utf-8-sig")
     daily.to_csv(output_path / "institutional_flow_overlay_shadow_daily.csv", index=False, encoding="utf-8-sig")
     pd.DataFrame(run_log_rows).to_csv(output_path / "run_log.csv", index=False, encoding="utf-8-sig")
+    evidence = build_shadow_challenger_evidence(summary, pd.DataFrame(run_log_rows))
+    evidence.to_csv(output_path / "shadow_challenger_evidence.csv", index=False, encoding="utf-8-sig")
+    _write_promotion_review(output_path / "shadow_challenger_promotion_review.json", evidence)
     _write_report(output_path / "institutional_flow_overlay_shadow_report.md", summary)
+    challenger_manifest = overlay_challenger_manifest()
+    (output_path / "overlay_challenger_manifest.json").write_text(
+        json.dumps(challenger_manifest, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
     (output_path / "metadata.json").write_text(
         json.dumps(
             {
                 "model": "institutional_flow_overlay_shadow_v1",
                 "baseline": "最佳版 v20260605 / frozen_cycle_proven_top1_v1",
+                "decision_layer": challenger_manifest["decision_layer"],
+                "active_in_trade_decision": challenger_manifest["active_in_trade_decision"],
+                "formal_promotion_status": challenger_manifest["formal_promotion_status"],
                 "flow_source": str(Path(flow_source).resolve()),
                 "margin_source": str(Path(margin_source).resolve()) if margin_source else None,
                 "day_trading_source": str(Path(day_trading_source).resolve()) if day_trading_source else None,
@@ -706,6 +718,90 @@ def run_overlay_shadow(
     )
     (output_path / "current_step.txt").write_text("completed\n", encoding="utf-8")
     return output_path
+
+
+def build_shadow_challenger_evidence(summary: pd.DataFrame, run_log: pd.DataFrame | None = None) -> pd.DataFrame:
+    if summary.empty:
+        return pd.DataFrame()
+    baseline = summary.loc[
+        summary["candidate_id"] == "best_v20260605",
+        ["period_id", "final_value_twd", "total_return_pct", "max_drawdown_pct"],
+    ].rename(
+        columns={
+            "final_value_twd": "baseline_final_value_twd",
+            "total_return_pct": "baseline_total_return_pct",
+            "max_drawdown_pct": "baseline_max_drawdown_pct",
+        }
+    )
+    evidence = summary.merge(baseline, on="period_id", how="left")
+    evidence["return_diff_pct"] = (evidence["total_return_pct"] - evidence["baseline_total_return_pct"]).round(4)
+    evidence["max_drawdown_diff_pct"] = (evidence["max_drawdown_pct"] - evidence["baseline_max_drawdown_pct"]).round(4)
+    if "risk_flag_days" not in evidence.columns:
+        evidence["risk_flag_days"] = pd.NA
+    if run_log is not None and not run_log.empty and "risk_flag_days" in run_log.columns:
+        flags = run_log[["period_id", "candidate_id", "risk_flag_days"]].copy()
+        evidence = evidence.drop(columns=["risk_flag_days"]).merge(flags, on=["period_id", "candidate_id"], how="left")
+    evidence["risk_flag_days"] = pd.to_numeric(evidence["risk_flag_days"], errors="coerce").fillna(0).astype(int)
+    evidence["decision_layer"] = "shadow_overlay"
+    evidence["active_in_trade_decision"] = False
+    evidence["beats_baseline_return"] = evidence["return_diff_pct"] > 0
+    evidence["improves_or_matches_drawdown"] = evidence["max_drawdown_diff_pct"] >= 0
+    return evidence.sort_values(["period_id", "return_diff_pct", "max_drawdown_diff_pct"], ascending=[True, False, False])
+
+
+def _write_promotion_review(path: Path, evidence: pd.DataFrame) -> None:
+    if evidence.empty:
+        payload = {
+            "status": "no_evidence",
+            "decision_layer": "shadow_overlay",
+            "active_in_trade_decision": False,
+            "formal_promotion_status": "not_promoted",
+            "candidates": [],
+        }
+        path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        return
+    challenger_rows = evidence[evidence["candidate_id"] != "best_v20260605"].copy()
+    grouped = []
+    for candidate_id, frame in challenger_rows.groupby("candidate_id", sort=False):
+        grouped.append(
+            {
+                "candidate_id": candidate_id,
+                "strategy_name": str(frame["strategy_name"].iloc[0]),
+                "period_count": int(len(frame)),
+                "min_return_diff_pct": round(float(frame["return_diff_pct"].min()), 4),
+                "max_return_diff_pct": round(float(frame["return_diff_pct"].max()), 4),
+                "min_drawdown_diff_pct": round(float(frame["max_drawdown_diff_pct"].min()), 4),
+                "max_drawdown_diff_pct": round(float(frame["max_drawdown_diff_pct"].max()), 4),
+                "total_risk_flag_days": int(pd.to_numeric(frame["risk_flag_days"], errors="coerce").fillna(0).sum()),
+                "eligible_for_next_phase": bool(
+                    (frame["return_diff_pct"].min() >= 0)
+                    and (frame["return_diff_pct"].max() > 0)
+                    and (frame["max_drawdown_diff_pct"].min() >= 0)
+                ),
+            }
+        )
+    candidates = sorted(
+        grouped,
+        key=lambda item: (
+            item["eligible_for_next_phase"],
+            item["min_return_diff_pct"],
+            item["max_return_diff_pct"],
+            item["min_drawdown_diff_pct"],
+        ),
+        reverse=True,
+    )
+    payload = {
+        "status": "review_ready",
+        "decision_layer": "shadow_overlay",
+        "active_in_trade_decision": False,
+        "formal_promotion_status": "not_promoted",
+        "promotion_rule": (
+            "eligible_for_next_phase only means worth testing as a versioned formal-engine challenger; "
+            "it is not promoted into formal trading logic."
+        ),
+        "candidates": candidates,
+    }
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def _selected_periods(period_ids: list[str]) -> dict[str, tuple[str, str, str]]:
