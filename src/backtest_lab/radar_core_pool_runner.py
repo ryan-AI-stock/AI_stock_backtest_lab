@@ -61,6 +61,7 @@ def main() -> None:
     members, member_prices, skipped = _download_member_prices(
         members,
         start_date=args.warmup_start,
+        member_required_start_date=args.start_date,
         end_date=args.end_date,
         cache_dir=args.cache_dir,
         cache_only=args.cache_only,
@@ -2075,6 +2076,148 @@ def _variants() -> list[RadarCoreVariant]:
         ),
         radar_core_mid_small_calibrated_v1_variant(),
         RadarCoreVariant(
+            name="radar_core_v1_score_risk_stock00_turnover60m_overheat62_posrun40_stop15",
+            label="雷達核心成員池 v1 校準版 + 個股獲利40%後回撤15%",
+            top_theme_count=1,
+            max_stocks_per_theme=1,
+            max_single_weight=1.0,
+            min_avg_turnover_twd=60_000_000,
+            min_theme_score=0.20,
+            min_stock_score=0.00,
+            overheated_20d_return=0.62,
+            strong_bull_exposure=1.0,
+            recovery_bull_exposure=1.0,
+            range_bound_exposure=1.0,
+            correction_bear_exposure=1.0,
+            systemic_bear_exposure=0.0,
+            rebalance_band=0.08,
+            stock_score_mode="risk_adjusted",
+            position_trailing_stop=True,
+            position_stop_min_runup=0.40,
+            position_stop_drawdown=-0.15,
+            position_stop_cooldown_days=5,
+        ),
+        RadarCoreVariant(
+            name="radar_core_v1_score_risk_stock00_turnover60m_overheat62_posrun50_stop18",
+            label="雷達核心成員池 v1 校準版 + 個股獲利50%後回撤18%",
+            top_theme_count=1,
+            max_stocks_per_theme=1,
+            max_single_weight=1.0,
+            min_avg_turnover_twd=60_000_000,
+            min_theme_score=0.20,
+            min_stock_score=0.00,
+            overheated_20d_return=0.62,
+            strong_bull_exposure=1.0,
+            recovery_bull_exposure=1.0,
+            range_bound_exposure=1.0,
+            correction_bear_exposure=1.0,
+            systemic_bear_exposure=0.0,
+            rebalance_band=0.08,
+            stock_score_mode="risk_adjusted",
+            position_trailing_stop=True,
+            position_stop_min_runup=0.50,
+            position_stop_drawdown=-0.18,
+            position_stop_cooldown_days=5,
+        ),
+        RadarCoreVariant(
+            name="radar_core_v1_score_risk_stock00_turnover60m_overheat62_gain300_stop15",
+            label="雷達核心成員池 v1 校準版 + 獲利300%後回撤15%",
+            top_theme_count=1,
+            max_stocks_per_theme=1,
+            max_single_weight=1.0,
+            min_avg_turnover_twd=60_000_000,
+            min_theme_score=0.20,
+            min_stock_score=0.00,
+            overheated_20d_return=0.62,
+            strong_bull_exposure=1.0,
+            recovery_bull_exposure=1.0,
+            range_bound_exposure=1.0,
+            correction_bear_exposure=1.0,
+            systemic_bear_exposure=0.0,
+            rebalance_band=0.08,
+            stock_score_mode="risk_adjusted",
+            portfolio_trailing_stop=True,
+            portfolio_stop_drawdown=-0.15,
+            portfolio_stop_cooldown_days=5,
+            portfolio_stop_min_gain=3.0,
+        ),
+        RadarCoreVariant(
+            name="radar_core_v1_score_risk_stock00_turnover60m_overheat62_blowoff_std",
+            label="雷達核心成員池 v1 校準版 + blow-off 標準防守",
+            top_theme_count=1,
+            max_stocks_per_theme=1,
+            max_single_weight=1.0,
+            min_avg_turnover_twd=60_000_000,
+            min_theme_score=0.20,
+            min_stock_score=0.00,
+            overheated_20d_return=0.62,
+            strong_bull_exposure=1.0,
+            recovery_bull_exposure=1.0,
+            range_bound_exposure=1.0,
+            correction_bear_exposure=1.0,
+            systemic_bear_exposure=0.0,
+            rebalance_band=0.08,
+            stock_score_mode="risk_adjusted",
+            daily_blowoff_exit=True,
+            blowoff_min_runup_20d=0.25,
+            blowoff_drawdown_10d=-0.08,
+            blowoff_volume_ratio_5d_over_60d=1.5,
+        ),
+        RadarCoreVariant(
+            name="radar_core_v1_theme_relative_stock00_turnover60m_overheat62",
+            label="雷達核心成員池 v1 校準版 + 同族群相對強度",
+            top_theme_count=1,
+            max_stocks_per_theme=1,
+            max_single_weight=1.0,
+            min_avg_turnover_twd=60_000_000,
+            min_theme_score=0.20,
+            min_stock_score=0.00,
+            overheated_20d_return=0.62,
+            strong_bull_exposure=1.0,
+            recovery_bull_exposure=1.0,
+            range_bound_exposure=1.0,
+            correction_bear_exposure=1.0,
+            systemic_bear_exposure=0.0,
+            rebalance_band=0.08,
+            stock_score_mode="risk_adjusted_theme_relative",
+        ),
+        RadarCoreVariant(
+            name="radar_core_v1_capital_flow_stock00_turnover60m_overheat62",
+            label="雷達核心成員池 v1 校準版 + 同族群資金集中",
+            top_theme_count=1,
+            max_stocks_per_theme=1,
+            max_single_weight=1.0,
+            min_avg_turnover_twd=60_000_000,
+            min_theme_score=0.20,
+            min_stock_score=0.00,
+            overheated_20d_return=0.62,
+            strong_bull_exposure=1.0,
+            recovery_bull_exposure=1.0,
+            range_bound_exposure=1.0,
+            correction_bear_exposure=1.0,
+            systemic_bear_exposure=0.0,
+            rebalance_band=0.08,
+            stock_score_mode="risk_adjusted_capital_flow",
+        ),
+        RadarCoreVariant(
+            name="radar_core_v1_theme_leader_stock00_turnover60m_overheat62",
+            label="雷達核心成員池 v1 校準版 + 題材領頭股",
+            top_theme_count=1,
+            max_stocks_per_theme=1,
+            max_single_weight=1.0,
+            min_avg_turnover_twd=60_000_000,
+            min_theme_score=0.20,
+            min_stock_score=0.00,
+            overheated_20d_return=0.62,
+            strong_bull_exposure=1.0,
+            recovery_bull_exposure=1.0,
+            range_bound_exposure=1.0,
+            correction_bear_exposure=1.0,
+            systemic_bear_exposure=0.0,
+            rebalance_band=0.08,
+            stock_score_mode="risk_adjusted_theme_leader",
+        ),
+        RadarCoreVariant(
             name="radar_core_v1_score_risk_stock00_turnover60m_overheat64",
             label="雷達核心成員池 v1 風險調整分數 + 流動性60M + 過熱64",
             top_theme_count=1,
@@ -2377,6 +2520,7 @@ def _download_member_prices(
     members: list[ThemeMember],
     *,
     start_date: str,
+    member_required_start_date: str,
     end_date: str,
     cache_dir: str | Path,
     cache_only: bool = False,
@@ -2386,14 +2530,14 @@ def _download_member_prices(
     skipped: list[dict[str, str]] = []
     for member in members:
         error_text = ""
-        for ticker in _exchange_candidates(member.symbol, cache_dir):
+        for ticker in _exchange_candidates(member.symbol, cache_dir, preferred_ticker=member.ticker):
             if cache_only:
                 csv_path = Path(cache_dir) / f"{ticker.replace('.', '_')}.csv"
                 if not csv_path.exists():
                     error_text = "cache_missing"
                     continue
                 loaded = load_price_csv(csv_path)
-                if not _covers_requested_range(loaded, start_date, end_date):
+                if not _covers_requested_range(loaded, member_required_start_date, end_date):
                     error_text = "cache_range_not_covered"
                     continue
                 prices[ticker] = loaded
@@ -2440,15 +2584,24 @@ def _covers_requested_range(frame: pd.DataFrame, start_date: str, end_date: str)
     return start_gap_days <= 10 and end_gap_days <= 10
 
 
-def _exchange_candidates(symbol: str, cache_dir: str | Path) -> list[str]:
+def _exchange_candidates(symbol: str, cache_dir: str | Path, *, preferred_ticker: str = "") -> list[str]:
     cache_path = Path(cache_dir)
     tw = f"{symbol}.TW"
     two = f"{symbol}.TWO"
     two_cache = cache_path / f"{two.replace('.', '_')}.csv"
     tw_cache = cache_path / f"{tw.replace('.', '_')}.csv"
+    candidates: list[str] = []
+    if preferred_ticker:
+        candidates.append(preferred_ticker)
     if two_cache.exists() and not tw_cache.exists():
-        return [two, tw]
-    return [tw, two]
+        candidates.extend([two, tw])
+    else:
+        candidates.extend([tw, two])
+    deduped: list[str] = []
+    for ticker in candidates:
+        if ticker not in deduped:
+            deduped.append(ticker)
+    return deduped
 
 
 def _write_variant_outputs(output_dir: Path, variant: RadarCoreVariant, result: RadarCoreResult) -> None:
@@ -2469,8 +2622,11 @@ def _write_summary(
     run_started: str,
 ) -> None:
     rows = []
+    current_variant_ids: set[str] = set()
     for variant, result in variant_results:
+        current_variant_ids.add(variant.name)
         rows.append(_summary_row(variant.label, result.result, "radar_core_pool_v1", variant.name))
+    rows.extend(_completed_summary_rows(output_dir / "completed_variants.csv", exclude_variant_ids=current_variant_ids))
     for benchmark in benchmarks:
         rows.append(_summary_row(benchmark.name, benchmark, "benchmark", benchmark.name))
     summary = pd.DataFrame(rows).sort_values("total_return_pct", ascending=False)
@@ -2522,6 +2678,33 @@ def _write_report(path: Path, summary: pd.DataFrame, skipped: list[dict[str, str
         "- 回測使用 signal_date 以前資料；交易日開盤才依前一交易日訊號換倉。",
     ]
     path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def _completed_summary_rows(path: Path, *, exclude_variant_ids: set[str]) -> list[dict]:
+    if not path.exists():
+        return []
+    frame = pd.read_csv(path)
+    required = {"variant_id", "label", "final_value", "total_return_pct", "max_drawdown_pct", "trades"}
+    if not required.issubset(frame.columns):
+        return []
+    rows: list[dict] = []
+    completed = frame.drop_duplicates(subset=["variant_id"], keep="last")
+    for _, row in completed.iterrows():
+        variant_id = str(row["variant_id"])
+        if variant_id in exclude_variant_ids:
+            continue
+        rows.append(
+            {
+                "group": "radar_core_pool_v1",
+                "variant_id": variant_id,
+                "label": str(row["label"]),
+                "final_value": round(float(row["final_value"]), 2),
+                "total_return_pct": round(float(row["total_return_pct"]), 2),
+                "max_drawdown_pct": round(float(row["max_drawdown_pct"]), 2),
+                "trades": int(row["trades"]),
+            }
+        )
+    return rows
 
 
 def _markdown_table(frame: pd.DataFrame) -> str:

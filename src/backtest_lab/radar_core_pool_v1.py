@@ -93,7 +93,9 @@ def radar_core_mid_small_calibrated_v1_variant() -> RadarCoreVariant:
 
 
 def load_radar_core_members(path: str | Path) -> list[ThemeMember]:
-    frame = pd.read_csv(path, dtype={"symbol": str}).fillna("")
+    csv_path = Path(path)
+    ticker_overrides = _load_radar_ticker_overrides(csv_path)
+    frame = pd.read_csv(csv_path, dtype={"symbol": str}).fillna("")
     frame = frame[frame["primary"].astype(str).str.lower() != "no"]
     members: list[ThemeMember] = []
     seen: set[tuple[str, str]] = set()
@@ -106,7 +108,7 @@ def load_radar_core_members(path: str | Path) -> list[ThemeMember]:
         members.append(
             ThemeMember(
                 theme=theme,
-                ticker=f"{symbol}.TW",
+                ticker=ticker_overrides.get(symbol, f"{symbol}.TW"),
                 symbol=symbol,
                 name=str(row["name"]).strip(),
                 role=str(row.get("role", "")).strip(),
@@ -114,6 +116,41 @@ def load_radar_core_members(path: str | Path) -> list[ThemeMember]:
             )
         )
     return members
+
+
+def _load_radar_ticker_overrides(theme_map_path: Path) -> dict[str, str]:
+    """Use RADAR's formal symbol exchange map when it is available."""
+    data_root = theme_map_path.parent
+    candidates = [
+        data_root / "formal_sources" / "date_aware_theme_membership_full_2022_2023.csv",
+        data_root / "formal_sources" / "date_aware_theme_membership_full_2022_2023_gap.csv",
+    ]
+    overrides: dict[str, str] = {}
+    for candidate in candidates:
+        if not candidate.exists():
+            continue
+        frame = pd.read_csv(candidate, dtype={"symbol": str}).fillna("")
+        if "symbol" not in frame.columns or "ticker" not in frame.columns:
+            continue
+        for _, row in frame.iterrows():
+            symbol = str(row["symbol"]).strip()
+            ticker = str(row["ticker"]).strip()
+            if symbol and ticker:
+                overrides.setdefault(symbol, ticker)
+    market_universe = data_root / "market_universe.generated.csv"
+    if market_universe.exists():
+        frame = pd.read_csv(market_universe, dtype={"symbol": str}).fillna("")
+        if "symbol" in frame.columns and "market" in frame.columns:
+            for _, row in frame.iterrows():
+                symbol = str(row["symbol"]).strip()
+                market = str(row["market"]).strip().upper()
+                if not symbol:
+                    continue
+                if market == "TPEX":
+                    overrides.setdefault(symbol, f"{symbol}.TWO")
+                elif market == "TWSE":
+                    overrides.setdefault(symbol, f"{symbol}.TW")
+    return overrides
 
 
 def simulate_radar_core_pool(

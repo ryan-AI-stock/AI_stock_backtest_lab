@@ -14,7 +14,7 @@ from backtest_lab.data import download_yfinance_prices, load_price_csv, split_ad
 from backtest_lab.frozen_report_pdf import _configure_chinese_font
 
 
-DEFAULT_OUTPUT_DIR = "outputs/ep10_0050_0056_cashflow_growth_material_pack_20260616"
+DEFAULT_OUTPUT_DIR = "outputs/ep10_0050_0056_cashflow_growth_material_pack_202105_202605"
 DEFAULT_CACHE_DIR = "backtest_cache/ep10_0050_0056_cashflow_growth"
 DEFAULT_CONFIG = "configs/ep05_universe.json"
 DEFAULT_END_DATE = "2026-05-26"
@@ -145,6 +145,8 @@ def main() -> None:
     chart_paths = _write_charts(output_dir, summary, cashflows, equity)
     _write_readme(output_dir, summary, chart_paths, price_repair_notes)
     _write_source_notes(output_dir, summary, chart_paths)
+    _write_planning_handoff_prompt(output_dir, summary, chart_paths)
+    _write_first_12_pages_regen_check(output_dir)
     _write_manifest(output_dir, args, periods, chart_paths, price_repair_notes)
     _write_step(output_dir, "completed")
 
@@ -542,9 +544,10 @@ def _allocation_label(allocation_id: str) -> str:
 
 
 def _write_readme(output_dir: Path, summary: pd.DataFrame, chart_paths: list[str], price_repair_notes: list[dict]) -> None:
+    recent = summary[summary["period_id"] == "5y"].copy()
+    recent_1m = recent[recent["initial_capital_twd"] == 1_000_000].copy()
+    recent_1m = recent_1m.sort_values("final_total_wealth_twd", ascending=False)
     display_cols = [
-        "period_label",
-        "initial_capital_twd",
         "allocation_id",
         "final_invested_value_twd",
         "withdrawn_income_twd",
@@ -558,6 +561,8 @@ def _write_readme(output_dir: Path, summary: pd.DataFrame, chart_paths: list[str
         "",
         "定位：AI 輔助資產配置情境回測，不是投資建議。",
         "",
+        "本版主素材口徑：只使用近五年區間，約 2021/5 到 2026/5。長週期與 2022 壓力測試資料仍保留在 CSV 中備查，但不作為 EP10 主敘事。",
+        "",
         "## 回測口徑",
         "",
         "- 一次投入，不做定期定額。",
@@ -567,13 +572,17 @@ def _write_readme(output_dir: Path, summary: pd.DataFrame, chart_paths: list[str
         "- 交易成本使用台灣券商手續費口徑；0050 因使用總報酬 proxy，僅期初買進扣手續費，不逐次模擬配息再投入手續費。",
         "- 若資料源出現未記錄的拆分型價格斷層，runner 會自動以接近整數倍的跳點修正前段價格。",
         "",
-        "## 主要摘要",
+        "## 近五年主摘要：100 萬起算",
         "",
-        _markdown_table(summary[display_cols].head(120)),
+        _markdown_table(recent_1m[display_cols]),
+        "",
+        "## 近五年主摘要：全部起始金",
+        "",
+        _markdown_table(recent[["initial_capital_twd", *display_cols]]),
         "",
         "## 圖表清單",
         "",
-        *[f"- `{path}`" for path in chart_paths],
+        *[f"- `{path}`" for path in chart_paths if "\\5y_" in path or "/5y_" in path],
         "",
         "## 資料修正紀錄",
         "",
@@ -596,7 +605,7 @@ def _write_source_notes(output_dir: Path, summary: pd.DataFrame, chart_paths: li
         "",
         "這份資料包可供企劃、旁白、GPT 繪圖與剪輯使用。內容定位是 AI 輔助回測與資產配置情境試算，不是投資建議。",
         "",
-        "核心設定：0050 使用配息再投入總報酬近似，0056 配息領出補貼家用；比較 50萬、100萬、500萬與五種配置比例。",
+        "核心設定：0050 使用配息再投入總報酬近似，0056 配息領出補貼家用；主敘事使用近五年，約 2021/5 到 2026/5，並以 100 萬起算的五種配置比例作為主要畫面素材。",
         "",
         "近5年 100萬起算排序：",
     ]
@@ -607,8 +616,96 @@ def _write_source_notes(output_dir: Path, summary: pd.DataFrame, chart_paths: li
             f"平均每年現金流 {row.avg_annual_withdrawn_income_twd:,.0f} 元，"
             f"帳戶回撤 {row.max_drawdown_invested_pct:+.2f}%。"
         )
-    lines.extend(["", "圖表檔案：", *[f"- {path}" for path in chart_paths]])
+    lines.extend(
+        [
+            "",
+            "主圖表檔案：",
+            *[f"- {path}" for path in chart_paths if "\\5y_" in path or "/5y_" in path],
+        ]
+    )
     (output_dir / "creatorflow_source_notes.md").write_text("\n".join(lines), encoding="utf-8")
+
+
+def _write_planning_handoff_prompt(output_dir: Path, summary: pd.DataFrame, chart_paths: list[str]) -> None:
+    recent = summary[(summary["period_id"] == "5y") & (summary["initial_capital_twd"] == 1_000_000)].copy()
+    recent = recent.sort_values("final_total_wealth_twd", ascending=False)
+    bullets = []
+    for _, row in recent.iterrows():
+        bullets.append(
+            f"- {_allocation_label(row.allocation_id)}：期末總財富 {row.final_total_wealth_twd:,.0f} 元；"
+            f"已領現金流 {row.withdrawn_income_twd:,.0f} 元；"
+            f"平均每年現金流 {row.avg_annual_withdrawn_income_twd:,.0f} 元；"
+            f"最大回撤 {row.max_drawdown_invested_pct:+.2f}%。"
+        )
+
+    lines = [
+        "# 給另一個 Chat 的 EP10 企劃草稿重製提示詞",
+        "",
+        "請讀取以下 EP10 素材包，重新生成企劃草稿。重點是修正原企劃中可能使用舊區間或舊敘事的頁面。",
+        "",
+        f"素材包位置：`{output_dir}`",
+        "",
+        "## 主題",
+        "",
+        "房貸車貸生活每月開銷 8-9 萬，該買 0050 還是 0056？我讓 AI 回測：配息補家用，資產還能長大嗎？",
+        "",
+        "## 必須使用的最新口徑",
+        "",
+        "- 回測區間改為近五年：約 2021/5 到 2026/5。",
+        "- 0050 使用配息再投入的總報酬近似口徑。",
+        "- 0056 的配息視為領出補貼家用，不再投入。",
+        "- 這是 AI 輔助資產配置情境回測，不是投資建議。",
+        "- 旁白要用第一人稱、普通家庭現金流壓力的角度，不要用創作者個人資產規模當主軸。",
+        "",
+        "## 近五年 100 萬起算核心數據",
+        "",
+        *bullets,
+        "",
+        "## 可使用圖表",
+        "",
+        *[f"- `{path}`" for path in chart_paths if "\\5y_" in path or "/5y_" in path],
+        "",
+        "## 請輸出",
+        "",
+        "1. 長影片完整旁白。",
+        "2. 長影片 30 頁分頁繪圖提示詞。",
+        "3. 短影片旁白。",
+        "4. 短影片 7 頁分頁繪圖提示詞。",
+        "5. YouTube 長短影片標題、說明、標籤、關鍵字、時間軸、置頂留言。",
+        "",
+        "## 注意",
+        "",
+        "- 若原企劃前 12 頁已有使用舊區間、完整樣本、10 年/15 年，或以 50 萬/100 萬/500 萬資金級距當開場鉤子，請改成近五年與家庭月開銷壓力敘事。",
+        "- 數據頁請直接使用上方數字，避免重新估算。",
+        "- 圖像提示詞要留白給報告或數據卡，不要把小字塞滿畫面。",
+    ]
+    (output_dir / "ep10_replanning_prompt_for_chatgpt.md").write_text("\n".join(lines), encoding="utf-8")
+
+
+def _write_first_12_pages_regen_check(output_dir: Path) -> None:
+    lines = [
+        "# EP10 前 12 頁重生圖檢查建議",
+        "",
+        "因目前只掌握素材包與最新口徑，未直接讀取已生成的 12 張圖片；以下是給人工 QA 的重製判斷規則。",
+        "",
+        "## 建議必查頁面",
+        "",
+        "- P1-P3：若開場仍是 50萬、100萬、500萬資金級距，建議重製；新鉤子應改為家庭每月 8-9 萬開銷、配息能否補家用。",
+        "- P4-P8：若畫面文字出現完整樣本、10年、15年、2009 起算，建議重製；EP10 主素材改用近五年 2021/5-2026/5。",
+        "- P9-P12：若圖表或數據卡使用舊資料，建議重製；只保留近五年 100 萬起算五種配置比較。",
+        "",
+        "## 可沿用條件",
+        "",
+        "- 若畫面只是家庭現金流壓力、0050/0056 概念、AI 回測流程，且沒有舊區間或舊數字，可以沿用。",
+        "- 若畫面有留白可後製貼新數據卡，也可沿用底圖，只重貼數據。",
+        "",
+        "## 新數據來源",
+        "",
+        "- `creatorflow_source_notes.md`：給企劃與旁白使用。",
+        "- `ep10_replanning_prompt_for_chatgpt.md`：給另一個 Chat 重製企劃草稿使用。",
+        "- `charts/5y_allocation_total_wealth_1m.png`、`charts/5y_avg_annual_income_1m.png`、`charts/5y_key_allocations_total_wealth_curve.png`：給剪輯與圖像重製使用。",
+    ]
+    (output_dir / "first_12_pages_regen_check.md").write_text("\n".join(lines), encoding="utf-8")
 
 
 def _write_manifest(
