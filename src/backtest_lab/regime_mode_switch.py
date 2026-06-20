@@ -123,6 +123,19 @@ class ExposureOverlayDecision:
 ExposureOverlay = Callable[[str | None, pd.Timestamp, pd.Timestamp, float], ExposureOverlayDecision]
 
 
+@dataclass(frozen=True)
+class TargetSelectionOverlayDecision:
+    target: str | None
+    reason: str = ""
+    signal_date: str = ""
+
+
+TargetSelectionOverlay = Callable[
+    [str, dict[str, pd.DataFrame], pd.Timestamp, pd.Timestamp, str, RegimeModeSwitchVariant, str | None, float],
+    TargetSelectionOverlayDecision,
+]
+
+
 def default_mode_switch_variants() -> tuple[RegimeModeSwitchVariant, ...]:
     return (
         RegimeModeSwitchVariant(
@@ -2714,6 +2727,7 @@ def simulate_regime_mode_switch(
     variant: RegimeModeSwitchVariant,
     dividend_series_by_ticker: dict[str, pd.Series] | None = None,
     exposure_overlay: ExposureOverlay | None = None,
+    target_selection_overlay: TargetSelectionOverlay | None = None,
 ) -> BacktestResult:
     trade_dates = _common_trade_dates(prices_by_ticker, start_date, end_date)
     if not trade_dates:
@@ -2750,6 +2764,11 @@ def simulate_regime_mode_switch(
         overlay_risk_flag = False
         overlay_reason = ""
         overlay_signal_date = ""
+        target_overlay_baseline_target = ""
+        target_overlay_target = ""
+        target_overlay_reason = ""
+        target_overlay_signal_date = ""
+        target_overlay_changed = False
         if account.ticker is not None and dividend_series_by_ticker is not None:
             dividend = float(dividend_series_by_ticker[account.ticker].get(trade_date, 0.0))
             if dividend > 0:
@@ -3015,6 +3034,26 @@ def simulate_regime_mode_switch(
             if target is None and mode == MODE_CASH and variant.fallback_ticker:
                 target = variant.fallback_ticker
                 target_exposure = variant.fallback_exposure
+            if target_selection_overlay is not None:
+                baseline_target = target
+                selection_decision = target_selection_overlay(
+                    mode,
+                    prices_by_ticker,
+                    trade_date,
+                    signal_date,
+                    regime,
+                    variant,
+                    baseline_target,
+                    target_exposure,
+                )
+                target = selection_decision.target
+                if target is None:
+                    target_exposure = 0.0
+                target_overlay_baseline_target = baseline_target or "cash"
+                target_overlay_target = target or "cash"
+                target_overlay_reason = selection_decision.reason
+                target_overlay_signal_date = selection_decision.signal_date
+                target_overlay_changed = target != baseline_target
             overlay_decision: ExposureOverlayDecision | None = None
             if exposure_overlay is not None and target is not None and target_exposure > 0:
                 overlay_decision = exposure_overlay(target, trade_date, signal_date, target_exposure)
@@ -3069,6 +3108,16 @@ def simulate_regime_mode_switch(
                     "overlay_risk_flag": overlay_risk_flag,
                     "overlay_reason": overlay_reason,
                     "overlay_signal_date": overlay_signal_date,
+                }
+            )
+        if target_selection_overlay is not None:
+            equity_row.update(
+                {
+                    "target_overlay_baseline_target": target_overlay_baseline_target,
+                    "target_overlay_target": target_overlay_target,
+                    "target_overlay_reason": target_overlay_reason,
+                    "target_overlay_signal_date": target_overlay_signal_date,
+                    "target_overlay_changed": target_overlay_changed,
                 }
             )
         equity_rows.append(equity_row)
