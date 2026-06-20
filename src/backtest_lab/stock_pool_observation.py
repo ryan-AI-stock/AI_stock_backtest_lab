@@ -90,6 +90,10 @@ class StockPoolObservation:
     top_score: float | None
     action_state: str
     candidates: list[UniversalCandidateScore]
+    rank_score: float | None = None
+    base_pool_passed: bool = False
+    gate_rule_id: str = ""
+    gate_reason: str = ""
     top_asset_type: str | None = None
     attack_gate_open: bool | None = None
     eligible_for_pool_selection: bool = False
@@ -161,10 +165,17 @@ def build_stock_pool_observation(
         for symbol in available_symbols
     }
     asset_type_by_ticker = _asset_type_by_ticker(available_symbols)
-    top = _first_eligible_candidate(candidates, asset_type_by_ticker=asset_type_by_ticker)
+    gate_rule_id = _gate_rule_id_for_pool(pool)
+    top = _first_eligible_candidate(
+        candidates,
+        asset_type_by_ticker=asset_type_by_ticker,
+        gate_rule_id=gate_rule_id,
+    )
     top_asset_type = _asset_type_for_ticker(top.ticker, asset_type_by_ticker) if top else None
+    top_gate = _candidate_gate_evaluation(top, top_asset_type, gate_rule_id=gate_rule_id)
     source_metadata = _build_pool_source_metadata(pool, available_symbols)
     source_metadata["candidate_asset_types"] = asset_type_by_ticker
+    source_metadata["gate_rule_id"] = gate_rule_id
     return StockPoolObservation(
         schema_version=1,
         pool_id=str(pool["pool_id"]),
@@ -179,13 +190,17 @@ def build_stock_pool_observation(
         top_ticker=top.ticker if top else None,
         top_display=display_by_ticker.get(top.ticker, top.ticker) if top else None,
         top_score=round(top.score, 6) if top else None,
+        rank_score=round(top.score, 6) if top else None,
+        base_pool_passed=top_gate["base_pool_passed"],
+        gate_rule_id=top_gate["gate_rule_id"],
+        gate_reason=top_gate["gate_reason"],
         action_state="watch_candidate" if top else "no_valid_candidate",
         candidates=candidates,
         top_asset_type=top_asset_type,
-        attack_gate_open=_attack_gate_open_for_candidate(top, top_asset_type) if top else None,
-        eligible_for_pool_selection=bool(top),
-        selection_layer=_selection_layer_for_candidate(top, top_asset_type) if top else SELECTION_NO_SELECTION,
-        selection_reason=_selection_reason_for_candidate(top, top_asset_type) if top else "池內沒有通過入選條件的正式候選或市場曝險工具。",
+        attack_gate_open=top_gate["attack_gate_open"],
+        eligible_for_pool_selection=top_gate["eligible_for_pool_selection"],
+        selection_layer=top_gate["selection_layer"],
+        selection_reason=top_gate["gate_reason"] if top else "池內沒有通過入選條件的正式候選或市場曝險工具。",
         source_metadata=source_metadata,
         decision_layer=CANDIDATE_SOURCE,
         active_in_trade_decision=False,
@@ -313,22 +328,102 @@ def _first_eligible_candidate(
     candidates: list[UniversalCandidateScore],
     *,
     asset_type_by_ticker: dict[str, str],
+    gate_rule_id: str,
 ) -> UniversalCandidateScore | None:
     return next(
         (
             candidate
             for candidate in candidates
-            if _eligible_for_pool_selection(candidate, _asset_type_for_ticker(candidate.ticker, asset_type_by_ticker))
+            if _candidate_gate_evaluation(
+                candidate,
+                _asset_type_for_ticker(candidate.ticker, asset_type_by_ticker),
+                gate_rule_id=gate_rule_id,
+            )["eligible_for_pool_selection"]
         ),
         None,
     )
 
 
-def _eligible_for_pool_selection(candidate: UniversalCandidateScore | None, asset_type: str | None) -> bool:
+def _gate_rule_id_for_pool(pool: dict[str, Any]) -> str:
+    pool_id = str(pool.get("pool_id") or "")
+    preset = str(pool.get("strategy_preset") or "universal_pool_custom")
+    if pool_id == "tw50_dynamic_constituents_v0":
+        return "tw50_large_breadth_gate_v0"
+    if preset == "core_defensive_style_v1":
+        return "core_defensive_style_gate_v1"
+    if preset in {"best_v20260605", "ai_theme_large_cap_v20260613"}:
+        return f"{preset}_formal_regime_gate"
+    return "universal_pool_base_gate_v1"
+
+
+def _candidate_gate_evaluation(
+    candidate: UniversalCandidateScore | None,
+    asset_type: str | None,
+    *,
+    gate_rule_id: str,
+    attack_gate_active: bool | None = None,
+) -> dict[str, Any]:
+    base_pool_passed = bool(candidate and candidate.passed)
+    attack_gate_open = _attack_gate_open_for_candidate(
+        candidate,
+        asset_type,
+        attack_gate_active=attack_gate_active,
+    )
+    selection_layer = _selection_layer_for_candidate(candidate, asset_type)
+    eligible = selection_layer in {SELECTION_FORMAL_CANDIDATE, SELECTION_MARKET_EXPOSURE_TOOL}
+    if candidate is None:
+        gate_reason = "池內沒有候選資料。"
+    elif gate_rule_id == "tw50_large_breadth_gate_v0":
+        gate_reason = (
+            "大型廣度池 v0：通過暖身資料、均線、流動性、過熱、回撤與分數門檻。"
+            if base_pool_passed
+            else f"大型廣度池 v0 未通過：{candidate.reason or '池內基本條件未通過'}。"
+        )
+    elif gate_rule_id == "core_defensive_style_gate_v1":
+        gate_reason = (
+            "核心防守池 v1：通過較嚴格的過熱、回撤、均線與風險調整條件。"
+            if base_pool_passed
+            else f"核心防守池 v1 未通過：{candidate.reason or '池內基本條件未通過'}。"
+        )
+    elif gate_rule_id.endswith("_formal_regime_gate"):
+        if _normalize_asset_type(asset_type) in {ASSET_TYPE_ETF, ASSET_TYPE_CASH}:
+            gate_reason = "正式引擎目前選擇市場曝險工具；ETF 不套用個股攻擊閘門。"
+        elif attack_gate_open:
+            gate_reason = "正式引擎個股攻擊閘門已開啟，且該個股為模型正式目標。"
+        else:
+            gate_reason = f"正式引擎個股攻擊閘門未開啟或非正式目標：{candidate.reason or '觀察'}。"
+    else:
+        gate_reason = (
+            "通用池基礎 gate：通過池內硬條件。"
+            if base_pool_passed
+            else f"通用池基礎 gate 未通過：{candidate.reason or '池內基本條件未通過'}。"
+        )
+    return {
+        "rank_score": round(candidate.score, 6) if candidate else None,
+        "base_pool_passed": base_pool_passed,
+        "attack_gate_open": attack_gate_open,
+        "eligible_for_pool_selection": eligible,
+        "selection_layer": selection_layer,
+        "gate_rule_id": gate_rule_id,
+        "gate_reason": gate_reason,
+    }
+
+
+def _eligible_for_pool_selection(
+    candidate: UniversalCandidateScore | None,
+    asset_type: str | None,
+    *,
+    gate_rule_id: str = "universal_pool_base_gate_v1",
+) -> bool:
     if candidate is None:
         return False
-    layer = _selection_layer_for_candidate(candidate, asset_type)
-    return layer in {SELECTION_FORMAL_CANDIDATE, SELECTION_MARKET_EXPOSURE_TOOL}
+    return bool(
+        _candidate_gate_evaluation(
+            candidate,
+            asset_type,
+            gate_rule_id=gate_rule_id,
+        )["eligible_for_pool_selection"]
+    )
 
 
 def _selection_layer_for_candidate(candidate: UniversalCandidateScore | None, asset_type: str | None) -> str:
@@ -545,11 +640,15 @@ def run_stock_pool_observation_batch(
                     "top_display": observation.top_display,
                     "top_asset_type": observation.top_asset_type,
                     "score": observation.top_score,
+                    "rank_score": observation.rank_score,
                     "rank": 1 if observation.top_ticker else None,
+                    "base_pool_passed": observation.base_pool_passed,
                     "attack_gate_open": observation.attack_gate_open,
                     "eligible_for_pool_selection": observation.eligible_for_pool_selection,
                     "selection_layer": observation.selection_layer,
                     "selection_reason": observation.selection_reason,
+                    "gate_rule_id": observation.gate_rule_id,
+                    "gate_reason": observation.gate_reason,
                     "action_state": observation.action_state,
                     "decision_layer": observation.decision_layer,
                     "active_in_trade_decision": observation.active_in_trade_decision,
@@ -619,11 +718,15 @@ def write_stock_pool_observation_batch_summary(root: Path, manifest: dict[str, A
                 "top_ticker": item.get("top_ticker", ""),
                 "top_asset_type": item.get("top_asset_type", ""),
                 "score": item.get("score", ""),
+                "rank_score": item.get("rank_score", item.get("score", "")),
                 "rank": item.get("rank", ""),
+                "base_pool_passed": item.get("base_pool_passed", ""),
                 "attack_gate_open": item.get("attack_gate_open", ""),
                 "eligible_for_pool_selection": item.get("eligible_for_pool_selection", False),
                 "selection_layer": item.get("selection_layer", ""),
                 "selection_reason": item.get("selection_reason", ""),
+                "gate_rule_id": item.get("gate_rule_id", ""),
+                "gate_reason": item.get("gate_reason", ""),
                 "action_state": item.get("action_state", ""),
                 "decision_layer": item.get("decision_layer", ""),
                 "active_in_trade_decision": item.get("active_in_trade_decision", False),
@@ -654,11 +757,15 @@ def write_stock_pool_observation_batch_summary(root: Path, manifest: dict[str, A
                 "top_ticker": "",
                 "top_asset_type": "",
                 "score": "",
+                "rank_score": "",
                 "rank": "",
+                "base_pool_passed": False,
                 "attack_gate_open": "",
                 "eligible_for_pool_selection": False,
                 "selection_layer": SELECTION_NO_SELECTION,
                 "selection_reason": item.get("reason", ""),
+                "gate_rule_id": "",
+                "gate_reason": item.get("reason", ""),
                 "action_state": "",
                 "decision_layer": item.get("decision_layer", ""),
                 "active_in_trade_decision": item.get("active_in_trade_decision", False),
@@ -929,7 +1036,7 @@ def _draw_pool_top3_sections(ax, rows: list[dict[str, Any]], *, start_y: float =
             row_h = 0.034
             ax.add_patch(plt.Rectangle((x0, y), 0.88, row_h, facecolor=fill, edgecolor="#e1e7ec", transform=ax.transAxes))
             display = _normalize_display_label(str(candidate.get("display", "")), str(candidate.get("ticker", "")))
-            reason = _compact_display(str(candidate.get("reason", "")), limit=30)
+            reason = _compact_display(str(candidate.get("gate_reason") or candidate.get("reason", "")), limit=30)
             cells = (
                 str(candidate.get("rank", "")),
                 _compact_display(str(candidate.get("selection_label") or ""), limit=5),
@@ -972,9 +1079,16 @@ def _top_candidate_rows(observation: StockPoolObservation, limit: int = 3) -> li
     )
     rows = []
     asset_type_by_ticker = (observation.source_metadata or {}).get("candidate_asset_types") or {}
+    gate_rule_id = str((observation.source_metadata or {}).get("gate_rule_id") or observation.gate_rule_id or "")
     for rank, candidate in enumerate(candidates[:limit], start=1):
         asset_type = _asset_type_for_ticker(candidate.ticker, asset_type_by_ticker)
-        selection_layer = _selection_layer_for_candidate(candidate, asset_type)
+        gate = _candidate_gate_evaluation(
+            candidate,
+            asset_type,
+            gate_rule_id=gate_rule_id or "universal_pool_base_gate_v1",
+            attack_gate_active=(observation.source_metadata or {}).get("attack_gate_active"),
+        )
+        selection_layer = str(gate["selection_layer"])
         rows.append(
             {
                 "rank": rank,
@@ -983,15 +1097,15 @@ def _top_candidate_rows(observation: StockPoolObservation, limit: int = 3) -> li
                 "display": _candidate_display(observation, candidate.ticker),
                 "asset_type": asset_type,
                 "score": round(candidate.score, 6),
+                "rank_score": gate["rank_score"],
                 "passed": candidate.passed,
-                "attack_gate_open": _attack_gate_open_for_candidate(
-                    candidate,
-                    asset_type,
-                    attack_gate_active=(observation.source_metadata or {}).get("attack_gate_active"),
-                ),
-                "eligible_for_pool_selection": _eligible_for_pool_selection(candidate, asset_type),
+                "base_pool_passed": gate["base_pool_passed"],
+                "attack_gate_open": gate["attack_gate_open"],
+                "eligible_for_pool_selection": gate["eligible_for_pool_selection"],
                 "selection_layer": selection_layer,
                 "selection_label": _selection_label(selection_layer),
+                "gate_rule_id": gate["gate_rule_id"],
+                "gate_reason": gate["gate_reason"],
                 "is_model_target": candidate.ticker == observation.top_ticker,
                 "reason": _candidate_reason(observation, candidate),
             }
@@ -1369,6 +1483,14 @@ def _build_regime_signal_observation(
         for symbol in pool.get("resolved_symbols", [])
     }
     top_asset_type = asset_types.get(top_ticker) if top_ticker else None
+    top_candidate = next((candidate for candidate in candidates if candidate.ticker == top_ticker), None)
+    gate_rule_id = _gate_rule_id_for_pool(pool)
+    top_gate = _candidate_gate_evaluation(
+        top_candidate,
+        top_asset_type,
+        gate_rule_id=gate_rule_id,
+        attack_gate_active=signal.attack_gate_active,
+    )
     return StockPoolObservation(
         schema_version=1,
         pool_id=str(pool["pool_id"]),
@@ -1383,23 +1505,17 @@ def _build_regime_signal_observation(
         top_ticker=top_ticker,
         top_display=display_by_ticker.get(top_ticker, labels.get(top_ticker, top_ticker)) if top_ticker else None,
         top_score=next((candidate.score for candidate in candidates if candidate.ticker == top_ticker), None),
+        rank_score=top_gate["rank_score"],
+        base_pool_passed=top_gate["base_pool_passed"],
+        gate_rule_id=top_gate["gate_rule_id"],
+        gate_reason=top_gate["gate_reason"],
         action_state=signal.model_target_status,
         candidates=candidates,
         top_asset_type=top_asset_type,
-        attack_gate_open=_attack_gate_open_for_candidate(
-            next((candidate for candidate in candidates if candidate.ticker == top_ticker), None),
-            top_asset_type,
-            attack_gate_active=signal.attack_gate_active,
-        ) if top_ticker else None,
-        eligible_for_pool_selection=bool(top_ticker),
-        selection_layer=_selection_layer_for_candidate(
-            next((candidate for candidate in candidates if candidate.ticker == top_ticker), None),
-            top_asset_type,
-        ) if top_ticker else SELECTION_NO_SELECTION,
-        selection_reason=_selection_reason_for_candidate(
-            next((candidate for candidate in candidates if candidate.ticker == top_ticker), None),
-            top_asset_type,
-        ) if top_ticker else "正式模型目前沒有可投票的池內目標。",
+        attack_gate_open=top_gate["attack_gate_open"] if top_ticker else None,
+        eligible_for_pool_selection=top_gate["eligible_for_pool_selection"],
+        selection_layer=top_gate["selection_layer"] if top_ticker else SELECTION_NO_SELECTION,
+        selection_reason=top_gate["gate_reason"] if top_ticker else "正式模型目前沒有可投票的池內目標。",
         source_metadata={
             "source_type": f"{strategy_id}_signal",
             "market_regime_label": signal.market_regime_label,
@@ -1410,6 +1526,7 @@ def _build_regime_signal_observation(
             "target_label": signal.target_label,
             "target_exposure": signal.target_exposure,
             "candidate_asset_types": asset_types,
+            "gate_rule_id": gate_rule_id,
         },
         decision_layer=FORMAL_TRADE_SIGNAL,
         active_in_trade_decision=True,

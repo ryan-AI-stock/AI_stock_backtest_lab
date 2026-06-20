@@ -58,6 +58,10 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertTrue(observation.attack_gate_open)
         self.assertTrue(observation.eligible_for_pool_selection)
         self.assertEqual(observation.selection_layer, "formal_candidate")
+        self.assertEqual(observation.rank_score, observation.top_score)
+        self.assertTrue(observation.base_pool_passed)
+        self.assertEqual(observation.gate_rule_id, "universal_pool_base_gate_v1")
+        self.assertIn("通用池基礎 gate", observation.gate_reason)
         self.assertGreaterEqual(observation.passed_count, 1)
         scores = {candidate.ticker: candidate for candidate in observation.candidates}
         self.assertEqual(scores["2330.TW"].size_profile, "large_cap")
@@ -90,6 +94,45 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertTrue(rows[0]["passed"])
         self.assertEqual(top_rows[0]["asset_type"], "etf")
         self.assertEqual(top_rows[0]["selection_layer"], "market_exposure_tool")
+        self.assertTrue(top_rows[0]["eligible_for_pool_selection"])
+        self.assertEqual(top_rows[0]["gate_rule_id"], "universal_pool_base_gate_v1")
+        self.assertIn("通用池基礎 gate", top_rows[0]["gate_reason"])
+
+    def test_tw50_pool_uses_own_gate_rule_not_formal_attack_gate(self) -> None:
+        dates = pd.bdate_range("2025-01-02", periods=160)
+        yageo = symbol_entry("2327.TW", source="tw50_history_csv")
+        yageo["market_cap_twd"] = 900_000_000_000
+        tsmc = symbol_entry("2330.TW", source="tw50_history_csv")
+        tsmc["market_cap_twd"] = 20_000_000_000_000
+        pool = {
+            "pool_id": "tw50_dynamic_constituents_v0",
+            "name": "大型市場廣度池 v0",
+            "strategy_preset": "universal_pool_custom",
+            "resolved_symbols": [yageo, tsmc],
+            "dynamic_constituents": {"source": "tw50_history_csv", "path": "data/tw50_constituents.csv"},
+        }
+        prices = {
+            "2327.TW": _trend_frame(dates, start=100, step=1.0, volume=20_000_000),
+            "2330.TW": _trend_frame(dates, start=100, step=0.2, volume=20_000_000),
+        }
+
+        observation = build_stock_pool_observation(
+            pool=pool,
+            prices_by_ticker=prices,
+            signal_date=dates[-1],
+        )
+        top_rows = _top_candidate_rows(observation)
+
+        self.assertEqual(observation.top_ticker, "2327.TW")
+        self.assertEqual(observation.gate_rule_id, "tw50_large_breadth_gate_v0")
+        self.assertTrue(observation.base_pool_passed)
+        self.assertTrue(observation.attack_gate_open)
+        self.assertTrue(observation.eligible_for_pool_selection)
+        self.assertEqual(observation.selection_layer, "formal_candidate")
+        self.assertIn("大型廣度池 v0", observation.gate_reason)
+        self.assertEqual(top_rows[0]["gate_rule_id"], "tw50_large_breadth_gate_v0")
+        self.assertTrue(top_rows[0]["base_pool_passed"])
+        self.assertTrue(top_rows[0]["attack_gate_open"])
         self.assertTrue(top_rows[0]["eligible_for_pool_selection"])
 
     def test_build_observation_preserves_valuation_signal_fields(self) -> None:
@@ -275,14 +318,20 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertEqual(manifest["generated"][0]["decision_layer"], CANDIDATE_SOURCE)
             self.assertFalse(manifest["generated"][0]["active_in_trade_decision"])
             self.assertEqual(manifest["generated"][0]["top_asset_type"], "stock")
+            self.assertIn("rank_score", manifest["generated"][0])
+            self.assertTrue(manifest["generated"][0]["base_pool_passed"])
             self.assertTrue(manifest["generated"][0]["attack_gate_open"])
             self.assertTrue(manifest["generated"][0]["eligible_for_pool_selection"])
             self.assertEqual(manifest["generated"][0]["selection_layer"], "formal_candidate")
+            self.assertEqual(manifest["generated"][0]["gate_rule_id"], "universal_pool_base_gate_v1")
+            self.assertIn("通用池基礎 gate", manifest["generated"][0]["gate_reason"])
             self.assertEqual(manifest["generated"][0]["candidate_review"]["frequency"], "monthly")
             self.assertEqual(manifest["generated"][0]["candidate_review"]["source_status"], "manual_review_required")
             self.assertEqual(len(manifest["generated"][0]["top_candidates"]), 1)
             self.assertEqual(manifest["generated"][0]["top_candidates"][0]["display"], "台積電(2330)")
+            self.assertTrue(manifest["generated"][0]["top_candidates"][0]["base_pool_passed"])
             self.assertEqual(manifest["generated"][0]["top_candidates"][0]["selection_layer"], "formal_candidate")
+            self.assertEqual(manifest["generated"][0]["top_candidates"][0]["gate_rule_id"], "universal_pool_base_gate_v1")
             self.assertEqual(len(manifest["skipped"]), 1)
             self.assertEqual(manifest["skipped"][0]["reason"], "missing_formal_radar_candidates")
             self.assertEqual(manifest["skipped"][0]["decision_layer"], DATA_READINESS)
