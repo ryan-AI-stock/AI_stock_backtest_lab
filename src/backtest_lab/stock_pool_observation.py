@@ -63,6 +63,14 @@ VOTE_DIVERGENT_COLORS = ("#2457a7", "#7a3db8", "#c77917")
 VOTE_WINNER_COLOR = "#13795b"
 VOTE_MINOR_COLOR = "#c77917"
 VOTE_NEUTRAL_COLOR = "#6b7780"
+ASSET_TYPE_STOCK = "stock"
+ASSET_TYPE_ETF = "etf"
+ASSET_TYPE_CASH = "cash"
+ASSET_TYPE_UNKNOWN = "unknown"
+SELECTION_FORMAL_CANDIDATE = "formal_candidate"
+SELECTION_MARKET_EXPOSURE_TOOL = "market_exposure_tool"
+SELECTION_OBSERVATION_ONLY = "observation_only"
+SELECTION_NO_SELECTION = "no_selection"
 
 
 @dataclass(frozen=True)
@@ -82,6 +90,11 @@ class StockPoolObservation:
     top_score: float | None
     action_state: str
     candidates: list[UniversalCandidateScore]
+    top_asset_type: str | None = None
+    attack_gate_open: bool | None = None
+    eligible_for_pool_selection: bool = False
+    selection_layer: str = SELECTION_NO_SELECTION
+    selection_reason: str = ""
     source_metadata: dict[str, Any] = field(default_factory=dict)
     decision_layer: str = CANDIDATE_SOURCE
     active_in_trade_decision: bool = False
@@ -143,11 +156,15 @@ def build_stock_pool_observation(
         key=lambda item: (item.passed, item.score, item.ret20, item.ticker),
         reverse=True,
     )
-    top = next((candidate for candidate in candidates if candidate.passed), None)
     display_by_ticker = {
         symbol["ticker"]: symbol.get("display") or symbol["ticker"]
         for symbol in available_symbols
     }
+    asset_type_by_ticker = _asset_type_by_ticker(available_symbols)
+    top = _first_eligible_candidate(candidates, asset_type_by_ticker=asset_type_by_ticker)
+    top_asset_type = _asset_type_for_ticker(top.ticker, asset_type_by_ticker) if top else None
+    source_metadata = _build_pool_source_metadata(pool, available_symbols)
+    source_metadata["candidate_asset_types"] = asset_type_by_ticker
     return StockPoolObservation(
         schema_version=1,
         pool_id=str(pool["pool_id"]),
@@ -164,7 +181,12 @@ def build_stock_pool_observation(
         top_score=round(top.score, 6) if top else None,
         action_state="watch_candidate" if top else "no_valid_candidate",
         candidates=candidates,
-        source_metadata=_build_pool_source_metadata(pool, available_symbols),
+        top_asset_type=top_asset_type,
+        attack_gate_open=_attack_gate_open_for_candidate(top, top_asset_type) if top else None,
+        eligible_for_pool_selection=bool(top),
+        selection_layer=_selection_layer_for_candidate(top, top_asset_type) if top else SELECTION_NO_SELECTION,
+        selection_reason=_selection_reason_for_candidate(top, top_asset_type) if top else "池內沒有通過入選條件的正式候選或市場曝險工具。",
+        source_metadata=source_metadata,
         decision_layer=CANDIDATE_SOURCE,
         active_in_trade_decision=False,
         source_module="stock_pool_observation",
@@ -254,6 +276,95 @@ def _market_cap_by_ticker(symbols: list[dict[str, Any]]) -> dict[str, float]:
         if market_cap > 0:
             result[ticker] = market_cap
     return result
+
+
+def _asset_type_by_ticker(symbols: list[dict[str, Any]]) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for symbol in symbols:
+        ticker = str(symbol.get("ticker") or "").strip()
+        if not ticker:
+            continue
+        result[ticker] = _normalize_asset_type(symbol.get("asset_type"), ticker)
+    return result
+
+
+def _normalize_asset_type(value: object, ticker: str = "") -> str:
+    text = str(value or "").strip().lower()
+    if text in {ASSET_TYPE_STOCK, ASSET_TYPE_ETF, ASSET_TYPE_CASH}:
+        return text
+    if ticker:
+        known = KNOWN_SYMBOLS.get(ticker, {})
+        known_type = str(known.get("asset_type") or "").strip().lower()
+        if known_type in {ASSET_TYPE_STOCK, ASSET_TYPE_ETF, ASSET_TYPE_CASH}:
+            return known_type
+    if ticker.lower() == "cash":
+        return ASSET_TYPE_CASH
+    return ASSET_TYPE_UNKNOWN
+
+
+def _asset_type_for_ticker(ticker: str | None, asset_type_by_ticker: dict[str, str] | None = None) -> str:
+    if not ticker:
+        return ASSET_TYPE_UNKNOWN
+    asset_type_by_ticker = asset_type_by_ticker or {}
+    return asset_type_by_ticker.get(ticker) or _normalize_asset_type(None, ticker)
+
+
+def _first_eligible_candidate(
+    candidates: list[UniversalCandidateScore],
+    *,
+    asset_type_by_ticker: dict[str, str],
+) -> UniversalCandidateScore | None:
+    return next(
+        (
+            candidate
+            for candidate in candidates
+            if _eligible_for_pool_selection(candidate, _asset_type_for_ticker(candidate.ticker, asset_type_by_ticker))
+        ),
+        None,
+    )
+
+
+def _eligible_for_pool_selection(candidate: UniversalCandidateScore | None, asset_type: str | None) -> bool:
+    if candidate is None:
+        return False
+    layer = _selection_layer_for_candidate(candidate, asset_type)
+    return layer in {SELECTION_FORMAL_CANDIDATE, SELECTION_MARKET_EXPOSURE_TOOL}
+
+
+def _selection_layer_for_candidate(candidate: UniversalCandidateScore | None, asset_type: str | None) -> str:
+    if candidate is None:
+        return SELECTION_NO_SELECTION
+    normalized_type = _normalize_asset_type(asset_type)
+    if normalized_type in {ASSET_TYPE_ETF, ASSET_TYPE_CASH}:
+        return SELECTION_MARKET_EXPOSURE_TOOL if candidate.passed else SELECTION_OBSERVATION_ONLY
+    return SELECTION_FORMAL_CANDIDATE if candidate.passed else SELECTION_OBSERVATION_ONLY
+
+
+def _attack_gate_open_for_candidate(
+    candidate: UniversalCandidateScore | None,
+    asset_type: str | None,
+    *,
+    attack_gate_active: bool | None = None,
+) -> bool | None:
+    if candidate is None:
+        return None
+    normalized_type = _normalize_asset_type(asset_type)
+    if normalized_type in {ASSET_TYPE_ETF, ASSET_TYPE_CASH}:
+        return None
+    if attack_gate_active is not None:
+        return bool(attack_gate_active and candidate.passed)
+    return bool(candidate.passed)
+
+
+def _selection_reason_for_candidate(candidate: UniversalCandidateScore | None, asset_type: str | None) -> str:
+    if candidate is None:
+        return "池內沒有通過入選條件的正式候選或市場曝險工具。"
+    layer = _selection_layer_for_candidate(candidate, asset_type)
+    if layer == SELECTION_MARKET_EXPOSURE_TOOL:
+        return "市場曝險工具依池內市場狀態或策略規則入選，不套用個股攻擊閘門。"
+    if layer == SELECTION_FORMAL_CANDIDATE:
+        return "個股已通過池內攻擊條件，可作為該池正式候選。"
+    return "僅為觀察排名；尚未通過池內攻擊條件，不列入該池投票。"
 
 
 def _parameters_for_pool_strategy(pool: dict[str, Any], profile: PoolProfile) -> tuple[UniversalPoolParameters, bool]:
@@ -432,6 +543,13 @@ def run_stock_pool_observation_batch(
                     "signal_date": observation.signal_date,
                     "top_ticker": observation.top_ticker,
                     "top_display": observation.top_display,
+                    "top_asset_type": observation.top_asset_type,
+                    "score": observation.top_score,
+                    "rank": 1 if observation.top_ticker else None,
+                    "attack_gate_open": observation.attack_gate_open,
+                    "eligible_for_pool_selection": observation.eligible_for_pool_selection,
+                    "selection_layer": observation.selection_layer,
+                    "selection_reason": observation.selection_reason,
                     "action_state": observation.action_state,
                     "decision_layer": observation.decision_layer,
                     "active_in_trade_decision": observation.active_in_trade_decision,
@@ -499,6 +617,13 @@ def write_stock_pool_observation_batch_summary(root: Path, manifest: dict[str, A
                 "signal_date": item.get("signal_date", manifest.get("signal_date", "")),
                 "top_display": item.get("top_display", ""),
                 "top_ticker": item.get("top_ticker", ""),
+                "top_asset_type": item.get("top_asset_type", ""),
+                "score": item.get("score", ""),
+                "rank": item.get("rank", ""),
+                "attack_gate_open": item.get("attack_gate_open", ""),
+                "eligible_for_pool_selection": item.get("eligible_for_pool_selection", False),
+                "selection_layer": item.get("selection_layer", ""),
+                "selection_reason": item.get("selection_reason", ""),
                 "action_state": item.get("action_state", ""),
                 "decision_layer": item.get("decision_layer", ""),
                 "active_in_trade_decision": item.get("active_in_trade_decision", False),
@@ -527,6 +652,13 @@ def write_stock_pool_observation_batch_summary(root: Path, manifest: dict[str, A
                 "signal_date": manifest.get("signal_date", ""),
                 "top_display": "",
                 "top_ticker": "",
+                "top_asset_type": "",
+                "score": "",
+                "rank": "",
+                "attack_gate_open": "",
+                "eligible_for_pool_selection": False,
+                "selection_layer": SELECTION_NO_SELECTION,
+                "selection_reason": item.get("reason", ""),
                 "action_state": "",
                 "decision_layer": item.get("decision_layer", ""),
                 "active_in_trade_decision": item.get("active_in_trade_decision", False),
@@ -635,8 +767,8 @@ def _draw_observation_summary_pdf_page(ax, manifest: dict[str, Any], rows: list[
     _draw_consensus_decision_panel(ax, manifest, rows)
     ax.text(0.06, 0.17, "使用邊界", color="#17212a", fontsize=14, fontweight="bold", transform=ax.transAxes)
     notes = [
-        "三池共識是模型觀察結論；若沒有 2/3 以上同標的，報告會標示為模型分歧。",
-        "各池前三名是觀察清單，不是買入資格清單；實際操作仍需搭配交易成本與風險承受度。",
+        "三池共識只統計正式候選與市場曝險工具；觀察排名不納入票數。",
+        "個股若未通過池內攻擊條件，只能列為觀察排名；ETF 依市場曝險工具邏輯顯示。",
         "本報告固定使用同一套資料口徑與股票池設定，方便後續追蹤模型是否穩定。",
         "本報告為 AI 輔助市場觀察與回測工作流輸出，不是投資建議。",
     ]
@@ -723,10 +855,12 @@ def _draw_consensus_decision_panel(ax, manifest: dict[str, Any], rows: list[dict
             transform=ax.transAxes,
             zorder=4,
         )
+        eligible = bool(row.get("eligible_for_pool_selection", False))
+        top_text = row.get("top_display") or row.get("top_ticker") or ("從缺" if not eligible else "無")
         ax.text(
             x + 0.022,
             y + 0.05,
-            _compact_display(row.get("top_display") or row.get("top_ticker") or "無", limit=16),
+            _compact_display(top_text, limit=16),
             color=color,
             fontsize=9.3,
             fontweight="bold",
@@ -736,7 +870,7 @@ def _draw_consensus_decision_panel(ax, manifest: dict[str, Any], rows: list[dict
         ax.text(
             x + 0.022,
             y + 0.028,
-            _compact_display(row.get("role_name") or badge, limit=14),
+            _compact_display(_selection_label(str(row.get("selection_layer") or "")) if eligible else "從缺/觀察", limit=14),
             color="#52616b",
             fontsize=8.1,
             transform=ax.transAxes,
@@ -779,7 +913,7 @@ def _draw_pool_top3_sections(ax, rows: list[dict[str, Any]], *, start_y: float =
         if role_line:
             ax.text(x0 + 0.012, y + 0.008, _compact_display(role_line, limit=42), color="#52616b", fontsize=7.2, transform=ax.transAxes)
             y -= 0.012
-        headers = ("決策", "強弱", "標的", "分數", "程式判斷原因")
+        headers = ("排序", "層級", "標的", "分數", "程式判斷原因")
         widths = (0.06, 0.06, 0.19, 0.09, 0.48)
         if role_line:
             y -= 0.006
@@ -798,7 +932,7 @@ def _draw_pool_top3_sections(ax, rows: list[dict[str, Any]], *, start_y: float =
             reason = _compact_display(str(candidate.get("reason", "")), limit=30)
             cells = (
                 str(candidate.get("rank", "")),
-                str(candidate.get("strength_rank", "")),
+                _compact_display(str(candidate.get("selection_label") or ""), limit=5),
                 _compact_display(display, limit=12),
                 f"{float(candidate.get('score') or 0):.4f}",
             )
@@ -837,15 +971,27 @@ def _top_candidate_rows(observation: StockPoolObservation, limit: int = 3) -> li
         reverse=True,
     )
     rows = []
+    asset_type_by_ticker = (observation.source_metadata or {}).get("candidate_asset_types") or {}
     for rank, candidate in enumerate(candidates[:limit], start=1):
+        asset_type = _asset_type_for_ticker(candidate.ticker, asset_type_by_ticker)
+        selection_layer = _selection_layer_for_candidate(candidate, asset_type)
         rows.append(
             {
                 "rank": rank,
                 "strength_rank": strength_rank_by_ticker.get(candidate.ticker, rank),
                 "ticker": candidate.ticker,
                 "display": _candidate_display(observation, candidate.ticker),
+                "asset_type": asset_type,
                 "score": round(candidate.score, 6),
                 "passed": candidate.passed,
+                "attack_gate_open": _attack_gate_open_for_candidate(
+                    candidate,
+                    asset_type,
+                    attack_gate_active=(observation.source_metadata or {}).get("attack_gate_active"),
+                ),
+                "eligible_for_pool_selection": _eligible_for_pool_selection(candidate, asset_type),
+                "selection_layer": selection_layer,
+                "selection_label": _selection_label(selection_layer),
                 "is_model_target": candidate.ticker == observation.top_ticker,
                 "reason": _candidate_reason(observation, candidate),
             }
@@ -894,9 +1040,19 @@ def _candidate_reason(observation: StockPoolObservation, candidate: UniversalCan
 
 def _top_candidates_text(candidates: list[dict[str, Any]]) -> str:
     return "；".join(
-        f"{row.get('rank')}.{row.get('display')}({float(row.get('score') or 0):.2f})"
+        f"{row.get('rank')}.{row.get('display')}[{row.get('selection_label') or _selection_label(str(row.get('selection_layer') or ''))}]({float(row.get('score') or 0):.2f})"
         for row in candidates[:3]
     )
+
+
+def _selection_label(selection_layer: str) -> str:
+    if selection_layer == SELECTION_FORMAL_CANDIDATE:
+        return "正式候選"
+    if selection_layer == SELECTION_MARKET_EXPOSURE_TOOL:
+        return "曝險工具"
+    if selection_layer == SELECTION_OBSERVATION_ONLY:
+        return "觀察"
+    return "從缺"
 
 
 def _candidate_review_label(value: object) -> str:
@@ -1212,6 +1368,7 @@ def _build_regime_signal_observation(
         symbol["ticker"]: symbol.get("display") or labels.get(symbol["ticker"], symbol["ticker"])
         for symbol in pool.get("resolved_symbols", [])
     }
+    top_asset_type = asset_types.get(top_ticker) if top_ticker else None
     return StockPoolObservation(
         schema_version=1,
         pool_id=str(pool["pool_id"]),
@@ -1228,6 +1385,21 @@ def _build_regime_signal_observation(
         top_score=next((candidate.score for candidate in candidates if candidate.ticker == top_ticker), None),
         action_state=signal.model_target_status,
         candidates=candidates,
+        top_asset_type=top_asset_type,
+        attack_gate_open=_attack_gate_open_for_candidate(
+            next((candidate for candidate in candidates if candidate.ticker == top_ticker), None),
+            top_asset_type,
+            attack_gate_active=signal.attack_gate_active,
+        ) if top_ticker else None,
+        eligible_for_pool_selection=bool(top_ticker),
+        selection_layer=_selection_layer_for_candidate(
+            next((candidate for candidate in candidates if candidate.ticker == top_ticker), None),
+            top_asset_type,
+        ) if top_ticker else SELECTION_NO_SELECTION,
+        selection_reason=_selection_reason_for_candidate(
+            next((candidate for candidate in candidates if candidate.ticker == top_ticker), None),
+            top_asset_type,
+        ) if top_ticker else "正式模型目前沒有可投票的池內目標。",
         source_metadata={
             "source_type": f"{strategy_id}_signal",
             "market_regime_label": signal.market_regime_label,
@@ -1237,6 +1409,7 @@ def _build_regime_signal_observation(
             "action": signal.action,
             "target_label": signal.target_label,
             "target_exposure": signal.target_exposure,
+            "candidate_asset_types": asset_types,
         },
         decision_layer=FORMAL_TRADE_SIGNAL,
         active_in_trade_decision=True,

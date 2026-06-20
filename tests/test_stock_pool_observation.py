@@ -11,6 +11,7 @@ import test_paths  # noqa: F401
 
 from backtest_lab.decision_layers import CANDIDATE_SOURCE, DATA_READINESS
 from backtest_lab.stock_pool_observation import (
+    _top_candidate_rows,
     build_dispatched_stock_pool_observation,
     build_stock_pool_observation,
     run_stock_pool_observation_batch,
@@ -53,11 +54,43 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertFalse(observation.active_in_trade_decision)
         self.assertEqual(observation.top_ticker, "2454.TW")
         self.assertEqual(observation.top_display, "聯發科(2454)")
+        self.assertEqual(observation.top_asset_type, "stock")
+        self.assertTrue(observation.attack_gate_open)
+        self.assertTrue(observation.eligible_for_pool_selection)
+        self.assertEqual(observation.selection_layer, "formal_candidate")
         self.assertGreaterEqual(observation.passed_count, 1)
         scores = {candidate.ticker: candidate for candidate in observation.candidates}
         self.assertEqual(scores["2330.TW"].size_profile, "large_cap")
         self.assertEqual(scores["2454.TW"].size_profile, "mid_cap")
         self.assertEqual(scores["2454.TW"].market_cap_twd, 200_000_000_000)
+
+    def test_etf_candidate_is_market_exposure_tool_not_stock_attack_candidate(self) -> None:
+        dates = pd.bdate_range("2025-01-02", periods=160)
+        pool = {
+            "pool_id": "etf_pool",
+            "name": "ETF曝險池",
+            "strategy_preset": "universal_pool_custom",
+            "resolved_symbols": [symbol_entry("00631L.TW", source="fixed")],
+        }
+        prices = {"00631L.TW": _trend_frame(dates, start=100, step=0.6, volume=20_000_000)}
+
+        observation = build_stock_pool_observation(
+            pool=pool,
+            prices_by_ticker=prices,
+            signal_date=dates[-1],
+        )
+        rows = observation.to_dict()["candidates"]
+        top_rows = [row for row in _top_candidate_rows(observation) if row["ticker"] == "00631L.TW"]
+
+        self.assertEqual(observation.top_ticker, "00631L.TW")
+        self.assertEqual(observation.top_asset_type, "etf")
+        self.assertIsNone(observation.attack_gate_open)
+        self.assertTrue(observation.eligible_for_pool_selection)
+        self.assertEqual(observation.selection_layer, "market_exposure_tool")
+        self.assertTrue(rows[0]["passed"])
+        self.assertEqual(top_rows[0]["asset_type"], "etf")
+        self.assertEqual(top_rows[0]["selection_layer"], "market_exposure_tool")
+        self.assertTrue(top_rows[0]["eligible_for_pool_selection"])
 
     def test_build_observation_preserves_valuation_signal_fields(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)
@@ -241,10 +274,15 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertEqual(manifest["generated"][0]["candidate_update_policy"], "測試更新政策")
             self.assertEqual(manifest["generated"][0]["decision_layer"], CANDIDATE_SOURCE)
             self.assertFalse(manifest["generated"][0]["active_in_trade_decision"])
+            self.assertEqual(manifest["generated"][0]["top_asset_type"], "stock")
+            self.assertTrue(manifest["generated"][0]["attack_gate_open"])
+            self.assertTrue(manifest["generated"][0]["eligible_for_pool_selection"])
+            self.assertEqual(manifest["generated"][0]["selection_layer"], "formal_candidate")
             self.assertEqual(manifest["generated"][0]["candidate_review"]["frequency"], "monthly")
             self.assertEqual(manifest["generated"][0]["candidate_review"]["source_status"], "manual_review_required")
             self.assertEqual(len(manifest["generated"][0]["top_candidates"]), 1)
             self.assertEqual(manifest["generated"][0]["top_candidates"][0]["display"], "台積電(2330)")
+            self.assertEqual(manifest["generated"][0]["top_candidates"][0]["selection_layer"], "formal_candidate")
             self.assertEqual(len(manifest["skipped"]), 1)
             self.assertEqual(manifest["skipped"][0]["reason"], "missing_formal_radar_candidates")
             self.assertEqual(manifest["skipped"][0]["decision_layer"], DATA_READINESS)
@@ -375,7 +413,10 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertIn("day_trading", manifest["risk_factor_sources"])
             self.assertEqual(manifest["risk_factor_count"], 1)
             self.assertEqual(manifest["generated"][0]["top_ticker"], "1111.TW")
+            self.assertTrue(manifest["generated"][0]["eligible_for_pool_selection"])
+            self.assertEqual(manifest["generated"][0]["selection_layer"], "formal_candidate")
             self.assertEqual(manifest["generated"][0]["top_candidates"][0]["display"], "測試記憶體(1111)")
+            self.assertEqual(manifest["generated"][0]["top_candidates"][0]["selection_layer"], "formal_candidate")
             self.assertEqual(
                 manifest["generated"][0]["source_metadata"]["candidate_displays"],
                 ["測試記憶體(1111)"],
@@ -432,7 +473,7 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertEqual(len(manifest["generated"]), 1)
             self.assertEqual(manifest["generated"][0]["top_ticker"], "2330.TW")
             self.assertEqual(manifest["generated"][0]["vote_group"], "three_perspective_v1")
-            self.assertEqual(manifest["consensus"]["result_state"], "divergent")
+            self.assertEqual(manifest["consensus"]["result_state"], "insufficient_votes")
             self.assertIsNone(manifest["consensus"]["winner_ticker"])
             manifest_payload = (Path(manifest["output_root"]) / "stock_pool_observation_manifest.json").read_text(encoding="utf-8")
             self.assertIn('"consensus"', manifest_payload)
