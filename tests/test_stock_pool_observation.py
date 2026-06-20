@@ -204,6 +204,92 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertIn("持續性=", top_rows[0]["gate_reason"])
         self.assertIn("(N)", top_rows[0]["gate_reason"])
 
+    def test_core_defensive_pool_uses_resilience_gate_for_stock_candidate(self) -> None:
+        dates = pd.bdate_range("2025-01-02", periods=160)
+        pool = _core_defensive_test_pool(["2882.TW", "2330.TW"])
+        prices = {
+            "2882.TW": _trend_frame(dates, start=100, step=0.35, volume=20_000_000),
+            "2330.TW": _trend_frame(dates, start=100, step=0.10, volume=20_000_000),
+            "0050.TW": _trend_frame(dates, start=100, step=0.20, volume=20_000_000),
+        }
+
+        observation = build_stock_pool_observation(
+            pool=pool,
+            prices_by_ticker=prices,
+            signal_date=dates[-1],
+        )
+        top_rows = _top_candidate_rows(observation)
+
+        self.assertEqual(observation.top_ticker, "2882.TW")
+        self.assertEqual(observation.gate_rule_id, "core_defensive_resilience_gate_v1")
+        self.assertTrue(observation.attack_gate_open)
+        self.assertTrue(observation.eligible_for_pool_selection)
+        self.assertEqual(observation.selection_layer, "formal_candidate")
+        self.assertIn("核心防守池 v1", observation.gate_reason)
+        self.assertIn("60日相對0050韌性", observation.gate_reason)
+        self.assertTrue(top_rows[0]["eligible_for_pool_selection"])
+
+    def test_core_defensive_pool_blocks_when_lagging_benchmark_too_much(self) -> None:
+        dates = pd.bdate_range("2025-01-02", periods=160)
+        pool = _core_defensive_test_pool(["2882.TW", "2330.TW"])
+        prices = {
+            "2882.TW": _trend_frame(dates, start=100, step=0.12, volume=20_000_000),
+            "2330.TW": _trend_frame(dates, start=100, step=0.02, volume=20_000_000),
+            "0050.TW": _trend_frame(dates, start=100, step=0.30, volume=20_000_000),
+        }
+
+        observation = build_stock_pool_observation(
+            pool=pool,
+            prices_by_ticker=prices,
+            signal_date=dates[-1],
+        )
+        top_rows = _top_candidate_rows(observation)
+
+        self.assertIsNone(observation.top_ticker)
+        self.assertFalse(top_rows[0]["eligible_for_pool_selection"])
+        self.assertFalse(top_rows[0]["attack_gate_open"])
+        self.assertIn("60日相對0050韌性", top_rows[0]["gate_reason"])
+
+    def test_core_defensive_pool_blocks_when_trend_resilience_is_insufficient(self) -> None:
+        dates = pd.bdate_range("2025-01-02", periods=160)
+        pool = _core_defensive_test_pool(["2882.TW", "2330.TW"])
+        prices = {
+            "2882.TW": _trend_frame(dates, start=100, step=0.04, volume=20_000_000),
+            "2330.TW": _trend_frame(dates, start=100, step=0.01, volume=20_000_000),
+            "0050.TW": _trend_frame(dates, start=100, step=0.00, volume=20_000_000),
+        }
+
+        observation = build_stock_pool_observation(
+            pool=pool,
+            prices_by_ticker=prices,
+            signal_date=dates[-1],
+        )
+        top_rows = _top_candidate_rows(observation)
+
+        self.assertIsNone(observation.top_ticker)
+        self.assertFalse(top_rows[0]["eligible_for_pool_selection"])
+        self.assertIn("60/120趨勢韌性=N", top_rows[0]["gate_reason"])
+
+    def test_core_defensive_pool_blocks_when_drawdown_control_fails(self) -> None:
+        dates = pd.bdate_range("2025-01-02", periods=160)
+        pool = _core_defensive_test_pool(["2882.TW"])
+        prices = {
+            "2882.TW": _pullback_frame(dates, peak_gain=0.50, final_drawdown=0.14, volume=20_000_000),
+            "0050.TW": _trend_frame(dates, start=100, step=0.00, volume=20_000_000),
+        }
+
+        observation = build_stock_pool_observation(
+            pool=pool,
+            prices_by_ticker=prices,
+            signal_date=dates[-1],
+        )
+        top_rows = _top_candidate_rows(observation)
+
+        self.assertIsNone(observation.top_ticker)
+        self.assertFalse(top_rows[0]["eligible_for_pool_selection"])
+        self.assertIn("20日回撤控管", top_rows[0]["gate_reason"])
+        self.assertIn("(N)", top_rows[0]["gate_reason"])
+
     def test_build_observation_preserves_valuation_signal_fields(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)
         tsmc = symbol_entry("2330.TW", source="manual")
@@ -746,6 +832,34 @@ def _final_surge_frame(
     )
 
 
+def _pullback_frame(
+    dates: pd.DatetimeIndex,
+    *,
+    peak_gain: float,
+    final_drawdown: float,
+    volume: int,
+) -> pd.DataFrame:
+    stable_days = len(dates) - 20
+    closes = [100.0] * stable_days
+    peak = 100.0 * (1 + peak_gain)
+    pullback_low = peak * (1 - final_drawdown - 0.03)
+    final_close = peak * (1 - final_drawdown)
+    closes += [peak] + [pullback_low] * 18 + [final_close]
+    return pd.DataFrame(
+        {
+            "open": closes,
+            "high": [value * 1.01 for value in closes],
+            "low": [value * 0.99 for value in closes],
+            "close": closes,
+            "adj_close": closes,
+            "volume": [volume] * len(dates),
+            "dividend": [0.0] * len(dates),
+            "stock_split": [0.0] * len(dates),
+        },
+        index=dates,
+    )
+
+
 def _tw50_test_pool(tickers: list[str]) -> dict[str, object]:
     symbols = []
     for ticker in tickers:
@@ -758,6 +872,20 @@ def _tw50_test_pool(tickers: list[str]) -> dict[str, object]:
         "strategy_preset": "universal_pool_custom",
         "resolved_symbols": symbols,
         "dynamic_constituents": {"source": "tw50_history_csv", "path": "data/tw50_constituents.csv"},
+    }
+
+
+def _core_defensive_test_pool(tickers: list[str]) -> dict[str, object]:
+    symbols = []
+    for ticker in tickers:
+        symbol = symbol_entry(ticker, source="fixed")
+        symbol["market_cap_twd"] = 900_000_000_000
+        symbols.append(symbol)
+    return {
+        "pool_id": "large_core_bluechip_v0",
+        "name": "核心防守風格池 v1",
+        "strategy_preset": "core_defensive_style_v1",
+        "resolved_symbols": symbols,
     }
 
 

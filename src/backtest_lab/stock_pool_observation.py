@@ -62,6 +62,13 @@ TW50_ATTACK_GATE_RET20_MIN = 0.03
 TW50_ATTACK_GATE_RET60_MIN = 0.12
 TW50_ATTACK_GATE_PERSISTENCE_LOOKBACK = 10
 TW50_ATTACK_GATE_PERSISTENCE_MIN_DAYS = 5
+CORE_DEFENSIVE_GATE_RULE_ID = "core_defensive_resilience_gate_v1"
+CORE_DEFENSIVE_BENCHMARK = "0050.TW"
+CORE_DEFENSIVE_RET60_MIN = 0.05
+CORE_DEFENSIVE_RET120_MIN = 0.0
+CORE_DEFENSIVE_BENCHMARK_LAG_TOLERANCE = -0.03
+CORE_DEFENSIVE_MAX_DRAWDOWN20 = -0.12
+CORE_DEFENSIVE_MAX_FLOW_RISK_SCORE = 0.35
 POOL_SHORT_NAMES = {
     "ai_theme_large_cap_v20260613": "AI主線池",
     "tw50_dynamic_constituents_v0": "大型廣度池",
@@ -376,7 +383,7 @@ def _gate_rule_id_for_pool(pool: dict[str, Any]) -> str:
     if pool_id == "tw50_dynamic_constituents_v0":
         return TW50_ATTACK_GATE_RULE_ID
     if preset == "core_defensive_style_v1":
-        return "core_defensive_style_gate_v1"
+        return CORE_DEFENSIVE_GATE_RULE_ID
     if preset in {"best_v20260605", "ai_theme_large_cap_v20260613"}:
         return f"{preset}_formal_regime_gate"
     return "universal_pool_base_gate_v1"
@@ -393,6 +400,16 @@ def _pool_gate_details_by_ticker(
 ) -> dict[str, dict[str, Any]]:
     details: dict[str, dict[str, Any]] = {}
     if gate_rule_id != TW50_ATTACK_GATE_RULE_ID:
+        if gate_rule_id == CORE_DEFENSIVE_GATE_RULE_ID:
+            for candidate in candidates:
+                asset_type = _asset_type_for_ticker(candidate.ticker, asset_type_by_ticker)
+                details[candidate.ticker] = _core_defensive_gate_evaluation(
+                    candidate=candidate,
+                    asset_type=asset_type,
+                    prices_by_ticker=prices_by_ticker,
+                    signal_date=signal_date,
+                )
+            return details
         for candidate in candidates:
             asset_type = _asset_type_for_ticker(candidate.ticker, asset_type_by_ticker)
             details[candidate.ticker] = _candidate_gate_evaluation(candidate, asset_type, gate_rule_id=gate_rule_id)
@@ -500,6 +517,93 @@ def _tw50_gate_result(
     }
 
 
+def _core_defensive_gate_evaluation(
+    *,
+    candidate: UniversalCandidateScore,
+    asset_type: str | None,
+    prices_by_ticker: dict[str, pd.DataFrame],
+    signal_date: pd.Timestamp,
+) -> dict[str, Any]:
+    normalized_type = _normalize_asset_type(asset_type)
+    if normalized_type in {ASSET_TYPE_ETF, ASSET_TYPE_CASH}:
+        return _candidate_gate_evaluation(candidate, asset_type, gate_rule_id=CORE_DEFENSIVE_GATE_RULE_ID)
+
+    benchmark_ret60 = _window_return_on_or_before(
+        prices_by_ticker.get(CORE_DEFENSIVE_BENCHMARK),
+        signal_date,
+        60,
+    )
+    if benchmark_ret60 is None:
+        return _core_defensive_gate_result(
+            candidate,
+            attack_gate_open=False,
+            eligible=False,
+            benchmark_resilience_passed=False,
+            trend_resilience_passed=False,
+            drawdown_control_passed=False,
+            risk_control_passed=False,
+            gate_reason="核心防守池 v1 未通過：缺少 0050 benchmark 價格，不能確認防守相對韌性。",
+        )
+
+    benchmark_resilience_passed = candidate.ret60 - benchmark_ret60 >= CORE_DEFENSIVE_BENCHMARK_LAG_TOLERANCE
+    trend_resilience_passed = (
+        candidate.ret60 >= CORE_DEFENSIVE_RET60_MIN
+        and candidate.ret120 >= CORE_DEFENSIVE_RET120_MIN
+    )
+    drawdown_control_passed = candidate.drawdown20 >= CORE_DEFENSIVE_MAX_DRAWDOWN20
+    risk_control_passed = candidate.flow_risk_score <= CORE_DEFENSIVE_MAX_FLOW_RISK_SCORE
+    attack_gate_open = bool(
+        candidate.passed
+        and benchmark_resilience_passed
+        and trend_resilience_passed
+        and drawdown_control_passed
+        and risk_control_passed
+    )
+    reason_parts = [
+        f"base={'Y' if candidate.passed else 'N'}",
+        f"60日相對0050韌性={candidate.ret60 - benchmark_ret60:.1%}({'Y' if benchmark_resilience_passed else 'N'})",
+        f"60/120趨勢韌性={'Y' if trend_resilience_passed else 'N'}",
+        f"20日回撤控管={candidate.drawdown20:.1%}({'Y' if drawdown_control_passed else 'N'})",
+        f"籌碼風險={candidate.flow_risk_score:.2f}({'Y' if risk_control_passed else 'N'})",
+    ]
+    return _core_defensive_gate_result(
+        candidate,
+        attack_gate_open=attack_gate_open,
+        eligible=attack_gate_open,
+        benchmark_resilience_passed=benchmark_resilience_passed,
+        trend_resilience_passed=trend_resilience_passed,
+        drawdown_control_passed=drawdown_control_passed,
+        risk_control_passed=risk_control_passed,
+        gate_reason="核心防守池 v1：" + "；".join(reason_parts),
+    )
+
+
+def _core_defensive_gate_result(
+    candidate: UniversalCandidateScore,
+    *,
+    attack_gate_open: bool,
+    eligible: bool,
+    benchmark_resilience_passed: bool,
+    trend_resilience_passed: bool,
+    drawdown_control_passed: bool,
+    risk_control_passed: bool,
+    gate_reason: str,
+) -> dict[str, Any]:
+    return {
+        "rank_score": round(candidate.score, 6),
+        "base_pool_passed": bool(candidate.passed),
+        "benchmark_resilience_passed": benchmark_resilience_passed,
+        "trend_resilience_passed": trend_resilience_passed,
+        "drawdown_control_passed": drawdown_control_passed,
+        "risk_control_passed": risk_control_passed,
+        "attack_gate_open": attack_gate_open,
+        "eligible_for_pool_selection": eligible,
+        "selection_layer": SELECTION_FORMAL_CANDIDATE if eligible else SELECTION_OBSERVATION_ONLY,
+        "gate_rule_id": CORE_DEFENSIVE_GATE_RULE_ID,
+        "gate_reason": gate_reason,
+    }
+
+
 def _tw50_persistence_days(
     *,
     ticker: str,
@@ -583,12 +687,15 @@ def _candidate_gate_evaluation(
         attack_gate_open = False
         eligible = False
         selection_layer = SELECTION_OBSERVATION_ONLY
-    elif gate_rule_id == "core_defensive_style_gate_v1":
+    elif gate_rule_id == CORE_DEFENSIVE_GATE_RULE_ID:
         gate_reason = (
-            "核心防守池 v1：通過較嚴格的過熱、回撤、均線與風險調整條件。"
+            "核心防守池 v1：需另行檢查 benchmark 韌性、60/120 趨勢、回撤與籌碼風險。"
             if base_pool_passed
             else f"核心防守池 v1 未通過：{candidate.reason or '池內基本條件未通過'}。"
         )
+        attack_gate_open = False
+        eligible = False
+        selection_layer = SELECTION_OBSERVATION_ONLY
     elif gate_rule_id.endswith("_formal_regime_gate"):
         if _normalize_asset_type(asset_type) in {ASSET_TYPE_ETF, ASSET_TYPE_CASH}:
             gate_reason = "正式引擎目前選擇市場曝險工具；ETF 不套用個股攻擊閘門。"
@@ -1784,6 +1891,8 @@ def _observation_price_tickers(pool: dict[str, Any], candidate_tickers: list[str
     tickers = list(candidate_tickers)
     if str(pool.get("pool_id") or "") == "tw50_dynamic_constituents_v0" and TW50_ATTACK_GATE_BENCHMARK not in tickers:
         tickers.append(TW50_ATTACK_GATE_BENCHMARK)
+    if str(pool.get("strategy_preset") or "") == "core_defensive_style_v1" and CORE_DEFENSIVE_BENCHMARK not in tickers:
+        tickers.append(CORE_DEFENSIVE_BENCHMARK)
     return tickers
 
 
