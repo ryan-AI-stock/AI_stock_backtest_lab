@@ -11,6 +11,7 @@ import test_paths  # noqa: F401
 
 from backtest_lab.decision_layers import CANDIDATE_SOURCE, DATA_READINESS
 from backtest_lab.stock_pool_observation import (
+    _resolve_dynamic_observation_pool,
     _top_candidate_rows,
     build_dispatched_stock_pool_observation,
     build_stock_pool_observation,
@@ -339,6 +340,54 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertEqual(observation.selection_layer, "formal_candidate")
         self.assertTrue(observation.attack_gate_open)
         self.assertTrue(observation.eligible_for_pool_selection)
+
+    def test_core_defensive_pool_resolves_one_representative_per_style_bucket(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "core_defensive_candidates.csv"
+            path.write_text(
+                "\n".join(
+                    [
+                        "effective_date,ticker,symbol,name,style_role,review_status,is_current_member,defensive_score,stability_score,cross_sector_score,fundamental_score,review_reason",
+                        "2026-06-01,0050.TW,0050,0050,大型市場核心ETF,active,true,88,86,95,80,etf",
+                        "2026-06-01,00631L.TW,00631L,0050正二,大型市場槓桿ETF,active,true,65,45,80,70,leveraged",
+                        "2026-06-01,2881.TW,2881,富邦金,金融核心,active,true,78,76,84,78,financial",
+                        "2026-06-01,2882.TW,2882,國泰金,金融核心,active,true,78,75,84,77,financial",
+                        "2026-06-01,2412.TW,2412,中華電,電信防守核心,active,true,92,94,82,84,telecom",
+                        "2026-06-01,3045.TW,3045,台灣大,電信防守核心,active,true,93,90,80,82,telecom",
+                        "2026-06-01,2330.TW,2330,台積電,市場核心半導體,active,true,82,80,88,92,semi",
+                        "2026-06-01,1301.TW,1301,台塑,傳產核心,watch,false,99,99,99,99,watch",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            pool = {
+                "pool_id": "large_core_bluechip_v0",
+                "name": "核心風格代表池 v2",
+                "strategy_preset": "core_defensive_style_v1",
+                "resolved_symbols": [symbol_entry("2882.TW", source="fixed"), symbol_entry("2412.TW", source="fixed")],
+                "candidate_review_config": {
+                    "source_mode": "core_defensive_candidate_csv",
+                    "path": str(path),
+                },
+            }
+
+            resolved = _resolve_dynamic_observation_pool(
+                pool,
+                signal_date="2026-06-12",
+                radar_snapshot_dir=None,
+                radar_data_dir=None,
+                radar_top_n=20,
+                tw50_constituents_path=None,
+            )
+
+        tickers = [item["ticker"] for item in resolved["resolved_symbols"]]
+        self.assertEqual(tickers, ["0050.TW", "00631L.TW", "2881.TW", "2330.TW", "3045.TW"])
+        self.assertNotIn("2882.TW", tickers)
+        self.assertNotIn("2412.TW", tickers)
+        self.assertEqual(resolved["core_defensive_style_selection_mode"], "one_representative_per_style_bucket_v1")
+        buckets = {item["ticker"]: item["style_bucket"] for item in resolved["resolved_symbols"]}
+        self.assertEqual(buckets["2881.TW"], "financial_core")
+        self.assertEqual(buckets["3045.TW"], "telecom_defensive")
 
     def test_core_defensive_pool_blocks_when_drawdown_control_fails(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)

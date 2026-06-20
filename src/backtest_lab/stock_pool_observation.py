@@ -31,7 +31,11 @@ from backtest_lab.frozen_strategy_monitor import (
     build_frozen_strategy_signal,
 )
 from backtest_lab.regime_mode_switch import RegimeModeSwitchVariant, frozen_cycle_proven_top1_v1_variant
-from backtest_lab.stock_pool_candidate_review import build_candidate_review, write_candidate_reviews
+from backtest_lab.stock_pool_candidate_review import (
+    build_candidate_review,
+    load_core_defensive_candidate_source,
+    write_candidate_reviews,
+)
 from backtest_lab.stock_pool_consensus import build_consensus, write_consensus_outputs
 from backtest_lab.stock_pool_store import KNOWN_SYMBOLS, StockPoolStore
 from backtest_lab.strategy_preset_dispatcher import dispatch_pool, resolve_strategy_preset
@@ -70,6 +74,7 @@ CORE_DEFENSIVE_BENCHMARK_LAG_TOLERANCE = -0.03
 CORE_DEFENSIVE_RET120_BENCHMARK_LAG_TOLERANCE = -0.03
 CORE_DEFENSIVE_MAX_DRAWDOWN20 = -0.12
 CORE_DEFENSIVE_MAX_FLOW_RISK_SCORE = 0.35
+CORE_DEFENSIVE_MARKET_EXPOSURE_BUCKET = "market_exposure_etf"
 POOL_SHORT_NAMES = {
     "ai_theme_large_cap_v20260613": "AI主線池",
     "tw50_dynamic_constituents_v0": "大型廣度池",
@@ -281,6 +286,19 @@ def build_dispatched_stock_pool_observation(
 
 
 def _build_pool_source_metadata(pool: dict[str, Any], symbols: list[dict[str, Any]]) -> dict[str, Any]:
+    if pool.get("strategy_preset") == "core_defensive_style_v1":
+        return {
+            "source_type": "core_defensive_style_representatives",
+            "source_path": pool.get("core_defensive_style_source", pool.get("candidate_review_config", {}).get("path", "")),
+            "selection_mode": pool.get(
+                "core_defensive_style_selection_mode",
+                "one_representative_per_style_bucket_v1",
+            ),
+            "source_candidate_count": pool.get("core_defensive_source_candidate_count", len(symbols)),
+            "representative_count": len(symbols),
+            "style_buckets": pool.get("core_defensive_style_buckets", []),
+            "candidate_displays": [symbol.get("display") or symbol.get("ticker") for symbol in symbols],
+        }
     if pool.get("dynamic_constituents", {}).get("source") == "tw50_history_csv":
         return {
             "source_type": "tw50_constituents",
@@ -865,6 +883,11 @@ def _source_summary(metadata: dict[str, Any]) -> str:
         return f"RADAR正式候選 {date_text}：{candidates}"
     if metadata.get("source_type") == "tw50_constituents":
         return f"動態0050成分股：{metadata.get('candidate_count', 0)}檔，來源 {metadata.get('source_path') or '未標'}"
+    if metadata.get("source_type") == "core_defensive_style_representatives":
+        return (
+            f"核心風格代表：{metadata.get('representative_count', 0)}檔，"
+            f"模式 {metadata.get('selection_mode') or '未標'}"
+        )
     if metadata.get("source_type") in {"best_v20260605_signal", "ai_theme_large_cap_v20260613_signal"}:
         gate_text = "個股攻擊閘門已開啟" if metadata.get("attack_gate_active") else "個股攻擊閘門未開啟"
         return f"最佳版正式引擎：{metadata.get('market_regime_label') or '市場環境未標'}，{gate_text}"
@@ -1974,6 +1997,10 @@ def _resolve_dynamic_observation_pool(
     radar_top_n: int,
     tw50_constituents_path: str | Path | None,
 ) -> dict[str, Any]:
+    if str(pool.get("strategy_preset") or "") == "core_defensive_style_v1":
+        updated = _resolve_core_defensive_style_representatives(pool, signal_date=signal_date)
+        if updated is not None:
+            return updated
     dynamic = pool.get("dynamic_constituents") or {}
     if not pool.get("resolved_symbols") and dynamic.get("source") == "tw50_history_csv":
         path = tw50_constituents_path or dynamic.get("path")
@@ -2000,6 +2027,125 @@ def _resolve_dynamic_observation_pool(
     updated["radar_candidate_source"] = str(data_dir)
     updated["radar_candidate_mode"] = "formal_bucket_actionable_else_watch"
     return updated
+
+
+def _resolve_core_defensive_style_representatives(
+    pool: dict[str, Any],
+    *,
+    signal_date: str,
+) -> dict[str, Any] | None:
+    config = pool.get("candidate_review_config") or {}
+    if str(config.get("source_mode") or "") != "core_defensive_candidate_csv":
+        return None
+    source_path = str(config.get("path") or "").strip()
+    if not source_path:
+        return None
+    path = Path(source_path)
+    if not path.exists():
+        return None
+    source_candidates = load_core_defensive_candidate_source(path, signal_date=signal_date)
+    representatives = _select_core_defensive_style_representatives(source_candidates)
+    if not representatives:
+        return None
+    updated = json.loads(json.dumps(pool, ensure_ascii=False))
+    updated["resolved_symbols"] = [
+        _core_defensive_candidate_to_symbol(item)
+        for item in representatives
+    ]
+    updated["core_defensive_style_source"] = str(path)
+    updated["core_defensive_style_selection_mode"] = "one_representative_per_style_bucket_v1"
+    updated["core_defensive_source_candidate_count"] = len(source_candidates)
+    updated["core_defensive_representative_count"] = len(representatives)
+    updated["core_defensive_style_buckets"] = [
+        {
+            "style_bucket": item["style_bucket"],
+            "ticker": item["ticker"],
+            "display": item.get("display", item["ticker"]),
+            "role": item.get("role", ""),
+        }
+        for item in representatives
+    ]
+    return updated
+
+
+def _select_core_defensive_style_representatives(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    selected: dict[str, dict[str, Any]] = {}
+    market_exposure: list[dict[str, Any]] = []
+    for item in candidates:
+        if item.get("review_status") != "active" or not item.get("is_current_member"):
+            continue
+        ticker = str(item.get("ticker") or "").strip()
+        if not ticker:
+            continue
+        asset_type = _normalize_asset_type(None, ticker)
+        payload = dict(item)
+        payload["asset_type"] = asset_type if asset_type != ASSET_TYPE_UNKNOWN else ASSET_TYPE_STOCK
+        payload["style_bucket"] = _core_defensive_style_bucket(item)
+        if payload["style_bucket"] == CORE_DEFENSIVE_MARKET_EXPOSURE_BUCKET:
+            market_exposure.append(payload)
+            continue
+        current = selected.get(payload["style_bucket"])
+        if current is None or _core_defensive_representative_sort_key(payload) > _core_defensive_representative_sort_key(current):
+            selected[payload["style_bucket"]] = payload
+    market_exposure.sort(key=_core_defensive_representative_sort_key, reverse=True)
+    stock_representatives = sorted(
+        selected.values(),
+        key=lambda item: (str(item.get("style_bucket") or ""), item.get("ticker", "")),
+    )
+    return [*market_exposure, *stock_representatives]
+
+
+def _core_defensive_style_bucket(item: dict[str, Any]) -> str:
+    ticker = str(item.get("ticker") or "").strip()
+    if _normalize_asset_type(None, ticker) == ASSET_TYPE_ETF:
+        return CORE_DEFENSIVE_MARKET_EXPOSURE_BUCKET
+    role = str(item.get("role") or "").strip()
+    if "半導體" in role:
+        return "semiconductor_core"
+    if "電信" in role:
+        return "telecom_defensive"
+    if "金融" in role:
+        return "financial_core"
+    if "消費耐久" in role:
+        return "consumer_durable"
+    if "消費" in role or "通路" in role:
+        return "consumer_defensive"
+    if "航運" in role or "景氣循環" in role:
+        return "cyclical_core"
+    if "傳產" in role or "塑化" in role or "基建" in role:
+        return "traditional_materials"
+    if "非AI科技" in role or "工業電腦" in role:
+        return "non_ai_technology"
+    return role or ticker
+
+
+def _core_defensive_representative_sort_key(item: dict[str, Any]) -> tuple[float, float, float, float, str]:
+    return (
+        _number(item.get("defensive_score")),
+        _number(item.get("stability_score")),
+        _number(item.get("cross_sector_score")),
+        _number(item.get("fundamental_score")),
+        str(item.get("ticker") or ""),
+    )
+
+
+def _core_defensive_candidate_to_symbol(item: dict[str, Any]) -> dict[str, Any]:
+    ticker = str(item.get("ticker") or "").strip()
+    known = KNOWN_SYMBOLS.get(ticker, {})
+    symbol = str(known.get("symbol") or ticker.split(".")[0]).strip()
+    display = str(item.get("display") or known.get("name") or ticker).strip()
+    return {
+        "ticker": ticker,
+        "symbol": symbol,
+        "name": str(known.get("name") or display.split("(")[0] or symbol).strip(),
+        "display": display,
+        "source": "core_defensive_style_representative",
+        "asset_type": item.get("asset_type") or known.get("asset_type") or ASSET_TYPE_STOCK,
+        "style_bucket": item.get("style_bucket", ""),
+        "style_role": item.get("role", ""),
+        "review_status": item.get("review_status", ""),
+        "is_current_member": bool(item.get("is_current_member")),
+    }
 
 
 def _resolve_radar_data_dir(
