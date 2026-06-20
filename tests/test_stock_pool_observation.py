@@ -293,6 +293,53 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertIn("120日機會成本", top_rows[0]["gate_reason"])
         self.assertIn("(N)", top_rows[0]["gate_reason"])
 
+    def test_core_defensive_pool_falls_back_to_market_exposure_when_no_stock_passes(self) -> None:
+        dates = pd.bdate_range("2025-01-02", periods=160)
+        pool = _core_defensive_test_pool(["00631L.TW", "2882.TW", "0050.TW"])
+        prices = {
+            "00631L.TW": _trend_frame(dates, start=100, step=0.80, volume=20_000_000),
+            "2882.TW": _final_surge_frame(dates, flat_days=95, final_gain=0.35, volume=20_000_000),
+            "0050.TW": _trend_frame(dates, start=100, step=0.45, volume=20_000_000),
+        }
+
+        observation = build_stock_pool_observation(
+            pool=pool,
+            prices_by_ticker=prices,
+            signal_date=dates[-1],
+        )
+        top_rows = _top_candidate_rows(observation)
+        rows_by_ticker = {row["ticker"]: row for row in top_rows}
+
+        self.assertEqual(observation.top_ticker, "00631L.TW")
+        self.assertEqual(observation.top_asset_type, "etf")
+        self.assertEqual(observation.selection_layer, "market_exposure_tool")
+        self.assertTrue(observation.eligible_for_pool_selection)
+        self.assertIsNone(observation.attack_gate_open)
+        self.assertEqual(rows_by_ticker["00631L.TW"]["selection_layer"], "market_exposure_tool")
+        self.assertFalse(rows_by_ticker["2882.TW"]["eligible_for_pool_selection"])
+        self.assertIn("防守個股無合格", observation.gate_reason)
+
+    def test_core_defensive_pool_prefers_qualified_stock_over_market_exposure_tool(self) -> None:
+        dates = pd.bdate_range("2025-01-02", periods=160)
+        pool = _core_defensive_test_pool(["00631L.TW", "2882.TW", "0050.TW"])
+        prices = {
+            "00631L.TW": _trend_frame(dates, start=100, step=0.80, volume=20_000_000),
+            "2882.TW": _trend_frame(dates, start=100, step=0.35, volume=20_000_000),
+            "0050.TW": _trend_frame(dates, start=100, step=0.20, volume=20_000_000),
+        }
+
+        observation = build_stock_pool_observation(
+            pool=pool,
+            prices_by_ticker=prices,
+            signal_date=dates[-1],
+        )
+
+        self.assertEqual(observation.top_ticker, "2882.TW")
+        self.assertEqual(observation.top_asset_type, "stock")
+        self.assertEqual(observation.selection_layer, "formal_candidate")
+        self.assertTrue(observation.attack_gate_open)
+        self.assertTrue(observation.eligible_for_pool_selection)
+
     def test_core_defensive_pool_blocks_when_drawdown_control_fails(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)
         pool = _core_defensive_test_pool(["2882.TW"])

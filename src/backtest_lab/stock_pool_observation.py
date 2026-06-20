@@ -364,6 +364,28 @@ def _first_eligible_candidate(
         if top and (gate_details_by_ticker.get(top.ticker) or {}).get("eligible_for_pool_selection"):
             return top
         return None
+    if gate_rule_id == CORE_DEFENSIVE_GATE_RULE_ID:
+        stock_candidate = next(
+            (
+                candidate
+                for candidate in candidates
+                if _asset_type_for_ticker(candidate.ticker, asset_type_by_ticker) == ASSET_TYPE_STOCK
+                and (gate_details_by_ticker.get(candidate.ticker) or {}).get("eligible_for_pool_selection")
+            ),
+            None,
+        )
+        if stock_candidate:
+            return stock_candidate
+        return next(
+            (
+                candidate
+                for candidate in candidates
+                if (gate_details_by_ticker.get(candidate.ticker) or {}).get("selection_layer")
+                == SELECTION_MARKET_EXPOSURE_TOOL
+                and (gate_details_by_ticker.get(candidate.ticker) or {}).get("eligible_for_pool_selection")
+            ),
+            None,
+        )
     return next(
         (
             candidate
@@ -527,7 +549,7 @@ def _core_defensive_gate_evaluation(
 ) -> dict[str, Any]:
     normalized_type = _normalize_asset_type(asset_type)
     if normalized_type in {ASSET_TYPE_ETF, ASSET_TYPE_CASH}:
-        return _candidate_gate_evaluation(candidate, asset_type, gate_rule_id=CORE_DEFENSIVE_GATE_RULE_ID)
+        return _core_defensive_market_exposure_gate_result(candidate)
 
     benchmark_ret60 = _window_return_on_or_before(
         prices_by_ticker.get(CORE_DEFENSIVE_BENCHMARK),
@@ -627,6 +649,27 @@ def _core_defensive_gate_result(
         "selection_layer": SELECTION_FORMAL_CANDIDATE if eligible else SELECTION_OBSERVATION_ONLY,
         "gate_rule_id": CORE_DEFENSIVE_GATE_RULE_ID,
         "gate_reason": gate_reason,
+    }
+
+
+def _core_defensive_market_exposure_gate_result(candidate: UniversalCandidateScore) -> dict[str, Any]:
+    eligible = bool(candidate.passed)
+    return {
+        "rank_score": round(candidate.score, 6),
+        "base_pool_passed": bool(candidate.passed),
+        "benchmark_resilience_passed": None,
+        "trend_resilience_passed": None,
+        "opportunity_cost_passed": None,
+        "drawdown_control_passed": None,
+        "risk_control_passed": None,
+        "attack_gate_open": None,
+        "eligible_for_pool_selection": eligible,
+        "selection_layer": SELECTION_MARKET_EXPOSURE_TOOL if eligible else SELECTION_OBSERVATION_ONLY,
+        "gate_rule_id": CORE_DEFENSIVE_GATE_RULE_ID,
+        "gate_reason": (
+            "核心防守池 v2：防守個股無合格時，通過池內條件的 ETF 可作市場曝險替代；"
+            f"base={'Y' if candidate.passed else 'N'}。"
+        ),
     }
 
 
