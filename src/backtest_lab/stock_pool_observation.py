@@ -44,6 +44,7 @@ from backtest_lab.universal_pool_strategy import (
     default_parameters_for_profile,
     infer_pool_profile,
     score_universal_candidates,
+    window_return,
 )
 from backtest_lab.valuation_source import ValuationSignal, load_valuation_signals
 
@@ -54,6 +55,13 @@ REPORT_TITLE = "AI股票池三池表決觀察總覽"
 REPORT_VERSION = "v20260612"
 REPORT_LATEST_FILENAME = f"{REPORT_NAME}_最新版_{REPORT_VERSION}.pdf"
 FROZEN_BEST_GROUP_ID = "group_c_0050_00631l_plus_mega_caps"
+TW50_ATTACK_GATE_RULE_ID = "tw50_large_breadth_attack_gate_v1"
+TW50_ATTACK_GATE_BENCHMARK = "0050.TW"
+TW50_ATTACK_GATE_RET60_MARGIN = 0.08
+TW50_ATTACK_GATE_RET20_MIN = 0.03
+TW50_ATTACK_GATE_RET60_MIN = 0.12
+TW50_ATTACK_GATE_PERSISTENCE_LOOKBACK = 10
+TW50_ATTACK_GATE_PERSISTENCE_MIN_DAYS = 5
 POOL_SHORT_NAMES = {
     "ai_theme_large_cap_v20260613": "AI主線池",
     "tw50_dynamic_constituents_v0": "大型廣度池",
@@ -166,16 +174,27 @@ def build_stock_pool_observation(
     }
     asset_type_by_ticker = _asset_type_by_ticker(available_symbols)
     gate_rule_id = _gate_rule_id_for_pool(pool)
+    gate_details_by_ticker = _pool_gate_details_by_ticker(
+        pool=pool,
+        candidates=candidates,
+        asset_type_by_ticker=asset_type_by_ticker,
+        gate_rule_id=gate_rule_id,
+        prices_by_ticker=prices_by_ticker,
+        signal_date=signal_ts,
+    )
     top = _first_eligible_candidate(
         candidates,
         asset_type_by_ticker=asset_type_by_ticker,
         gate_rule_id=gate_rule_id,
+        gate_details_by_ticker=gate_details_by_ticker,
     )
     top_asset_type = _asset_type_for_ticker(top.ticker, asset_type_by_ticker) if top else None
-    top_gate = _candidate_gate_evaluation(top, top_asset_type, gate_rule_id=gate_rule_id)
+    top_gate = gate_details_by_ticker.get(top.ticker) if top else None
+    top_gate = top_gate or _candidate_gate_evaluation(top, top_asset_type, gate_rule_id=gate_rule_id)
     source_metadata = _build_pool_source_metadata(pool, available_symbols)
     source_metadata["candidate_asset_types"] = asset_type_by_ticker
     source_metadata["gate_rule_id"] = gate_rule_id
+    source_metadata["candidate_gate_details"] = gate_details_by_ticker
     return StockPoolObservation(
         schema_version=1,
         pool_id=str(pool["pool_id"]),
@@ -329,16 +348,23 @@ def _first_eligible_candidate(
     *,
     asset_type_by_ticker: dict[str, str],
     gate_rule_id: str,
+    gate_details_by_ticker: dict[str, dict[str, Any]] | None = None,
 ) -> UniversalCandidateScore | None:
+    gate_details_by_ticker = gate_details_by_ticker or {}
+    if gate_rule_id == TW50_ATTACK_GATE_RULE_ID:
+        top = candidates[0] if candidates else None
+        if top and (gate_details_by_ticker.get(top.ticker) or {}).get("eligible_for_pool_selection"):
+            return top
+        return None
     return next(
         (
             candidate
             for candidate in candidates
-            if _candidate_gate_evaluation(
-                candidate,
-                _asset_type_for_ticker(candidate.ticker, asset_type_by_ticker),
-                gate_rule_id=gate_rule_id,
-            )["eligible_for_pool_selection"]
+            if (gate_details_by_ticker.get(candidate.ticker) or _candidate_gate_evaluation(
+                    candidate,
+                    _asset_type_for_ticker(candidate.ticker, asset_type_by_ticker),
+                    gate_rule_id=gate_rule_id,
+                ))["eligible_for_pool_selection"]
         ),
         None,
     )
@@ -348,12 +374,187 @@ def _gate_rule_id_for_pool(pool: dict[str, Any]) -> str:
     pool_id = str(pool.get("pool_id") or "")
     preset = str(pool.get("strategy_preset") or "universal_pool_custom")
     if pool_id == "tw50_dynamic_constituents_v0":
-        return "tw50_large_breadth_gate_v0"
+        return TW50_ATTACK_GATE_RULE_ID
     if preset == "core_defensive_style_v1":
         return "core_defensive_style_gate_v1"
     if preset in {"best_v20260605", "ai_theme_large_cap_v20260613"}:
         return f"{preset}_formal_regime_gate"
     return "universal_pool_base_gate_v1"
+
+
+def _pool_gate_details_by_ticker(
+    *,
+    pool: dict[str, Any],
+    candidates: list[UniversalCandidateScore],
+    asset_type_by_ticker: dict[str, str],
+    gate_rule_id: str,
+    prices_by_ticker: dict[str, pd.DataFrame],
+    signal_date: pd.Timestamp,
+) -> dict[str, dict[str, Any]]:
+    details: dict[str, dict[str, Any]] = {}
+    if gate_rule_id != TW50_ATTACK_GATE_RULE_ID:
+        for candidate in candidates:
+            asset_type = _asset_type_for_ticker(candidate.ticker, asset_type_by_ticker)
+            details[candidate.ticker] = _candidate_gate_evaluation(candidate, asset_type, gate_rule_id=gate_rule_id)
+        return details
+
+    for candidate in candidates:
+        asset_type = _asset_type_for_ticker(candidate.ticker, asset_type_by_ticker)
+        details[candidate.ticker] = _tw50_attack_gate_evaluation(
+            candidate=candidate,
+            asset_type=asset_type,
+            candidates=candidates,
+            prices_by_ticker=prices_by_ticker,
+            signal_date=signal_date,
+        )
+    return details
+
+
+def _tw50_attack_gate_evaluation(
+    *,
+    candidate: UniversalCandidateScore,
+    asset_type: str | None,
+    candidates: list[UniversalCandidateScore],
+    prices_by_ticker: dict[str, pd.DataFrame],
+    signal_date: pd.Timestamp,
+) -> dict[str, Any]:
+    base_pool_passed = bool(candidate.passed)
+    normalized_type = _normalize_asset_type(asset_type)
+    if normalized_type in {ASSET_TYPE_ETF, ASSET_TYPE_CASH}:
+        return _candidate_gate_evaluation(candidate, asset_type, gate_rule_id=TW50_ATTACK_GATE_RULE_ID)
+
+    benchmark_ret60 = _window_return_on_or_before(
+        prices_by_ticker.get(TW50_ATTACK_GATE_BENCHMARK),
+        signal_date,
+        60,
+    )
+    if benchmark_ret60 is None:
+        return _tw50_gate_result(
+            candidate,
+            attack_gate_open=False,
+            eligible=False,
+            benchmark_margin_passed=False,
+            momentum_quality_passed=False,
+            persistence_passed=False,
+            gate_reason="大型廣度池 v1 未通過：缺少 0050 benchmark 價格，不能確認相對超額。",
+        )
+
+    ret60_margin = candidate.ret60 - benchmark_ret60
+    benchmark_margin_passed = ret60_margin >= TW50_ATTACK_GATE_RET60_MARGIN
+    momentum_quality_passed = (
+        candidate.ret20 >= TW50_ATTACK_GATE_RET20_MIN
+        and candidate.ret60 >= TW50_ATTACK_GATE_RET60_MIN
+        and candidate.ret60 > 0
+    )
+    persistence_days, persistence_total = _tw50_persistence_days(
+        ticker=candidate.ticker,
+        candidates=candidates,
+        prices_by_ticker=prices_by_ticker,
+        signal_date=signal_date,
+    )
+    persistence_passed = persistence_days >= TW50_ATTACK_GATE_PERSISTENCE_MIN_DAYS
+    attack_gate_open = bool(
+        base_pool_passed
+        and benchmark_margin_passed
+        and momentum_quality_passed
+        and persistence_passed
+    )
+    reason_parts = [
+        f"base={'Y' if base_pool_passed else 'N'}",
+        f"60日相對0050超額={ret60_margin:.1%}({'Y' if benchmark_margin_passed else 'N'})",
+        f"20/60動能品質={'Y' if momentum_quality_passed else 'N'}",
+        f"持續性={persistence_days}/{persistence_total}日({'Y' if persistence_passed else 'N'})",
+    ]
+    return _tw50_gate_result(
+        candidate,
+        attack_gate_open=attack_gate_open,
+        eligible=attack_gate_open,
+        benchmark_margin_passed=benchmark_margin_passed,
+        momentum_quality_passed=momentum_quality_passed,
+        persistence_passed=persistence_passed,
+        gate_reason="大型廣度池 v1：" + "；".join(reason_parts),
+    )
+
+
+def _tw50_gate_result(
+    candidate: UniversalCandidateScore,
+    *,
+    attack_gate_open: bool,
+    eligible: bool,
+    benchmark_margin_passed: bool,
+    momentum_quality_passed: bool,
+    persistence_passed: bool,
+    gate_reason: str,
+) -> dict[str, Any]:
+    return {
+        "rank_score": round(candidate.score, 6),
+        "base_pool_passed": bool(candidate.passed),
+        "benchmark_margin_passed": benchmark_margin_passed,
+        "momentum_quality_passed": momentum_quality_passed,
+        "persistence_passed": persistence_passed,
+        "attack_gate_open": attack_gate_open,
+        "eligible_for_pool_selection": eligible,
+        "selection_layer": SELECTION_FORMAL_CANDIDATE if eligible else SELECTION_OBSERVATION_ONLY,
+        "gate_rule_id": TW50_ATTACK_GATE_RULE_ID,
+        "gate_reason": gate_reason,
+    }
+
+
+def _tw50_persistence_days(
+    *,
+    ticker: str,
+    candidates: list[UniversalCandidateScore],
+    prices_by_ticker: dict[str, pd.DataFrame],
+    signal_date: pd.Timestamp,
+) -> tuple[int, int]:
+    benchmark = prices_by_ticker.get(TW50_ATTACK_GATE_BENCHMARK)
+    if benchmark is None or ticker not in prices_by_ticker:
+        return 0, 0
+    candidate_tickers = [candidate.ticker for candidate in candidates if candidate.ticker in prices_by_ticker]
+    trading_dates = sorted(
+        set.intersection(
+            *(set(prices_by_ticker[item].index[prices_by_ticker[item].index <= signal_date]) for item in candidate_tickers),
+            set(benchmark.index[benchmark.index <= signal_date]),
+        )
+    )
+    if not trading_dates:
+        return 0, 0
+    dates = trading_dates[-TW50_ATTACK_GATE_PERSISTENCE_LOOKBACK:]
+    pass_days = 0
+    evaluated = 0
+    for current_date in dates:
+        benchmark_ret60 = _window_return_on_or_before(benchmark, current_date, 60)
+        if benchmark_ret60 is None:
+            continue
+        rows = []
+        for item in candidate_tickers:
+            ret60 = _window_return_on_or_before(prices_by_ticker[item], current_date, 60)
+            if ret60 is None:
+                continue
+            rows.append((item, ret60))
+        if not rows:
+            continue
+        evaluated += 1
+        rows.sort(key=lambda row: row[1], reverse=True)
+        top_cutoff = max(5, int(len(rows) * 0.2 + 0.9999))
+        top_tickers = {item for item, _ in rows[:top_cutoff]}
+        ticker_ret60 = dict(rows).get(ticker)
+        if (
+            ticker in top_tickers
+            and ticker_ret60 is not None
+            and ticker_ret60 - benchmark_ret60 >= TW50_ATTACK_GATE_RET60_MARGIN
+        ):
+            pass_days += 1
+    return pass_days, evaluated
+
+
+def _window_return_on_or_before(frame: pd.DataFrame | None, signal_date: pd.Timestamp, window: int) -> float | None:
+    if frame is None or frame.empty:
+        return None
+    history = frame.loc[frame.index <= signal_date].dropna(subset=["adj_close"])
+    if len(history) <= window:
+        return None
+    return window_return(history["adj_close"], window)
 
 
 def _candidate_gate_evaluation(
@@ -373,12 +574,15 @@ def _candidate_gate_evaluation(
     eligible = selection_layer in {SELECTION_FORMAL_CANDIDATE, SELECTION_MARKET_EXPOSURE_TOOL}
     if candidate is None:
         gate_reason = "池內沒有候選資料。"
-    elif gate_rule_id == "tw50_large_breadth_gate_v0":
+    elif gate_rule_id == TW50_ATTACK_GATE_RULE_ID:
         gate_reason = (
-            "大型廣度池 v0：通過暖身資料、均線、流動性、過熱、回撤與分數門檻。"
+            "大型廣度池 v1：需另行檢查 benchmark margin、20/60 動能品質與持續性。"
             if base_pool_passed
-            else f"大型廣度池 v0 未通過：{candidate.reason or '池內基本條件未通過'}。"
+            else f"大型廣度池 v1 未通過：{candidate.reason or '池內基本條件未通過'}。"
         )
+        attack_gate_open = False
+        eligible = False
+        selection_layer = SELECTION_OBSERVATION_ONLY
     elif gate_rule_id == "core_defensive_style_gate_v1":
         gate_reason = (
             "核心防守池 v1：通過較嚴格的過熱、回撤、均線與風險調整條件。"
@@ -596,8 +800,9 @@ def run_stock_pool_observation_batch(
             )
             continue
         try:
+            price_tickers = _observation_price_tickers(pool, tickers)
             prices, missing_price_tickers = _load_observation_price_frames(
-                tickers=tickers,
+                tickers=price_tickers,
                 start_date=_price_start_for_pool(pool, warmup_start),
                 end_date=signal_date,
                 cache_dir=cache_dir,
@@ -1080,9 +1285,10 @@ def _top_candidate_rows(observation: StockPoolObservation, limit: int = 3) -> li
     rows = []
     asset_type_by_ticker = (observation.source_metadata or {}).get("candidate_asset_types") or {}
     gate_rule_id = str((observation.source_metadata or {}).get("gate_rule_id") or observation.gate_rule_id or "")
+    gate_details_by_ticker = (observation.source_metadata or {}).get("candidate_gate_details") or {}
     for rank, candidate in enumerate(candidates[:limit], start=1):
         asset_type = _asset_type_for_ticker(candidate.ticker, asset_type_by_ticker)
-        gate = _candidate_gate_evaluation(
+        gate = gate_details_by_ticker.get(candidate.ticker) or _candidate_gate_evaluation(
             candidate,
             asset_type,
             gate_rule_id=gate_rule_id or "universal_pool_base_gate_v1",
@@ -1572,6 +1778,13 @@ def _price_start_for_pool(pool: dict[str, Any], warmup_start: str) -> str:
     if pool.get("strategy_preset") in {"best_v20260605", "ai_theme_large_cap_v20260613"}:
         return (pd.Timestamp(warmup_start) - pd.DateOffset(years=2)).strftime("%Y-%m-%d")
     return warmup_start
+
+
+def _observation_price_tickers(pool: dict[str, Any], candidate_tickers: list[str]) -> list[str]:
+    tickers = list(candidate_tickers)
+    if str(pool.get("pool_id") or "") == "tw50_dynamic_constituents_v0" and TW50_ATTACK_GATE_BENCHMARK not in tickers:
+        tickers.append(TW50_ATTACK_GATE_BENCHMARK)
+    return tickers
 
 
 def _resolve_dynamic_observation_pool(

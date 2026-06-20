@@ -114,6 +114,7 @@ class StockPoolObservationTest(unittest.TestCase):
         prices = {
             "2327.TW": _trend_frame(dates, start=100, step=1.0, volume=20_000_000),
             "2330.TW": _trend_frame(dates, start=100, step=0.2, volume=20_000_000),
+            "0050.TW": _trend_frame(dates, start=100, step=0.0, volume=20_000_000),
         }
 
         observation = build_stock_pool_observation(
@@ -124,16 +125,84 @@ class StockPoolObservationTest(unittest.TestCase):
         top_rows = _top_candidate_rows(observation)
 
         self.assertEqual(observation.top_ticker, "2327.TW")
-        self.assertEqual(observation.gate_rule_id, "tw50_large_breadth_gate_v0")
+        self.assertEqual(observation.gate_rule_id, "tw50_large_breadth_attack_gate_v1")
         self.assertTrue(observation.base_pool_passed)
         self.assertTrue(observation.attack_gate_open)
         self.assertTrue(observation.eligible_for_pool_selection)
         self.assertEqual(observation.selection_layer, "formal_candidate")
-        self.assertIn("大型廣度池 v0", observation.gate_reason)
-        self.assertEqual(top_rows[0]["gate_rule_id"], "tw50_large_breadth_gate_v0")
+        self.assertIn("大型廣度池 v1", observation.gate_reason)
+        self.assertIn("60日相對0050超額", observation.gate_reason)
+        self.assertEqual(top_rows[0]["gate_rule_id"], "tw50_large_breadth_attack_gate_v1")
         self.assertTrue(top_rows[0]["base_pool_passed"])
         self.assertTrue(top_rows[0]["attack_gate_open"])
         self.assertTrue(top_rows[0]["eligible_for_pool_selection"])
+
+    def test_tw50_pool_blocks_high_rank_when_benchmark_margin_is_insufficient(self) -> None:
+        dates = pd.bdate_range("2025-01-02", periods=160)
+        pool = _tw50_test_pool(["2327.TW", "2330.TW"])
+        prices = {
+            "2327.TW": _trend_frame(dates, start=100, step=0.30, volume=20_000_000),
+            "2330.TW": _trend_frame(dates, start=100, step=0.10, volume=20_000_000),
+            "0050.TW": _trend_frame(dates, start=100, step=0.28, volume=20_000_000),
+        }
+
+        observation = build_stock_pool_observation(
+            pool=pool,
+            prices_by_ticker=prices,
+            signal_date=dates[-1],
+        )
+        top_rows = _top_candidate_rows(observation)
+
+        self.assertIsNone(observation.top_ticker)
+        self.assertFalse(observation.eligible_for_pool_selection)
+        self.assertEqual(observation.selection_layer, "no_selection")
+        self.assertEqual(top_rows[0]["ticker"], "2327.TW")
+        self.assertFalse(top_rows[0]["eligible_for_pool_selection"])
+        self.assertFalse(top_rows[0]["attack_gate_open"])
+        self.assertIn("60日相對0050超額", top_rows[0]["gate_reason"])
+
+    def test_tw50_pool_blocks_when_momentum_quality_is_insufficient(self) -> None:
+        dates = pd.bdate_range("2025-01-02", periods=160)
+        pool = _tw50_test_pool(["2327.TW", "2330.TW"])
+        prices = {
+            "2327.TW": _trend_frame(dates, start=100, step=0.08, volume=20_000_000),
+            "2330.TW": _trend_frame(dates, start=100, step=0.02, volume=20_000_000),
+            "0050.TW": _trend_frame(dates, start=100, step=0.00, volume=20_000_000),
+        }
+
+        observation = build_stock_pool_observation(
+            pool=pool,
+            prices_by_ticker=prices,
+            signal_date=dates[-1],
+        )
+        top_rows = _top_candidate_rows(observation)
+
+        self.assertIsNone(observation.top_ticker)
+        self.assertFalse(top_rows[0]["eligible_for_pool_selection"])
+        self.assertFalse(top_rows[0]["attack_gate_open"])
+        self.assertIn("20/60動能品質=N", top_rows[0]["gate_reason"])
+
+    def test_tw50_pool_blocks_when_persistence_is_insufficient(self) -> None:
+        dates = pd.bdate_range("2025-01-02", periods=160)
+        pool = _tw50_test_pool(["2327.TW", "2330.TW"])
+        prices = {
+            "2327.TW": _final_surge_frame(dates, flat_days=157, final_gain=0.55, volume=20_000_000),
+            "2330.TW": _trend_frame(dates, start=100, step=0.10, volume=20_000_000),
+            "0050.TW": _trend_frame(dates, start=100, step=0.00, volume=20_000_000),
+        }
+
+        observation = build_stock_pool_observation(
+            pool=pool,
+            prices_by_ticker=prices,
+            signal_date=dates[-1],
+        )
+        top_rows = _top_candidate_rows(observation)
+
+        self.assertIsNone(observation.top_ticker)
+        self.assertFalse(top_rows[0]["eligible_for_pool_selection"])
+        self.assertFalse(top_rows[0]["attack_gate_open"])
+        self.assertIn("持續性=", top_rows[0]["gate_reason"])
+        self.assertIn("(N)", top_rows[0]["gate_reason"])
 
     def test_build_observation_preserves_valuation_signal_fields(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)
@@ -493,6 +562,10 @@ class StockPoolObservationTest(unittest.TestCase):
                 cache_dir / "2330_TW.csv",
                 index=False,
             )
+            _trend_frame(dates, start=100, step=0.0, volume=20_000_000).reset_index(names="date").to_csv(
+                cache_dir / "0050_TW.csv",
+                index=False,
+            )
             tw50_path = root / "tw50_constituents.csv"
             pd.DataFrame(
                 [
@@ -646,6 +719,46 @@ def _late_surge_frame(dates: pd.DatetimeIndex, *, volume: int) -> pd.DataFrame:
         },
         index=dates,
     )
+
+
+def _final_surge_frame(
+    dates: pd.DatetimeIndex,
+    *,
+    flat_days: int,
+    final_gain: float,
+    volume: int,
+) -> pd.DataFrame:
+    surge_days = len(dates) - flat_days
+    closes = [100.0] * flat_days
+    closes += [100.0 * (1 + final_gain * (index + 1) / surge_days) for index in range(surge_days)]
+    return pd.DataFrame(
+        {
+            "open": closes,
+            "high": [value * 1.01 for value in closes],
+            "low": [value * 0.99 for value in closes],
+            "close": closes,
+            "adj_close": closes,
+            "volume": [volume] * len(dates),
+            "dividend": [0.0] * len(dates),
+            "stock_split": [0.0] * len(dates),
+        },
+        index=dates,
+    )
+
+
+def _tw50_test_pool(tickers: list[str]) -> dict[str, object]:
+    symbols = []
+    for ticker in tickers:
+        symbol = symbol_entry(ticker, source="tw50_history_csv")
+        symbol["market_cap_twd"] = 900_000_000_000
+        symbols.append(symbol)
+    return {
+        "pool_id": "tw50_dynamic_constituents_v0",
+        "name": "大型市場廣度池 v0",
+        "strategy_preset": "universal_pool_custom",
+        "resolved_symbols": symbols,
+        "dynamic_constituents": {"source": "tw50_history_csv", "path": "data/tw50_constituents.csv"},
+    }
 
 
 def _write_stock_metrics(path: Path, rows: list[dict[str, object]]) -> None:
