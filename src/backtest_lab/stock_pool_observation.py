@@ -62,11 +62,12 @@ TW50_ATTACK_GATE_RET20_MIN = 0.03
 TW50_ATTACK_GATE_RET60_MIN = 0.12
 TW50_ATTACK_GATE_PERSISTENCE_LOOKBACK = 10
 TW50_ATTACK_GATE_PERSISTENCE_MIN_DAYS = 5
-CORE_DEFENSIVE_GATE_RULE_ID = "core_defensive_resilience_gate_v1"
+CORE_DEFENSIVE_GATE_RULE_ID = "core_defensive_resilience_opportunity_gate_v2"
 CORE_DEFENSIVE_BENCHMARK = "0050.TW"
 CORE_DEFENSIVE_RET60_MIN = 0.05
 CORE_DEFENSIVE_RET120_MIN = 0.0
 CORE_DEFENSIVE_BENCHMARK_LAG_TOLERANCE = -0.03
+CORE_DEFENSIVE_RET120_BENCHMARK_LAG_TOLERANCE = -0.03
 CORE_DEFENSIVE_MAX_DRAWDOWN20 = -0.12
 CORE_DEFENSIVE_MAX_FLOW_RISK_SCORE = 0.35
 POOL_SHORT_NAMES = {
@@ -540,9 +541,28 @@ def _core_defensive_gate_evaluation(
             eligible=False,
             benchmark_resilience_passed=False,
             trend_resilience_passed=False,
+            opportunity_cost_passed=False,
             drawdown_control_passed=False,
             risk_control_passed=False,
-            gate_reason="核心防守池 v1 未通過：缺少 0050 benchmark 價格，不能確認防守相對韌性。",
+            gate_reason="核心防守池 v2 未通過：缺少 0050 benchmark 價格，不能確認防守相對韌性。",
+        )
+
+    benchmark_ret120 = _window_return_on_or_before(
+        prices_by_ticker.get(CORE_DEFENSIVE_BENCHMARK),
+        signal_date,
+        120,
+    )
+    if benchmark_ret120 is None:
+        return _core_defensive_gate_result(
+            candidate,
+            attack_gate_open=False,
+            eligible=False,
+            benchmark_resilience_passed=False,
+            trend_resilience_passed=False,
+            opportunity_cost_passed=False,
+            drawdown_control_passed=False,
+            risk_control_passed=False,
+            gate_reason="核心防守池 v2 未通過：缺少 0050 120日 benchmark，不能確認機會成本。",
         )
 
     benchmark_resilience_passed = candidate.ret60 - benchmark_ret60 >= CORE_DEFENSIVE_BENCHMARK_LAG_TOLERANCE
@@ -550,12 +570,14 @@ def _core_defensive_gate_evaluation(
         candidate.ret60 >= CORE_DEFENSIVE_RET60_MIN
         and candidate.ret120 >= CORE_DEFENSIVE_RET120_MIN
     )
+    opportunity_cost_passed = candidate.ret120 - benchmark_ret120 >= CORE_DEFENSIVE_RET120_BENCHMARK_LAG_TOLERANCE
     drawdown_control_passed = candidate.drawdown20 >= CORE_DEFENSIVE_MAX_DRAWDOWN20
     risk_control_passed = candidate.flow_risk_score <= CORE_DEFENSIVE_MAX_FLOW_RISK_SCORE
     attack_gate_open = bool(
         candidate.passed
         and benchmark_resilience_passed
         and trend_resilience_passed
+        and opportunity_cost_passed
         and drawdown_control_passed
         and risk_control_passed
     )
@@ -563,6 +585,7 @@ def _core_defensive_gate_evaluation(
         f"base={'Y' if candidate.passed else 'N'}",
         f"60日相對0050韌性={candidate.ret60 - benchmark_ret60:.1%}({'Y' if benchmark_resilience_passed else 'N'})",
         f"60/120趨勢韌性={'Y' if trend_resilience_passed else 'N'}",
+        f"120日機會成本={candidate.ret120 - benchmark_ret120:.1%}({'Y' if opportunity_cost_passed else 'N'})",
         f"20日回撤控管={candidate.drawdown20:.1%}({'Y' if drawdown_control_passed else 'N'})",
         f"籌碼風險={candidate.flow_risk_score:.2f}({'Y' if risk_control_passed else 'N'})",
     ]
@@ -572,9 +595,10 @@ def _core_defensive_gate_evaluation(
         eligible=attack_gate_open,
         benchmark_resilience_passed=benchmark_resilience_passed,
         trend_resilience_passed=trend_resilience_passed,
+        opportunity_cost_passed=opportunity_cost_passed,
         drawdown_control_passed=drawdown_control_passed,
         risk_control_passed=risk_control_passed,
-        gate_reason="核心防守池 v1：" + "；".join(reason_parts),
+        gate_reason="核心防守池 v2：" + "；".join(reason_parts),
     )
 
 
@@ -585,6 +609,7 @@ def _core_defensive_gate_result(
     eligible: bool,
     benchmark_resilience_passed: bool,
     trend_resilience_passed: bool,
+    opportunity_cost_passed: bool,
     drawdown_control_passed: bool,
     risk_control_passed: bool,
     gate_reason: str,
@@ -594,6 +619,7 @@ def _core_defensive_gate_result(
         "base_pool_passed": bool(candidate.passed),
         "benchmark_resilience_passed": benchmark_resilience_passed,
         "trend_resilience_passed": trend_resilience_passed,
+        "opportunity_cost_passed": opportunity_cost_passed,
         "drawdown_control_passed": drawdown_control_passed,
         "risk_control_passed": risk_control_passed,
         "attack_gate_open": attack_gate_open,

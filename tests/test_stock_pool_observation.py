@@ -221,12 +221,13 @@ class StockPoolObservationTest(unittest.TestCase):
         top_rows = _top_candidate_rows(observation)
 
         self.assertEqual(observation.top_ticker, "2882.TW")
-        self.assertEqual(observation.gate_rule_id, "core_defensive_resilience_gate_v1")
+        self.assertEqual(observation.gate_rule_id, "core_defensive_resilience_opportunity_gate_v2")
         self.assertTrue(observation.attack_gate_open)
         self.assertTrue(observation.eligible_for_pool_selection)
         self.assertEqual(observation.selection_layer, "formal_candidate")
-        self.assertIn("核心防守池 v1", observation.gate_reason)
+        self.assertIn("核心防守池 v2", observation.gate_reason)
         self.assertIn("60日相對0050韌性", observation.gate_reason)
+        self.assertIn("120日機會成本", observation.gate_reason)
         self.assertTrue(top_rows[0]["eligible_for_pool_selection"])
 
     def test_core_defensive_pool_blocks_when_lagging_benchmark_too_much(self) -> None:
@@ -269,6 +270,28 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertIsNone(observation.top_ticker)
         self.assertFalse(top_rows[0]["eligible_for_pool_selection"])
         self.assertIn("60/120趨勢韌性=N", top_rows[0]["gate_reason"])
+
+    def test_core_defensive_pool_blocks_when_opportunity_cost_is_too_high(self) -> None:
+        dates = pd.bdate_range("2025-01-02", periods=160)
+        pool = _core_defensive_test_pool(["2882.TW", "2330.TW"])
+        prices = {
+            "2882.TW": _final_surge_frame(dates, flat_days=95, final_gain=0.35, volume=20_000_000),
+            "2330.TW": _trend_frame(dates, start=100, step=0.01, volume=20_000_000),
+            "0050.TW": _trend_frame(dates, start=100, step=0.45, volume=20_000_000),
+        }
+
+        observation = build_stock_pool_observation(
+            pool=pool,
+            prices_by_ticker=prices,
+            signal_date=dates[-1],
+        )
+        top_rows = _top_candidate_rows(observation)
+
+        self.assertIsNone(observation.top_ticker)
+        self.assertFalse(top_rows[0]["eligible_for_pool_selection"])
+        self.assertFalse(top_rows[0]["attack_gate_open"])
+        self.assertIn("120日機會成本", top_rows[0]["gate_reason"])
+        self.assertIn("(N)", top_rows[0]["gate_reason"])
 
     def test_core_defensive_pool_blocks_when_drawdown_control_fails(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)
