@@ -104,3 +104,55 @@ Before using pool 2 in full historical diagnostics:
 
 Until this passes, pool 3 role diagnostics must be labeled as partial and
 cannot be used as a final decision to remove or downgrade pool 3.
+
+## Official Technical Notice Event Intake
+
+Core can ingest official Taiwan Index technical notice PDFs/text through:
+
+```powershell
+$env:PYTHONPATH='src'
+python -m backtest_lab.tw50_technical_notice_events --input path\to\notice1.pdf path\to\notice2.pdf --output-dir outputs\tw50_technical_notice_events_YYYYMMDD
+```
+
+This produces:
+
+- `tw50_technical_notice_events.csv`
+- `tw50_technical_notice_source_audit.csv`
+- `metadata.json`
+- `tw50_technical_notice_events.md`
+- `run_log.csv`
+- `completed.csv`
+- `failed.csv`
+
+Rows from Taiwan Index technical notices are labeled:
+
+```text
+source_type=official_technical_notice
+exact_or_proxy=exact_candidate
+```
+
+They are still event rows only. They can say a stock was added or deleted on a
+specific effective date, but they do not by themselves reconstruct the full
+active 50-name basket. To build `data/tw50_constituents.csv`, Core also needs an
+official baseline snapshot that is effective on or before the first accepted
+event. If the baseline snapshot starts after the first event, the interval
+builder fails closed to avoid future-data leakage.
+
+Use:
+
+```python
+from backtest_lab.tw50_technical_notice_events import build_tw50_pit_intervals_from_events
+```
+
+only when the baseline snapshot is point-in-time valid.
+
+## Yuanta 0050 Holdings Boundary
+
+Yuanta 0050 monthly reports, quarterly reports, holdings lists, and ETF reports
+can help as `proxy_candidate` evidence when exact Taiwan 50 constituent data is
+not available. They must not be mixed into `exact_candidate` / official TW50
+constituent rows.
+
+If a replay uses Yuanta holdings proxy rows, its readiness and output must be
+marked proxy-specific. It cannot be used as exact official Taiwan 50 constituent
+evidence.
