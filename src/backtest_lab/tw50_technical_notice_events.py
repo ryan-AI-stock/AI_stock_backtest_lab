@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import glob
 import io
 import json
 import re
@@ -119,13 +120,27 @@ def parse_tw50_technical_notice_pdf(
     source_url: str = "",
     source_title: str = "",
 ) -> list[dict[str, Any]]:
+    text = ""
+    try:
+        import pdfplumber
+
+        with pdfplumber.open(io.BytesIO(payload)) as pdf:
+            text = "\n".join(page.extract_text() or "" for page in pdf.pages)
+    except ImportError:
+        text = ""
+    except Exception:
+        text = ""
+
+    if text.strip():
+        return parse_tw50_technical_notice_text(text, source_url=source_url, source_title=source_title)
+
     try:
         from pypdf import PdfReader
     except ImportError as error:  # pragma: no cover - dependency is present in normal runtime.
         raise ValueError("pypdf is required to parse Taiwan Index technical notice PDF.") from error
 
     reader = PdfReader(io.BytesIO(payload))
-    text = "\n".join(page.extract_text() or "" for page in reader.pages)
+    text = "\n".join(page.extract_text(extraction_mode="layout") or "" for page in reader.pages)
     return parse_tw50_technical_notice_text(text, source_url=source_url, source_title=source_title)
 
 
@@ -153,7 +168,7 @@ def run_tw50_technical_notice_ingestion(
     event_rows: list[dict[str, Any]] = []
     audit_rows: list[dict[str, Any]] = []
     failures: list[dict[str, Any]] = []
-    for raw_path in input_paths:
+    for raw_path in _expand_input_paths(input_paths):
         path = Path(raw_path)
         current_step.write_text(f"parsing {path}\n", encoding="utf-8")
         source_info = manifest.get(path.name, {})
@@ -314,6 +329,126 @@ def build_tw50_pit_intervals_from_events(
     }
 
 
+def build_tw50_pit_snapshots_from_current_and_events(
+    *,
+    current_snapshot_path: str | Path,
+    snapshot_as_of: str,
+    event_rows_path: str | Path,
+    output_path: str | Path,
+    history_start: str,
+    source_updated_at: str,
+) -> dict[str, Any]:
+    """Reconstruct PIT snapshots backward from an official current TW50 snapshot.
+
+    This is valid only when the current snapshot is official exact evidence and
+    the event rows cover every add/delete change between history_start and
+    snapshot_as_of. It writes full snapshots at history_start and every accepted
+    event effective date, so the existing point-in-time loader can select the
+    latest active basket without needing per-ticker end dates.
+    """
+
+    snapshot = _read_current_snapshot(current_snapshot_path)
+    events = pd.read_csv(event_rows_path)
+    if not set(EVENT_COLUMNS).issubset(events.columns):
+        raise ValueError("event rows file does not match TW50 technical notice event schema.")
+    accepted = events[events["accepted"].astype(str).str.lower().isin({"true", "1", "yes"})].copy()
+    if accepted.empty:
+        raise ValueError("no accepted TW50 event rows available.")
+
+    snapshot_date = pd.Timestamp(snapshot_as_of).normalize()
+    start_date = pd.Timestamp(history_start).normalize()
+    accepted["effective_ts"] = pd.to_datetime(accepted["effective_date"], errors="coerce")
+    if accepted["effective_ts"].isna().any():
+        raise ValueError("accepted events contain invalid effective_date values.")
+    usable_events = accepted[(accepted["effective_ts"] >= start_date) & (accepted["effective_ts"] <= snapshot_date)].copy()
+    if usable_events.empty:
+        raise ValueError("no accepted events fall within history_start and snapshot_as_of.")
+
+    active: dict[str, str] = {}
+    for _, row in snapshot.iterrows():
+        ticker = normalize_ticker(str(row["ticker"]))
+        active[ticker] = _clean_name(str(row.get("name", "")))
+    rows: list[dict[str, str]] = []
+    event_dates_desc = sorted({pd.Timestamp(value).normalize() for value in usable_events["effective_ts"]}, reverse=True)
+    source = f"official_current_snapshot_reverse_events:{Path(current_snapshot_path).name}"
+
+    for event_date in event_dates_desc:
+        _append_snapshot_rows(
+            rows,
+            effective_date=event_date.strftime("%Y-%m-%d"),
+            active=active,
+            source=source,
+            source_updated_at=source_updated_at,
+        )
+        group = usable_events[usable_events["effective_ts"] == event_date]
+        for _, event in group.iterrows():
+            event_type = str(event["event_type"])
+            ticker = normalize_ticker(str(event["ticker"]))
+            if event_type == "add":
+                active.pop(ticker, None)
+            elif event_type == "delete":
+                active[ticker] = _clean_name(str(event.get("name", "")))
+
+    _append_snapshot_rows(
+        rows,
+        effective_date=start_date.strftime("%Y-%m-%d"),
+        active=active,
+        source=source,
+        source_updated_at=source_updated_at,
+    )
+    output = Path(output_path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    frame = pd.DataFrame(rows, columns=["effective_date", "ticker", "name", "source", "source_updated_at"])
+    frame = frame.drop_duplicates(subset=["effective_date", "ticker"], keep="last").sort_values(
+        ["effective_date", "ticker"]
+    )
+    frame.to_csv(output, index=False, encoding="utf-8-sig")
+    counts = frame.groupby("effective_date")["ticker"].nunique()
+    low_counts = {date: int(count) for date, count in counts.items() if count < 45}
+    return {
+        "output_path": str(output),
+        "row_count": len(frame),
+        "snapshot_count": int(counts.size),
+        "snapshot_as_of": snapshot_date.strftime("%Y-%m-%d"),
+        "history_start": start_date.strftime("%Y-%m-%d"),
+        "accepted_event_rows_used": int(len(usable_events)),
+        "min_snapshot_count": int(counts.min()) if not counts.empty else 0,
+        "max_snapshot_count": int(counts.max()) if not counts.empty else 0,
+        "low_snapshot_counts": low_counts,
+        "formal_ready": not low_counts,
+    }
+
+
+def _read_current_snapshot(path: str | Path) -> pd.DataFrame:
+    source = Path(path)
+    payload = source.read_bytes()
+    if payload.lstrip().startswith(b"%PDF"):
+        from backtest_lab.tw50_constituents_update import parse_ftse_tw50_pdf
+
+        return parse_ftse_tw50_pdf(payload)
+    return pd.read_csv(source)
+
+
+def _append_snapshot_rows(
+    rows: list[dict[str, str]],
+    *,
+    effective_date: str,
+    active: dict[str, str],
+    source: str,
+    source_updated_at: str,
+) -> None:
+    for ticker, name in sorted(active.items()):
+        rows.append(
+            {
+                "effective_date": effective_date,
+                "ticker": ticker,
+                "name": name,
+                "source": source,
+                "source_updated_at": source_updated_at,
+            }
+        )
+
+
 def _parse_review_sections(
     text: str,
     *,
@@ -423,7 +558,10 @@ def _event_row(
 
 def _section_after_heading(text: str, heading: str) -> str:
     heading_pattern = rf"{re.escape(heading)}\s*(?:\(\d+\)|（\d+）)?\s*[:：]"
-    pattern = rf"{heading_pattern}(?P<body>.*?)(?=成分股(?:納入|刪除)\s*(?:\(\d+\)|（\d+）)?\s*[:：]|$)"
+    pattern = (
+        rf"{heading_pattern}(?P<body>.*?)"
+        rf"(?=成分股(?:納入|刪除|候補名單)\s*(?:\(\d+\)|（\d+）)?\s*[:：]|[一二三四五六七八九十]+、|$)"
+    )
     match = re.search(pattern, text, flags=re.DOTALL)
     return match.group("body") if match else ""
 
@@ -433,9 +571,19 @@ def _extract_name_code_pairs(text: str) -> list[dict[str, str]]:
     for match in re.finditer(r"(?P<name>[^\s\d,，;；:：()（）]{1,24})\s*(?P<code>\d{4})", text):
         name = _clean_name(match.group("name"))
         code = match.group("code")
-        if name and code:
+        if name and code and _looks_like_tw_stock_code(code) and _looks_like_stock_name(name):
             pairs.append({"name": name, "code": code})
     return pairs
+
+
+def _looks_like_tw_stock_code(code: str) -> bool:
+    return bool(re.fullmatch(r"[1-9]\d{3}", code))
+
+
+def _looks_like_stock_name(name: str) -> bool:
+    if not name or name in {".", "-", "*"}:
+        return False
+    return bool(re.search(r"[\u4e00-\u9fffA-Za-z]", name))
 
 
 def _extract_title(text: str) -> str:
@@ -554,6 +702,18 @@ def _notice_markdown(result: NoticeIngestionResult) -> str:
             "",
         ]
     )
+
+
+def _expand_input_paths(input_paths: Iterable[str | Path]) -> list[Path]:
+    expanded: list[Path] = []
+    for raw_path in input_paths:
+        text = str(raw_path)
+        if any(char in text for char in "*?[]"):
+            matches = [Path(item) for item in glob.glob(text)]
+            expanded.extend(sorted(matches))
+        else:
+            expanded.append(Path(raw_path))
+    return expanded
 
 
 def main() -> None:

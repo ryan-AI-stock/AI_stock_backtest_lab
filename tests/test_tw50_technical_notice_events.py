@@ -10,6 +10,8 @@ import test_paths  # noqa: F401
 
 from backtest_lab.tw50_technical_notice_events import (
     build_tw50_pit_intervals_from_events,
+    build_tw50_pit_snapshots_from_current_and_events,
+    _expand_input_paths,
     parse_tw50_technical_notice_text,
     run_tw50_technical_notice_ingestion,
 )
@@ -81,6 +83,18 @@ class Tw50TechnicalNoticeEventsTest(unittest.TestCase):
             metadata = (root / "out" / "metadata.json").read_text(encoding="utf-8")
             self.assertIn('"formal_ready": false', metadata)
             self.assertTrue((root / "out" / "tw50_technical_notice_events.csv").exists())
+
+    def test_expands_glob_input_paths_for_windows_cli(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            first = root / "a.pdf"
+            second = root / "b.pdf"
+            first.write_bytes(b"%PDF-1")
+            second.write_bytes(b"%PDF-2")
+
+            paths = _expand_input_paths([str(root / "*.pdf")])
+
+        self.assertEqual([path.name for path in paths], ["a.pdf", "b.pdf"])
 
     def test_interval_builder_requires_baseline_before_first_event(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -172,6 +186,68 @@ class Tw50TechnicalNoticeEventsTest(unittest.TestCase):
         self.assertTrue(result["formal_ready"])
         self.assertEqual(frame.loc[frame["ticker"] == "2801.TW", "end_date"].iloc[0], "2024-06-23")
         self.assertIn("3017.TW", set(frame["ticker"]))
+
+    def test_reverse_snapshot_builder_reconstructs_prior_baskets(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            current = root / "current.csv"
+            events = root / "events.csv"
+            pd.DataFrame(
+                [
+                    {"ticker": "2330.TW", "name": "台積電"},
+                    {"ticker": "3017.TW", "name": "奇鋐"},
+                ]
+            ).to_csv(current, index=False)
+            pd.DataFrame(
+                [
+                    {
+                        "effective_date": "2024-06-24",
+                        "event_type": "delete",
+                        "ticker": "2801.TW",
+                        "name": "彰銀",
+                        "index_name": "臺灣50指數",
+                        "source_date": "2024-06-07",
+                        "source_title": "臺灣50指數成分股審核結果",
+                        "source_url": "",
+                        "source_type": "official_technical_notice",
+                        "exact_or_proxy": "exact_candidate",
+                        "accepted": True,
+                        "blocked_reason": "",
+                    },
+                    {
+                        "effective_date": "2024-06-24",
+                        "event_type": "add",
+                        "ticker": "3017.TW",
+                        "name": "奇鋐",
+                        "index_name": "臺灣50指數",
+                        "source_date": "2024-06-07",
+                        "source_title": "臺灣50指數成分股審核結果",
+                        "source_url": "",
+                        "source_type": "official_technical_notice",
+                        "exact_or_proxy": "exact_candidate",
+                        "accepted": True,
+                        "blocked_reason": "",
+                    },
+                ]
+            ).to_csv(events, index=False)
+
+            result = build_tw50_pit_snapshots_from_current_and_events(
+                current_snapshot_path=current,
+                snapshot_as_of="2024-07-01",
+                event_rows_path=events,
+                output_path=root / "tw50.csv",
+                history_start="2024-01-01",
+                source_updated_at="2026-06-23",
+            )
+            frame = pd.read_csv(root / "tw50.csv")
+            initial = frame[frame["effective_date"] == "2024-01-01"]
+            after_event = frame[frame["effective_date"] == "2024-06-24"]
+
+        self.assertEqual(result["snapshot_count"], 2)
+        self.assertIn("2801.TW", set(initial["ticker"]))
+        self.assertNotIn("3017.TW", set(initial["ticker"]))
+        self.assertIn("3017.TW", set(after_event["ticker"]))
+        self.assertNotIn("2801.TW", set(after_event["ticker"]))
 
 
 if __name__ == "__main__":
