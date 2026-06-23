@@ -9,8 +9,11 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
+from backtest_lab.data import download_yfinance_prices
 from backtest_lab.drive_publish import DEFAULT_FOLDER_ID, build_drive_service, upsert_pdf
 from backtest_lab.frozen_report_pdf import _configure_chinese_font, _save_figure_as_raster_pdf_page
+from backtest_lab.portfolio_app_settings import DEFAULT_USER_ID
+from backtest_lab.portfolio_store import PortfolioStore
 
 
 DEFAULT_OUTPUT_DIR = "outputs/live_path_tracker"
@@ -35,6 +38,9 @@ def run_live_path_tracker(
     model_target_ticker: str = "",
     model_target_name: str = "",
     actual_tracking_csv: str | Path | None = None,
+    portfolio_store: str | Path | None = None,
+    portfolio_user_id: str = DEFAULT_USER_ID,
+    price_cache_dir: str | Path = "backtest_cache",
     publish_drive: bool = False,
     drive_folder_id: str = DEFAULT_FOLDER_ID,
     remote_name: str = DEFAULT_REMOTE_NAME,
@@ -59,8 +65,23 @@ def run_live_path_tracker(
     scenario = load_scenario_bundle(scenario_dir)
     log("load_scenarios", "completed", f"paths={len(scenario['paths'])}")
 
-    actual_source = "tracking_csv" if actual_tracking_csv else "manual"
+    actual_source = _actual_source_label(
+        actual_portfolio_value=actual_portfolio_value,
+        portfolio_store=portfolio_store,
+        actual_tracking_csv=actual_tracking_csv,
+    )
     log("build_tracking", "started", actual_source)
+    portfolio_snapshot = None
+    if actual_portfolio_value is None and portfolio_store:
+        portfolio_snapshot = build_actual_snapshot_from_portfolio_store(
+            store_path=portfolio_store,
+            report_date=report_date,
+            cache_dir=price_cache_dir,
+            user_id=portfolio_user_id,
+        )
+        actual_portfolio_value = float(portfolio_snapshot["actual_portfolio_value"])
+        actual_holding_ticker = actual_holding_ticker or str(portfolio_snapshot["actual_holding_ticker"])
+        actual_holding_name = actual_holding_name or str(portfolio_snapshot["actual_holding_name"])
     tracking = build_live_tracking_table(
         scenario=scenario,
         report_date=report_date,
@@ -88,6 +109,7 @@ def run_live_path_tracker(
         "scenario_source": str(Path(scenario_dir)),
         "scenario_inputs": scenario["summary_json"].get("scenario_inputs", {}),
         "actual_source": actual_source,
+        "portfolio_snapshot": portfolio_snapshot,
         "latest_status": latest.get("deviation_status", ""),
         "latest_nearest_scenario": latest.get("nearest_scenario", ""),
         "model_changed": False,
@@ -130,6 +152,79 @@ def load_scenario_bundle(scenario_dir: str | Path) -> dict[str, Any]:
         "analogs": analogs,
         "summary_json": summary_json,
         "percentile_paths": build_percentile_paths(paths),
+    }
+
+
+def _actual_source_label(
+    *,
+    actual_portfolio_value: float | None,
+    portfolio_store: str | Path | None,
+    actual_tracking_csv: str | Path | None,
+) -> str:
+    if actual_portfolio_value is not None:
+        return "manual"
+    if portfolio_store:
+        return "portfolio_store"
+    if actual_tracking_csv:
+        return "tracking_csv"
+    return "missing"
+
+
+def build_actual_snapshot_from_portfolio_store(
+    *,
+    store_path: str | Path,
+    report_date: str,
+    cache_dir: str | Path,
+    user_id: str = DEFAULT_USER_ID,
+    price_by_ticker: dict[str, float] | None = None,
+) -> dict[str, Any]:
+    user = PortfolioStore(store_path).get_user(user_id)
+    positions = user.get("positions") or {}
+    close_prices = dict(price_by_ticker or {})
+    missing_prices = [ticker for ticker in positions if ticker not in close_prices]
+    if missing_prices:
+        start_date = (pd.Timestamp(report_date) - pd.Timedelta(days=14)).strftime("%Y-%m-%d")
+        loaded = download_yfinance_prices(
+            tickers=missing_prices,
+            start_date=start_date,
+            end_date=report_date,
+            cache_dir=cache_dir,
+            allow_edge_gap=True,
+        )
+        for ticker, frame in loaded.items():
+            history = frame.loc[frame.index <= pd.Timestamp(report_date)].copy()
+            if history.empty:
+                continue
+            column = "close" if "close" in history.columns else "adj_close"
+            close_prices[ticker] = float(pd.to_numeric(history[column], errors="coerce").dropna().iloc[-1])
+    unresolved = [ticker for ticker in positions if ticker not in close_prices]
+    if unresolved:
+        raise ValueError(f"Missing close prices for portfolio tickers: {', '.join(unresolved)}")
+    market_value = 0.0
+    position_rows: list[dict[str, Any]] = []
+    for ticker, position in sorted(positions.items()):
+        shares = int(position.get("shares", 0))
+        price = float(close_prices[ticker])
+        value = shares * price
+        market_value += value
+        position_rows.append(
+            {
+                "ticker": ticker,
+                "shares": shares,
+                "reference_price": round(price, 4),
+                "market_value_twd": round(value, 2),
+            }
+        )
+    cash = float(user.get("cash_twd") or 0.0)
+    active = [row for row in position_rows if int(row["shares"]) > 0]
+    return {
+        "actual_portfolio_value": round(cash + market_value, 2),
+        "cash_twd": round(cash, 2),
+        "market_value_twd": round(market_value, 2),
+        "actual_holding_ticker": "|".join(row["ticker"] for row in active) or "cash",
+        "actual_holding_name": "|".join(row["ticker"].replace(".TW", "") for row in active) or "現金",
+        "positions": position_rows,
+        "report_date": report_date,
     }
 
 
@@ -459,6 +554,9 @@ def main() -> None:
     parser.add_argument("--model-target-ticker", default="")
     parser.add_argument("--model-target-name", default="")
     parser.add_argument("--actual-tracking-csv", default="")
+    parser.add_argument("--portfolio-store", default="")
+    parser.add_argument("--portfolio-user-id", default=DEFAULT_USER_ID)
+    parser.add_argument("--price-cache-dir", default="backtest_cache")
     parser.add_argument("--publish-drive", action="store_true")
     parser.add_argument("--drive-folder-id", default=DEFAULT_FOLDER_ID)
     parser.add_argument("--remote-name", default=DEFAULT_REMOTE_NAME)
@@ -473,6 +571,9 @@ def main() -> None:
         model_target_ticker=args.model_target_ticker,
         model_target_name=args.model_target_name,
         actual_tracking_csv=args.actual_tracking_csv or None,
+        portfolio_store=args.portfolio_store or None,
+        portfolio_user_id=args.portfolio_user_id,
+        price_cache_dir=args.price_cache_dir,
         publish_drive=args.publish_drive,
         drive_folder_id=args.drive_folder_id,
         remote_name=args.remote_name,

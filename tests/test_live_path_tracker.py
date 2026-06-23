@@ -7,7 +7,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from backtest_lab.live_path_tracker import run_live_path_tracker
+from backtest_lab.live_path_tracker import build_actual_snapshot_from_portfolio_store, run_live_path_tracker
+from backtest_lab.portfolio_store import PortfolioStore
 
 
 class LivePathTrackerTests(unittest.TestCase):
@@ -73,6 +74,82 @@ class LivePathTrackerTests(unittest.TestCase):
             self.assertEqual(tracking.iloc[-1]["deviation_status"], "model_assumption_warning")
             events = pd.read_csv(output_dir / "deviation_events.csv")
             self.assertIn("model_assumption_warning", events["deviation_status"].tolist())
+
+    def test_portfolio_store_snapshot_can_supply_actual_value(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            store_path = root / "portfolio_store.json"
+            store = PortfolioStore(store_path)
+            store.replace_portfolio(
+                user_id="default",
+                cash_twd=1000,
+                positions=[{"ticker": "00631L.TW", "shares": 20_000, "avg_cost": 36.9}],
+            )
+
+            snapshot = build_actual_snapshot_from_portfolio_store(
+                store_path=store_path,
+                report_date="2026-06-23",
+                cache_dir=root / "cache",
+                price_by_ticker={"00631L.TW": 38.33},
+            )
+
+            self.assertEqual(snapshot["actual_portfolio_value"], 767_600)
+            self.assertEqual(snapshot["actual_holding_ticker"], "00631L.TW")
+            self.assertEqual(snapshot["positions"][0]["market_value_twd"], 766_600)
+
+    def test_runner_uses_portfolio_store_when_actual_value_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            scenario_dir = root / "scenario"
+            output_dir = root / "out"
+            store_path = root / "portfolio_store.json"
+            _write_scenario_fixture(scenario_dir)
+            PortfolioStore(store_path).replace_portfolio(
+                user_id="default",
+                cash_twd=500,
+                positions=[{"ticker": "00631L.TW", "shares": 1000, "avg_cost": 900}],
+            )
+            cache = root / "cache"
+            cache.mkdir()
+            pd.DataFrame(
+                [
+                    {
+                        "date": "2026-06-02",
+                        "open": 990,
+                        "high": 990,
+                        "low": 990,
+                        "close": 990,
+                        "adj_close": 990,
+                        "volume": 1,
+                        "dividend": 0,
+                        "stock_split": 0,
+                    },
+                    {
+                        "date": "2026-06-16",
+                        "open": 1000,
+                        "high": 1000,
+                        "low": 1000,
+                        "close": 1000,
+                        "adj_close": 1000,
+                        "volume": 1,
+                        "dividend": 0,
+                        "stock_split": 0,
+                    }
+                ]
+            ).to_csv(cache / "00631L_TW.csv", index=False)
+
+            manifest = run_live_path_tracker(
+                scenario_dir=scenario_dir,
+                output_dir=output_dir,
+                report_date="2026-06-16",
+                portfolio_store=store_path,
+                price_cache_dir=cache,
+            )
+
+            self.assertEqual(manifest["actual_source"], "portfolio_store")
+            self.assertEqual(manifest["portfolio_snapshot"]["actual_portfolio_value"], 1_000_500)
+            tracking = pd.read_csv(output_dir / "live_path_tracking.csv")
+            self.assertEqual(tracking.iloc[-1]["actual_portfolio_value"], 1_000_500)
 
 
 def _write_scenario_fixture(root: Path) -> None:
