@@ -612,16 +612,24 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertEqual(manifest["skipped"][0]["decision_layer"], DATA_READINESS)
             self.assertIn("candidate_review", manifest["skipped"][0])
             self.assertIn("model_layer_audit", manifest)
+            self.assertIn("pool3_radar_attack_satellite", manifest)
+            self.assertFalse(manifest["pool3_radar_attack_satellite"]["active_in_trade_decision"])
+            self.assertFalse(manifest["pool3_radar_attack_satellite"]["valuation_used"])
+            self.assertFalse(manifest["pool3_radar_attack_satellite"]["h3_used"])
             manifest_path = Path(manifest["output_root"]) / "stock_pool_observation_manifest.json"
             self.assertTrue(manifest_path.exists())
             self.assertTrue((Path(manifest["output_root"]) / "model_layer_audit.json").exists())
             self.assertTrue((Path(manifest["output_root"]) / "stock_pool_observation_summary.csv").exists())
             self.assertTrue((Path(manifest["output_root"]) / "stock_pool_candidate_reviews.csv").exists())
             self.assertTrue((Path(manifest["output_root"]) / "stock_pool_candidate_reviews.json").exists())
+            self.assertTrue((Path(manifest["output_root"]) / "pool3_radar_attack_satellite.json").exists())
+            self.assertTrue((Path(manifest["output_root"]) / "pool3_radar_attack_satellite.csv").exists())
+            self.assertTrue((Path(manifest["output_root"]) / "pool3_radar_attack_satellite.md").exists())
             self.assertTrue((Path(manifest["output_root"]) / "stock_pool_observation_report.md").exists())
             report_text = (Path(manifest["output_root"]) / "stock_pool_observation_report.md").read_text(encoding="utf-8")
             self.assertIn("測試專家", report_text)
             self.assertIn("月頻", report_text)
+            self.assertIn("Pool3 Radar Top10 攻擊衛星觀察", report_text)
             self.assertTrue((Path(manifest["output_root"]) / "AI股票池觀察總覽_最新版_v20260612.pdf").exists())
             self.assertTrue(
                 (Path(manifest["generated"][0]["output_dir"]) / "stock_pool_observation.json").exists()
@@ -757,6 +765,99 @@ class StockPoolObservationTest(unittest.TestCase):
             report = (Path(manifest["output_root"]) / "stock_pool_observation_report.md").read_text(encoding="utf-8")
             self.assertIn("RADAR正式候選", report)
             self.assertIn("測試記憶體(1111)", report)
+
+    def test_batch_adds_pool3_radar_attack_satellite_without_changing_consensus(self) -> None:
+        dates = pd.bdate_range("2025-01-02", periods=160)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache_dir = root / "cache"
+            radar_data_dir = root / "radar_data"
+            cache_dir.mkdir()
+            radar_data_dir.mkdir()
+            for ticker, step in {"2330.TW": 0.4, "2327.TW": 0.35, "1111.TW": 0.5, "2222.TW": 0.45}.items():
+                _trend_frame(dates, start=100, step=step, volume=20_000_000).reset_index(names="date").to_csv(
+                    cache_dir / f"{ticker.replace('.', '_')}.csv",
+                    index=False,
+                )
+            pd.DataFrame(
+                [
+                    {"name": "記憶體", "capital_inflow_rank": 100, "capital_share": 20, "turnover_share_change": 30},
+                    {"name": "PCB/載板", "capital_inflow_rank": 80, "capital_share": 15, "turnover_share_change": 20},
+                    {"name": "ASIC/IP", "capital_inflow_rank": 70, "capital_share": 10, "turnover_share_change": 10},
+                ]
+            ).to_csv(radar_data_dir / "sector_metrics.refreshed.csv", index=False, encoding="utf-8-sig")
+            _write_formal_candidate_interface(
+                radar_data_dir / "formal_radar_candidates.latest.csv",
+                [
+                    {
+                        "report_date": dates[-1].strftime("%Y-%m-%d"),
+                        "symbol": "1111",
+                        "name": "衛星一",
+                        "sector": "記憶體",
+                        "score": "80.0",
+                        "bucket_key": "watch",
+                        "rank_in_bucket": "1",
+                        "selected_for_backtest_pool": "false",
+                    },
+                    {
+                        "report_date": dates[-1].strftime("%Y-%m-%d"),
+                        "symbol": "2222",
+                        "name": "衛星二",
+                        "sector": "PCB/載板",
+                        "score": "70.0",
+                        "bucket_key": "watch",
+                        "rank_in_bucket": "2",
+                        "selected_for_backtest_pool": "false",
+                    },
+                ],
+            )
+            readiness_dir = radar_data_dir / "formal_sources"
+            readiness_dir.mkdir(parents=True)
+            (readiness_dir / "date_aware_theme_membership_v2_readiness.json").write_text(
+                json.dumps(
+                    {
+                        "ready": False,
+                        "formal_top3_status": "formal_blocked",
+                        "blocking_issues": ["no_accepted_v2_evidence_yet"],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            manifest = run_stock_pool_observation_batch(
+                pools=[
+                    {
+                        "pool_id": "pool1",
+                        "name": "池1",
+                        "strategy_preset": "universal_pool_custom",
+                        "vote_group": "three_perspective_v1",
+                        "resolved_symbols": [symbol_entry("2330.TW", source="manual")],
+                    },
+                    {
+                        "pool_id": "pool2",
+                        "name": "池2",
+                        "strategy_preset": "universal_pool_custom",
+                        "vote_group": "three_perspective_v1",
+                        "resolved_symbols": [symbol_entry("2327.TW", source="manual")],
+                    },
+                ],
+                signal_date=dates[-1].strftime("%Y-%m-%d"),
+                warmup_start=dates[0].strftime("%Y-%m-%d"),
+                cache_dir=cache_dir,
+                output_root=root / "out",
+                radar_data_dir=radar_data_dir,
+            )
+
+        satellite = manifest["pool3_radar_attack_satellite"]
+        self.assertEqual(satellite["decision_layer"], "shadow_overlay")
+        self.assertFalse(satellite["active_in_trade_decision"])
+        self.assertFalse(satellite["included_in_three_pool_vote"])
+        self.assertFalse(satellite["valuation_used"])
+        self.assertFalse(satellite["h3_used"])
+        self.assertEqual([row["ticker"] for row in satellite["candidates"]], ["1111.TW", "2222.TW"])
+        self.assertEqual(satellite["readiness"]["status"], "partial")
+        self.assertEqual(len(manifest["consensus"]["voters"]), 2)
+        self.assertNotIn("1111.TW", [vote["ticker"] for vote in manifest["consensus"]["votes"]])
 
     def test_batch_resolves_dynamic_tw50_constituents_from_point_in_time_csv(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)

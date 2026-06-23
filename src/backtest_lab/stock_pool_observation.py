@@ -22,6 +22,11 @@ from backtest_lab.decision_layers import (
 )
 from backtest_lab.formal_radar_candidates import formal_radar_candidates_to_symbols, load_formal_radar_candidates
 from backtest_lab.market_cap_source import load_first_available_market_caps
+from backtest_lab.pool3_radar_attack_satellite import (
+    SATELLITE_WORDING,
+    build_pool3_radar_attack_satellite,
+    write_pool3_radar_attack_satellite_outputs,
+)
 from backtest_lab.risk_factor_source import RiskFactorSignal, load_first_available_risk_factors
 from backtest_lab.frozen_report_pdf import _configure_chinese_font, _save_figure_as_raster_pdf_page
 from backtest_lab.frozen_strategy_monitor import (
@@ -1092,6 +1097,13 @@ def run_stock_pool_observation_batch(
             )
     _finalize_batch_signal_date_metadata(manifest)
     manifest["consensus"] = build_consensus(manifest)
+    manifest["pool3_radar_attack_satellite"] = build_pool3_radar_attack_satellite(
+        radar_data_dir=radar_data_dir,
+        signal_date=manifest.get("actual_signal_date") or signal_date,
+        pool1_tickers=_manifest_pool_candidate_tickers(manifest, "ai_theme_large_cap_v20260613"),
+        pool2_tickers=_manifest_pool_candidate_tickers(manifest, "tw50_dynamic_constituents_v0"),
+    )
+    write_pool3_radar_attack_satellite_outputs(root, manifest["pool3_radar_attack_satellite"])
     manifest["model_layer_audit"] = default_stock_pool_model_layer_audit(
         signal_date=manifest.get("actual_signal_date") or signal_date,
         generated_pools=manifest["generated"],
@@ -1229,8 +1241,23 @@ def write_stock_pool_observation_batch_summary(root: Path, manifest: dict[str, A
         write_stock_pool_observation_batch_pdf(root / REPORT_LATEST_FILENAME, manifest, rows)
 
 
+def _manifest_pool_candidate_tickers(manifest: dict[str, Any], pool_id: str) -> set[str]:
+    result: set[str] = set()
+    for item in manifest.get("generated", []):
+        if item.get("pool_id") != pool_id:
+            continue
+        if item.get("top_ticker"):
+            result.add(str(item["top_ticker"]))
+        for row in item.get("top_candidates") or []:
+            ticker = str(row.get("ticker") or "").strip()
+            if ticker:
+                result.add(ticker)
+    return result
+
+
 def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[str, Any]]) -> str:
     consensus = manifest.get("consensus") or {}
+    satellite = manifest.get("pool3_radar_attack_satellite") or {}
     lines = [
         "# 股票池觀察摘要",
         "",
@@ -1258,6 +1285,36 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
     lines.extend(
         [
             "",
+            "## Pool3 Radar Top10 攻擊衛星觀察",
+            "",
+            f"- 語意：{satellite.get('wording') or SATELLITE_WORDING}",
+            "- 狀態：report-only shadow，不納入三池正式投票。",
+            f"- active_in_trade_decision：{str(satellite.get('active_in_trade_decision')).lower()}",
+            f"- readiness：{(satellite.get('readiness') or {}).get('status', 'unknown')}",
+            f"- valuation_used：{str(satellite.get('valuation_used')).lower()}",
+            f"- h3_used：{str(satellite.get('h3_used')).lower()}",
+            "",
+            "| Rank | 標的 | Theme | Score | Weight | Pool1 overlap | Pool2 overlap |",
+            "| --- | --- | --- | ---: | ---: | --- | --- |",
+        ]
+    )
+    for candidate in (satellite.get("candidates") or [])[:10]:
+        lines.append(
+            "| {rank} | {display} | {theme} | {score:.2f} | {weight:.1%} | {p1} | {p2} |".format(
+                rank=candidate.get("rank", ""),
+                display=candidate.get("display") or candidate.get("ticker") or "",
+                theme=candidate.get("theme", ""),
+                score=float(candidate.get("score") or 0.0),
+                weight=float(candidate.get("weight") or 0.0),
+                p1="Y" if candidate.get("overlaps_pool1") else "N",
+                p2="Y" if candidate.get("overlaps_pool2") else "N",
+            )
+        )
+    for note in satellite.get("risk_notes") or []:
+        lines.append(f"- {note}")
+    lines.extend(
+        [
+            "",
             "本摘要為 AI 輔助股票池觀察輸出，不是投資建議；正式用途仍需搭配策略規則、交易成本、資料完整性與風險檢查。",
         ]
     )
@@ -1277,6 +1334,12 @@ def write_stock_pool_observation_batch_pdf(path: Path, manifest: dict[str, Any],
         ax = fig.add_axes((0, 0, 1, 1))
         ax.axis("off")
         _draw_observation_detail_pdf_page(ax, manifest, rows)
+        _save_figure_as_raster_pdf_page(pdf, fig)
+
+        fig = plt.figure(figsize=(8.27, 11.69), facecolor="#f4f6f8")
+        ax = fig.add_axes((0, 0, 1, 1))
+        ax.axis("off")
+        _draw_pool3_radar_satellite_pdf_page(ax, manifest)
         _save_figure_as_raster_pdf_page(pdf, fig)
 
 
@@ -1350,6 +1413,93 @@ def _draw_observation_detail_pdf_page(ax, manifest: dict[str, Any], rows: list[d
     bottom_y = _draw_pool_top3_sections(ax, rows, start_y=0.84)
     reminder_y = max(min(bottom_y - 0.018, 0.075), 0.062)
     ax.text(0.06, reminder_y, "提醒：表格列出的是各池內部排序與程式原因；正式總結以第一頁三池表決為準。", color="#52616b", fontsize=8.6, transform=ax.transAxes)
+    ax.text(0.06, 0.04, f"{REPORT_TITLE} · {manifest.get('signal_date', '')}", color="#9aa7b1", fontsize=8.5, transform=ax.transAxes)
+    ax.text(0.94, 0.04, "AI_stock_backtest_lab", color="#9aa7b1", fontsize=8.5, ha="right", transform=ax.transAxes)
+
+
+def _draw_pool3_radar_satellite_pdf_page(ax, manifest: dict[str, Any]) -> None:
+    satellite = manifest.get("pool3_radar_attack_satellite") or {}
+    readiness = satellite.get("readiness") or {}
+    candidates = satellite.get("candidates") or []
+
+    ax.add_patch(plt.Rectangle((0, 0.9), 1, 0.1, color="#17212a", transform=ax.transAxes))
+    ax.text(0.06, 0.958, "Pool3 Radar 攻擊衛星觀察", color="white", fontsize=18, fontweight="bold", transform=ax.transAxes)
+    ax.text(
+        0.06,
+        0.92,
+        f"訊號日 {manifest.get('signal_date', '')} · report-only shadow · {REPORT_VERSION}",
+        color="#c8d5df",
+        fontsize=10.5,
+        transform=ax.transAxes,
+    )
+    ax.text(0.06, 0.855, satellite.get("wording") or SATELLITE_WORDING, color="#17212a", fontsize=13.2, fontweight="bold", transform=ax.transAxes)
+    ax.text(
+        0.06,
+        0.822,
+        "Radar Top10 是攻擊衛星觀察，不是單一股票票；Pool3 正式 vote target 維持原正式輸出。",
+        color="#52616b",
+        fontsize=9.2,
+        transform=ax.transAxes,
+    )
+    cards = [
+        ("決策層", "shadow/report-only", "#2457a7"),
+        ("正式投票", "未納入", "#b42318"),
+        ("Readiness", str(readiness.get("status") or "unknown"), "#c77917"),
+        ("估值 / H3", "未使用", "#13795b"),
+    ]
+    for index, (label, value, color) in enumerate(cards):
+        x = 0.06 + index * 0.225
+        ax.add_patch(plt.Rectangle((x, 0.735), 0.2, 0.07, facecolor="white", edgecolor="#d9e0e5", linewidth=1, transform=ax.transAxes))
+        ax.text(x + 0.012, 0.778, label, color="#66737d", fontsize=8.8, transform=ax.transAxes)
+        ax.text(x + 0.012, 0.753, _compact_display(value, limit=20), color=color, fontsize=10.0, fontweight="bold", transform=ax.transAxes)
+
+    theme_text = "、".join(
+        f"{item.get('rank')}.{item.get('theme')}"
+        for item in (satellite.get("top_themes") or [])[:3]
+    ) or "未取得"
+    ax.text(0.06, 0.695, f"Radar 前三題材：{_compact_display(theme_text, limit=70)}", color="#26323b", fontsize=9.5, transform=ax.transAxes)
+
+    x0, y = 0.06, 0.64
+    widths = (0.055, 0.18, 0.155, 0.085, 0.08, 0.105, 0.105, 0.18)
+    headers = ("Rank", "標的", "Theme", "Score", "Weight", "池1重疊", "池2重疊", "Risk note")
+    ax.add_patch(plt.Rectangle((x0, y), 0.88, 0.03, facecolor="#e9f0f5", edgecolor="#d7e0e7", transform=ax.transAxes))
+    x = x0
+    for header, width in zip(headers, widths):
+        ax.text(x + 0.006, y + 0.011, header, color="#52616b", fontsize=7.4, fontweight="bold", transform=ax.transAxes)
+        x += width
+    y -= 0.036
+    for row in candidates[:10]:
+        ax.add_patch(plt.Rectangle((x0, y), 0.88, 0.035, facecolor="white", edgecolor="#e1e7ec", transform=ax.transAxes))
+        cells = (
+            str(row.get("rank", "")),
+            _compact_display(str(row.get("display") or row.get("ticker") or ""), limit=13),
+            _compact_display(str(row.get("theme") or ""), limit=10),
+            f"{float(row.get('score') or 0.0):.1f}",
+            f"{float(row.get('weight') or 0.0):.1%}",
+            "Y" if row.get("overlaps_pool1") else "N",
+            "Y" if row.get("overlaps_pool2") else "N",
+            _compact_display(str(row.get("risk_reason") or row.get("bucket") or ""), limit=18),
+        )
+        x = x0
+        for cell, width in zip(cells, widths):
+            ax.text(x + 0.006, y + 0.014, cell, color="#26323b", fontsize=7.1, transform=ax.transAxes)
+            x += width
+        y -= 0.035
+
+    note_y = max(y - 0.02, 0.13)
+    ax.text(0.06, note_y, "風險揭露", color="#17212a", fontsize=12, fontweight="bold", transform=ax.transAxes)
+    for index, note in enumerate((satellite.get("risk_notes") or [])[:3]):
+        ax.text(0.075, note_y - 0.03 - index * 0.025, f"• {_compact_display(str(note), limit=72)}", color="#4d5b66", fontsize=8.4, transform=ax.transAxes)
+    blockers = readiness.get("blocking_issues") or readiness.get("formal_top3_blocking_issues") or []
+    if blockers:
+        ax.text(
+            0.075,
+            0.065,
+            f"Readiness blocked/partial：{_compact_display('；'.join(str(item) for item in blockers[:2]), limit=78)}",
+            color="#b42318",
+            fontsize=7.8,
+            transform=ax.transAxes,
+        )
     ax.text(0.06, 0.04, f"{REPORT_TITLE} · {manifest.get('signal_date', '')}", color="#9aa7b1", fontsize=8.5, transform=ax.transAxes)
     ax.text(0.94, 0.04, "AI_stock_backtest_lab", color="#9aa7b1", fontsize=8.5, ha="right", transform=ax.transAxes)
 
