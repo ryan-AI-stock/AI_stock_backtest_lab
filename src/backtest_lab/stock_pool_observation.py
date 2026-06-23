@@ -948,7 +948,11 @@ def run_stock_pool_observation_batch(
     )
     manifest: dict[str, Any] = {
         "status": "ready",
+        "requested_signal_date": signal_date,
         "signal_date": signal_date,
+        "actual_signal_date": signal_date,
+        "signal_date_fallback_used": False,
+        "fallback_reason": "",
         "require_exact_signal_date": require_exact_signal_date,
         "operational_only": operational_only,
         "market_cap_source": market_cap_source,
@@ -1086,9 +1090,10 @@ def run_stock_pool_observation_batch(
                     "signal_date": signal_date,
                 }
             )
+    _finalize_batch_signal_date_metadata(manifest)
     manifest["consensus"] = build_consensus(manifest)
     manifest["model_layer_audit"] = default_stock_pool_model_layer_audit(
-        signal_date=signal_date,
+        signal_date=manifest.get("actual_signal_date") or signal_date,
         generated_pools=manifest["generated"],
         risk_factor_sources=risk_sources,
         valuation_source=str(valuation_data or ""),
@@ -1102,6 +1107,37 @@ def run_stock_pool_observation_batch(
     write_consensus_outputs(root, manifest)
     write_candidate_reviews(root, manifest)
     return manifest
+
+
+def _finalize_batch_signal_date_metadata(manifest: dict[str, Any]) -> None:
+    requested = str(manifest.get("requested_signal_date") or manifest.get("signal_date") or "")
+    generated_dates = sorted(
+        {
+            str(item.get("signal_date") or "")
+            for item in manifest.get("generated", [])
+            if item.get("signal_date")
+        }
+    )
+    if not generated_dates:
+        manifest["actual_signal_date"] = requested
+        manifest["signal_date"] = requested
+        manifest["signal_date_fallback_used"] = False
+        manifest["fallback_reason"] = ""
+        return
+    if len(generated_dates) == 1:
+        actual = generated_dates[0]
+    else:
+        actual = "mixed:" + ",".join(generated_dates)
+    manifest["actual_signal_date"] = actual
+    manifest["signal_date"] = actual
+    fallback_used = actual != requested
+    manifest["signal_date_fallback_used"] = fallback_used
+    manifest["fallback_reason"] = (
+        f"Requested signal date {requested} has no exact complete common price data; "
+        f"used latest complete signal date {actual}."
+        if fallback_used
+        else ""
+    )
 
 
 def write_stock_pool_observation_batch_summary(root: Path, manifest: dict[str, Any]) -> None:
@@ -1198,7 +1234,9 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
     lines = [
         "# 股票池觀察摘要",
         "",
+        f"- 要求訊號日：{manifest.get('requested_signal_date', manifest.get('signal_date', ''))}",
         f"- 訊號日：{manifest.get('signal_date', '')}",
+        f"- 資料日 fallback：{manifest.get('fallback_reason') or '未啟用'}",
         f"- 已產出股票池：{len(manifest.get('generated', []))}",
         f"- 跳過股票池：{len(manifest.get('skipped', []))}",
         f"- 三池共識：{consensus.get('winner_display') or '沒有形成明確共識'}",
@@ -1260,6 +1298,15 @@ def _draw_observation_summary_pdf_page(ax, manifest: dict[str, Any], rows: list[
         fontsize=11,
         transform=ax.transAxes,
     )
+    if manifest.get("signal_date_fallback_used"):
+        ax.text(
+            0.06,
+            0.875,
+            f"手動補跑資料日：要求 {manifest.get('requested_signal_date', '')}，實際使用 {manifest.get('actual_signal_date', '')}",
+            color="#f6c177",
+            fontsize=8.8,
+            transform=ax.transAxes,
+        )
     cards = [
         ("已產出股票池", f"{generated_count}", "#13795b"),
         ("跳過股票池", f"{skipped_count}", "#b42318" if skipped_count else "#13795b"),

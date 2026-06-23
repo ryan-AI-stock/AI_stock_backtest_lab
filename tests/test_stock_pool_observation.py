@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -890,6 +891,50 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertEqual(len(manifest["skipped"]), 1)
             self.assertIn("No exact common price data", manifest["skipped"][0]["reason"])
             self.assertFalse((Path(manifest["output_root"]) / "AI股票池觀察總覽_最新版_v20260612.pdf").exists())
+
+    def test_batch_fallback_writes_pdf_and_manifest_dates_when_exact_not_required(self) -> None:
+        dates = pd.bdate_range("2025-01-02", periods=160)
+        requested_signal_date = (dates[-1] + pd.Timedelta(days=3)).strftime("%Y-%m-%d")
+        actual_signal_date = dates[-1].strftime("%Y-%m-%d")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache_dir = root / "cache"
+            cache_dir.mkdir()
+            prices = {"1111.TW": _trend_frame(dates, start=100, step=0.5, volume=20_000_000)}
+
+            with patch("backtest_lab.stock_pool_observation.download_yfinance_prices", return_value=prices):
+                manifest = run_stock_pool_observation_batch(
+                    pools=[
+                        {
+                            "pool_id": "manual_fallback_pool",
+                            "name": "手動補跑池",
+                            "strategy_preset": "universal_pool_custom",
+                            "resolved_symbols": [{"ticker": "1111.TW", "display": "測試(1111)", "asset_type": "stock"}],
+                        }
+                    ],
+                    signal_date=requested_signal_date,
+                    warmup_start=dates[0].strftime("%Y-%m-%d"),
+                    cache_dir=cache_dir,
+                    output_root=root / "out",
+                    require_exact_signal_date=False,
+                )
+
+            output_root = Path(manifest["output_root"])
+            manifest_payload = json.loads((output_root / "stock_pool_observation_manifest.json").read_text(encoding="utf-8"))
+
+            self.assertEqual(len(manifest["generated"]), 1)
+            self.assertEqual(manifest["requested_signal_date"], requested_signal_date)
+            self.assertEqual(manifest["actual_signal_date"], actual_signal_date)
+            self.assertEqual(manifest["signal_date"], actual_signal_date)
+            self.assertTrue(manifest["signal_date_fallback_used"])
+            self.assertIn(requested_signal_date, manifest["fallback_reason"])
+            self.assertIn(actual_signal_date, manifest["fallback_reason"])
+            self.assertEqual(manifest_payload["requested_signal_date"], requested_signal_date)
+            self.assertEqual(manifest_payload["actual_signal_date"], actual_signal_date)
+            self.assertTrue((output_root / "AI股票池觀察總覽_最新版_v20260612.pdf").exists())
+            report_text = (output_root / "stock_pool_observation_report.md").read_text(encoding="utf-8")
+            self.assertIn(f"要求訊號日：{requested_signal_date}", report_text)
+            self.assertIn(f"訊號日：{actual_signal_date}", report_text)
 
 
 def _trend_frame(dates: pd.DatetimeIndex, *, start: float, step: float, volume: int) -> pd.DataFrame:
