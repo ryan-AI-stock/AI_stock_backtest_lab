@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import tempfile
 import unittest
+from pathlib import Path
 
 import test_paths  # noqa: F401
 
 from backtest_lab.decision_layers import CANDIDATE_SOURCE
-from backtest_lab.stock_pool_consensus import build_consensus
+from backtest_lab.stock_pool_consensus import build_consensus, write_consensus_outputs
 
 
 class StockPoolConsensusTest(unittest.TestCase):
@@ -30,6 +32,14 @@ class StockPoolConsensusTest(unittest.TestCase):
         self.assertFalse(consensus["active_in_trade_decision"])
         self.assertIsNone(consensus["formal_trade_target"])
         self.assertFalse(consensus["voters"][0]["active_in_trade_decision"])
+        health = consensus["health_diagnostic"]
+        self.assertEqual(health["decision_state"], "weak_consensus")
+        self.assertEqual(health["consensus_strength"], "weak")
+        self.assertEqual(health["exact_ticker_consensus_rate"], 0.6667)
+        self.assertEqual(health["actionable_decision_rate"], 1.0)
+        self.assertFalse(health["active_in_trade_decision"])
+        self.assertFalse(health["formal_model_changed"])
+        self.assertFalse(health["trade_decision_changed"])
 
     def test_build_consensus_marks_three_way_divergence(self) -> None:
         consensus = build_consensus(
@@ -46,6 +56,9 @@ class StockPoolConsensusTest(unittest.TestCase):
 
         self.assertEqual(consensus["result_state"], "divergent")
         self.assertIsNone(consensus["winner_ticker"])
+        self.assertEqual(consensus["health_diagnostic"]["decision_state"], "divergent_observe")
+        self.assertEqual(consensus["health_diagnostic"]["divergent_rate"], 1.0)
+        self.assertEqual(consensus["health_diagnostic"]["actionable_decision_rate"], 0.0)
 
     def test_build_consensus_ignores_observation_only_pool_vote(self) -> None:
         consensus = build_consensus(
@@ -85,6 +98,8 @@ class StockPoolConsensusTest(unittest.TestCase):
         self.assertEqual(consensus["votes"][0]["vote_count"], 2)
         self.assertEqual(consensus["skipped_vote_pools"][0]["top_ticker"], "2454.TW")
         self.assertFalse(consensus["skipped_vote_pools"][0]["eligible_for_pool_selection"])
+        self.assertEqual(consensus["health_diagnostic"]["decision_state"], "defensive_or_market_exposure")
+        self.assertEqual(consensus["health_diagnostic"]["exact_ticker_consensus_rate"], 0.6667)
 
     def test_build_consensus_handles_no_selection_votes(self) -> None:
         consensus = build_consensus(
@@ -112,6 +127,48 @@ class StockPoolConsensusTest(unittest.TestCase):
 
         self.assertEqual(consensus["result_state"], "no_vote")
         self.assertIsNone(consensus["winner_ticker"])
+        self.assertEqual(consensus["health_diagnostic"]["decision_state"], "data_insufficient")
+        self.assertEqual(consensus["health_diagnostic"]["no_vote_or_data_insufficient_rate"], 1.0)
+
+    def test_build_consensus_marks_three_to_zero_as_strong_consensus(self) -> None:
+        consensus = build_consensus(
+            {
+                "signal_date": "2026-06-12",
+                "generated": [
+                    _generated("AI池", "2330.TW", "台積電(2330)"),
+                    _generated("0050池", "2330.TW", "台積電(2330)"),
+                    _generated("核心池", "2330.TW", "台積電(2330)"),
+                ],
+                "skipped": [],
+            }
+        )
+
+        self.assertEqual(consensus["result_state"], "consensus")
+        self.assertEqual(consensus["winner_ticker"], "2330.TW")
+        self.assertEqual(consensus["health_diagnostic"]["decision_state"], "strong_consensus")
+        self.assertEqual(consensus["health_diagnostic"]["exact_ticker_consensus_rate"], 1.0)
+        self.assertEqual(consensus["health_diagnostic"]["direction_consensus_rate"], 1.0)
+
+    def test_write_consensus_outputs_writes_health_csv(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest = {
+                "signal_date": "2026-06-12",
+                "generated": [
+                    _generated("AI池", "2330.TW", "台積電(2330)"),
+                    _generated("0050池", "2330.TW", "台積電(2330)"),
+                    _generated("核心池", "00631L.TW", "0050正二(00631L)"),
+                ],
+                "skipped": [],
+            }
+
+            consensus = write_consensus_outputs(root, manifest)
+
+            self.assertEqual(consensus["health_diagnostic"]["decision_state"], "weak_consensus")
+            self.assertTrue((root / "stock_pool_consensus_health.csv").exists())
+            report = (root / "stock_pool_consensus_report.md").read_text(encoding="utf-8")
+            self.assertIn("共識健康診斷", report)
+            self.assertIn("decision_state：weak_consensus", report)
 
 
 def _generated(
