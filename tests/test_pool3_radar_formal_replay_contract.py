@@ -154,8 +154,88 @@ class Pool3RadarFormalReplayContractTest(unittest.TestCase):
 
             manifest = json.loads((result / "formal_replay_contract.json").read_text(encoding="utf-8"))
             self.assertEqual(manifest["status"], "inputs_pass_contract")
+            self.assertTrue(manifest["core_engineering_inputs_ready"])
+            self.assertTrue(manifest["radar_data_readiness_ready"])
             self.assertTrue(manifest["accepted_for_formal_challenger_replay"])
             self.assertFalse(manifest["active_in_trade_decision"])
+
+    def test_contract_separates_core_engineering_ready_from_radar_readiness(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            baseline = root / "baseline.csv"
+            overlay = root / "overlay.csv"
+            readiness = root / "readiness.json"
+            output = root / "out"
+            pd.DataFrame(
+                [
+                    {
+                        "date": "2024-01-02",
+                        "pool1_vote": "00631L.TW",
+                        "pool2_vote": "2327.TW",
+                        "pool3_vote": "00631L.TW",
+                        "consensus_state": "consensus",
+                        "winner_ticker": "00631L.TW",
+                        "position_ticker": "00631L.TW",
+                        "cash": 0,
+                        "equity": 1_000_000,
+                        "drawdown": 0,
+                        "turnover": 0,
+                        "transaction_cost": 0,
+                        "data_status": "formal_daily_replay",
+                    }
+                ]
+            ).to_csv(baseline, index=False)
+            pd.DataFrame(
+                [
+                    {
+                        "date": "2024-01-02",
+                        "variant": "ma200_radar20_00631l80_else_top10",
+                        "pool3_formal_vote": "weighted_basket",
+                        "holding_ticker": "3260.TW",
+                        "holding_name": "威剛",
+                        "theme": "記憶體",
+                        "weight": 0.2,
+                        "shares": 100,
+                        "fill_action": "buy",
+                        "fill_price": 100,
+                        "cash": 800_000,
+                        "position_value": 20_000,
+                        "transaction_cost": 50,
+                        "equity": 1_000_000,
+                    }
+                ]
+            ).to_csv(overlay, index=False)
+            readiness.write_text(
+                json.dumps(
+                    {
+                        "can_core_absorb_as_formal_challenger": False,
+                        "blockers": [
+                            "formal_top3_ready=false",
+                            "baseline_three_pool_daily_equity is partial proxy expanded from stride20 vote panel, not formal daily replay",
+                            "primary overlay daily basket is synthetic blend, transaction-cost realistic overlay trades not available",
+                        ],
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+
+            result = run_pool3_radar_formal_replay_contract(
+                baseline_daily=baseline,
+                overlay_daily=overlay,
+                readiness_manifest=readiness,
+                output_dir=output,
+            )
+
+            manifest = json.loads((result / "formal_replay_contract.json").read_text(encoding="utf-8"))
+            self.assertTrue(manifest["core_engineering_inputs_ready"])
+            self.assertFalse(manifest["radar_data_readiness_ready"])
+            self.assertFalse(manifest["accepted_for_formal_challenger_replay"])
+            details = "\n".join(str(row["detail"]) for row in manifest["failed_checks"])
+            self.assertIn("formal_top3_ready=false", details)
+            self.assertIn("primary overlay daily basket is synthetic blend", details)
+            self.assertNotIn("baseline_three_pool_daily_equity is partial proxy", details)
+            self.assertNotIn("transaction-cost realistic overlay trades not available", details)
 
 
 if __name__ == "__main__":

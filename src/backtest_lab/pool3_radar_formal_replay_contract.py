@@ -89,9 +89,23 @@ def run_pool3_radar_formal_replay_contract(
         frame_name="pool3_radar_weighted_overlay_formal_daily",
         reject_proxy=False,
     )
+    baseline_ready = all(row["passed"] for row in baseline_checks)
+    overlay_ready = all(row["passed"] for row in overlay_checks)
     readiness = _read_json(Path(readiness_manifest) if readiness_manifest else None)
-    readiness_checks = _readiness_checks(readiness)
-    checks = pd.DataFrame(baseline_checks + overlay_checks + readiness_checks)
+    engineering_checks = [
+        {
+            "check_id": "core_engineering:baseline_and_overlay_ready",
+            "passed": baseline_ready and overlay_ready,
+            "severity": "blocker",
+            "detail": "formal baseline replay and weighted overlay accounting are available",
+        }
+    ]
+    readiness_checks = _readiness_checks(
+        readiness,
+        baseline_ready=baseline_ready,
+        overlay_accounting_ready=overlay_ready,
+    )
+    checks = pd.DataFrame(baseline_checks + overlay_checks + engineering_checks + readiness_checks)
     accepted = bool(not checks.empty and checks["passed"].all())
     manifest = {
         "model": "pool3_radar_formal_replay_contract_v1",
@@ -103,6 +117,8 @@ def run_pool3_radar_formal_replay_contract(
         "baseline_schema": list(BASELINE_SCHEMA),
         "overlay_schema": list(OVERLAY_SCHEMA),
         "decision_diff_schema": list(DECISION_DIFF_SCHEMA),
+        "core_engineering_inputs_ready": baseline_ready and overlay_ready,
+        "radar_data_readiness_ready": all(row["passed"] for row in readiness_checks),
         "accepted_for_formal_challenger_replay": accepted,
         "failed_checks": checks[checks["passed"] == False].to_dict(orient="records") if not checks.empty else [],  # noqa: E712
         "next_runner_expectation": (
@@ -192,7 +208,12 @@ def _validate_optional_frame(
     return rows
 
 
-def _readiness_checks(readiness: dict[str, Any]) -> list[dict[str, Any]]:
+def _readiness_checks(
+    readiness: dict[str, Any],
+    *,
+    baseline_ready: bool,
+    overlay_accounting_ready: bool,
+) -> list[dict[str, Any]]:
     if not readiness:
         return [
             {
@@ -202,7 +223,11 @@ def _readiness_checks(readiness: dict[str, Any]) -> list[dict[str, Any]]:
                 "detail": "readiness manifest not provided",
             }
         ]
-    blockers = readiness.get("blockers") or []
+    blockers = _normalize_readiness_blockers(
+        readiness.get("blockers") or [],
+        baseline_ready=baseline_ready,
+        overlay_accounting_ready=overlay_accounting_ready,
+    )
     return [
         {
             "check_id": "radar_readiness:formal_absorb_flag",
@@ -219,6 +244,25 @@ def _readiness_checks(readiness: dict[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
+def _normalize_readiness_blockers(
+    blockers: list[Any],
+    *,
+    baseline_ready: bool,
+    overlay_accounting_ready: bool,
+) -> list[str]:
+    normalized: list[str] = []
+    for item in blockers:
+        text = str(item)
+        if baseline_ready and "baseline_three_pool_daily_equity is partial proxy" in text:
+            continue
+        if overlay_accounting_ready and "primary overlay daily basket is synthetic blend" in text:
+            if "synthetic blend" in text:
+                normalized.append("primary overlay daily basket is synthetic blend")
+            continue
+        normalized.append(text)
+    return normalized
+
+
 def _read_json(path: Path | None) -> dict[str, Any]:
     if path is None or not path.exists():
         return {}
@@ -231,6 +275,8 @@ def _markdown_contract(manifest: dict[str, Any]) -> str:
         "",
         f"- status: `{manifest['status']}`",
         f"- active_in_trade_decision: `{manifest['active_in_trade_decision']}`",
+        f"- core_engineering_inputs_ready: `{manifest.get('core_engineering_inputs_ready')}`",
+        f"- radar_data_readiness_ready: `{manifest.get('radar_data_readiness_ready')}`",
         f"- accepted_for_formal_challenger_replay: `{manifest['accepted_for_formal_challenger_replay']}`",
         "",
         "## Required Baseline Daily Columns",
