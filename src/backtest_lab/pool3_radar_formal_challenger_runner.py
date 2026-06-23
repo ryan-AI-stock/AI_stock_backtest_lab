@@ -262,13 +262,16 @@ def _build_metadata(
         required_missing.append("overlay_performance.csv usable rows")
     if decision_diff.empty:
         required_missing.append("three_pool_shadow_vote_panel.csv usable rows")
+    readiness_blockers = _radar_readiness_blockers(readiness)
     full_replay_blockers = [
         "daily weighted basket holdings/equity are not available in current Experiments handoff",
         "baseline three-pool daily equity curve is not available in current Experiments handoff",
     ]
+    full_replay_blockers.extend(readiness_blockers)
+    status = "blocked_data_readiness" if readiness_blockers else "partial_contract"
     return {
         "model": "pool3_radar_formal_challenger_runner_v1",
-        "status": "partial_contract" if full_replay_blockers else "completed",
+        "status": status,
         "decision_layer": "formal_challenger_contract",
         "active_in_trade_decision": False,
         "formal_model_changed": False,
@@ -295,6 +298,7 @@ def _build_metadata(
             "decision_diff": int(len(decision_diff)),
         },
         "readiness_status": readiness.get("status") or readiness.get("formal_top3_status") or "unknown",
+        "radar_readiness_blockers": readiness_blockers,
         "full_replay_ready": False,
         "full_replay_blockers": full_replay_blockers,
         "required_missing": required_missing,
@@ -304,6 +308,31 @@ def _build_metadata(
             "Do not promote Pool3 Radar overlay until full replay passes 2024 hard gate and concentration checks."
         ),
     }
+
+
+def _radar_readiness_blockers(readiness: dict[str, Any]) -> list[str]:
+    blockers: list[str] = []
+    if not readiness:
+        return ["radar readiness summary missing"]
+    if readiness.get("formal_top3_ready") is False:
+        issues = readiness.get("formal_top3_blocking_issues") or []
+        detail = ",".join(str(item) for item in issues) if issues else "formal_top3_ready=false"
+        blockers.append(f"radar formal_top3 not ready: {detail}")
+    if readiness.get("theme_membership_v2_ready") is False:
+        status = readiness.get("theme_membership_v2_formal_top3_status") or "unknown"
+        blockers.append(f"radar theme_membership_v2 not ready: {status}")
+    coverage_rows = readiness.get("price_cache_coverage_by_year") or []
+    low_coverage = []
+    for row in coverage_rows:
+        try:
+            ratio = float(row.get("price_cache_coverage_ratio") or 0.0)
+        except (TypeError, ValueError):
+            ratio = 0.0
+        if ratio < 0.95:
+            low_coverage.append(f"{row.get('period', 'unknown')}={ratio:.2%}")
+    if low_coverage:
+        blockers.append("radar member price cache coverage below 95%: " + "; ".join(low_coverage))
+    return blockers
 
 
 def _markdown_summary(metadata: dict[str, Any], performance_summary: pd.DataFrame, hard_gate: list[dict[str, Any]]) -> str:

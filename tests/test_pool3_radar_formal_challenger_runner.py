@@ -104,7 +104,19 @@ class Pool3RadarFormalChallengerRunnerTest(unittest.TestCase):
             pd.DataFrame([{"ticker": "3260.TW", "share": 0.5}]).to_csv(attack / "ticker_concentration.csv", index=False)
             pd.DataFrame([{"theme": "記憶體", "share": 0.8}]).to_csv(attack / "theme_concentration.csv", index=False)
             (attack / "readiness_summary.json").write_text(
-                json.dumps({"status": "partial", "blocking_issues": ["formal_top3_partial"]}, ensure_ascii=False),
+                json.dumps(
+                    {
+                        "status": "shadow_diagnostic",
+                        "formal_top3_ready": False,
+                        "formal_top3_blocking_issues": ["formal_top3_partial"],
+                        "theme_membership_v2_ready": False,
+                        "theme_membership_v2_formal_top3_status": "formal_blocked",
+                        "price_cache_coverage_by_year": [
+                            {"period": "2024", "price_cache_coverage_ratio": 0.5}
+                        ],
+                    },
+                    ensure_ascii=False,
+                ),
                 encoding="utf-8",
             )
 
@@ -116,13 +128,15 @@ class Pool3RadarFormalChallengerRunnerTest(unittest.TestCase):
             )
 
             metadata = json.loads((result_dir / "manifest.json").read_text(encoding="utf-8"))
-            self.assertEqual(metadata["status"], "partial_contract")
+            self.assertEqual(metadata["status"], "blocked_data_readiness")
             self.assertFalse(metadata["active_in_trade_decision"])
             self.assertFalse(metadata["formal_model_changed"])
             self.assertFalse(metadata["valuation_used"])
             self.assertFalse(metadata["h3_used"])
             self.assertFalse(metadata["full_replay_ready"])
             self.assertIn("daily weighted basket holdings", metadata["full_replay_blockers"][0])
+            self.assertIn("radar formal_top3 not ready", metadata["radar_readiness_blockers"][0])
+            self.assertIn("price cache coverage below 95%", metadata["radar_readiness_blockers"][2])
             self.assertEqual(metadata["hard_gate_2024"][0]["status"], "needs_research_review")
 
             diff = pd.read_csv(result_dir / "decision_diff_panel.csv")
