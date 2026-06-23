@@ -50,50 +50,15 @@ def build_consensus(manifest: dict[str, Any], *, vote_group: str = DEFAULT_VOTE_
             reason = "三個立場沒有形成 2:1 以上共識，應視為模型分歧。"
 
     vote_rows = [
-        {
-            "pool_id": item.get("pool_id", ""),
-            "pool_name": item.get("pool_name", ""),
-            "top_ticker": item.get("top_ticker", ""),
-            "top_display": item.get("top_display", ""),
-            "action_state": item.get("action_state", ""),
-            "rank_score": item.get("rank_score", item.get("score", "")),
-            "base_pool_passed": bool(item.get("base_pool_passed", False)),
-            "selection_layer": item.get("selection_layer", ""),
-            "eligible_for_pool_selection": bool(item.get("eligible_for_pool_selection", True)),
-            "attack_gate_open": item.get("attack_gate_open", ""),
-            "gate_rule_id": item.get("gate_rule_id", ""),
-            "gate_reason": item.get("gate_reason", ""),
-            "top_asset_type": item.get("top_asset_type", ""),
-            "decision_layer": item.get("decision_layer", CANDIDATE_SOURCE),
-            "active_in_trade_decision": bool(item.get("active_in_trade_decision", False)),
-            "source_module": item.get("source_module", ""),
-        }
+        _pool_diagnostic_row(item, eligible_vote=True)
         for item in voters
     ]
     skipped_vote_pools = [
-        {
-            "pool_id": item.get("pool_id", ""),
-            "pool_name": item.get("pool_name", ""),
-            "reason": item.get("reason", "") or item.get("selection_reason", ""),
-            "selection_layer": item.get("selection_layer", ""),
-            "eligible_for_pool_selection": bool(item.get("eligible_for_pool_selection", False)),
-            "gate_rule_id": item.get("gate_rule_id", ""),
-            "gate_reason": item.get("gate_reason", ""),
-            "top_ticker": item.get("top_ticker", ""),
-            "top_display": item.get("top_display", ""),
-        }
+        _pool_diagnostic_row(item, eligible_vote=False, reason=item.get("reason", "") or item.get("selection_reason", ""))
         for item in manifest.get("skipped", [])
         if (item.get("dispatch") or {}).get("operational_observation")
     ] + [
-        {
-            "pool_id": item.get("pool_id", ""),
-            "pool_name": item.get("pool_name", ""),
-            "reason": item.get("selection_reason", "未通過池內入選條件。"),
-            "selection_layer": item.get("selection_layer", ""),
-            "eligible_for_pool_selection": bool(item.get("eligible_for_pool_selection", False)),
-            "top_ticker": item.get("top_ticker", ""),
-            "top_display": item.get("top_display", ""),
-        }
+        _pool_diagnostic_row(item, eligible_vote=False, reason=item.get("selection_reason", "未通過池內入選條件。"))
         for item in manifest.get("generated", [])
         if item.get("vote_group") == vote_group and item.get("top_ticker") and not _eligible_vote_item(item)
     ]
@@ -117,6 +82,7 @@ def build_consensus(manifest: dict[str, Any], *, vote_group: str = DEFAULT_VOTE_
         "winner_display": winner_display,
         "reason": reason,
         "health_diagnostic": health_diagnostic,
+        "pool_diagnostics": vote_rows + skipped_vote_pools,
         "votes": [
             {
                 "ticker": ticker,
@@ -139,6 +105,11 @@ def write_consensus_outputs(root: Path, manifest: dict[str, Any]) -> dict[str, A
         encoding="utf-8",
     )
     pd.DataFrame(consensus["voters"]).to_csv(root / "stock_pool_consensus_votes.csv", index=False, encoding="utf-8-sig")
+    pd.DataFrame(consensus["pool_diagnostics"]).to_csv(
+        root / "stock_pool_consensus_pool_diagnostics.csv",
+        index=False,
+        encoding="utf-8-sig",
+    )
     pd.DataFrame([consensus["health_diagnostic"]]).to_csv(
         root / "stock_pool_consensus_health.csv",
         index=False,
@@ -169,6 +140,15 @@ def markdown_consensus_report(consensus: dict[str, Any]) -> str:
         f"- no_vote_or_data_insufficient_rate：{health.get('no_vote_or_data_insufficient_rate', 0)}",
         f"- actionable_decision_rate：{health.get('actionable_decision_rate', 0)}",
         f"- decision_protocol_used_rate：{health.get('decision_protocol_used_rate', 0)}",
+        f"- raw_consensus_state：{health.get('raw_consensus_state', '')}",
+        f"- exact_ticker_consensus：{health.get('exact_ticker_consensus', '')} / {health.get('exact_ticker_consensus_group', '')}",
+        f"- direction_consensus：{health.get('direction_consensus', '')} / {health.get('direction_consensus_group', '')} / {health.get('direction_consensus_strength', '')}",
+        f"- actionable_decision_state：{health.get('actionable_decision_state', '')}",
+        f"- decision_source：{health.get('decision_source', '')}",
+        f"- decision_protocol_used：{health.get('decision_protocol_used', '')}",
+        f"- protocol_usage_category：{health.get('protocol_usage_category', '')}",
+        f"- fake_consensus_flags：{','.join(health.get('fake_consensus_flags') or []) or 'none'}",
+        f"- consensus_health_bucket：{health.get('consensus_health_bucket', '')}",
         f"- 診斷：{health.get('health_note', '')}",
         "",
         "| 股票池 | 第一順位 | 入選層級 | 狀態 |",
@@ -201,6 +181,49 @@ def _eligible_vote_item(item: dict[str, Any]) -> bool:
     return bool(item.get("eligible_for_pool_selection"))
 
 
+def _pool_diagnostic_row(item: dict[str, Any], *, eligible_vote: bool, reason: str = "") -> dict[str, Any]:
+    ticker = str(item.get("top_ticker") or "")
+    selection_layer = str(item.get("selection_layer") or "")
+    gate_reason = str(item.get("gate_reason") or "")
+    blocked_reason = reason or str(item.get("selection_reason") or "") or gate_reason
+    direction_state = _direction_key(
+        {
+            "top_ticker": ticker,
+            "top_asset_type": item.get("top_asset_type", ""),
+            "selection_layer": selection_layer,
+            "action_state": item.get("action_state", ""),
+        }
+    )
+    return {
+        "pool_id": item.get("pool_id", ""),
+        "pool_name": item.get("pool_name", ""),
+        "pool_role": item.get("role_name", item.get("pool_name", "")),
+        "top_ticker": ticker,
+        "top_display": item.get("top_display", ""),
+        "top_asset_type": item.get("top_asset_type", ""),
+        "top_score": item.get("rank_score", item.get("score", "")),
+        "rank_score": item.get("rank_score", item.get("score", "")),
+        "base_pool_passed": bool(item.get("base_pool_passed", False)),
+        "selection_layer": selection_layer,
+        "eligible_for_pool_selection": bool(eligible_vote),
+        "eligible_vote": bool(eligible_vote),
+        "vote_target": ticker if eligible_vote else "",
+        "direction_state": direction_state,
+        "direction_confidence": _direction_confidence(item, eligible_vote=eligible_vote),
+        "data_readiness_state": _data_readiness_state(item, eligible_vote=eligible_vote),
+        "blocked_reason": "" if eligible_vote else blocked_reason,
+        "shadow_or_diagnostic_flags": _shadow_or_diagnostic_flags(item),
+        "attack_gate_open": item.get("attack_gate_open", ""),
+        "gate_rule_id": item.get("gate_rule_id", ""),
+        "gate_reason": gate_reason,
+        "action_state": item.get("action_state", ""),
+        "decision_layer": item.get("decision_layer", CANDIDATE_SOURCE),
+        "active_in_trade_decision": bool(item.get("active_in_trade_decision", False)),
+        "source_module": item.get("source_module", ""),
+        "reason": blocked_reason,
+    }
+
+
 def _build_health_diagnostic(
     *,
     result_state: str,
@@ -215,8 +238,11 @@ def _build_health_diagnostic(
     max_vote_count = max(votes.values(), default=0)
     direction_counts = Counter(_direction_key(row) for row in voters)
     max_direction_count = max(direction_counts.values(), default=0)
+    exact_ticker_consensus, exact_group, exact_count = _consensus_group(row.get("vote_target") or row.get("top_ticker") for row in voters)
+    direction_consensus, direction_group, direction_count = _consensus_group(row.get("direction_state") for row in voters)
     no_vote = result_state in {"no_vote", "insufficient_votes"} or total_considered == 0
     divergent = result_state == "divergent"
+    protocol_candidate = divergent and direction_consensus and direction_group not in {"", "observation"}
     protocol_used = False
     consensus_strength = _consensus_strength(
         result_state=result_state,
@@ -239,6 +265,49 @@ def _build_health_diagnostic(
         "trade_decision_changed": False,
         "decision_state": decision_state,
         "consensus_strength": consensus_strength,
+        "raw_consensus_state": result_state,
+        "exact_ticker_consensus": exact_ticker_consensus,
+        "exact_ticker_consensus_group": exact_group,
+        "direction_consensus": direction_consensus,
+        "direction_consensus_group": direction_group,
+        "direction_consensus_strength": _direction_consensus_strength(
+            direction_count=direction_count,
+            eligible_count=eligible_count,
+            total_considered=total_considered,
+        ),
+        "actionable_decision_state": _actionable_decision_state(
+            result_state=result_state,
+            winner_ticker=winner_ticker,
+            protocol_candidate=protocol_candidate,
+            no_vote=no_vote,
+        ),
+        "actionable_decision_reason": _actionable_decision_reason(
+            result_state=result_state,
+            winner_ticker=winner_ticker,
+            protocol_candidate=protocol_candidate,
+            no_vote=no_vote,
+        ),
+        "decision_source": _decision_source(
+            result_state=result_state,
+            winner_vote_count=winner_vote_count,
+            eligible_count=eligible_count,
+            exact_ticker_consensus=exact_ticker_consensus,
+            direction_consensus=direction_consensus,
+            protocol_candidate=protocol_candidate,
+            no_vote=no_vote,
+        ),
+        "decision_protocol_used": protocol_used,
+        "decision_protocol_reason": _decision_protocol_reason(protocol_candidate=protocol_candidate),
+        "protocol_usage_category": _protocol_usage_category(protocol_candidate=protocol_candidate),
+        "fake_consensus_flags": _fake_consensus_flags(voters=voters, skipped_vote_pools=skipped_vote_pools, result_state=result_state),
+        "consensus_health_bucket": _consensus_health_bucket(
+            result_state=result_state,
+            consensus_strength=consensus_strength,
+            protocol_candidate=protocol_candidate,
+            no_vote=no_vote,
+            skipped_count=len(skipped_vote_pools),
+            total_considered=total_considered,
+        ),
         "pool_count_considered": total_considered,
         "eligible_vote_count": eligible_count,
         "skipped_or_ineligible_pool_count": len(skipped_vote_pools),
@@ -310,6 +379,150 @@ def _direction_key(row: dict[str, Any]) -> str:
     return "stock_attack"
 
 
+def _direction_confidence(item: dict[str, Any], *, eligible_vote: bool) -> str:
+    if not eligible_vote:
+        return "blocked"
+    if _number(item.get("rank_score", item.get("score", ""))) >= 0.8:
+        return "high"
+    if item.get("attack_gate_open") is True or str(item.get("selection_layer", "")).lower() in {"formal_candidate", "market_exposure_tool"}:
+        return "medium"
+    return "low"
+
+
+def _data_readiness_state(item: dict[str, Any], *, eligible_vote: bool) -> str:
+    missing = item.get("missing_price_tickers") or []
+    if missing:
+        return "partial"
+    decision_layer = str(item.get("decision_layer") or "").lower()
+    if "data_readiness" in decision_layer:
+        return "blocked"
+    return "ready" if eligible_vote else "blocked"
+
+
+def _shadow_or_diagnostic_flags(item: dict[str, Any]) -> str:
+    flags: list[str] = []
+    selection_layer = str(item.get("selection_layer") or "").lower()
+    decision_layer = str(item.get("decision_layer") or "").lower()
+    if "shadow" in selection_layer or "shadow" in decision_layer:
+        flags.append("shadow")
+    if "diagnostic" in selection_layer or "diagnostic" in decision_layer:
+        flags.append("diagnostic")
+    if "observation" in selection_layer:
+        flags.append("observation_only")
+    if item.get("active_in_trade_decision") is False:
+        flags.append("not_active_trade_decision")
+    return ",".join(dict.fromkeys(flags))
+
+
+def _consensus_group(values: Any) -> tuple[bool, str, int]:
+    cleaned = [str(value or "").strip() for value in values if str(value or "").strip()]
+    if not cleaned:
+        return False, "", 0
+    group, count = Counter(cleaned).most_common(1)[0]
+    return count >= 2, group, count
+
+
+def _direction_consensus_strength(*, direction_count: int, eligible_count: int, total_considered: int) -> str:
+    if direction_count <= 0:
+        return "none"
+    if direction_count >= 3 or (total_considered <= 2 and direction_count == eligible_count):
+        return "strong"
+    if direction_count >= 2:
+        return "weak"
+    return "none"
+
+
+def _actionable_decision_state(*, result_state: str, winner_ticker: str | None, protocol_candidate: bool, no_vote: bool) -> str:
+    if result_state == "consensus" and winner_ticker:
+        return "exact_consensus_observation"
+    if protocol_candidate:
+        return "protocol_candidate_diagnostic"
+    if no_vote:
+        return "data_blocked"
+    return "observe_only"
+
+
+def _actionable_decision_reason(*, result_state: str, winner_ticker: str | None, protocol_candidate: bool, no_vote: bool) -> str:
+    if result_state == "consensus" and winner_ticker:
+        return "至少 2/3 股票池形成相同標的共識。"
+    if protocol_candidate:
+        return "標的分歧但方向一致；僅標示為後續決策協議研究候選。"
+    if no_vote:
+        return "可投票資料不足或池內條件未通過。"
+    return "三池標的與方向均未形成可行動共識。"
+
+
+def _decision_source(
+    *,
+    result_state: str,
+    winner_vote_count: int,
+    eligible_count: int,
+    exact_ticker_consensus: bool,
+    direction_consensus: bool,
+    protocol_candidate: bool,
+    no_vote: bool,
+) -> str:
+    if no_vote:
+        return "data_blocked"
+    if result_state == "consensus" and exact_ticker_consensus:
+        return "exact_3_of_3_ticker" if winner_vote_count >= 3 else "exact_2_of_3_ticker"
+    if protocol_candidate:
+        return "protocol_resolved_divergence"
+    if direction_consensus:
+        return "direction_3_of_3" if eligible_count >= 3 else "direction_2_of_3"
+    return "diagnostic_only"
+
+
+def _decision_protocol_reason(*, protocol_candidate: bool) -> str:
+    if protocol_candidate:
+        return "僅供後續 Experiments 驗證；不得取代 2/3 正式表決。"
+    return "未啟用決策協議；維持原 2/3 表決輸出。"
+
+
+def _protocol_usage_category(*, protocol_candidate: bool) -> str:
+    return "candidate_not_applied" if protocol_candidate else "not_used"
+
+
+def _fake_consensus_flags(
+    *,
+    voters: list[dict[str, Any]],
+    skipped_vote_pools: list[dict[str, Any]],
+    result_state: str,
+) -> list[str]:
+    flags: list[str] = []
+    if result_state == "consensus" and skipped_vote_pools:
+        flags.append("consensus_with_ineligible_pool")
+    if result_state == "consensus" and len(voters) < 3:
+        flags.append("consensus_from_less_than_three_pools")
+    if any(row.get("selection_layer") == "observation_only" for row in skipped_vote_pools):
+        flags.append("observation_only_excluded")
+    if any(row.get("data_readiness_state") in {"blocked", "partial"} for row in voters + skipped_vote_pools):
+        flags.append("data_readiness_issue")
+    return flags
+
+
+def _consensus_health_bucket(
+    *,
+    result_state: str,
+    consensus_strength: str,
+    protocol_candidate: bool,
+    no_vote: bool,
+    skipped_count: int,
+    total_considered: int,
+) -> str:
+    if no_vote or total_considered == 0:
+        return "not_evaluable"
+    if result_state == "divergent" and not protocol_candidate:
+        return "unhealthy"
+    if skipped_count:
+        return "warning"
+    if consensus_strength == "strong":
+        return "healthy"
+    if consensus_strength == "weak":
+        return "acceptable"
+    return "warning"
+
+
 def _has_forced_stop(voters: list[dict[str, Any]], skipped_vote_pools: list[dict[str, Any]]) -> bool:
     stop_tokens = ("forced_stop", "stop_latch", "停損", "強制")
     for row in voters + skipped_vote_pools:
@@ -324,6 +537,14 @@ def _rate(numerator: int, denominator: int) -> float:
     if denominator <= 0:
         return 0.0
     return round(numerator / denominator, 4)
+
+
+def _number(value: object) -> float:
+    try:
+        text = str(value).replace(",", "").strip()
+        return float(text) if text else 0.0
+    except (TypeError, ValueError):
+        return 0.0
 
 
 def _health_note(decision_state: str, *, divergent: bool, no_vote: bool) -> str:

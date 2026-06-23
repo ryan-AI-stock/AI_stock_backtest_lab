@@ -36,6 +36,10 @@ class StockPoolConsensusTest(unittest.TestCase):
         self.assertEqual(health["decision_state"], "weak_consensus")
         self.assertEqual(health["consensus_strength"], "weak")
         self.assertEqual(health["exact_ticker_consensus_rate"], 0.6667)
+        self.assertTrue(health["exact_ticker_consensus"])
+        self.assertEqual(health["exact_ticker_consensus_group"], "2330.TW")
+        self.assertEqual(health["decision_source"], "exact_2_of_3_ticker")
+        self.assertEqual(health["consensus_health_bucket"], "acceptable")
         self.assertEqual(health["actionable_decision_rate"], 1.0)
         self.assertFalse(health["active_in_trade_decision"])
         self.assertFalse(health["formal_model_changed"])
@@ -148,6 +152,8 @@ class StockPoolConsensusTest(unittest.TestCase):
         self.assertEqual(consensus["health_diagnostic"]["decision_state"], "strong_consensus")
         self.assertEqual(consensus["health_diagnostic"]["exact_ticker_consensus_rate"], 1.0)
         self.assertEqual(consensus["health_diagnostic"]["direction_consensus_rate"], 1.0)
+        self.assertEqual(consensus["health_diagnostic"]["decision_source"], "exact_3_of_3_ticker")
+        self.assertEqual(consensus["health_diagnostic"]["consensus_health_bucket"], "healthy")
 
     def test_write_consensus_outputs_writes_health_csv(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -169,6 +175,61 @@ class StockPoolConsensusTest(unittest.TestCase):
             report = (root / "stock_pool_consensus_report.md").read_text(encoding="utf-8")
             self.assertIn("共識健康診斷", report)
             self.assertIn("decision_state：weak_consensus", report)
+            self.assertIn("decision_source：exact_2_of_3_ticker", report)
+
+    def test_build_consensus_marks_direction_consensus_as_protocol_candidate_only(self) -> None:
+        consensus = build_consensus(
+            {
+                "signal_date": "2026-06-12",
+                "generated": [
+                    _generated("AI池", "2454.TW", "聯發科(2454)"),
+                    _generated("0050池", "2330.TW", "台積電(2330)"),
+                    _generated("核心池", "2308.TW", "台達電(2308)"),
+                ],
+                "skipped": [],
+            }
+        )
+
+        self.assertEqual(consensus["result_state"], "divergent")
+        self.assertIsNone(consensus["winner_ticker"])
+        health = consensus["health_diagnostic"]
+        self.assertTrue(health["direction_consensus"])
+        self.assertEqual(health["direction_consensus_group"], "stock_attack")
+        self.assertEqual(health["decision_source"], "protocol_resolved_divergence")
+        self.assertFalse(health["decision_protocol_used"])
+        self.assertEqual(health["protocol_usage_category"], "candidate_not_applied")
+        self.assertEqual(health["actionable_decision_state"], "protocol_candidate_diagnostic")
+        self.assertEqual(health["actionable_decision_rate"], 0.0)
+
+    def test_build_consensus_marks_data_blocked_and_fake_consensus_flags(self) -> None:
+        consensus = build_consensus(
+            {
+                "signal_date": "2026-06-18",
+                "generated": [
+                    _generated(
+                        "AI池",
+                        "2454.TW",
+                        "聯發科(2454)",
+                        eligible=False,
+                        selection_layer="observation_only",
+                        selection_reason="個股攻擊閘門未開啟",
+                    ),
+                    _generated("0050池", "00631L.TW", "0050正二(00631L)", selection_layer="market_exposure_tool"),
+                    _generated("核心池", "00631L.TW", "0050正二(00631L)", selection_layer="market_exposure_tool"),
+                ],
+                "skipped": [],
+            }
+        )
+
+        health = consensus["health_diagnostic"]
+        self.assertEqual(consensus["winner_ticker"], "00631L.TW")
+        self.assertEqual(health["decision_source"], "exact_2_of_3_ticker")
+        self.assertEqual(health["consensus_health_bucket"], "warning")
+        self.assertIn("consensus_with_ineligible_pool", health["fake_consensus_flags"])
+        self.assertIn("observation_only_excluded", health["fake_consensus_flags"])
+        self.assertEqual(consensus["pool_diagnostics"][0]["eligible_vote"], True)
+        self.assertEqual(consensus["pool_diagnostics"][-1]["data_readiness_state"], "blocked")
+        self.assertEqual(consensus["pool_diagnostics"][-1]["blocked_reason"], "個股攻擊閘門未開啟")
 
 
 def _generated(
