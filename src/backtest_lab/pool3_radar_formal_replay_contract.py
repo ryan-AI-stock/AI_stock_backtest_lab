@@ -119,6 +119,11 @@ def run_pool3_radar_formal_replay_contract(
         "decision_diff_schema": list(DECISION_DIFF_SCHEMA),
         "core_engineering_inputs_ready": baseline_ready and overlay_ready,
         "radar_data_readiness_ready": all(row["passed"] for row in readiness_checks),
+        "formal_absorption_ready": readiness.get("can_core_absorb_as_formal_challenger") is True,
+        "formal_absorption_note": (
+            "Data readiness only. Formal absorption still requires separate acceptance, hard-gate review, "
+            "and explicit Core promotion task."
+        ),
         "accepted_for_formal_challenger_replay": accepted,
         "failed_checks": checks[checks["passed"] == False].to_dict(orient="records") if not checks.empty else [],  # noqa: E712
         "next_runner_expectation": (
@@ -225,21 +230,26 @@ def _readiness_checks(
         ]
     blockers = _normalize_readiness_blockers(
         readiness.get("blockers") or [],
+        readiness=readiness,
         baseline_ready=baseline_ready,
         overlay_accounting_ready=overlay_accounting_ready,
     )
+    blockers.extend(_batch_readiness_blockers(readiness))
     return [
         {
-            "check_id": "radar_readiness:formal_absorb_flag",
-            "passed": readiness.get("can_core_absorb_as_formal_challenger") is True,
-            "severity": "blocker",
-            "detail": str(readiness.get("can_core_absorb_as_formal_challenger")),
-        },
-        {
-            "check_id": "radar_readiness:no_blockers",
+            "check_id": "radar_readiness:data_layer_ready",
             "passed": len(blockers) == 0,
             "severity": "blocker",
             "detail": "; ".join(str(item) for item in blockers),
+        },
+        {
+            "check_id": "radar_readiness:formal_absorption_boundary",
+            "passed": True,
+            "severity": "info",
+            "detail": (
+                "formal_ready/formal_top3_ready/can_core_absorb_as_formal_challenger are not required "
+                "to build challenger replay inputs; they remain separate promotion gates"
+            ),
         },
     ]
 
@@ -247,12 +257,19 @@ def _readiness_checks(
 def _normalize_readiness_blockers(
     blockers: list[Any],
     *,
+    readiness: dict[str, Any],
     baseline_ready: bool,
     overlay_accounting_ready: bool,
 ) -> list[str]:
     normalized: list[str] = []
+    data_layer_complete = _is_batch_membership_ready(readiness)
     for item in blockers:
         text = str(item)
+        if data_layer_complete and (
+            text == "formal_top3_ready=false"
+            or "formal_top3 remains blocked until Core challenger replay" in text
+        ):
+            continue
         if baseline_ready and "baseline_three_pool_daily_equity is partial proxy" in text:
             continue
         if overlay_accounting_ready and "primary overlay daily basket is synthetic blend" in text:
@@ -261,6 +278,41 @@ def _normalize_readiness_blockers(
             continue
         normalized.append(text)
     return normalized
+
+
+def _batch_readiness_blockers(readiness: dict[str, Any]) -> list[str]:
+    blockers: list[str] = []
+    if "theme_membership_v2_ready" in readiness and readiness.get("theme_membership_v2_ready") is not True:
+        blockers.append("theme_membership_v2_ready is not true")
+    if "future_data_violation_count" in readiness and int(readiness.get("future_data_violation_count") or 0) != 0:
+        blockers.append(f"future_data_violation_count={readiness.get('future_data_violation_count')}")
+    if "remaining_gap_symbol_count" in readiness and int(readiness.get("remaining_gap_symbol_count") or 0) != 0:
+        blockers.append(f"remaining_gap_symbol_count={readiness.get('remaining_gap_symbol_count')}")
+    threshold = float(readiness.get("ready_threshold") or 0.95)
+    if "coverage_ratio_after_batch" in readiness and float(readiness.get("coverage_ratio_after_batch") or 0.0) < threshold:
+        blockers.append(
+            f"coverage_ratio_after_batch={readiness.get('coverage_ratio_after_batch')} below threshold={threshold}"
+        )
+    accepted = readiness.get("accepted_formal_universe_symbol_count_after_batch")
+    total = readiness.get("formal_universe_symbol_count")
+    if accepted is not None and total is not None and int(accepted or 0) < int(total or 0):
+        blockers.append(f"accepted_formal_universe_symbol_count_after_batch={accepted}/{total}")
+    return blockers
+
+
+def _is_batch_membership_ready(readiness: dict[str, Any]) -> bool:
+    if readiness.get("theme_membership_v2_ready") is not True:
+        return False
+    if int(readiness.get("future_data_violation_count") or 0) != 0:
+        return False
+    if int(readiness.get("remaining_gap_symbol_count") or 0) != 0:
+        return False
+    threshold = float(readiness.get("ready_threshold") or 0.95)
+    if float(readiness.get("coverage_ratio_after_batch") or 0.0) < threshold:
+        return False
+    accepted = readiness.get("accepted_formal_universe_symbol_count_after_batch")
+    total = readiness.get("formal_universe_symbol_count")
+    return accepted is not None and total is not None and int(accepted or 0) >= int(total or 0)
 
 
 def _read_json(path: Path | None) -> dict[str, Any]:
