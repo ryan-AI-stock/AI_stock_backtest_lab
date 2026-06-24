@@ -172,8 +172,8 @@ class PortfolioAppHttpTest(unittest.TestCase):
                 )
                 self.assertEqual(core_review["source_mode"], "core_defensive_candidate_csv")
                 self.assertEqual(core_review["source_status"], "source_ready")
-                self.assertEqual(core_review["source_active_count"], 17)
-                self.assertEqual(core_review["source_watch_count"], 5)
+                self.assertEqual(core_review["source_active_count"], 16)
+                self.assertEqual(core_review["source_watch_count"], 6)
 
                 recorded = _request(
                     server.server_address[1],
@@ -181,7 +181,7 @@ class PortfolioAppHttpTest(unittest.TestCase):
                     "/api/candidate-review-decisions",
                     {
                         "pool_id": "large_core_bluechip_v0",
-                        "pool_name": "核心防守風格池 v1",
+                        "pool_name": "核心風格補強池 v1",
                         "ticker": "2412.TW",
                         "display": "中華電(2412)",
                         "decision": "keep_current",

@@ -71,7 +71,7 @@ TW50_ATTACK_GATE_RET20_MIN = 0.03
 TW50_ATTACK_GATE_RET60_MIN = 0.12
 TW50_ATTACK_GATE_PERSISTENCE_LOOKBACK = 10
 TW50_ATTACK_GATE_PERSISTENCE_MIN_DAYS = 5
-CORE_DEFENSIVE_GATE_RULE_ID = "core_defensive_resilience_opportunity_gate_v2"
+CORE_DEFENSIVE_GATE_RULE_ID = "core_style_complement_opportunity_gate_v1"
 CORE_DEFENSIVE_BENCHMARK = "0050.TW"
 CORE_DEFENSIVE_RET60_MIN = 0.05
 CORE_DEFENSIVE_RET120_MIN = 0.0
@@ -80,10 +80,19 @@ CORE_DEFENSIVE_RET120_BENCHMARK_LAG_TOLERANCE = -0.03
 CORE_DEFENSIVE_MAX_DRAWDOWN20 = -0.12
 CORE_DEFENSIVE_MAX_FLOW_RISK_SCORE = 0.35
 CORE_DEFENSIVE_MARKET_EXPOSURE_BUCKET = "market_exposure_etf"
+CORE_STYLE_COMPLEMENT_EXCLUDED_TICKERS = {
+    "2330.TW",
+    "2454.TW",
+    "2308.TW",
+    "2317.TW",
+    "2382.TW",
+    "3231.TW",
+    "6669.TW",
+}
 POOL_SHORT_NAMES = {
     "ai_theme_large_cap_v20260613": "AI主線池",
     "tw50_dynamic_constituents_v0": "大型廣度池",
-    "large_core_bluechip_v0": "核心防守池",
+    "large_core_bluechip_v0": "風格補強池",
 }
 VOTE_DIVERGENT_COLORS = ("#2457a7", "#7a3db8", "#c77917")
 VOTE_WINNER_COLOR = "#13795b"
@@ -589,7 +598,7 @@ def _core_defensive_gate_evaluation(
             opportunity_cost_passed=False,
             drawdown_control_passed=False,
             risk_control_passed=False,
-            gate_reason="核心防守池 v2 未通過：缺少 0050 benchmark 價格，不能確認防守相對韌性。",
+            gate_reason="風格補強池 v1 未通過：缺少 0050 benchmark 價格，不能確認相對強度。",
         )
 
     benchmark_ret120 = _window_return_on_or_before(
@@ -607,7 +616,7 @@ def _core_defensive_gate_evaluation(
             opportunity_cost_passed=False,
             drawdown_control_passed=False,
             risk_control_passed=False,
-            gate_reason="核心防守池 v2 未通過：缺少 0050 120日 benchmark，不能確認機會成本。",
+            gate_reason="風格補強池 v1 未通過：缺少 0050 120日 benchmark，不能確認機會成本。",
         )
 
     benchmark_resilience_passed = candidate.ret60 - benchmark_ret60 >= CORE_DEFENSIVE_BENCHMARK_LAG_TOLERANCE
@@ -628,8 +637,8 @@ def _core_defensive_gate_evaluation(
     )
     reason_parts = [
         f"base={'Y' if candidate.passed else 'N'}",
-        f"60日相對0050韌性={candidate.ret60 - benchmark_ret60:.1%}({'Y' if benchmark_resilience_passed else 'N'})",
-        f"60/120趨勢韌性={'Y' if trend_resilience_passed else 'N'}",
+        f"60日相對0050強度={candidate.ret60 - benchmark_ret60:.1%}({'Y' if benchmark_resilience_passed else 'N'})",
+        f"60/120中期上攻力={'Y' if trend_resilience_passed else 'N'}",
         f"120日機會成本={candidate.ret120 - benchmark_ret120:.1%}({'Y' if opportunity_cost_passed else 'N'})",
         f"20日回撤控管={candidate.drawdown20:.1%}({'Y' if drawdown_control_passed else 'N'})",
         f"籌碼風險={candidate.flow_risk_score:.2f}({'Y' if risk_control_passed else 'N'})",
@@ -643,7 +652,7 @@ def _core_defensive_gate_evaluation(
         opportunity_cost_passed=opportunity_cost_passed,
         drawdown_control_passed=drawdown_control_passed,
         risk_control_passed=risk_control_passed,
-        gate_reason="核心防守池 v2：" + "；".join(reason_parts),
+        gate_reason="風格補強池 v1：" + "；".join(reason_parts),
     )
 
 
@@ -690,7 +699,7 @@ def _core_defensive_market_exposure_gate_result(candidate: UniversalCandidateSco
         "selection_layer": SELECTION_MARKET_EXPOSURE_TOOL if eligible else SELECTION_OBSERVATION_ONLY,
         "gate_rule_id": CORE_DEFENSIVE_GATE_RULE_ID,
         "gate_reason": (
-            "核心防守池 v2：防守個股無合格時，通過池內條件的 ETF 可作市場曝險替代；"
+            "風格補強池 v1：非AI風格個股無合格時，通過池內條件的 ETF 可作市場曝險替代；"
             f"base={'Y' if candidate.passed else 'N'}。"
         ),
     }
@@ -781,9 +790,9 @@ def _candidate_gate_evaluation(
         selection_layer = SELECTION_OBSERVATION_ONLY
     elif gate_rule_id == CORE_DEFENSIVE_GATE_RULE_ID:
         gate_reason = (
-            "核心防守池 v1：需另行檢查 benchmark 韌性、60/120 趨勢、回撤與籌碼風險。"
+            "風格補強池 v1：需另行檢查 benchmark 相對強度、60/120 中期上攻力、回撤與籌碼風險。"
             if base_pool_passed
-            else f"核心防守池 v1 未通過：{candidate.reason or '池內基本條件未通過'}。"
+            else f"風格補強池 v1 未通過：{candidate.reason or '池內基本條件未通過'}。"
         )
         attack_gate_open = False
         eligible = False
@@ -890,7 +899,7 @@ def _source_summary(metadata: dict[str, Any]) -> str:
         return f"動態0050成分股：{metadata.get('candidate_count', 0)}檔，來源 {metadata.get('source_path') or '未標'}"
     if metadata.get("source_type") == "core_defensive_style_representatives":
         return (
-            f"核心風格代表：{metadata.get('representative_count', 0)}檔，"
+            f"風格補強代表：{metadata.get('representative_count', 0)}檔，"
             f"模式 {metadata.get('selection_mode') or '未標'}"
         )
     if metadata.get("source_type") in {"best_v20260605_signal", "ai_theme_large_cap_v20260613_signal"}:
@@ -1790,8 +1799,9 @@ def _short_pool_name(item: dict[str, Any]) -> str:
     replacements = [
         ("AI中大型權值股池最佳版", "AI主線池"),
         ("動態0050成分股池", "大型廣度池"),
-        ("大型核心權值股池", "核心防守池"),
-        ("核心防守風格池", "核心防守池"),
+        ("大型核心權值股池", "風格補強池"),
+        ("核心防守風格池", "風格補強池"),
+        ("核心風格補強池", "風格補強池"),
         ("雷達中小型校準版", "雷達池"),
     ]
     for old, new in replacements:
@@ -2275,6 +2285,8 @@ def _select_core_defensive_style_representatives(candidates: list[dict[str, Any]
         if not ticker:
             continue
         asset_type = _normalize_asset_type(None, ticker)
+        if asset_type == ASSET_TYPE_STOCK and ticker in CORE_STYLE_COMPLEMENT_EXCLUDED_TICKERS:
+            continue
         payload = dict(item)
         payload["asset_type"] = asset_type if asset_type != ASSET_TYPE_UNKNOWN else ASSET_TYPE_STOCK
         payload["style_bucket"] = _core_defensive_style_bucket(item)
@@ -2336,7 +2348,7 @@ def _core_defensive_candidate_to_symbol(item: dict[str, Any]) -> dict[str, Any]:
         "symbol": symbol,
         "name": str(known.get("name") or display.split("(")[0] or symbol).strip(),
         "display": display,
-        "source": "core_defensive_style_representative",
+        "source": "core_style_complement_representative",
         "asset_type": item.get("asset_type") or known.get("asset_type") or ASSET_TYPE_STOCK,
         "style_bucket": item.get("style_bucket", ""),
         "style_role": item.get("role", ""),

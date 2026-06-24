@@ -53,7 +53,7 @@ PRESET_SPECS: dict[str, StrategyPresetSpec] = {
     ),
     "core_defensive_style_v1": StrategyPresetSpec(
         preset="core_defensive_style_v1",
-        label="核心防守風格池 v1",
+        label="核心風格補強池 v1",
         engine_module="backtest_lab.stock_pool_observation",
         workflow_file="stock_pool_observation.yml",
         report_line="stock_pool_observation",

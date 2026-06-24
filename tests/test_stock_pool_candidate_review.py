@@ -69,9 +69,9 @@ class StockPoolCandidateReviewTest(unittest.TestCase):
         self.assertEqual(review["source_mode"], "core_defensive_candidate_csv")
         self.assertEqual(review["source_status"], "source_ready")
         self.assertEqual(review["decision"], "monthly_auto_review_available")
-        self.assertIn("跨產業代表性", review["required_evidence"])
-        self.assertEqual(review["candidate_count"], 17)
-        self.assertEqual(review["source_active_count"], 17)
+        self.assertIn("排除池1 AI主線個股後的風格補強定位", review["required_evidence"])
+        self.assertEqual(review["candidate_count"], 16)
+        self.assertEqual(review["source_active_count"], 16)
         self.assertGreaterEqual(review["source_watch_count"], 1)
 
     def test_core_defensive_candidate_source_ignores_future_rows(self) -> None:

@@ -223,12 +223,12 @@ class StockPoolObservationTest(unittest.TestCase):
         top_rows = _top_candidate_rows(observation)
 
         self.assertEqual(observation.top_ticker, "2882.TW")
-        self.assertEqual(observation.gate_rule_id, "core_defensive_resilience_opportunity_gate_v2")
+        self.assertEqual(observation.gate_rule_id, "core_style_complement_opportunity_gate_v1")
         self.assertTrue(observation.attack_gate_open)
         self.assertTrue(observation.eligible_for_pool_selection)
         self.assertEqual(observation.selection_layer, "formal_candidate")
-        self.assertIn("核心防守池 v2", observation.gate_reason)
-        self.assertIn("60日相對0050韌性", observation.gate_reason)
+        self.assertIn("風格補強池 v1", observation.gate_reason)
+        self.assertIn("60日相對0050強度", observation.gate_reason)
         self.assertIn("120日機會成本", observation.gate_reason)
         self.assertTrue(top_rows[0]["eligible_for_pool_selection"])
 
@@ -251,7 +251,7 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertIsNone(observation.top_ticker)
         self.assertFalse(top_rows[0]["eligible_for_pool_selection"])
         self.assertFalse(top_rows[0]["attack_gate_open"])
-        self.assertIn("60日相對0050韌性", top_rows[0]["gate_reason"])
+        self.assertIn("60日相對0050強度", top_rows[0]["gate_reason"])
 
     def test_core_defensive_pool_blocks_when_trend_resilience_is_insufficient(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)
@@ -271,7 +271,7 @@ class StockPoolObservationTest(unittest.TestCase):
 
         self.assertIsNone(observation.top_ticker)
         self.assertFalse(top_rows[0]["eligible_for_pool_selection"])
-        self.assertIn("60/120趨勢韌性=N", top_rows[0]["gate_reason"])
+        self.assertIn("60/120中期上攻力=N", top_rows[0]["gate_reason"])
 
     def test_core_defensive_pool_blocks_when_opportunity_cost_is_too_high(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)
@@ -319,7 +319,7 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertIsNone(observation.attack_gate_open)
         self.assertEqual(rows_by_ticker["00631L.TW"]["selection_layer"], "market_exposure_tool")
         self.assertFalse(rows_by_ticker["2882.TW"]["eligible_for_pool_selection"])
-        self.assertIn("防守個股無合格", observation.gate_reason)
+        self.assertIn("非AI風格個股無合格", observation.gate_reason)
 
     def test_core_defensive_pool_prefers_qualified_stock_over_market_exposure_tool(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)
@@ -363,7 +363,7 @@ class StockPoolObservationTest(unittest.TestCase):
             )
             pool = {
                 "pool_id": "large_core_bluechip_v0",
-                "name": "核心風格代表池 v2",
+                "name": "核心風格補強池 v1",
                 "strategy_preset": "core_defensive_style_v1",
                 "resolved_symbols": [symbol_entry("2882.TW", source="fixed"), symbol_entry("2412.TW", source="fixed")],
                 "candidate_review_config": {
@@ -382,9 +382,10 @@ class StockPoolObservationTest(unittest.TestCase):
             )
 
         tickers = [item["ticker"] for item in resolved["resolved_symbols"]]
-        self.assertEqual(tickers, ["0050.TW", "00631L.TW", "2881.TW", "2330.TW", "3045.TW"])
+        self.assertEqual(tickers, ["0050.TW", "00631L.TW", "2881.TW", "3045.TW"])
         self.assertNotIn("2882.TW", tickers)
         self.assertNotIn("2412.TW", tickers)
+        self.assertNotIn("2330.TW", tickers)
         self.assertEqual(resolved["core_defensive_style_selection_mode"], "one_representative_per_style_bucket_v1")
         buckets = {item["ticker"]: item["style_bucket"] for item in resolved["resolved_symbols"]}
         self.assertEqual(buckets["2881.TW"], "financial_core")
@@ -452,7 +453,7 @@ class StockPoolObservationTest(unittest.TestCase):
         tsmc["market_cap_twd"] = 2_000_000_000_000
         pool = {
             "pool_id": "large_core_bluechip_v0",
-            "name": "核心防守風格池 v1",
+            "name": "核心風格補強池 v1",
             "strategy_preset": "core_defensive_style_v1",
             "resolved_symbols": [tsmc],
         }
@@ -1148,7 +1149,7 @@ def _core_defensive_test_pool(tickers: list[str]) -> dict[str, object]:
         symbols.append(symbol)
     return {
         "pool_id": "large_core_bluechip_v0",
-        "name": "核心防守風格池 v1",
+        "name": "核心風格補強池 v1",
         "strategy_preset": "core_defensive_style_v1",
         "resolved_symbols": symbols,
     }
