@@ -68,6 +68,7 @@ def run_stock_pool_consensus_health_replay(
             cache_only=cache_only,
             max_dates=max_dates,
             date_stride=max(1, date_stride),
+            include_forward_metrics=False,
         )
         source_replay_panel = result.output_dir / "stock_pool_replay_panel.csv"
 

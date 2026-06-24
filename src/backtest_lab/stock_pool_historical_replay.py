@@ -66,6 +66,8 @@ def run_stock_pool_historical_replay(
     cache_only: bool = True,
     max_dates: int | None = None,
     date_stride: int = 1,
+    include_forward_metrics: bool = True,
+    signal_calendar_ticker: str = "0050.TW,2330.TW",
 ) -> ReplayResult:
     root = Path(output_dir)
     root.mkdir(parents=True, exist_ok=True)
@@ -85,12 +87,23 @@ def run_stock_pool_historical_replay(
     period_ranges = periods or DEFAULT_PERIODS
     store = StockPoolStore(pool_store_path)
     pools = _observation_pools(store.list_pools(), operational_only=True)
-    signal_dates = list(_iter_signal_dates(period_ranges, stride=max(1, date_stride)))
+    signal_calendar_dates = _load_signal_calendar_dates(
+        cache_dir=cache_dir,
+        ticker=signal_calendar_ticker,
+    ) if cache_only else None
+    signal_dates = list(
+        _iter_signal_dates(
+            period_ranges,
+            stride=max(1, date_stride),
+            calendar_dates=signal_calendar_dates,
+        )
+    )
     if max_dates is not None:
         signal_dates = signal_dates[:max_dates]
 
     market_caps: dict[str, float] = {}
     market_cap_source = ""
+    price_frame_cache: dict[str, pd.DataFrame] = {}
     try:
         from backtest_lab.market_cap_source import load_first_available_market_caps
 
@@ -157,14 +170,19 @@ def run_stock_pool_historical_replay(
                     end_date=date_text,
                     cache_dir=cache_dir,
                     cache_only=cache_only,
+                    frame_cache=price_frame_cache,
                 )
-                forward_prices, forward_missing = _load_replay_price_frames(
-                    tickers=price_tickers,
-                    start_date=_price_start_for_pool(resolved_pool, warmup_start),
-                    end_date=(signal_date + pd.DateOffset(months=8)).strftime("%Y-%m-%d"),
-                    cache_dir=cache_dir,
-                    cache_only=cache_only,
-                )
+                if include_forward_metrics:
+                    forward_prices, forward_missing = _load_replay_price_frames(
+                        tickers=price_tickers,
+                        start_date=_price_start_for_pool(resolved_pool, warmup_start),
+                        end_date=(signal_date + pd.DateOffset(months=8)).strftime("%Y-%m-%d"),
+                        cache_dir=cache_dir,
+                        cache_only=cache_only,
+                        frame_cache=price_frame_cache,
+                    )
+                else:
+                    forward_prices, forward_missing = {}, []
                 if not prices:
                     raise ValueError("no_price_frames")
                 valuations = load_valuation_signals(
@@ -198,38 +216,40 @@ def run_stock_pool_historical_replay(
                         **_candidate_replay_fields(candidate),
                     }
                     candidate_rows.append(candidate_row)
-                    forward_rows.extend(
-                        _forward_return_rows(
-                            base=candidate_row,
-                            prices_by_ticker=forward_prices,
-                            signal_date=observation.signal_date,
+                    if include_forward_metrics:
+                        forward_rows.extend(
+                            _forward_return_rows(
+                                base=candidate_row,
+                                prices_by_ticker=forward_prices,
+                                signal_date=observation.signal_date,
+                            )
                         )
-                    )
                 if observation.top_ticker and not any(
                     row["ticker"] == observation.top_ticker
                     and row["pool_id"] == pool_id
                     and row["requested_signal_date"] == date_text
                     for row in candidate_rows[-candidate_limit:]
                 ):
-                    forward_rows.extend(
-                        _forward_return_rows(
-                            base={
-                                **base,
-                                "status": "generated",
-                                "signal_date": observation.signal_date,
-                                "rank": 1,
-                                "ticker": observation.top_ticker,
-                                "display": observation.top_display,
-                                "selection_layer": observation.selection_layer,
-                                "eligible_for_pool_selection": observation.eligible_for_pool_selection,
-                                "attack_gate_open": observation.attack_gate_open,
-                                "rank_score": observation.rank_score,
-                                "score": observation.top_score,
-                            },
-                            prices_by_ticker=forward_prices,
-                            signal_date=observation.signal_date,
+                    if include_forward_metrics:
+                        forward_rows.extend(
+                            _forward_return_rows(
+                                base={
+                                    **base,
+                                    "status": "generated",
+                                    "signal_date": observation.signal_date,
+                                    "rank": 1,
+                                    "ticker": observation.top_ticker,
+                                    "display": observation.top_display,
+                                    "selection_layer": observation.selection_layer,
+                                    "eligible_for_pool_selection": observation.eligible_for_pool_selection,
+                                    "attack_gate_open": observation.attack_gate_open,
+                                    "rank_score": observation.rank_score,
+                                    "score": observation.top_score,
+                                },
+                                prices_by_ticker=forward_prices,
+                                signal_date=observation.signal_date,
+                            )
                         )
-                    )
                 _append_run_log(run_log_path, "generated", f"{date_text}:{pool_id}", observation.selection_layer)
             except Exception as error:
                 row = {
@@ -260,6 +280,9 @@ def run_stock_pool_historical_replay(
         "cache_only": cache_only,
         "max_dates": max_dates,
         "date_stride": date_stride,
+        "include_forward_metrics": include_forward_metrics,
+        "signal_calendar_ticker": signal_calendar_ticker,
+        "signal_calendar_source": "cache_price_dates" if signal_calendar_dates is not None else "business_days",
         "pools": [pool.get("pool_id") for pool in pools],
         "market_cap_source": market_cap_source,
         "forward_horizons": list(FORWARD_HORIZONS),
@@ -328,12 +351,42 @@ def run_stock_pool_historical_replay(
     )
 
 
-def _iter_signal_dates(periods: dict[str, tuple[str, str]], *, stride: int = 1) -> Iterable[tuple[str, pd.Timestamp]]:
+def _iter_signal_dates(
+    periods: dict[str, tuple[str, str]],
+    *,
+    stride: int = 1,
+    calendar_dates: set[pd.Timestamp] | None = None,
+) -> Iterable[tuple[str, pd.Timestamp]]:
     for period_name, (start, end) in periods.items():
-        dates = pd.bdate_range(start, end)
+        if calendar_dates is None:
+            dates = pd.bdate_range(start, end)
+        else:
+            start_ts = pd.Timestamp(start).normalize()
+            end_ts = pd.Timestamp(end).normalize()
+            dates = sorted(date for date in calendar_dates if start_ts <= date <= end_ts)
         for offset, signal_date in enumerate(dates):
             if offset % stride == 0:
                 yield period_name, signal_date.normalize()
+
+
+def _load_signal_calendar_dates(*, cache_dir: str | Path, ticker: str) -> set[pd.Timestamp] | None:
+    tickers = [item.strip() for item in ticker.split(",") if item.strip()]
+    calendars: list[set[pd.Timestamp]] = []
+    for item in tickers:
+        csv_path = Path(cache_dir) / f"{item.replace('.', '_')}.csv"
+        if not csv_path.exists():
+            continue
+        try:
+            frame = load_price_csv(csv_path)
+        except Exception:
+            continue
+        calendars.append({pd.Timestamp(index).normalize() for index in frame.index})
+    if not calendars:
+        return None
+    common_dates = calendars[0]
+    for calendar in calendars[1:]:
+        common_dates = common_dates & calendar
+    return common_dates
 
 
 def _load_replay_price_frames(
@@ -343,6 +396,7 @@ def _load_replay_price_frames(
     end_date: str,
     cache_dir: str | Path,
     cache_only: bool,
+    frame_cache: dict[str, pd.DataFrame] | None = None,
 ) -> tuple[dict[str, pd.DataFrame], list[str]]:
     if not cache_only:
         return _load_observation_price_frames(
@@ -356,13 +410,16 @@ def _load_replay_price_frames(
     cache_path = Path(cache_dir)
     start_ts = pd.Timestamp(start_date)
     end_ts = pd.Timestamp(end_date)
+    frame_cache = frame_cache if frame_cache is not None else {}
     for ticker in tickers:
         csv_path = cache_path / f"{ticker.replace('.', '_')}.csv"
         if not csv_path.exists():
             missing.append(ticker)
             continue
         try:
-            frame = load_price_csv(csv_path)
+            if ticker not in frame_cache:
+                frame_cache[ticker] = load_price_csv(csv_path)
+            frame = frame_cache[ticker]
         except Exception:
             missing.append(ticker)
             continue
@@ -596,6 +653,8 @@ def main() -> None:
     parser.add_argument("--allow-download", action="store_true", help="Allow yfinance downloads for missing cache.")
     parser.add_argument("--max-dates", type=int)
     parser.add_argument("--date-stride", type=int, default=1)
+    parser.add_argument("--skip-forward-metrics", action="store_true")
+    parser.add_argument("--signal-calendar-ticker", default="0050.TW,2330.TW")
     parser.add_argument("--allow-nearest-signal-date", action="store_true")
     args = parser.parse_args()
     result = run_stock_pool_historical_replay(
@@ -620,6 +679,8 @@ def main() -> None:
         cache_only=not args.allow_download,
         max_dates=args.max_dates,
         date_stride=args.date_stride,
+        include_forward_metrics=not args.skip_forward_metrics,
+        signal_calendar_ticker=args.signal_calendar_ticker,
     )
     print(json.dumps({**asdict(result), "output_dir": str(result.output_dir)}, ensure_ascii=False, indent=2))
 
