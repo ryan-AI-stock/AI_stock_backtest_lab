@@ -236,10 +236,16 @@ def _build_health_diagnostic(
     eligible_count = len(voters)
     winner_vote_count = int(votes.get(str(winner_ticker), 0)) if winner_ticker else 0
     max_vote_count = max(votes.values(), default=0)
-    direction_counts = Counter(_direction_key(row) for row in voters)
+    direction_support_rows = [
+        row
+        for row in skipped_vote_pools
+        if str(row.get("selection_layer") or "") == "direction_support_only"
+    ]
+    direction_items = voters + direction_support_rows
+    direction_counts = Counter(_direction_key(row) for row in direction_items)
     max_direction_count = max(direction_counts.values(), default=0)
     exact_ticker_consensus, exact_group, exact_count = _consensus_group(row.get("vote_target") or row.get("top_ticker") for row in voters)
-    direction_consensus, direction_group, direction_count = _consensus_group(row.get("direction_state") for row in voters)
+    direction_consensus, direction_group, direction_count = _consensus_group(row.get("direction_state") for row in direction_items)
     no_vote = result_state in {"no_vote", "insufficient_votes"} or total_considered == 0
     divergent = result_state == "divergent"
     protocol_candidate = divergent and direction_consensus and direction_group not in {"", "observation"}
@@ -272,7 +278,7 @@ def _build_health_diagnostic(
         "direction_consensus_group": direction_group,
         "direction_consensus_strength": _direction_consensus_strength(
             direction_count=direction_count,
-            eligible_count=eligible_count,
+            eligible_count=len(direction_items),
             total_considered=total_considered,
         ),
         "actionable_decision_state": _actionable_decision_state(
