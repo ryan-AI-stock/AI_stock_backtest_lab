@@ -39,6 +39,7 @@ def run_stock_pool_consensus_health_replay(
     date_stride: int = 1,
     max_dates: int | None = None,
     cache_only: bool = True,
+    tw50_constituents_path: str | Path = "data/tw50_constituents.csv",
 ) -> Path:
     root = Path(output_dir)
     root.mkdir(parents=True, exist_ok=True)
@@ -61,6 +62,7 @@ def run_stock_pool_consensus_health_replay(
             output_dir=historical_replay_dir,
             periods=actual_periods,
             warmup_start=warmup_start,
+            tw50_constituents_path=tw50_constituents_path,
             candidate_limit=3,
             require_exact_signal_date=True,
             cache_only=cache_only,
@@ -109,6 +111,7 @@ def run_stock_pool_consensus_health_replay(
         "active_in_trade_decision": False,
         "decision_layer": "diagnostic",
         "source_replay_panel": str(source_replay_panel),
+        "tw50_constituents_path": str(tw50_constituents_path),
         "granularity": "daily" if date_stride == 1 else f"stride{date_stride}",
         "periods": {key: {"start": start, "end": end} for key, (start, end) in actual_periods.items()},
         "outputs": {
@@ -414,6 +417,7 @@ def main() -> None:
     parser.add_argument("--period", action="append", help="name=start:end. Can repeat.")
     parser.add_argument("--date-stride", type=int, default=1)
     parser.add_argument("--max-dates", type=int)
+    parser.add_argument("--tw50-constituents-path", default="data/tw50_constituents.csv")
     parser.add_argument("--allow-download", action="store_true")
     args = parser.parse_args()
     output = run_stock_pool_consensus_health_replay(
@@ -426,6 +430,7 @@ def main() -> None:
         date_stride=args.date_stride,
         max_dates=args.max_dates,
         cache_only=not args.allow_download,
+        tw50_constituents_path=args.tw50_constituents_path,
     )
     print(f"OUTPUT_DIR={output.resolve()}")
 
