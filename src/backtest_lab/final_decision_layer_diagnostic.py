@@ -374,7 +374,7 @@ def _rule_boundary_labels(row: pd.Series, metrics: dict[str, float | bool | str]
     direction_blocked_reason = _direction_blocked_reason(metrics)
     protocol_overuse_blocked = bool(metrics["protocol_overuse_blocked"])
     fake_direction_fail_closed = bool(metrics["fake_direction_fail_closed"])
-    fake_actionable_watch_only = bool(metrics["fake_actionable_watch_only"])
+    fake_actionable_watch_only = _truthy(row.get("fake_actionable_decision_flag"))
     coverage_insufficient = bool(metrics["coverage_or_formal_vote_insufficient"])
     candidate_event_study = bool(metrics["candidate_for_future_event_study"]) and not (
         protocol_overuse_blocked or fake_direction_fail_closed or coverage_insufficient
@@ -476,6 +476,7 @@ def _summary_by_period(panel: pd.DataFrame) -> pd.DataFrame:
                 "decision_protocol_overuse_rate": _rate(frame["decision_protocol_overuse_flag"].map(_truthy).sum(), len(frame)),
                 "fake_direction_consensus_rate": _rate(frame["fake_direction_consensus_flag"].map(_truthy).sum(), len(frame)),
                 "fake_actionable_decision_rate": _rate(frame["fake_actionable_decision_flag"].map(_truthy).sum(), len(frame)),
+                "fake_actionable_watch_only_rate": _rate(frame["fake_actionable_watch_only"].map(_truthy).sum(), len(frame)),
                 "protocol_overuse_blocked_rate": _rate(frame["protocol_overuse_blocked"].map(_truthy).sum(), len(frame)),
                 "fake_direction_fail_closed_rate": _rate(frame["fake_direction_fail_closed"].map(_truthy).sum(), len(frame)),
                 "coverage_or_formal_vote_insufficient_rate": _rate(frame["coverage_or_formal_vote_insufficient"].map(_truthy).sum(), len(frame)),
@@ -494,6 +495,7 @@ def _field_contract_rows() -> list[dict[str, Any]]:
         {"field": "pool3_shadow_not_formal_flag", "value": True, "active_in_trade_decision": False},
         {"field": "decision_protocol_candidate", "value": "diagnostic only", "active_in_trade_decision": False},
         {"field": "protocol_overuse_blocked", "value": "fail-closed label only", "active_in_trade_decision": False},
+        {"field": "fake_actionable_watch_only", "value": "row-level watch-only label", "active_in_trade_decision": False},
         {"field": "candidate_for_future_event_study", "value": "research candidate only", "active_in_trade_decision": False},
     ]
 
@@ -524,6 +526,13 @@ def _rule_boundary_gate_rows(summary: pd.DataFrame) -> list[dict[str, Any]]:
                     "status": "blocked" if float(row["coverage_or_formal_vote_insufficient_rate"]) > 0 else "pass",
                     "value": row["coverage_or_formal_vote_insufficient_rate"],
                     "threshold": "must be 0 for formal selector",
+                },
+                {
+                    "period": period,
+                    "gate": "fake_actionable_watch_only",
+                    "status": "watch_only" if float(row["fake_actionable_watch_only_rate"]) > 0 else "none",
+                    "value": row["fake_actionable_watch_only_rate"],
+                    "threshold": "report-only; never formal",
                 },
                 {
                     "period": period,
@@ -579,6 +588,7 @@ def _rule_boundary_markdown_summary(summary: pd.DataFrame) -> str:
         lines.append(
             f"- {row['period']}: protocol_blocked={row['protocol_overuse_blocked_rate']}, "
             f"fake_direction_closed={row['fake_direction_fail_closed_rate']}, "
+            f"fake_actionable_watch={row['fake_actionable_watch_only_rate']}, "
             f"insufficient={row['coverage_or_formal_vote_insufficient_rate']}, "
             f"future_candidate={row['candidate_for_future_event_study_rate']}, "
             f"not_formal={row['not_eligible_for_formal_selector_rate']}"

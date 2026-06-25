@@ -139,6 +139,37 @@ class FinalDecisionLayerDiagnosticTest(unittest.TestCase):
             self.assertTrue(bool(row["coverage_or_formal_vote_insufficient"]))
             self.assertTrue(bool(row["not_eligible_for_formal_selector"]))
 
+    def test_fake_actionable_rows_are_marked_watch_only(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            event = root / "event.csv"
+            pd.DataFrame(
+                [
+                    _event_row(
+                        "2024-01-02",
+                        p1="2330.TW",
+                        p2="2454.TW",
+                        p1_dir="stock_attack",
+                        p2_dir="stock_attack",
+                        final_target="2330.TW",
+                    )
+                ]
+            ).to_csv(event, index=False)
+
+            output = run_final_decision_layer_diagnostic(
+                event_panel_path=event,
+                pool3_selector_panel_path=None,
+                output_dir=root / "out",
+            )
+
+            panel = pd.read_csv(output / "final_decision_layer_diagnostic_panel.csv")
+            row = panel.iloc[0]
+            self.assertTrue(bool(row["fake_actionable_decision_flag"]))
+            self.assertTrue(bool(row["fake_actionable_watch_only"]))
+            self.assertTrue(bool(row["not_eligible_for_formal_selector"]))
+            summary = pd.read_csv(output / "rule_boundary_summary_by_period.csv")
+            self.assertEqual(summary.iloc[0]["fake_actionable_watch_only_rate"], 1.0)
+
     def test_pool3_shadow_does_not_override_pool1_pool2_formal_conflict(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
