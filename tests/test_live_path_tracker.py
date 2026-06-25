@@ -151,6 +151,57 @@ class LivePathTrackerTests(unittest.TestCase):
             tracking = pd.read_csv(output_dir / "live_path_tracking.csv")
             self.assertEqual(tracking.iloc[-1]["actual_portfolio_value"], 1_000_500)
 
+    def test_required_portfolio_ticker_blocks_stale_store(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            scenario_dir = root / "scenario"
+            output_dir = root / "out"
+            store_path = root / "portfolio_store.json"
+            _write_scenario_fixture(scenario_dir)
+            PortfolioStore(store_path).replace_portfolio(
+                user_id="default",
+                cash_twd=0,
+                positions=[{"ticker": "2454.TW", "shares": 291, "avg_cost": 4566.01}],
+            )
+            cache = root / "cache"
+            cache.mkdir()
+            pd.DataFrame(
+                [
+                    {
+                        "date": "2026-06-02",
+                        "open": 4200,
+                        "high": 4200,
+                        "low": 4200,
+                        "close": 4200,
+                        "adj_close": 4200,
+                        "volume": 1,
+                        "dividend": 0,
+                        "stock_split": 0,
+                    },
+                    {
+                        "date": "2026-06-16",
+                        "open": 4300,
+                        "high": 4300,
+                        "low": 4300,
+                        "close": 4300,
+                        "adj_close": 4300,
+                        "volume": 1,
+                        "dividend": 0,
+                        "stock_split": 0,
+                    }
+                ]
+            ).to_csv(cache / "2454_TW.csv", index=False)
+
+            with self.assertRaisesRegex(ValueError, "missing=00631L.TW"):
+                run_live_path_tracker(
+                    scenario_dir=scenario_dir,
+                    output_dir=output_dir,
+                    report_date="2026-06-16",
+                    portfolio_store=store_path,
+                    require_portfolio_tickers=("00631L.TW",),
+                    price_cache_dir=cache,
+                )
+
 
 def _write_scenario_fixture(root: Path) -> None:
     root.mkdir(parents=True, exist_ok=True)

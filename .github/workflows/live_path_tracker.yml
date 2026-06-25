@@ -1,0 +1,217 @@
+name: Live Path Tracker
+
+on:
+  workflow_dispatch:
+    inputs:
+      report_date:
+        description: "Actual tracking report date in YYYY-MM-DD. Defaults to shared schedule target date."
+        required: false
+        type: string
+      scenario_signal_date:
+        description: "Historical analog scenario signal date."
+        required: false
+        type: string
+        default: "2026-06-12"
+      scenario_start:
+        description: "Scenario start date."
+        required: false
+        type: string
+        default: "2026-06-15"
+      scenario_end:
+        description: "Scenario end date."
+        required: false
+        type: string
+        default: "2026-12-31"
+      required_portfolio_ticker:
+        description: "Fail closed unless this ticker is present in PORTFOLIO_STORE_JSON. Leave blank to disable."
+        required: false
+        type: string
+        default: "00631L.TW"
+      publish_drive:
+        description: "Publish/overwrite the latest Drive PDF."
+        required: false
+        type: boolean
+        default: true
+  schedule:
+    # Report-only live-path tracking after Taiwan market close and regular data refresh windows.
+    - cron: "20 10 * * 1-5"
+
+jobs:
+  live-path-tracker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    permissions:
+      contents: read
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Checkout shared schedule rules
+        uses: actions/checkout@v4
+        with:
+          repository: ryan-AI-stock/AI_stock_schedule_rules
+          path: AI_stock_schedule_rules
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Shared daily schedule gate
+        id: schedule-gate
+        shell: bash
+        working-directory: AI_stock_schedule_rules
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          manual_args=""
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            manual_args="--manual-dispatch"
+          fi
+          python -m stock_schedule_rules.gate \
+            --profile daily \
+            $manual_args \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Skip tracker when schedule gate is closed
+        if: steps.schedule-gate.outputs.should_run != 'true'
+        run: |
+          echo "Schedule gate closed: ${{ steps.schedule-gate.outputs.reason }}"
+          echo "No live-path tracker generated for this run."
+
+      - name: Install dependencies and Chinese font
+        if: steps.schedule-gate.outputs.should_run == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fonts-noto-cjk
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Resolve tracker inputs
+        if: steps.schedule-gate.outputs.should_run == 'true'
+        id: tracker-inputs
+        shell: bash
+        env:
+          INPUT_REPORT_DATE: ${{ inputs.report_date }}
+          INPUT_SCENARIO_SIGNAL_DATE: ${{ inputs.scenario_signal_date }}
+          INPUT_SCENARIO_START: ${{ inputs.scenario_start }}
+          INPUT_SCENARIO_END: ${{ inputs.scenario_end }}
+          INPUT_REQUIRED_PORTFOLIO_TICKER: ${{ inputs.required_portfolio_ticker }}
+          INPUT_PUBLISH_DRIVE: ${{ inputs.publish_drive }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ -n "$INPUT_REPORT_DATE" ]; then
+            echo "report_date=$INPUT_REPORT_DATE" >> "$GITHUB_OUTPUT"
+          elif [ -n "${{ steps.schedule-gate.outputs.target_date }}" ]; then
+            echo "report_date=${{ steps.schedule-gate.outputs.target_date }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "report_date=$(TZ=Asia/Taipei date +%F)" >> "$GITHUB_OUTPUT"
+          fi
+          echo "scenario_signal_date=${INPUT_SCENARIO_SIGNAL_DATE:-2026-06-12}" >> "$GITHUB_OUTPUT"
+          echo "scenario_start=${INPUT_SCENARIO_START:-2026-06-15}" >> "$GITHUB_OUTPUT"
+          echo "scenario_end=${INPUT_SCENARIO_END:-2026-12-31}" >> "$GITHUB_OUTPUT"
+          echo "required_portfolio_ticker=${INPUT_REQUIRED_PORTFOLIO_TICKER:-00631L.TW}" >> "$GITHUB_OUTPUT"
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "publish_drive=${INPUT_PUBLISH_DRIVE:-true}" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish_drive=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Prepare required personal portfolio store
+        if: steps.schedule-gate.outputs.should_run == 'true'
+        shell: bash
+        env:
+          PORTFOLIO_STORE_JSON: ${{ secrets.PORTFOLIO_STORE_JSON }}
+        run: |
+          if [ -z "$PORTFOLIO_STORE_JSON" ]; then
+            echo "PORTFOLIO_STORE_JSON secret is required for live-path tracker."
+            exit 1
+          fi
+          mkdir -p work/portfolio_app
+          printf '%s' "$PORTFOLIO_STORE_JSON" > work/portfolio_app/portfolio_store.json
+
+      - name: Build frozen-model price cache
+        if: steps.schedule-gate.outputs.should_run == 'true'
+        shell: bash
+        env:
+          PYTHONPATH: src
+        run: |
+          python -m backtest_lab.frozen_strategy_monitor \
+            --config configs/ep05_universe.json \
+            --strategy-config configs/frozen_cycle_proven_top1_v1.json \
+            --group-id group_c_0050_00631l_plus_mega_caps \
+            --signal-date "${{ steps.tracker-inputs.outputs.scenario_signal_date }}" \
+            --cache-dir backtest_cache/live_path_tracker \
+            --output-root outputs/live_path_tracker_frozen_cache \
+            --portfolio-store work/portfolio_app/portfolio_store.json
+
+      - name: Rebuild historical analog scenario bundle
+        if: steps.schedule-gate.outputs.should_run == 'true'
+        shell: bash
+        env:
+          PYTHONPATH: src
+        run: |
+          python -m backtest_lab.future_path_scenario_simulator \
+            --config configs/ep05_universe.json \
+            --group-id group_c_0050_00631l_plus_mega_caps \
+            --cache-dir backtest_cache/live_path_tracker \
+            --output-dir outputs/live_path_tracker_scenario \
+            --signal-date "${{ steps.tracker-inputs.outputs.scenario_signal_date }}" \
+            --scenario-start "${{ steps.tracker-inputs.outputs.scenario_start }}" \
+            --scenario-end "${{ steps.tracker-inputs.outputs.scenario_end }}" \
+            --initial-capital 1328709
+
+      - name: Generate live-path tracking report
+        if: steps.schedule-gate.outputs.should_run == 'true'
+        shell: bash
+        env:
+          PYTHONPATH: src
+        run: |
+          date_key="${{ steps.tracker-inputs.outputs.report_date }}"
+          date_key="${date_key//-/}"
+          output_dir="outputs/live_path_tracker/${date_key}"
+          required_args=()
+          if [ -n "${{ steps.tracker-inputs.outputs.required_portfolio_ticker }}" ]; then
+            required_args+=(--require-portfolio-ticker "${{ steps.tracker-inputs.outputs.required_portfolio_ticker }}")
+          fi
+          python -m backtest_lab.live_path_tracker \
+            --scenario-dir outputs/live_path_tracker_scenario \
+            --output-dir "$output_dir" \
+            --report-date "${{ steps.tracker-inputs.outputs.report_date }}" \
+            --portfolio-store work/portfolio_app/portfolio_store.json \
+            --price-cache-dir backtest_cache/live_path_tracker \
+            --model-target-ticker "00631L.TW" \
+            --model-target-name "0050正二" \
+            "${required_args[@]}"
+          echo "output_dir=$output_dir" >> "$GITHUB_ENV"
+          echo "pdf_path=$output_dir/AI模型實戰路徑追蹤報告_最新版.pdf" >> "$GITHUB_ENV"
+
+      - name: Publish latest tracker PDF to Google Drive
+        if: steps.schedule-gate.outputs.should_run == 'true' && steps.tracker-inputs.outputs.publish_drive == 'true'
+        env:
+          PYTHONPATH: src
+          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+          GOOGLE_OAUTH_REFRESH_TOKEN: ${{ secrets.GOOGLE_OAUTH_REFRESH_TOKEN }}
+          LIVE_PATH_TRACKER_DRIVE_FOLDER_ID: ${{ secrets.LIVE_PATH_TRACKER_DRIVE_FOLDER_ID || vars.LIVE_PATH_TRACKER_DRIVE_FOLDER_ID || '1O6Se-HfI7ZDTQ-LWeAO6f8vtvoLcCzIj' }}
+          LIVE_PATH_TRACKER_DRIVE_FILE_ID: ${{ secrets.LIVE_PATH_TRACKER_DRIVE_FILE_ID || vars.LIVE_PATH_TRACKER_DRIVE_FILE_ID }}
+        run: |
+          file_args=()
+          if [ -n "$LIVE_PATH_TRACKER_DRIVE_FILE_ID" ]; then
+            file_args+=(--file-id "$LIVE_PATH_TRACKER_DRIVE_FILE_ID")
+          fi
+          python -m backtest_lab.drive_publish \
+            --folder-id "$LIVE_PATH_TRACKER_DRIVE_FOLDER_ID" \
+            "${file_args[@]}" \
+            --remote-name "AI模型實戰路徑追蹤報告_最新版.pdf" \
+            --file "$pdf_path"
+
+      - name: Upload live-path tracker artifact
+        if: steps.schedule-gate.outputs.should_run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-path-tracker-${{ steps.tracker-inputs.outputs.report_date }}
+          path: outputs/live_path_tracker/
+          if-no-files-found: error

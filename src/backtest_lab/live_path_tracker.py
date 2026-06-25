@@ -40,6 +40,7 @@ def run_live_path_tracker(
     actual_tracking_csv: str | Path | None = None,
     portfolio_store: str | Path | None = None,
     portfolio_user_id: str = DEFAULT_USER_ID,
+    require_portfolio_tickers: tuple[str, ...] | list[str] | None = None,
     price_cache_dir: str | Path = "backtest_cache",
     publish_drive: bool = False,
     drive_folder_id: str = DEFAULT_FOLDER_ID,
@@ -79,6 +80,7 @@ def run_live_path_tracker(
             cache_dir=price_cache_dir,
             user_id=portfolio_user_id,
         )
+        _validate_required_portfolio_tickers(portfolio_snapshot, require_portfolio_tickers or ())
         actual_portfolio_value = float(portfolio_snapshot["actual_portfolio_value"])
         actual_holding_ticker = actual_holding_ticker or str(portfolio_snapshot["actual_holding_ticker"])
         actual_holding_name = actual_holding_name or str(portfolio_snapshot["actual_holding_name"])
@@ -110,6 +112,7 @@ def run_live_path_tracker(
         "scenario_inputs": scenario["summary_json"].get("scenario_inputs", {}),
         "actual_source": actual_source,
         "portfolio_snapshot": portfolio_snapshot,
+        "required_portfolio_tickers": list(require_portfolio_tickers or ()),
         "latest_status": latest.get("deviation_status", ""),
         "latest_nearest_scenario": latest.get("nearest_scenario", ""),
         "model_changed": False,
@@ -226,6 +229,19 @@ def build_actual_snapshot_from_portfolio_store(
         "positions": position_rows,
         "report_date": report_date,
     }
+
+
+def _validate_required_portfolio_tickers(snapshot: dict[str, Any], required_tickers: tuple[str, ...] | list[str]) -> None:
+    required = {str(ticker).strip() for ticker in required_tickers if str(ticker).strip()}
+    if not required:
+        return
+    actual = {str(row.get("ticker", "")).strip() for row in snapshot.get("positions", []) if int(row.get("shares", 0) or 0) > 0}
+    missing = sorted(required - actual)
+    if missing:
+        raise ValueError(
+            "Portfolio store does not match required live-tracking holdings; "
+            f"missing={','.join(missing)}; actual={','.join(sorted(actual)) or 'cash'}"
+        )
 
 
 def build_percentile_paths(paths: pd.DataFrame) -> pd.DataFrame:
@@ -556,6 +572,12 @@ def main() -> None:
     parser.add_argument("--actual-tracking-csv", default="")
     parser.add_argument("--portfolio-store", default="")
     parser.add_argument("--portfolio-user-id", default=DEFAULT_USER_ID)
+    parser.add_argument(
+        "--require-portfolio-ticker",
+        action="append",
+        default=[],
+        help="Require this ticker to be present in the portfolio store before generating/publishing.",
+    )
     parser.add_argument("--price-cache-dir", default="backtest_cache")
     parser.add_argument("--publish-drive", action="store_true")
     parser.add_argument("--drive-folder-id", default=DEFAULT_FOLDER_ID)
@@ -573,6 +595,7 @@ def main() -> None:
         actual_tracking_csv=args.actual_tracking_csv or None,
         portfolio_store=args.portfolio_store or None,
         portfolio_user_id=args.portfolio_user_id,
+        require_portfolio_tickers=tuple(args.require_portfolio_ticker or ()),
         price_cache_dir=args.price_cache_dir,
         publish_drive=args.publish_drive,
         drive_folder_id=args.drive_folder_id,
