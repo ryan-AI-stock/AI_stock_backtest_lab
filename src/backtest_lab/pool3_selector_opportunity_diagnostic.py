@@ -10,6 +10,7 @@ import pandas as pd
 
 HORIZONS = (20, 60, 120)
 TARGET_BLOCKERS = {"exact_consensus_missing", "formal_target_selector_preferred_other_pool"}
+REPORT_ONLY_BOUNDARY = "report_only"
 
 
 def run_pool3_selector_opportunity_diagnostic(
@@ -68,12 +69,19 @@ def run_pool3_selector_opportunity_diagnostic(
     )
     metadata = {
         "schema_version": 1,
-        "task_id": "TASK-BACKTEST-CORE-POOL3-SELECTOR-OPPORTUNITY-DIAGNOSTIC-001",
+        "task_id": "TASK-BACKTEST-CORE-POOL3-SELECTOR-DIAGNOSTIC-BOUNDARY-001",
         "status": "completed",
         "model": "pool3_selector_opportunity_diagnostic",
         "formal_model_changed": False,
         "trade_decision_changed": False,
         "active_in_trade_decision": False,
+        "pool3_selector_diagnostic_active_in_trade_decision": False,
+        "pool3_selector_diagnostic_boundary": REPORT_ONLY_BOUNDARY,
+        "boundary_rules": [
+            "opportunity_warning is watch-only and must not enter formal target selector",
+            "veto_warning explains why formal selector may ignore Pool3 and must not become an override or trade rule",
+            "diagnostic states do not change formal target, formal vote, or trade action",
+        ],
         "event_panel_path": str(event_panel_path),
         "outputs": {
             "event_panel": "pool3_selector_opportunity_event_panel.csv",
@@ -144,6 +152,12 @@ def _selector_event_panel(panel: pd.DataFrame) -> pd.DataFrame:
         )
     subset["pool3_opportunity_score"] = subset.apply(_opportunity_score, axis=1)
     subset["pool3_opportunity_state"] = subset["pool3_opportunity_score"].map(_opportunity_state)
+    subset["opportunity_concentration_flag"] = _concentration_flags(subset)
+    subset["pool3_selector_diagnostic_state"] = subset.apply(_diagnostic_state, axis=1)
+    subset["pool3_selector_veto_explanation"] = subset.apply(_veto_explanation, axis=1)
+    subset["pool3_opportunity_watch_only_reason"] = subset.apply(_opportunity_watch_only_reason, axis=1)
+    subset["pool3_selector_diagnostic_active_in_trade_decision"] = False
+    subset["pool3_selector_diagnostic_boundary"] = REPORT_ONLY_BOUNDARY
     return subset
 
 
@@ -172,6 +186,58 @@ def _opportunity_state(score: int) -> str:
     if score <= -5:
         return "veto_warning"
     return "mixed_or_insufficient"
+
+
+def _concentration_flags(events: pd.DataFrame) -> pd.Series:
+    if events.empty:
+        return pd.Series(dtype=str)
+    flags = pd.Series("none", index=events.index, dtype=object)
+    for period, frame in events.groupby("period", dropna=False):
+        opportunity = frame[frame["pool3_opportunity_state"] == "opportunity_warning"]
+        if opportunity.empty:
+            continue
+        top_share = opportunity["pool3_ticker"].astype(str).value_counts(normalize=True).iloc[0]
+        if top_share > 0.40:
+            flags.loc[opportunity.index] = f"opportunity_top_ticker_share_gt_40pct:{top_share:.4f}"
+    return flags
+
+
+def _diagnostic_state(row: pd.Series) -> str:
+    state = str(row.get("pool3_opportunity_state") or "")
+    concentration = str(row.get("opportunity_concentration_flag") or "")
+    if state == "opportunity_warning" and concentration != "none":
+        return "concentration_blocked"
+    if state == "opportunity_warning":
+        return "opportunity_watch_only"
+    if state == "veto_warning":
+        return "veto_explanation"
+    if state == "mixed_or_insufficient":
+        return "mixed_or_insufficient"
+    return "none"
+
+
+def _veto_explanation(row: pd.Series) -> str:
+    if str(row.get("pool3_opportunity_state") or "") != "veto_warning":
+        return ""
+    return (
+        "Pool3 ignored event 後續表現廣泛落後 formal target、0050 或 0050正二；"
+        "此訊號只用於解釋 selector 忽略 Pool3 的合理性，不改正式結論。"
+    )
+
+
+def _opportunity_watch_only_reason(row: pd.Series) -> str:
+    state = str(row.get("pool3_selector_diagnostic_state") or "")
+    if state == "concentration_blocked":
+        return (
+            "Pool3 ignored event 有機會成本跡象，但集中度過高；"
+            "僅列觀察，不可作 selector 加權或正式放行。"
+        )
+    if state == "opportunity_watch_only":
+        return (
+            "Pool3 ignored event 有機會成本跡象；"
+            "僅列觀察，不進 formal target selector。"
+        )
+    return ""
 
 
 def _forward_comparison_rows(events: pd.DataFrame) -> pd.DataFrame:
@@ -227,6 +293,7 @@ def _gate_report(events: pd.DataFrame) -> pd.DataFrame:
     total = len(events)
     opportunity = int((events["pool3_opportunity_state"] == "opportunity_warning").sum()) if total else 0
     veto = int((events["pool3_opportunity_state"] == "veto_warning").sum()) if total else 0
+    concentration_blocked = int((events["pool3_selector_diagnostic_state"] == "concentration_blocked").sum()) if total else 0
     return pd.DataFrame(
         [
             {
@@ -235,6 +302,7 @@ def _gate_report(events: pd.DataFrame) -> pd.DataFrame:
                 "events": opportunity,
                 "share": _rate(opportunity, total),
                 "active_in_trade_decision": False,
+                "boundary": REPORT_ONLY_BOUNDARY,
             },
             {
                 "gate": "veto_warning_candidate",
@@ -242,6 +310,15 @@ def _gate_report(events: pd.DataFrame) -> pd.DataFrame:
                 "events": veto,
                 "share": _rate(veto, total),
                 "active_in_trade_decision": False,
+                "boundary": REPORT_ONLY_BOUNDARY,
+            },
+            {
+                "gate": "concentration_blocked",
+                "description": "Opportunity watch-only rows are blocked from formal use when concentrated in one ticker.",
+                "events": concentration_blocked,
+                "share": _rate(concentration_blocked, total),
+                "active_in_trade_decision": False,
+                "boundary": REPORT_ONLY_BOUNDARY,
             },
         ]
     )
