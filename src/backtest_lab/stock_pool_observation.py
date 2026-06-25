@@ -1106,6 +1106,7 @@ def run_stock_pool_observation_batch(
             )
     _finalize_batch_signal_date_metadata(manifest)
     manifest["consensus"] = build_consensus(manifest)
+    manifest["report_wording_boundary"] = _report_wording_boundary()
     manifest["pool3_radar_attack_satellite"] = build_pool3_radar_attack_satellite(
         radar_data_dir=radar_data_dir,
         signal_date=manifest.get("actual_signal_date") or signal_date,
@@ -1159,6 +1160,36 @@ def _finalize_batch_signal_date_metadata(manifest: dict[str, Any]) -> None:
         if fallback_used
         else ""
     )
+
+
+def _report_wording_boundary() -> dict[str, Any]:
+    return {
+        "formal_model_changed": False,
+        "trade_decision_changed": False,
+        "report_boundary": "formal_baseline_with_report_only_diagnostics",
+        "formal_baseline": {
+            "label": "正式 baseline",
+            "description": "正式 baseline 只包含目前已啟用的 Pool1、PIT-ready Pool2 與 current formal selector。",
+            "active_in_trade_decision": True,
+            "components": ["pool1_formal_engine", "pool2_tw50_pit_ready_engine", "current_formal_selector"],
+        },
+        "diagnostic_boundary": {
+            "label": "診斷 / report-only",
+            "description": "Pool3、Final decision layer 與籌碼 shadow 目前只作診斷、註解或觀察，不得解讀成正式交易決策。",
+            "active_in_trade_decision": False,
+            "components": ["pool3_shadow_or_diagnostic", "final_decision_layer_report_only", "chip_factor_shadow_diagnostic"],
+        },
+        "execution_boundary": {
+            "label": "尚未成立",
+            "description": "execution/exit layer 尚未建立；baseline selection signal 不等於完整持倉管理命令。",
+            "active_in_trade_decision": False,
+        },
+        "plain_language_notes": [
+            "正式 baseline：目前可作為主要 AI 輔助市場觀察基準。",
+            "診斷註解：Pool3、final decision、chip shadow 只解釋風險或分歧，不是正式 selector。",
+            "執行邊界：目前沒有完整 execution/exit layer；訊號變化不等於完整持倉管理命令。",
+        ],
+    }
 
 
 def write_stock_pool_observation_batch_summary(root: Path, manifest: dict[str, Any]) -> None:
@@ -1267,6 +1298,10 @@ def _manifest_pool_candidate_tickers(manifest: dict[str, Any], pool_id: str) -> 
 def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[str, Any]]) -> str:
     consensus = manifest.get("consensus") or {}
     satellite = manifest.get("pool3_radar_attack_satellite") or {}
+    wording = manifest.get("report_wording_boundary") or _report_wording_boundary()
+    formal_boundary = wording.get("formal_baseline") or {}
+    diagnostic_boundary = wording.get("diagnostic_boundary") or {}
+    execution_boundary = wording.get("execution_boundary") or {}
     lines = [
         "# 股票池觀察摘要",
         "",
@@ -1277,6 +1312,9 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
         f"- 跳過股票池：{len(manifest.get('skipped', []))}",
         f"- 三池共識：{consensus.get('winner_display') or '沒有形成明確共識'}",
         f"- 表決原因：{consensus.get('reason') or '尚未產生三池表決結果'}",
+        f"- 正式 baseline：{formal_boundary.get('description')}",
+        f"- 診斷邊界：{diagnostic_boundary.get('description')}",
+        f"- 執行邊界：{execution_boundary.get('description')}",
         "",
         "| 狀態 | 股票池 | 角色 | 成員檢查 | 前三名 / 跳過原因 | 來源摘要 | 缺價股票 |",
         "| --- | --- | --- | --- | --- | --- | --- |",
@@ -1325,6 +1363,8 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
         [
             "",
             "本摘要為 AI 輔助股票池觀察輸出，不是投資建議；正式用途仍需搭配策略規則、交易成本、資料完整性與風險檢查。",
+            "Pool3、final decision layer、chip shadow 目前皆為 report-only / diagnostic；不得當作正式交易決策。",
+            "Execution/exit layer 尚未成立；baseline selection signal 不等於完整持倉管理命令。",
         ]
     )
     return "\n".join(lines)
@@ -1383,7 +1423,7 @@ def _draw_observation_summary_pdf_page(ax, manifest: dict[str, Any], rows: list[
         ("已產出股票池", f"{generated_count}", "#13795b"),
         ("跳過股票池", f"{skipped_count}", "#b42318" if skipped_count else "#13795b"),
         ("三池共識", top_label, "#2457a7" if consensus_state == "consensus" else "#b42318"),
-        ("使用邊界", "觀察，不是建議", "#17212a"),
+        ("使用邊界", "正式/診斷分層", "#17212a"),
     ]
     for index, (label, value, color) in enumerate(cards):
         x = 0.06 + index * 0.225
@@ -1397,13 +1437,14 @@ def _draw_observation_summary_pdf_page(ax, manifest: dict[str, Any], rows: list[
     _draw_consensus_decision_panel(ax, manifest, rows)
     ax.text(0.06, 0.17, "使用邊界", color="#17212a", fontsize=14, fontweight="bold", transform=ax.transAxes)
     notes = [
-        "三池共識只統計正式候選與市場曝險工具；觀察排名不納入票數。",
-        "個股若未通過池內攻擊條件，只能列為觀察排名；ETF 依市場曝險工具邏輯顯示。",
-        "本報告固定使用同一套資料口徑與股票池設定，方便後續追蹤模型是否穩定。",
+        "正式 baseline 只包含 Pool1、PIT-ready Pool2 與 current formal selector。",
+        "Pool3、final decision layer、chip shadow 皆為 report-only/diagnostic，不是正式交易決策。",
+        "0050/00631L 屬市場曝險工具，不支援 formal stock exact consensus。",
+        "execution/exit layer 尚未成立；baseline selection signal 不等於完整持倉管理命令。",
         "本報告為 AI 輔助市場觀察與回測工作流輸出，不是投資建議。",
     ]
     for index, note in enumerate(notes):
-        ax.text(0.075, 0.126 - index * 0.026, f"• {note}", color="#4d5b66", fontsize=9.6, transform=ax.transAxes)
+        ax.text(0.075, 0.132 - index * 0.023, f"• {note}", color="#4d5b66", fontsize=8.7, transform=ax.transAxes)
     ax.text(0.06, 0.026, f"{REPORT_TITLE} · {manifest.get('signal_date', '')}", color="#9aa7b1", fontsize=8.5, transform=ax.transAxes)
     ax.text(0.94, 0.026, "AI_stock_backtest_lab", color="#9aa7b1", fontsize=8.5, ha="right", transform=ax.transAxes)
 
@@ -1421,7 +1462,14 @@ def _draw_observation_detail_pdf_page(ax, manifest: dict[str, Any], rows: list[d
     )
     bottom_y = _draw_pool_top3_sections(ax, rows, start_y=0.84)
     reminder_y = max(min(bottom_y - 0.018, 0.075), 0.062)
-    ax.text(0.06, reminder_y, "提醒：表格列出的是各池內部排序與程式原因；正式總結以第一頁三池表決為準。", color="#52616b", fontsize=8.6, transform=ax.transAxes)
+    ax.text(
+        0.06,
+        reminder_y,
+        "提醒：表格列出池內排序與原因；Pool3/Final decision/chip shadow 仍是診斷，不得當正式 selector。",
+        color="#52616b",
+        fontsize=8.2,
+        transform=ax.transAxes,
+    )
     ax.text(0.06, 0.04, f"{REPORT_TITLE} · {manifest.get('signal_date', '')}", color="#9aa7b1", fontsize=8.5, transform=ax.transAxes)
     ax.text(0.94, 0.04, "AI_stock_backtest_lab", color="#9aa7b1", fontsize=8.5, ha="right", transform=ax.transAxes)
 
