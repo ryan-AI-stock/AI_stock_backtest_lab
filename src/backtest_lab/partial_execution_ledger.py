@@ -330,6 +330,13 @@ def _variant_condition_matches(variant: ExecutionVariant, context: dict[str, Any
         return high_turnover
     if variant.subset == "rapid_reversal_or_selector_conflict":
         return rapid or selector
+    if variant.subset in {
+        "rapid_reversal_any_1_3",
+        "rapid_reversal_roundtrip_1_3",
+        "rapid_reversal_any_1_2",
+        "rapid_reversal_roundtrip_1_2",
+    }:
+        return bool(context.get(variant.subset, False))
     return False
 
 
