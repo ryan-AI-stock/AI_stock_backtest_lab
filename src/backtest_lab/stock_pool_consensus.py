@@ -94,7 +94,7 @@ def build_consensus(manifest: dict[str, Any], *, vote_group: str = DEFAULT_VOTE_
         ],
         "voters": vote_rows,
         "skipped_vote_pools": skipped_vote_pools,
-        "boundary": "AI 輔助市場觀察與模型表決，不是投資建議。",
+        "boundary": "AI 輔助市場觀察與模型診斷，不是正式交易指令。",
     }
 
 
@@ -122,13 +122,13 @@ def write_consensus_outputs(root: Path, manifest: dict[str, Any]) -> dict[str, A
 def markdown_consensus_report(consensus: dict[str, Any]) -> str:
     health = consensus.get("health_diagnostic") or {}
     lines = [
-        "# 三立場股票池表決摘要",
+        "# 候選分歧診斷摘要",
         "",
         f"- 訊號日：{consensus.get('signal_date', '')}",
         f"- 狀態：{consensus.get('result_state', '')}",
         f"- 結論：{consensus.get('winner_display') or '沒有形成明確共識'}",
         f"- 原因：{consensus.get('reason', '')}",
-        f"- 決策層：{consensus.get('consensus_type', 'consensus_observation')}；正式交易目標：未設定",
+        f"- 診斷層：{consensus.get('consensus_type', 'consensus_observation')}；正式交易目標：未設定",
         "",
         "## 共識健康診斷",
         "",
@@ -169,7 +169,7 @@ def markdown_consensus_report(consensus: dict[str, Any]) -> str:
     lines.extend(
         [
             "",
-            "使用邊界：這是 AI 輔助市場觀察與模型表決，不是投資建議。若三池分歧，不應硬解讀成明確換倉訊號。",
+            "使用邊界：這是 AI 輔助市場觀察與候選分歧診斷，不是投資建議；分歧狀態不應硬解讀成明確換倉訊號。",
         ]
     )
     return "\n".join(lines)
@@ -455,7 +455,7 @@ def _actionable_decision_reason(*, result_state: str, winner_ticker: str | None,
         return "標的分歧但方向一致；僅標示為後續決策協議研究候選。"
     if no_vote:
         return "可投票資料不足或池內條件未通過。"
-    return "三池標的與方向均未形成可行動共識。"
+    return "候選標的與方向均未形成可行動共識。"
 
 
 def _decision_source(
@@ -555,13 +555,13 @@ def _number(value: object) -> float:
 
 def _health_note(decision_state: str, *, divergent: bool, no_vote: bool) -> str:
     if divergent:
-        return "三池分歧，應檢查池角色與候選設計，不應包裝成明確行動訊號。"
+        return "候選分歧，應檢查模型角色與候選設計，不應包裝成明確行動訊號。"
     if no_vote:
         return "可投票資料不足，應先檢查資料完整性與池內 gate。"
     if decision_state == "defensive_or_market_exposure":
         return "共識偏向市場曝險或防守工具，代表模型目前不偏向單一個股攻擊。"
     if decision_state == "strong_consensus":
-        return "三池高度一致；仍需保留資料日與風險邊界。"
+        return "候選高度一致；仍需保留資料日與風險邊界。"
     if decision_state == "weak_consensus":
         return "形成 2/3 共識；少數池意見仍應保留為風險觀察。"
     if decision_state == "forced_stop":

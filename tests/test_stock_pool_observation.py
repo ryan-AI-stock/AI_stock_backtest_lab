@@ -620,28 +620,27 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertTrue(wording["formal_baseline"]["active_in_trade_decision"])
             self.assertFalse(wording["diagnostic_boundary"]["active_in_trade_decision"])
             self.assertFalse(wording["execution_boundary"]["active_in_trade_decision"])
-            self.assertIn("Pool3", wording["diagnostic_boundary"]["description"])
+            self.assertIn("非正式診斷", wording["diagnostic_boundary"]["description"])
             self.assertIn("execution/exit layer", wording["execution_boundary"]["description"])
-            self.assertIn("pool3_radar_attack_satellite", manifest)
-            self.assertFalse(manifest["pool3_radar_attack_satellite"]["active_in_trade_decision"])
-            self.assertFalse(manifest["pool3_radar_attack_satellite"]["valuation_used"])
-            self.assertFalse(manifest["pool3_radar_attack_satellite"]["h3_used"])
+            self.assertNotIn("pool3_radar_attack_satellite", manifest)
             manifest_path = Path(manifest["output_root"]) / "stock_pool_observation_manifest.json"
             self.assertTrue(manifest_path.exists())
             self.assertTrue((Path(manifest["output_root"]) / "model_layer_audit.json").exists())
             self.assertTrue((Path(manifest["output_root"]) / "stock_pool_observation_summary.csv").exists())
             self.assertTrue((Path(manifest["output_root"]) / "stock_pool_candidate_reviews.csv").exists())
             self.assertTrue((Path(manifest["output_root"]) / "stock_pool_candidate_reviews.json").exists())
-            self.assertTrue((Path(manifest["output_root"]) / "pool3_radar_attack_satellite.json").exists())
-            self.assertTrue((Path(manifest["output_root"]) / "pool3_radar_attack_satellite.csv").exists())
-            self.assertTrue((Path(manifest["output_root"]) / "pool3_radar_attack_satellite.md").exists())
+            self.assertFalse((Path(manifest["output_root"]) / "pool3_radar_attack_satellite.json").exists())
+            self.assertFalse((Path(manifest["output_root"]) / "pool3_radar_attack_satellite.csv").exists())
+            self.assertFalse((Path(manifest["output_root"]) / "pool3_radar_attack_satellite.md").exists())
             self.assertTrue((Path(manifest["output_root"]) / "stock_pool_observation_report.md").exists())
             report_text = (Path(manifest["output_root"]) / "stock_pool_observation_report.md").read_text(encoding="utf-8")
             self.assertIn("測試專家", report_text)
             self.assertIn("月頻", report_text)
-            self.assertIn("Pool3 Radar Top10 攻擊衛星觀察", report_text)
+            self.assertNotIn("三池", report_text)
+            self.assertNotIn("風格補強池", report_text)
+            self.assertNotIn("Pool3 Radar Top10 攻擊衛星觀察", report_text)
             self.assertIn("正式 baseline", report_text)
-            self.assertIn("Pool3、Final decision layer 與籌碼 shadow", report_text)
+            self.assertIn("非正式診斷註解", report_text)
             self.assertIn("baseline selection signal 不等於完整持倉管理命令", report_text)
             self.assertTrue((Path(manifest["output_root"]) / "AI股票池觀察總覽_最新版_v20260612.pdf").exists())
             self.assertTrue(
@@ -779,7 +778,7 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertIn("RADAR正式候選", report)
             self.assertIn("測試記憶體(1111)", report)
 
-    def test_batch_adds_pool3_radar_attack_satellite_without_changing_consensus(self) -> None:
+    def test_batch_does_not_emit_pool3_radar_artifacts_or_change_consensus(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -861,14 +860,11 @@ class StockPoolObservationTest(unittest.TestCase):
                 radar_data_dir=radar_data_dir,
             )
 
-        satellite = manifest["pool3_radar_attack_satellite"]
-        self.assertEqual(satellite["decision_layer"], "shadow_overlay")
-        self.assertFalse(satellite["active_in_trade_decision"])
-        self.assertFalse(satellite["included_in_three_pool_vote"])
-        self.assertFalse(satellite["valuation_used"])
-        self.assertFalse(satellite["h3_used"])
-        self.assertEqual([row["ticker"] for row in satellite["candidates"]], ["1111.TW", "2222.TW"])
-        self.assertEqual(satellite["readiness"]["status"], "partial")
+        output_root = Path(manifest["output_root"])
+        self.assertNotIn("pool3_radar_attack_satellite", manifest)
+        self.assertFalse((output_root / "pool3_radar_attack_satellite.json").exists())
+        self.assertFalse((output_root / "pool3_radar_attack_satellite.csv").exists())
+        self.assertFalse((output_root / "pool3_radar_attack_satellite.md").exists())
         self.assertEqual(len(manifest["consensus"]["voters"]), 2)
         self.assertNotIn("1111.TW", [vote["ticker"] for vote in manifest["consensus"]["votes"]])
 
@@ -920,9 +916,14 @@ class StockPoolObservationTest(unittest.TestCase):
             manifest_payload = (Path(manifest["output_root"]) / "stock_pool_observation_manifest.json").read_text(encoding="utf-8")
             self.assertIn('"consensus"', manifest_payload)
             report = (Path(manifest["output_root"]) / "stock_pool_consensus_report.md").read_text(encoding="utf-8")
-            self.assertIn("三立場股票池表決摘要", report)
+            self.assertIn("候選分歧診斷摘要", report)
+            self.assertNotIn("三立場股票池表決摘要", report)
+            self.assertNotIn("三池", report)
             summary_report = (Path(manifest["output_root"]) / "stock_pool_observation_report.md").read_text(encoding="utf-8")
-            self.assertIn("三池共識", summary_report)
+            self.assertIn("正式 baseline", summary_report)
+            self.assertNotIn("三池", summary_report)
+            self.assertNotIn("風格補強池", summary_report)
+            self.assertNotIn("舊三池診斷", summary_report)
             self.assertIn("大型廣度池", summary_report)
 
     def test_batch_generates_pool_with_partial_price_coverage(self) -> None:

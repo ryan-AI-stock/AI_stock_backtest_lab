@@ -20,14 +20,9 @@ from backtest_lab.decision_layers import (
     default_stock_pool_model_layer_audit,
     write_model_layer_audit,
 )
-from backtest_lab.formal_model_contract import FORMAL_MODEL_TARGET, formal_model_report_description
+from backtest_lab.formal_model_contract import FORMAL_MODEL_ROUTE, FORMAL_MODEL_TARGET, formal_model_report_description
 from backtest_lab.formal_radar_candidates import formal_radar_candidates_to_symbols, load_formal_radar_candidates
 from backtest_lab.market_cap_source import load_first_available_market_caps
-from backtest_lab.pool3_radar_attack_satellite import (
-    SATELLITE_WORDING,
-    build_pool3_radar_attack_satellite,
-    write_pool3_radar_attack_satellite_outputs,
-)
 from backtest_lab.risk_factor_source import RiskFactorSignal, load_first_available_risk_factors
 from backtest_lab.frozen_report_pdf import _configure_chinese_font, _save_figure_as_raster_pdf_page
 from backtest_lab.frozen_strategy_monitor import (
@@ -61,7 +56,7 @@ from backtest_lab.valuation_source import ValuationSignal, load_valuation_signal
 
 DEFAULT_OUTPUT_ROOT = "outputs/stock_pool_observations"
 REPORT_NAME = "AI股票池觀察總覽"
-REPORT_TITLE = "AI股票池三池表決觀察總覽"
+REPORT_TITLE = "AI股票池正式觀察總覽"
 REPORT_VERSION = "v20260612"
 REPORT_LATEST_FILENAME = f"{REPORT_NAME}_最新版_{REPORT_VERSION}.pdf"
 FROZEN_BEST_GROUP_ID = "group_c_0050_00631l_plus_mega_caps"
@@ -1108,13 +1103,6 @@ def run_stock_pool_observation_batch(
     _finalize_batch_signal_date_metadata(manifest)
     manifest["consensus"] = build_consensus(manifest)
     manifest["report_wording_boundary"] = _report_wording_boundary()
-    manifest["pool3_radar_attack_satellite"] = build_pool3_radar_attack_satellite(
-        radar_data_dir=radar_data_dir,
-        signal_date=manifest.get("actual_signal_date") or signal_date,
-        pool1_tickers=_manifest_pool_candidate_tickers(manifest, "ai_theme_large_cap_v20260613"),
-        pool2_tickers=_manifest_pool_candidate_tickers(manifest, "tw50_dynamic_constituents_v0"),
-    )
-    write_pool3_radar_attack_satellite_outputs(root, manifest["pool3_radar_attack_satellite"])
     manifest["model_layer_audit"] = default_stock_pool_model_layer_audit(
         signal_date=manifest.get("actual_signal_date") or signal_date,
         generated_pools=manifest["generated"],
@@ -1173,11 +1161,12 @@ def _report_wording_boundary() -> dict[str, Any]:
             "description": formal_model_report_description(),
             "active_in_trade_decision": True,
             "formal_model_target": FORMAL_MODEL_TARGET,
+            "formal_model_route": FORMAL_MODEL_ROUTE,
             "components": ["pool1_primary_selector", "pool2_tw50_pit_ready_confirmation_risk_layer", "combined_cap40_confirmation1_base"],
         },
         "diagnostic_boundary": {
             "label": "診斷 / report-only",
-            "description": "三池表決、Pool3、Final decision layer 與籌碼 shadow 目前只作診斷、註解或觀察，不得解讀成正式交易決策。",
+            "description": "非正式診斷註解目前只作內部檢查或風險說明，不得解讀成正式交易決策。",
             "active_in_trade_decision": False,
             "components": ["three_pool_vote_diagnostic", "pool3_shadow_or_diagnostic", "final_decision_layer_report_only", "chip_factor_shadow_diagnostic"],
         },
@@ -1188,7 +1177,7 @@ def _report_wording_boundary() -> dict[str, Any]:
         },
         "plain_language_notes": [
             "正式 baseline：目前切換為 Pool1+Pool2 formal model target，可作為主要 AI 輔助市場觀察基準。",
-            "診斷註解：三池表決、Pool3、final decision、chip shadow 只解釋風險或分歧，不是正式 selector。",
+            "診斷註解：非正式診斷資訊只解釋風險或資料限制，不是正式 selector。",
             "執行邊界：目前沒有完整 execution/exit layer；訊號變化不等於完整持倉管理命令。",
         ],
     }
@@ -1298,30 +1287,27 @@ def _manifest_pool_candidate_tickers(manifest: dict[str, Any], pool_id: str) -> 
 
 
 def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[str, Any]]) -> str:
-    consensus = manifest.get("consensus") or {}
-    satellite = manifest.get("pool3_radar_attack_satellite") or {}
     wording = manifest.get("report_wording_boundary") or _report_wording_boundary()
     formal_boundary = wording.get("formal_baseline") or {}
     diagnostic_boundary = wording.get("diagnostic_boundary") or {}
     execution_boundary = wording.get("execution_boundary") or {}
+    report_rows = _formal_report_rows(rows)
     lines = [
         "# 股票池觀察摘要",
         "",
         f"- 要求訊號日：{manifest.get('requested_signal_date', manifest.get('signal_date', ''))}",
         f"- 訊號日：{manifest.get('signal_date', '')}",
         f"- 資料日 fallback：{manifest.get('fallback_reason') or '未啟用'}",
-        f"- 已產出股票池：{len(manifest.get('generated', []))}",
+        f"- 正式觀察項目：{len(report_rows)}",
         f"- 跳過股票池：{len(manifest.get('skipped', []))}",
-        f"- 三池共識：{consensus.get('winner_display') or '沒有形成明確共識'}",
-        f"- 表決原因：{consensus.get('reason') or '尚未產生三池表決結果'}",
         f"- 正式 baseline：{formal_boundary.get('description')}",
         f"- 診斷邊界：{diagnostic_boundary.get('description')}",
         f"- 執行邊界：{execution_boundary.get('description')}",
         "",
-        "| 狀態 | 股票池 | 角色 | 成員檢查 | 前三名 / 跳過原因 | 來源摘要 | 缺價股票 |",
+        "| 狀態 | 正式觀察 | 角色 | 成員檢查 | 前三名 / 跳過原因 | 來源摘要 | 缺價股票 |",
         "| --- | --- | --- | --- | --- | --- | --- |",
     ]
-    for row in rows:
+    for row in report_rows:
         if row["status"] == "generated":
             target = row["top_candidates_text"] or row["top_display"] or row["top_ticker"] or row["action_state"] or "無合格候選"
             missing = row["missing_price_tickers"] or "-"
@@ -1334,38 +1320,8 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
     lines.extend(
         [
             "",
-            "## Pool3 Radar Top10 攻擊衛星觀察",
-            "",
-            f"- 語意：{satellite.get('wording') or SATELLITE_WORDING}",
-            "- 狀態：report-only shadow，不納入三池正式投票。",
-            f"- active_in_trade_decision：{str(satellite.get('active_in_trade_decision')).lower()}",
-            f"- readiness：{(satellite.get('readiness') or {}).get('status', 'unknown')}",
-            f"- valuation_used：{str(satellite.get('valuation_used')).lower()}",
-            f"- h3_used：{str(satellite.get('h3_used')).lower()}",
-            "",
-            "| Rank | 標的 | Theme | Score | Weight | Pool1 overlap | Pool2 overlap |",
-            "| --- | --- | --- | ---: | ---: | --- | --- |",
-        ]
-    )
-    for candidate in (satellite.get("candidates") or [])[:10]:
-        lines.append(
-            "| {rank} | {display} | {theme} | {score:.2f} | {weight:.1%} | {p1} | {p2} |".format(
-                rank=candidate.get("rank", ""),
-                display=candidate.get("display") or candidate.get("ticker") or "",
-                theme=candidate.get("theme", ""),
-                score=float(candidate.get("score") or 0.0),
-                weight=float(candidate.get("weight") or 0.0),
-                p1="Y" if candidate.get("overlaps_pool1") else "N",
-                p2="Y" if candidate.get("overlaps_pool2") else "N",
-            )
-        )
-    for note in satellite.get("risk_notes") or []:
-        lines.append(f"- {note}")
-    lines.extend(
-        [
-            "",
             "本摘要為 AI 輔助股票池觀察輸出，不是投資建議；正式用途仍需搭配策略規則、交易成本、資料完整性與風險檢查。",
-            "正式 baseline 已切換為 Pool1+Pool2；三池表決、Pool3、final decision layer、chip shadow 目前皆為 report-only / diagnostic。",
+            "正式 baseline 已切換為 Pool1+Pool2；非正式診斷註解不作為正式 selector 或交易規則。",
             "Execution/exit layer 尚未成立；baseline selection signal 不等於完整持倉管理命令。",
         ]
     )
@@ -1387,20 +1343,23 @@ def write_stock_pool_observation_batch_pdf(path: Path, manifest: dict[str, Any],
         _draw_observation_detail_pdf_page(ax, manifest, rows)
         _save_figure_as_raster_pdf_page(pdf, fig)
 
-        fig = plt.figure(figsize=(8.27, 11.69), facecolor="#f4f6f8")
-        ax = fig.add_axes((0, 0, 1, 1))
-        ax.axis("off")
-        _draw_pool3_radar_satellite_pdf_page(ax, manifest)
-        _save_figure_as_raster_pdf_page(pdf, fig)
+
+def _formal_report_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [row for row in rows if not _hide_from_formal_report(row)]
+
+
+def _hide_from_formal_report(row: dict[str, Any]) -> bool:
+    text = " ".join(
+        str(row.get(key) or "")
+        for key in ("pool_id", "pool_name", "pool_short_name", "role_name", "role_description")
+    )
+    return any(marker in text for marker in ("large_core_bluechip_v0", "風格補強", "Pool3", "pool3", "Radar"))
 
 
 def _draw_observation_summary_pdf_page(ax, manifest: dict[str, Any], rows: list[dict[str, Any]]) -> None:
-    generated_count = len(manifest.get("generated", []))
+    report_rows = _formal_report_rows(rows)
+    generated_count = len([row for row in report_rows if row.get("status") == "generated"])
     skipped_count = len(manifest.get("skipped", []))
-    consensus = manifest.get("consensus") or {}
-    top_label = consensus.get("winner_display") or "模型分歧"
-    consensus_state = consensus.get("result_state") or "no_vote"
-    consensus_reason = consensus.get("reason") or "尚未產生三池表決結果"
 
     ax.add_patch(plt.Rectangle((0, 0.86), 1, 0.14, color="#17212a", transform=ax.transAxes))
     ax.text(0.06, 0.94, REPORT_TITLE, color="white", fontsize=20, fontweight="bold", transform=ax.transAxes)
@@ -1422,10 +1381,10 @@ def _draw_observation_summary_pdf_page(ax, manifest: dict[str, Any], rows: list[
             transform=ax.transAxes,
         )
     cards = [
-        ("已產出股票池", f"{generated_count}", "#13795b"),
+        ("正式觀察項目", f"{generated_count}", "#13795b"),
         ("跳過股票池", f"{skipped_count}", "#b42318" if skipped_count else "#13795b"),
-        ("三池共識", top_label, "#2457a7" if consensus_state == "consensus" else "#b42318"),
-        ("使用邊界", "正式/診斷分層", "#17212a"),
+        ("正式模型", "Pool1+Pool2", "#2457a7"),
+        ("使用邊界", "正式/非正式分層", "#17212a"),
     ]
     for index, (label, value, color) in enumerate(cards):
         x = 0.06 + index * 0.225
@@ -1435,12 +1394,12 @@ def _draw_observation_summary_pdf_page(ax, manifest: dict[str, Any], rows: list[
         ax.text(x + 0.014, 0.795, label, color="#66737d", fontsize=9.5, transform=ax.transAxes)
         ax.text(x + 0.014, 0.767, _compact_display(str(value), limit=18), color=color, fontsize=11.2, fontweight="bold", transform=ax.transAxes)
 
-    ax.text(0.06, 0.69, f"表決原因：{consensus_reason[:48]}", color="#52616b", fontsize=10, transform=ax.transAxes)
-    _draw_consensus_decision_panel(ax, manifest, rows)
+    ax.text(0.06, 0.69, "正式模型：Pool1 主攻 selector + PIT-ready Pool2 確認/風控層。", color="#52616b", fontsize=10, transform=ax.transAxes)
+    _draw_formal_baseline_panel(ax, manifest, report_rows)
     ax.text(0.06, 0.17, "使用邊界", color="#17212a", fontsize=14, fontweight="bold", transform=ax.transAxes)
     notes = [
         f"正式 baseline：{FORMAL_MODEL_TARGET}，Pool1 主攻 + Pool2 確認/風控。",
-        "三池表決、Pool3、final decision layer、chip shadow 皆為 report-only/diagnostic。",
+        "非正式診斷註解不作為正式 selector 或交易規則。",
         "0050/00631L 屬市場曝險工具，不支援 formal stock exact consensus。",
         "execution/exit layer 尚未成立；baseline selection signal 不等於完整持倉管理命令。",
         "本報告為 AI 輔助市場觀察與回測工作流輸出，不是投資建議。",
@@ -1452,8 +1411,9 @@ def _draw_observation_summary_pdf_page(ax, manifest: dict[str, Any], rows: list[
 
 
 def _draw_observation_detail_pdf_page(ax, manifest: dict[str, Any], rows: list[dict[str, Any]]) -> None:
+    report_rows = _formal_report_rows(rows)
     ax.add_patch(plt.Rectangle((0, 0.9), 1, 0.1, color="#17212a", transform=ax.transAxes))
-    ax.text(0.06, 0.958, "三池前三名與程式判斷原因", color="white", fontsize=18, fontweight="bold", transform=ax.transAxes)
+    ax.text(0.06, 0.958, "正式模型觀察明細", color="white", fontsize=18, fontweight="bold", transform=ax.transAxes)
     ax.text(
         0.06,
         0.92,
@@ -1462,12 +1422,12 @@ def _draw_observation_detail_pdf_page(ax, manifest: dict[str, Any], rows: list[d
         fontsize=10.5,
         transform=ax.transAxes,
     )
-    bottom_y = _draw_pool_top3_sections(ax, rows, start_y=0.84)
+    bottom_y = _draw_pool_top3_sections(ax, report_rows, start_y=0.84)
     reminder_y = max(min(bottom_y - 0.018, 0.075), 0.062)
     ax.text(
         0.06,
         reminder_y,
-        "提醒：表格列出池內排序與原因；Pool3/Final decision/chip shadow 仍是診斷，不得當正式 selector。",
+        "提醒：表格列出池內排序與原因；正式模型仍以 Pool1+Pool2 baseline 為主，不代表完整 execution/exit layer。",
         color="#52616b",
         fontsize=8.2,
         transform=ax.transAxes,
@@ -1476,95 +1436,7 @@ def _draw_observation_detail_pdf_page(ax, manifest: dict[str, Any], rows: list[d
     ax.text(0.94, 0.04, "AI_stock_backtest_lab", color="#9aa7b1", fontsize=8.5, ha="right", transform=ax.transAxes)
 
 
-def _draw_pool3_radar_satellite_pdf_page(ax, manifest: dict[str, Any]) -> None:
-    satellite = manifest.get("pool3_radar_attack_satellite") or {}
-    readiness = satellite.get("readiness") or {}
-    candidates = satellite.get("candidates") or []
-
-    ax.add_patch(plt.Rectangle((0, 0.9), 1, 0.1, color="#17212a", transform=ax.transAxes))
-    ax.text(0.06, 0.958, "Pool3 Radar 攻擊衛星觀察", color="white", fontsize=18, fontweight="bold", transform=ax.transAxes)
-    ax.text(
-        0.06,
-        0.92,
-        f"訊號日 {manifest.get('signal_date', '')} · report-only shadow · {REPORT_VERSION}",
-        color="#c8d5df",
-        fontsize=10.5,
-        transform=ax.transAxes,
-    )
-    ax.text(0.06, 0.855, satellite.get("wording") or SATELLITE_WORDING, color="#17212a", fontsize=13.2, fontweight="bold", transform=ax.transAxes)
-    ax.text(
-        0.06,
-        0.822,
-        "Radar Top10 是攻擊衛星觀察，不是單一股票票；Pool3 正式 vote target 維持原正式輸出。",
-        color="#52616b",
-        fontsize=9.2,
-        transform=ax.transAxes,
-    )
-    cards = [
-        ("決策層", "shadow/report-only", "#2457a7"),
-        ("正式投票", "未納入", "#b42318"),
-        ("Readiness", str(readiness.get("status") or "unknown"), "#c77917"),
-        ("估值 / H3", "未使用", "#13795b"),
-    ]
-    for index, (label, value, color) in enumerate(cards):
-        x = 0.06 + index * 0.225
-        ax.add_patch(plt.Rectangle((x, 0.735), 0.2, 0.07, facecolor="white", edgecolor="#d9e0e5", linewidth=1, transform=ax.transAxes))
-        ax.text(x + 0.012, 0.778, label, color="#66737d", fontsize=8.8, transform=ax.transAxes)
-        ax.text(x + 0.012, 0.753, _compact_display(value, limit=20), color=color, fontsize=10.0, fontweight="bold", transform=ax.transAxes)
-
-    theme_text = "、".join(
-        f"{item.get('rank')}.{item.get('theme')}"
-        for item in (satellite.get("top_themes") or [])[:3]
-    ) or "未取得"
-    ax.text(0.06, 0.695, f"Radar 前三題材：{_compact_display(theme_text, limit=70)}", color="#26323b", fontsize=9.5, transform=ax.transAxes)
-
-    x0, y = 0.06, 0.64
-    widths = (0.055, 0.18, 0.155, 0.085, 0.08, 0.105, 0.105, 0.18)
-    headers = ("Rank", "標的", "Theme", "Score", "Weight", "池1重疊", "池2重疊", "Risk note")
-    ax.add_patch(plt.Rectangle((x0, y), 0.88, 0.03, facecolor="#e9f0f5", edgecolor="#d7e0e7", transform=ax.transAxes))
-    x = x0
-    for header, width in zip(headers, widths):
-        ax.text(x + 0.006, y + 0.011, header, color="#52616b", fontsize=7.4, fontweight="bold", transform=ax.transAxes)
-        x += width
-    y -= 0.036
-    for row in candidates[:10]:
-        ax.add_patch(plt.Rectangle((x0, y), 0.88, 0.035, facecolor="white", edgecolor="#e1e7ec", transform=ax.transAxes))
-        cells = (
-            str(row.get("rank", "")),
-            _compact_display(str(row.get("display") or row.get("ticker") or ""), limit=13),
-            _compact_display(str(row.get("theme") or ""), limit=10),
-            f"{float(row.get('score') or 0.0):.1f}",
-            f"{float(row.get('weight') or 0.0):.1%}",
-            "Y" if row.get("overlaps_pool1") else "N",
-            "Y" if row.get("overlaps_pool2") else "N",
-            _compact_display(str(row.get("risk_reason") or row.get("bucket") or ""), limit=18),
-        )
-        x = x0
-        for cell, width in zip(cells, widths):
-            ax.text(x + 0.006, y + 0.014, cell, color="#26323b", fontsize=7.1, transform=ax.transAxes)
-            x += width
-        y -= 0.035
-
-    note_y = max(y - 0.02, 0.13)
-    ax.text(0.06, note_y, "風險揭露", color="#17212a", fontsize=12, fontweight="bold", transform=ax.transAxes)
-    for index, note in enumerate((satellite.get("risk_notes") or [])[:3]):
-        ax.text(0.075, note_y - 0.03 - index * 0.025, f"• {_compact_display(str(note), limit=72)}", color="#4d5b66", fontsize=8.4, transform=ax.transAxes)
-    blockers = readiness.get("blocking_issues") or readiness.get("formal_top3_blocking_issues") or []
-    if blockers:
-        ax.text(
-            0.075,
-            0.065,
-            f"Readiness blocked/partial：{_compact_display('；'.join(str(item) for item in blockers[:2]), limit=78)}",
-            color="#b42318",
-            fontsize=7.8,
-            transform=ax.transAxes,
-        )
-    ax.text(0.06, 0.04, f"{REPORT_TITLE} · {manifest.get('signal_date', '')}", color="#9aa7b1", fontsize=8.5, transform=ax.transAxes)
-    ax.text(0.94, 0.04, "AI_stock_backtest_lab", color="#9aa7b1", fontsize=8.5, ha="right", transform=ax.transAxes)
-
-
-def _draw_consensus_decision_panel(ax, manifest: dict[str, Any], rows: list[dict[str, Any]]) -> None:
-    generated_rows = [row for row in rows if row["status"] == "generated"][:3]
+def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[str, Any]]) -> None:
     panel_x, panel_y, panel_w, panel_h = 0.065, 0.355, 0.87, 0.325
     ax.add_patch(
         plt.Rectangle(
@@ -1577,39 +1449,33 @@ def _draw_consensus_decision_panel(ax, manifest: dict[str, Any], rows: list[dict
             transform=ax.transAxes,
         )
     )
-    ax.text(panel_x + 0.018, panel_y + panel_h - 0.032, "三池表決總覽", color="#17212a", fontsize=12.0, fontweight="bold", transform=ax.transAxes)
-    ax.text(panel_x + panel_w - 0.018, panel_y + panel_h - 0.032, "先看結論，再看三池來源", color="#52616b", fontsize=9.2, ha="right", transform=ax.transAxes)
-    consensus = manifest.get("consensus") or {}
-    winner = consensus.get("winner_ticker")
-    state = consensus.get("result_state")
-    center_label = consensus.get("winner_display") or "三方分歧"
-    reason = consensus.get("reason") or "尚未形成明確共識。"
+    ax.text(panel_x + 0.018, panel_y + panel_h - 0.032, "正式模型基準", color="#17212a", fontsize=12.0, fontweight="bold", transform=ax.transAxes)
+    ax.text(panel_x + panel_w - 0.018, panel_y + panel_h - 0.032, "Pool1+Pool2 formal baseline", color="#52616b", fontsize=9.2, ha="right", transform=ax.transAxes)
 
-    winner_color = VOTE_WINNER_COLOR if state == "consensus" else "#2457a7"
     ax.add_patch(
         plt.Rectangle(
             (panel_x + 0.03, panel_y + 0.19),
             panel_w - 0.06,
             0.075,
             facecolor="#17212a",
-            edgecolor=winner_color,
+            edgecolor="#2457a7",
             linewidth=1.8,
             transform=ax.transAxes,
             zorder=3,
         )
     )
-    ax.add_patch(plt.Rectangle((panel_x + 0.03, panel_y + 0.19), 0.012, 0.075, facecolor=winner_color, edgecolor=winner_color, transform=ax.transAxes, zorder=4))
-    ax.text(panel_x + 0.055, panel_y + 0.236, "表決結論", color="#c8d5df", fontsize=8.8, transform=ax.transAxes, zorder=4)
-    ax.text(panel_x + 0.055, panel_y + 0.209, _compact_display(center_label, limit=24), color="white", fontsize=13.2, fontweight="bold", transform=ax.transAxes, zorder=4)
-    ax.text(panel_x + panel_w - 0.04, panel_y + 0.224, _compact_display(reason, limit=28), color="#d6e1e8", fontsize=9.2, ha="right", transform=ax.transAxes, zorder=4)
+    ax.add_patch(plt.Rectangle((panel_x + 0.03, panel_y + 0.19), 0.012, 0.075, facecolor="#2457a7", edgecolor="#2457a7", transform=ax.transAxes, zorder=4))
+    ax.text(panel_x + 0.055, panel_y + 0.236, "正式 target", color="#c8d5df", fontsize=8.8, transform=ax.transAxes, zorder=4)
+    ax.text(panel_x + 0.055, panel_y + 0.209, FORMAL_MODEL_TARGET, color="white", fontsize=12.6, fontweight="bold", transform=ax.transAxes, zorder=4)
+    ax.text(panel_x + panel_w - 0.04, panel_y + 0.224, "Pool1 主攻 + Pool2 確認/風控", color="#d6e1e8", fontsize=9.2, ha="right", transform=ax.transAxes, zorder=4)
 
+    formal_rows = [row for row in rows if row["status"] == "generated"][:3]
     card_specs = [(0.095, 0.435), (0.385, 0.435), (0.675, 0.435)]
-    for index, row in enumerate(generated_rows):
+    for index, row in enumerate(formal_rows):
         x, y = card_specs[index]
-        color = _vote_color(row, consensus, index)
-        badge = "共識票" if state == "consensus" and row.get("top_ticker") == winner else ("分歧票" if state != "consensus" else "少數票")
-        is_winner = state == "consensus" and row.get("top_ticker") == winner
-        fill = "#f4fbf8" if is_winner else "#fff8ef"
+        active = bool(row.get("active_in_trade_decision", False))
+        color = "#13795b" if active else "#6b7780"
+        fill = "#f4fbf8" if active else "#f8fafb"
         ax.add_patch(plt.Rectangle((x, y), 0.235, 0.108, facecolor=fill, edgecolor="#d5e0e6", linewidth=1.0, transform=ax.transAxes, zorder=2))
         ax.add_patch(plt.Rectangle((x, y), 0.012, 0.108, facecolor=color, edgecolor=color, transform=ax.transAxes, zorder=3))
         ax.text(
@@ -1622,36 +1488,19 @@ def _draw_consensus_decision_panel(ax, manifest: dict[str, Any], rows: list[dict
             transform=ax.transAxes,
             zorder=4,
         )
-        eligible = bool(row.get("eligible_for_pool_selection", False))
-        top_text = row.get("top_display") or row.get("top_ticker") or ("從缺" if not eligible else "無")
-        ax.text(
-            x + 0.022,
-            y + 0.05,
-            _compact_display(top_text, limit=16),
-            color=color,
-            fontsize=9.3,
-            fontweight="bold",
-            transform=ax.transAxes,
-            zorder=4,
-        )
-        ax.text(
-            x + 0.022,
-            y + 0.028,
-            _compact_display(_selection_label(str(row.get("selection_layer") or "")) if eligible else "從缺/觀察", limit=14),
-            color="#52616b",
-            fontsize=8.1,
-            transform=ax.transAxes,
-            zorder=4,
-        )
-        ax.text(
-            x + 0.022,
-            y + 0.01,
-            badge,
-            color="#7b8994",
-            fontsize=7.4,
-            transform=ax.transAxes,
-            zorder=4,
-        )
+        layer = "正式訊號" if active else "候選觀察"
+        top_text = row.get("top_display") or row.get("top_ticker") or row.get("action_state") or "無合格候選"
+        ax.text(x + 0.022, y + 0.05, _compact_display(top_text, limit=16), color="#26323b", fontsize=9.0, transform=ax.transAxes, zorder=4)
+        ax.text(x + 0.022, y + 0.023, layer, color=color, fontsize=8.0, fontweight="bold", transform=ax.transAxes, zorder=4)
+
+    ax.text(
+        panel_x + 0.03,
+        panel_y + 0.13,
+        "正式報告以最新 Pool1+Pool2 模型結果為主；其他診斷資訊不作正式交易規則。",
+        color="#52616b",
+        fontsize=9.4,
+        transform=ax.transAxes,
+    )
 
 
 def _draw_pool_top3_sections(ax, rows: list[dict[str, Any]], *, start_y: float = 0.635) -> float:

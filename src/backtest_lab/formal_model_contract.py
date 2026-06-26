@@ -37,5 +37,5 @@ def formal_model_report_description() -> str:
     return (
         "正式 baseline 已切換為 Pool1 主攻 selector + PIT-ready Pool2 確認/風控層；"
         "使用 combined_cap40_confirmation1_base，00631L 目標權重上限 40%。"
-        "三池表決不再作為正式 performance selector。"
+        "目前正式報告以 Pool1+Pool2 formal baseline 作為主要模型基準。"
     )
