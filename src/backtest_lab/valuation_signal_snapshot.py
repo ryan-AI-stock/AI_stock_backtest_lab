@@ -172,8 +172,8 @@ def _candidate_cache_dirs(cache_dir: str | Path) -> list[Path]:
 def _find_best_cached_frame(ticker: str, *, cache_dirs: list[Path], end_date: str) -> pd.DataFrame | None:
     file_name = f"{ticker.replace('.', '_')}.csv"
     end_ts = pd.Timestamp(end_date).normalize()
-    best: tuple[pd.Timestamp, pd.DataFrame] | None = None
     for directory in cache_dirs:
+        best: tuple[pd.Timestamp, pd.DataFrame] | None = None
         candidates = [directory / file_name]
         candidates.extend(directory.rglob(file_name))
         for path in candidates:
@@ -189,7 +189,9 @@ def _find_best_cached_frame(ticker: str, *, cache_dirs: list[Path], end_date: st
             last = history.index.max()
             if best is None or last > best[0]:
                 best = (last, frame)
-    return best[1] if best else None
+        if best is not None:
+            return best[1]
+    return None
 
 
 def main() -> None:
