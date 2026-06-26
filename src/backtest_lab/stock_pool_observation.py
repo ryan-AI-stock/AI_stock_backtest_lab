@@ -20,6 +20,7 @@ from backtest_lab.decision_layers import (
     default_stock_pool_model_layer_audit,
     write_model_layer_audit,
 )
+from backtest_lab.formal_model_contract import FORMAL_MODEL_TARGET, formal_model_report_description
 from backtest_lab.formal_radar_candidates import formal_radar_candidates_to_symbols, load_formal_radar_candidates
 from backtest_lab.market_cap_source import load_first_available_market_caps
 from backtest_lab.pool3_radar_attack_satellite import (
@@ -1166,18 +1167,19 @@ def _report_wording_boundary() -> dict[str, Any]:
     return {
         "formal_model_changed": False,
         "trade_decision_changed": False,
-        "report_boundary": "formal_baseline_with_report_only_diagnostics",
+        "report_boundary": "pool1_pool2_formal_baseline_with_report_only_diagnostics",
         "formal_baseline": {
             "label": "正式 baseline",
-            "description": "正式 baseline 只包含目前已啟用的 Pool1、PIT-ready Pool2 與 current formal selector。",
+            "description": formal_model_report_description(),
             "active_in_trade_decision": True,
-            "components": ["pool1_formal_engine", "pool2_tw50_pit_ready_engine", "current_formal_selector"],
+            "formal_model_target": FORMAL_MODEL_TARGET,
+            "components": ["pool1_primary_selector", "pool2_tw50_pit_ready_confirmation_risk_layer", "combined_cap40_confirmation1_base"],
         },
         "diagnostic_boundary": {
             "label": "診斷 / report-only",
-            "description": "Pool3、Final decision layer 與籌碼 shadow 目前只作診斷、註解或觀察，不得解讀成正式交易決策。",
+            "description": "三池表決、Pool3、Final decision layer 與籌碼 shadow 目前只作診斷、註解或觀察，不得解讀成正式交易決策。",
             "active_in_trade_decision": False,
-            "components": ["pool3_shadow_or_diagnostic", "final_decision_layer_report_only", "chip_factor_shadow_diagnostic"],
+            "components": ["three_pool_vote_diagnostic", "pool3_shadow_or_diagnostic", "final_decision_layer_report_only", "chip_factor_shadow_diagnostic"],
         },
         "execution_boundary": {
             "label": "尚未成立",
@@ -1185,8 +1187,8 @@ def _report_wording_boundary() -> dict[str, Any]:
             "active_in_trade_decision": False,
         },
         "plain_language_notes": [
-            "正式 baseline：目前可作為主要 AI 輔助市場觀察基準。",
-            "診斷註解：Pool3、final decision、chip shadow 只解釋風險或分歧，不是正式 selector。",
+            "正式 baseline：目前切換為 Pool1+Pool2 formal model target，可作為主要 AI 輔助市場觀察基準。",
+            "診斷註解：三池表決、Pool3、final decision、chip shadow 只解釋風險或分歧，不是正式 selector。",
             "執行邊界：目前沒有完整 execution/exit layer；訊號變化不等於完整持倉管理命令。",
         ],
     }
@@ -1363,7 +1365,7 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
         [
             "",
             "本摘要為 AI 輔助股票池觀察輸出，不是投資建議；正式用途仍需搭配策略規則、交易成本、資料完整性與風險檢查。",
-            "Pool3、final decision layer、chip shadow 目前皆為 report-only / diagnostic；不得當作正式交易決策。",
+            "正式 baseline 已切換為 Pool1+Pool2；三池表決、Pool3、final decision layer、chip shadow 目前皆為 report-only / diagnostic。",
             "Execution/exit layer 尚未成立；baseline selection signal 不等於完整持倉管理命令。",
         ]
     )
@@ -1437,8 +1439,8 @@ def _draw_observation_summary_pdf_page(ax, manifest: dict[str, Any], rows: list[
     _draw_consensus_decision_panel(ax, manifest, rows)
     ax.text(0.06, 0.17, "使用邊界", color="#17212a", fontsize=14, fontweight="bold", transform=ax.transAxes)
     notes = [
-        "正式 baseline 只包含 Pool1、PIT-ready Pool2 與 current formal selector。",
-        "Pool3、final decision layer、chip shadow 皆為 report-only/diagnostic，不是正式交易決策。",
+        f"正式 baseline：{FORMAL_MODEL_TARGET}，Pool1 主攻 + Pool2 確認/風控。",
+        "三池表決、Pool3、final decision layer、chip shadow 皆為 report-only/diagnostic。",
         "0050/00631L 屬市場曝險工具，不支援 formal stock exact consensus。",
         "execution/exit layer 尚未成立；baseline selection signal 不等於完整持倉管理命令。",
         "本報告為 AI 輔助市場觀察與回測工作流輸出，不是投資建議。",
