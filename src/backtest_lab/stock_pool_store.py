@@ -25,6 +25,8 @@ KNOWN_SYMBOLS: dict[str, dict[str, str]] = {
     "2892.TW": {"symbol": "2892", "name": "第一金", "asset_type": "stock"},
     "2912.TW": {"symbol": "2912", "name": "統一超", "asset_type": "stock"},
     "3045.TW": {"symbol": "3045", "name": "台灣大", "asset_type": "stock"},
+    "2303.TW": {"symbol": "2303", "name": "聯電", "asset_type": "stock"},
+    "2344.TW": {"symbol": "2344", "name": "華邦電", "asset_type": "stock"},
     "2330.TW": {"symbol": "2330", "name": "台積電", "asset_type": "stock"},
     "2454.TW": {"symbol": "2454", "name": "聯發科", "asset_type": "stock"},
     "2308.TW": {"symbol": "2308", "name": "台達電", "asset_type": "stock"},

@@ -139,6 +139,44 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertTrue(top_rows[0]["attack_gate_open"])
         self.assertTrue(top_rows[0]["eligible_for_pool_selection"])
 
+    def test_formal_pool_excludes_0050_candidate_and_uses_company_display_names(self) -> None:
+        dates = pd.bdate_range("2025-01-02", periods=180)
+        pool = {
+            "pool_id": "tw50_dynamic_constituents_v0",
+            "name": "大型市場廣度池 v0",
+            "strategy_preset": "universal_pool_custom",
+            "resolved_symbols": [
+                {"ticker": "0050.TW", "display": "0050", "asset_type": "etf"},
+                {"ticker": "2303.TW", "display": "2303", "asset_type": "stock"},
+                {"ticker": "2344.TW", "display": "2344", "asset_type": "stock"},
+                {"ticker": "00631L.TW", "display": "0050正二", "asset_type": "etf"},
+            ],
+            "dynamic_constituents": {"source": "tw50_history_csv", "path": "data/tw50_constituents.csv"},
+        }
+        prices = {
+            "0050.TW": _trend_frame(dates, start=100, step=1.5, volume=20_000_000),
+            "2303.TW": _trend_frame(dates, start=100, step=0.9, volume=20_000_000),
+            "2344.TW": _trend_frame(dates, start=100, step=1.0, volume=20_000_000),
+            "00631L.TW": _trend_frame(dates, start=100, step=1.1, volume=20_000_000),
+        }
+
+        observation = build_stock_pool_observation(
+            pool=pool,
+            prices_by_ticker=prices,
+            signal_date=dates[-1],
+        )
+        top_rows = _top_candidate_rows(observation, limit=4)
+        candidate_tickers = [candidate.ticker for candidate in observation.candidates]
+        displays = [row["display"] for row in top_rows]
+
+        self.assertNotIn("0050.TW", candidate_tickers)
+        self.assertNotIn("0050.TW", [row["ticker"] for row in top_rows])
+        self.assertIn("00631L.TW", candidate_tickers)
+        self.assertIn("聯電(2303)", displays)
+        self.assertIn("華邦電(2344)", displays)
+        self.assertNotIn("2303(2303)", displays)
+        self.assertNotIn("2344(2344)", displays)
+
     def test_tw50_pool_blocks_high_rank_when_benchmark_margin_is_insufficient(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)
         pool = _tw50_test_pool(["2327.TW", "2330.TW"])
@@ -684,6 +722,57 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertIn("strength_rank", manifest["generated"][0]["top_candidates"][0])
             report = (Path(manifest["output_root"]) / "stock_pool_observation_report.md").read_text(encoding="utf-8")
             self.assertNotIn("模型延遲公開成績單池", report)
+
+    def test_batch_report_hides_0050_candidate_and_repeated_code_display(self) -> None:
+        dates = pd.bdate_range("2025-01-02", periods=180)
+        prices = {
+            "0050.TW": _trend_frame(dates, start=100, step=1.5, volume=20_000_000),
+            "2303.TW": _trend_frame(dates, start=100, step=0.9, volume=20_000_000),
+            "2344.TW": _trend_frame(dates, start=100, step=1.0, volume=20_000_000),
+            "00631L.TW": _trend_frame(dates, start=100, step=1.1, volume=20_000_000),
+        }
+
+        def fake_download(*, tickers, **kwargs):
+            return {ticker: prices[ticker] for ticker in tickers if ticker in prices}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with patch("backtest_lab.stock_pool_observation.download_yfinance_prices", side_effect=fake_download):
+                manifest = run_stock_pool_observation_batch(
+                    pools=[
+                        {
+                            "pool_id": "tw50_dynamic_constituents_v0",
+                            "name": "大型市場廣度池 v0",
+                            "strategy_preset": "universal_pool_custom",
+                            "operational_observation": True,
+                            "resolved_symbols": [
+                                {"ticker": "0050.TW", "display": "0050", "asset_type": "etf"},
+                                {"ticker": "2303.TW", "display": "2303", "asset_type": "stock"},
+                                {"ticker": "2344.TW", "display": "2344", "asset_type": "stock"},
+                                {"ticker": "00631L.TW", "display": "0050正二", "asset_type": "etf"},
+                            ],
+                            "dynamic_constituents": {"source": "tw50_history_csv", "path": "data/tw50_constituents.csv"},
+                        }
+                    ],
+                    signal_date=dates[-1].strftime("%Y-%m-%d"),
+                    warmup_start=dates[0].strftime("%Y-%m-%d"),
+                    cache_dir=root / "cache",
+                    output_root=root / "out",
+                )
+
+            top_rows = manifest["generated"][0]["top_candidates"]
+            report = (Path(manifest["output_root"]) / "stock_pool_observation_report.md").read_text(encoding="utf-8")
+
+            self.assertNotIn("0050.TW", [row["ticker"] for row in top_rows])
+            self.assertNotIn("0050(0050)", report)
+            self.assertIn("聯電(2303)", report)
+            self.assertIn("華邦電(2344)", report)
+            self.assertNotIn("2303(2303)", report)
+            self.assertNotIn("2344(2344)", report)
+            self.assertNotIn("三池", report)
+            self.assertNotIn("Pool3", report)
+            self.assertNotIn("風格補強池", report)
+            self.assertNotIn("large_core_bluechip_v0", report)
 
     def test_batch_resolves_radar_pool_from_formal_radar_metrics(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)

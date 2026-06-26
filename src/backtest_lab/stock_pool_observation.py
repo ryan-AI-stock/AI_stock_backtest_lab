@@ -85,6 +85,12 @@ CORE_STYLE_COMPLEMENT_EXCLUDED_TICKERS = {
     "3231.TW",
     "6669.TW",
 }
+FORMAL_CANDIDATE_EXCLUDED_TICKERS = {"0050.TW"}
+FORMAL_0050_EXCLUSION_POOL_IDS = {
+    "large_cap_best_v20260605",
+    "ai_theme_large_cap_v20260613",
+    "tw50_dynamic_constituents_v0",
+}
 POOL_SHORT_NAMES = {
     "ai_theme_large_cap_v20260613": "AI主線池",
     "tw50_dynamic_constituents_v0": "大型廣度池",
@@ -162,10 +168,15 @@ def build_stock_pool_observation(
             f"No exact common price data for signal date {requested_ts.strftime('%Y-%m-%d')}; "
             f"latest common date is {signal_ts.strftime('%Y-%m-%d')}"
         )
-    available_symbols = [
+    raw_symbols = [
         symbol
         for symbol in pool.get("resolved_symbols") or pool.get("symbols") or []
         if symbol.get("ticker") in prices_by_ticker
+    ]
+    available_symbols = [
+        symbol
+        for symbol in raw_symbols
+        if not _exclude_from_formal_candidate_universe(pool, str(symbol.get("ticker") or ""))
     ]
     candidate_prices = {
         symbol["ticker"]: prices_by_ticker[symbol["ticker"]]
@@ -192,7 +203,7 @@ def build_stock_pool_observation(
         reverse=True,
     )
     display_by_ticker = {
-        symbol["ticker"]: symbol.get("display") or symbol["ticker"]
+        symbol["ticker"]: _normalize_display_label(symbol.get("display") or symbol["ticker"], symbol["ticker"])
         for symbol in available_symbols
     }
     asset_type_by_ticker = _asset_type_by_ticker(available_symbols)
@@ -334,6 +345,29 @@ def _build_pool_source_metadata(pool: dict[str, Any], symbols: list[dict[str, An
         "candidate_displays": [symbol.get("display") or symbol.get("ticker") for symbol in symbols],
         "candidate_symbols": [symbol.get("symbol") or str(symbol.get("ticker", "")).split(".")[0] for symbol in symbols],
     }
+
+
+def _exclude_from_formal_candidate_universe(pool: dict[str, Any], ticker: str) -> bool:
+    normalized = _normalize_ticker(ticker)
+    if normalized not in FORMAL_CANDIDATE_EXCLUDED_TICKERS:
+        return False
+    pool_id = str(pool.get("pool_id") or "")
+    preset = str(pool.get("strategy_preset") or "")
+    dynamic_source = str((pool.get("dynamic_constituents") or {}).get("source") or "")
+    return (
+        pool_id in FORMAL_0050_EXCLUSION_POOL_IDS
+        or preset in {"best_v20260605", "ai_theme_large_cap_v20260613"}
+        or dynamic_source == "tw50_history_csv"
+    )
+
+
+def _normalize_ticker(ticker: str) -> str:
+    text = str(ticker or "").strip()
+    if not text:
+        return text
+    if "." not in text and text.upper() != "CASH":
+        return f"{text}.TW"
+    return text
 
 
 def _market_cap_by_ticker(symbols: list[dict[str, Any]]) -> dict[str, float]:
@@ -1988,9 +2022,21 @@ def _build_regime_signal_observation(
                 valuation_source_date=base.valuation_source_date,
             )
         )
-    top_ticker = signal.target_ticker if signal.target_is_actionable else None
+    candidates = [
+        candidate
+        for candidate in candidates
+        if not _exclude_from_formal_candidate_universe(pool, candidate.ticker)
+    ]
+    top_ticker = (
+        signal.target_ticker
+        if signal.target_is_actionable and not _exclude_from_formal_candidate_universe(pool, signal.target_ticker)
+        else None
+    )
     display_by_ticker = {
-        symbol["ticker"]: symbol.get("display") or labels.get(symbol["ticker"], symbol["ticker"])
+        symbol["ticker"]: _normalize_display_label(
+            symbol.get("display") or labels.get(symbol["ticker"], symbol["ticker"]),
+            symbol["ticker"],
+        )
         for symbol in pool.get("resolved_symbols", [])
     }
     top_asset_type = asset_types.get(top_ticker) if top_ticker else None
