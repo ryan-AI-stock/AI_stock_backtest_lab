@@ -174,12 +174,6 @@ def markdown_consensus_report(consensus: dict[str, Any]) -> str:
             f"| {row.get('pool_name', '')} | {row.get('top_display') or row.get('top_ticker') or '-'} | "
             f"{_user_facing_state(row.get('selection_layer', '') or 'no_selection')} | 不納入：{_user_facing_text(row.get('reason', ''))} |"
         )
-    lines.extend(
-        [
-            "",
-            "使用邊界：這是 AI 輔助市場觀察與候選分歧診斷，不是投資建議；分歧狀態不應硬解讀成明確換倉訊號。",
-        ]
-    )
     return "\n".join(lines)
 
 

@@ -22,8 +22,8 @@ on:
         type: boolean
         default: false
   schedule:
-    # Operational stock-pool overview. Uses same-day latest close data when available.
-    - cron: "40 8 * * 1-5"
+    # Operational stock-pool overview. Run after Taiwan close data is usually available.
+    - cron: "30 11 * * 1-5"
 
 jobs:
   stock-pool-observation:
@@ -279,7 +279,9 @@ jobs:
             echo "path=$path" >> "$GITHUB_OUTPUT"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
-            echo "No latest observation PDF produced; skip Drive overwrite."
+            echo "Formal stock-pool report is not ready; latest PDF was not produced."
+            echo "Keep Google Drive unchanged instead of publishing an incomplete report."
+            exit 1
           fi
 
       - name: Publish latest PDF to Google Drive
@@ -299,7 +301,7 @@ jobs:
             --file "${{ steps.observation-pdf.outputs.path }}"
 
       - name: Upload observation artifact
-        if: steps.schedule-gate.outputs.should_run == 'true'
+        if: ${{ always() && steps.schedule-gate.outputs.should_run == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: stock-pool-observations-${{ steps.observation-inputs.outputs.signal_date }}

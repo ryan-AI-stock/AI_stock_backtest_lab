@@ -33,6 +33,7 @@ class StockPoolObservationWorkflowTest(unittest.TestCase):
         self.assertIn("RADAR_SNAPSHOT_DIR", workflow)
         self.assertIn("python -m backtest_lab.drive_publish", workflow)
         self.assertIn("AI股票池觀察總覽_最新版_v20260612.pdf", workflow)
+        self.assertIn('cron: "30 11 * * 1-5"', workflow)
         self.assertIn("STOCK_POOL_OBSERVATION_DRIVE_FOLDER_ID", workflow)
         self.assertIn("require_exact_signal_date:", workflow)
         self.assertIn("Manual only: require exact requested signal date", workflow)
@@ -42,6 +43,9 @@ class StockPoolObservationWorkflowTest(unittest.TestCase):
         self.assertIn('exact_args+=(--require-exact-signal-date)', workflow)
         self.assertIn('"${exact_args[@]}"', workflow)
         self.assertIn("steps.observation-pdf.outputs.exists == 'true'", workflow)
+        self.assertIn("Formal stock-pool report is not ready", workflow)
+        self.assertIn("exit 1", workflow)
+        self.assertIn("always() && steps.schedule-gate.outputs.should_run == 'true'", workflow)
         self.assertIn("STOCK_POOLS_JSON", workflow)
         self.assertIn("work/stock_pools/stock_pools.json", workflow)
 

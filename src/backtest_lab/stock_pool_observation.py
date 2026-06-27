@@ -13,7 +13,7 @@ from matplotlib import pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
 from backtest_lab.config import load_config
-from backtest_lab.data import download_yfinance_prices
+from backtest_lab.data import download_yfinance_prices, load_price_csv
 from backtest_lab.decision_layers import (
     CANDIDATE_SOURCE,
     FORMAL_TRADE_SIGNAL,
@@ -1138,6 +1138,7 @@ def run_stock_pool_observation_batch(
     _finalize_batch_signal_date_metadata(manifest)
     manifest["consensus"] = build_consensus(manifest)
     manifest["report_wording_boundary"] = _report_wording_boundary()
+    _set_formal_report_readiness(manifest)
     manifest["model_layer_audit"] = default_stock_pool_model_layer_audit(
         signal_date=manifest.get("actual_signal_date") or signal_date,
         generated_pools=manifest["generated"],
@@ -1183,6 +1184,45 @@ def _finalize_batch_signal_date_metadata(manifest: dict[str, Any]) -> None:
         f"used latest complete signal date {actual}."
         if fallback_used
         else ""
+    )
+
+
+def _set_formal_report_readiness(manifest: dict[str, Any]) -> None:
+    visible_generated = [
+        item for item in manifest.get("generated", []) if not _hide_from_formal_report(item)
+    ]
+    visible_skipped = [
+        item for item in manifest.get("skipped", []) if not _hide_from_formal_report(item)
+    ]
+    blockers = [
+        {
+            "pool_id": item.get("pool_id", ""),
+            "pool_name": item.get("pool_name") or item.get("name") or "",
+            "reason": item.get("reason", ""),
+            "reason_zh": _sanitize_visible_report_reason(item.get("reason", "")),
+        }
+        for item in visible_skipped
+    ]
+    for item in visible_generated:
+        missing = _visible_missing_price_tickers(item.get("missing_price_tickers") or [])
+        if not missing:
+            continue
+        blockers.append(
+            {
+                "pool_id": item.get("pool_id", ""),
+                "pool_name": item.get("pool_name") or item.get("name") or "",
+                "reason": "missing_price_tickers:" + ",".join(missing),
+                "reason_zh": "資料不足：部分正式候選缺少價格資料（" + "、".join(missing) + "）。",
+            }
+        )
+    ready = bool(visible_generated) and not blockers
+    manifest["formal_report_ready"] = ready
+    manifest["formal_report_blocker_count"] = len(blockers)
+    manifest["formal_report_blockers"] = blockers
+    manifest["formal_report_blocked_reason"] = (
+        ""
+        if ready
+        else "正式可見觀察池資料不足，停止產生最新版 PDF，避免用不完整資料覆蓋雲端報告。"
     )
 
 
@@ -1303,7 +1343,7 @@ def write_stock_pool_observation_batch_summary(root: Path, manifest: dict[str, A
         markdown_observation_batch_report(manifest, rows),
         encoding="utf-8",
     )
-    if manifest.get("generated"):
+    if manifest.get("generated") and manifest.get("formal_report_ready", True):
         write_stock_pool_observation_batch_pdf(root / REPORT_LATEST_FILENAME, manifest, rows)
 
 
@@ -1415,10 +1455,10 @@ def _skipped_reason_summary(rows: list[dict[str, Any]], manifest: dict[str, Any]
 def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[str, Any]]) -> str:
     wording = manifest.get("report_wording_boundary") or _report_wording_boundary()
     formal_boundary = wording.get("formal_baseline") or {}
-    diagnostic_boundary = wording.get("diagnostic_boundary") or {}
-    execution_boundary = wording.get("execution_boundary") or {}
     report_rows = _formal_report_rows(rows)
+    visible_skipped_count = len([row for row in report_rows if row.get("status") != "generated"])
     skipped_summaries = _skipped_reason_summary(rows, manifest)
+    report_ready = bool(manifest.get("formal_report_ready", True))
     lines = [
         "# 股票池觀察摘要",
         "",
@@ -1426,10 +1466,9 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
         f"- 訊號日：{manifest.get('signal_date', '')}",
         f"- 資料日 fallback：{manifest.get('fallback_reason') or '未啟用'}",
         f"- 正式觀察項目：{len(report_rows)}",
-        f"- 暫無正式觀察：{len(manifest.get('skipped', []))}（{'; '.join(skipped_summaries) if skipped_summaries else '無'}）",
+        f"- 暫無正式觀察：{visible_skipped_count}（{'; '.join(skipped_summaries) if skipped_summaries else '無'}）",
+        f"- 正式報告狀態：{'可發布' if report_ready else '停止發布，等待完整資料'}",
         f"- 正式模型基準：{_translate_internal_visible_text(formal_boundary.get('description'))}",
-        f"- 診斷邊界：{diagnostic_boundary.get('description')}",
-        f"- 執行邊界：{_translate_internal_visible_text(execution_boundary.get('description'))}",
         "",
         "| 狀態 | 正式觀察 | 角色 | 成員檢查 | 前三名 / 暫無觀察原因 | 來源摘要 | 缺價股票 |",
         "| --- | --- | --- | --- | --- | --- | --- |",
@@ -1446,14 +1485,6 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
         role = row.get("role_name") or "-"
         review_frequency = _candidate_review_label(row.get("candidate_review_frequency"))
         lines.append(f"| {status} | {row.get('pool_short_name') or row['pool_name']} | {role} | {review_frequency} | {target} | {row.get('source_summary') or '-'} | {missing} |")
-    lines.extend(
-        [
-            "",
-            "本摘要為 AI 輔助股票池觀察輸出，不是投資建議；正式用途仍需搭配策略規則、交易成本、資料完整性與風險檢查。",
-            "正式模型目前以主攻池提出觀察標的，確認池負責做風險確認；非正式診斷註解不作為正式交易規則。",
-            "換倉與出場層尚未成立；模型觀察訊號不等於完整持倉管理命令。",
-        ]
-    )
     return "\n".join(lines)
 
 
@@ -1482,14 +1513,15 @@ def _hide_from_formal_report(row: dict[str, Any]) -> bool:
         str(row.get(key) or "")
         for key in ("pool_id", "pool_name", "pool_short_name", "role_name", "role_description")
     )
-    return any(marker in text for marker in ("large_core_bluechip_v0", "風格補強", "Pool3", "pool3", "Radar"))
+    return any(marker in text for marker in ("large_core_bluechip_v0", "風格補強", "Pool3", "pool3", "Radar", "radar", "雷達"))
 
 
 def _draw_observation_summary_pdf_page(ax, manifest: dict[str, Any], rows: list[dict[str, Any]]) -> None:
     report_rows = _formal_report_rows(rows)
     generated_count = len([row for row in report_rows if row.get("status") == "generated"])
-    skipped_count = len(manifest.get("skipped", []))
+    skipped_count = len([row for row in report_rows if row.get("status") != "generated"])
     skipped_summaries = _skipped_reason_summary(rows, manifest)
+    report_ready = bool(manifest.get("formal_report_ready", True))
 
     ax.add_patch(plt.Rectangle((0, 0.86), 1, 0.14, color="#17212a", transform=ax.transAxes))
     ax.text(0.06, 0.94, REPORT_TITLE, color="white", fontsize=20, fontweight="bold", transform=ax.transAxes)
@@ -1514,7 +1546,7 @@ def _draw_observation_summary_pdf_page(ax, manifest: dict[str, Any], rows: list[
         ("正式觀察項目", f"{generated_count}", "#13795b"),
         ("暫無正式觀察", f"{skipped_count}", "#b42318" if skipped_count else "#13795b"),
         ("正式模型", "主攻池+確認池", "#2457a7"),
-        ("使用邊界", "正式/非正式分層", "#17212a"),
+        ("報告狀態", "可發布" if report_ready else "等待完整資料", "#13795b" if report_ready else "#b42318"),
     ]
     for index, (label, value, color) in enumerate(cards):
         x = 0.06 + index * 0.225
@@ -1528,16 +1560,6 @@ def _draw_observation_summary_pdf_page(ax, manifest: dict[str, Any], rows: list[
     if skipped_summaries:
         ax.text(0.06, 0.668, _compact_display("暫無正式觀察：" + "；".join(skipped_summaries), limit=78), color="#7a4b00", fontsize=8.4, transform=ax.transAxes)
     _draw_formal_baseline_panel(ax, manifest, report_rows)
-    ax.text(0.06, 0.17, "使用邊界", color="#17212a", fontsize=14, fontweight="bold", transform=ax.transAxes)
-    notes = [
-        "正式模型基準：主攻池優先，確認池做風險確認。",
-        "非正式診斷註解不作為正式交易規則。",
-        "Benchmark ETF 僅作基準或曝險說明，不作正式股票候選。",
-        "換倉與出場層尚未成立；模型觀察訊號不等於完整持倉管理命令。",
-        "本報告為 AI 輔助市場觀察與回測工作流輸出，不是投資建議。",
-    ]
-    for index, note in enumerate(notes):
-        ax.text(0.075, 0.132 - index * 0.023, f"• {note}", color="#4d5b66", fontsize=8.7, transform=ax.transAxes)
     ax.text(0.06, 0.026, f"{REPORT_TITLE} · {manifest.get('signal_date', '')}", color="#9aa7b1", fontsize=8.5, transform=ax.transAxes)
     ax.text(0.94, 0.026, "AI_stock_backtest_lab", color="#9aa7b1", fontsize=8.5, ha="right", transform=ax.transAxes)
 
@@ -2219,8 +2241,38 @@ def _load_observation_price_frames(
             )
             prices.update(loaded)
         except Exception:
-            missing.append(ticker)
+            cached = _load_current_cached_price_frame(
+                ticker=ticker,
+                end_date=end_date,
+                cache_dir=cache_dir,
+            )
+            if cached is not None:
+                prices[ticker] = cached
+            else:
+                missing.append(ticker)
     return prices, missing
+
+
+def _load_current_cached_price_frame(
+    *,
+    ticker: str,
+    end_date: str,
+    cache_dir: str | Path,
+    min_rows: int = 260,
+) -> pd.DataFrame | None:
+    csv_path = Path(cache_dir) / f"{ticker.replace('.', '_')}.csv"
+    if not csv_path.exists():
+        return None
+    try:
+        frame = load_price_csv(csv_path)
+    except Exception:
+        return None
+    if frame.empty or len(frame) < min_rows:
+        return None
+    latest = frame.index.max()
+    if latest < pd.Timestamp(end_date).normalize():
+        return None
+    return frame
 
 
 def _price_start_for_pool(pool: dict[str, Any], warmup_start: str) -> str:

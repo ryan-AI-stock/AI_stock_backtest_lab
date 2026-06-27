@@ -12,6 +12,7 @@ import test_paths  # noqa: F401
 
 from backtest_lab.decision_layers import CANDIDATE_SOURCE, DATA_READINESS
 from backtest_lab.stock_pool_observation import (
+    _load_observation_price_frames,
     _resolve_dynamic_observation_pool,
     _sanitize_visible_report_reason,
     _top_candidate_rows,
@@ -37,6 +38,28 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertIn("20日與60日動能品質：未通過", readable)
         self.assertNotIn("base=Y", readable)
         self.assertNotIn("(Y)", readable)
+
+    def test_price_loader_uses_current_cache_when_refresh_fails(self) -> None:
+        dates = pd.bdate_range("2025-04-01", periods=320)
+        with tempfile.TemporaryDirectory() as tmp:
+            cache_dir = Path(tmp) / "cache"
+            cache_dir.mkdir()
+            _trend_frame(dates, start=80, step=0.2, volume=5_000_000).reset_index(names="date").to_csv(
+                cache_dir / "6919_TW.csv",
+                index=False,
+            )
+
+            with patch("backtest_lab.stock_pool_observation.download_yfinance_prices", side_effect=ValueError("refresh failed")):
+                prices, missing = _load_observation_price_frames(
+                    tickers=["6919.TW"],
+                    start_date="2020-01-02",
+                    end_date=dates[-1].strftime("%Y-%m-%d"),
+                    cache_dir=cache_dir,
+                )
+
+            self.assertIn("6919.TW", prices)
+            self.assertEqual(missing, [])
+            self.assertEqual(prices["6919.TW"].index.max(), dates[-1])
 
     def test_build_observation_outputs_unified_schema_and_top_candidate(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)
@@ -686,6 +709,8 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertFalse(wording["execution_boundary"]["active_in_trade_decision"])
             self.assertIn("非正式診斷", wording["diagnostic_boundary"]["description"])
             self.assertIn("execution/exit layer", wording["execution_boundary"]["description"])
+            self.assertTrue(manifest["formal_report_ready"])
+            self.assertEqual(manifest["formal_report_blocker_count"], 0)
             self.assertNotIn("pool3_radar_attack_satellite", manifest)
             manifest_path = Path(manifest["output_root"]) / "stock_pool_observation_manifest.json"
             self.assertTrue(manifest_path.exists())
@@ -704,8 +729,10 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertNotIn("風格補強池", report_text)
             self.assertNotIn("Pool3 Radar Top10 攻擊衛星觀察", report_text)
             self.assertIn("正式模型基準", report_text)
-            self.assertIn("非正式診斷註解", report_text)
-            self.assertIn("模型觀察訊號不等於完整持倉管理命令", report_text)
+            self.assertIn("正式報告狀態：可發布", report_text)
+            self.assertNotIn("使用邊界", report_text)
+            self.assertNotIn("診斷邊界", report_text)
+            self.assertNotIn("執行邊界", report_text)
             self.assertTrue((Path(manifest["output_root"]) / "AI股票池觀察總覽_最新版_v20260612.pdf").exists())
             self.assertTrue(
                 (Path(manifest["generated"][0]["output_dir"]) / "stock_pool_observation.json").exists()
@@ -842,11 +869,16 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertIn("2303.TW", report)
             self.assertIn("暫無正式觀察", report)
             self.assertIn("資料不足：缺少價格資料", report)
+            self.assertIn("正式報告狀態：停止發布，等待完整資料", report)
+            self.assertFalse(manifest["formal_report_ready"])
+            self.assertEqual(manifest["formal_report_blocker_count"], 1)
+            self.assertFalse((Path(manifest["output_root"]) / "AI股票池觀察總覽_最新版_v20260612.pdf").exists())
             self.assertNotIn("0050.TW", report)
             self.assertNotIn("0050(0050)", report)
             self.assertNotIn("跳過股票池", report)
             self.assertNotIn("未納入摘要", report)
             self.assertNotIn("No price data available", report)
+            self.assertNotIn("使用邊界", report)
 
     def test_batch_resolves_radar_pool_from_formal_radar_metrics(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)
@@ -938,8 +970,9 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertIn("融資短線升溫", candidates.loc[0, "flow_risk_reasons"])
             self.assertIn("當沖比42.0%", candidates.loc[0, "flow_risk_reasons"])
             report = (Path(manifest["output_root"]) / "stock_pool_observation_report.md").read_text(encoding="utf-8")
-            self.assertIn("RADAR正式候選", report)
-            self.assertIn("測試記憶體(1111)", report)
+            self.assertFalse(manifest["formal_report_ready"])
+            self.assertNotIn("RADAR正式候選", report)
+            self.assertNotIn("測試記憶體(1111)", report)
 
     def test_batch_does_not_emit_pool3_radar_artifacts_or_change_consensus(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)
