@@ -1645,7 +1645,18 @@ def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[st
         )
         layer = "正式訊號" if active else "候選觀察"
         top_text = row.get("top_display") or row.get("top_ticker") or row.get("action_state") or "無合格候選"
-        ax.text(x + 0.022, y + 0.05, _compact_display(top_text, limit=16), color="#26323b", fontsize=9.0, transform=ax.transAxes, zorder=4)
+        _draw_wrapped_text(
+            ax,
+            x + 0.022,
+            y + 0.057,
+            str(top_text),
+            max_units=21,
+            line_gap=0.017,
+            color="#26323b",
+            fontsize=8.2,
+            transform=ax.transAxes,
+            zorder=4,
+        )
         ax.text(x + 0.022, y + 0.023, layer, color=color, fontsize=8.0, fontweight="bold", transform=ax.transAxes, zorder=4)
 
     ax.text(
@@ -1666,7 +1677,7 @@ def _draw_pool_top3_sections(ax, rows: list[dict[str, Any]], *, start_y: float =
     for row in generated_rows[:3]:
         ax.add_patch(plt.Rectangle((x0, y - 0.021), 0.88, 0.032, facecolor="#e9f0f5", edgecolor="#d7e0e7", transform=ax.transAxes))
         title = row.get("pool_short_name") or _short_pool_name(row)
-        ax.text(x0 + 0.012, y - 0.011, _compact_display(title, limit=18), color="#17212a", fontsize=10.8, fontweight="bold", transform=ax.transAxes)
+        ax.text(x0 + 0.012, y - 0.011, title, color="#17212a", fontsize=10.8, fontweight="bold", transform=ax.transAxes)
         ax.text(
             0.93,
             y - 0.011,
@@ -1682,8 +1693,9 @@ def _draw_pool_top3_sections(ax, rows: list[dict[str, Any]], *, start_y: float =
         if review_label != "-":
             role_line = f"{role_line}｜成員檢查：{review_label}" if role_line else f"成員檢查：{review_label}"
         if role_line:
-            ax.text(x0 + 0.012, y + 0.008, _compact_display(role_line, limit=42), color="#52616b", fontsize=7.2, transform=ax.transAxes)
-            y -= 0.012
+            role_lines = _wrap_text_lines(role_line, max_units=54)
+            _draw_wrapped_text(ax, x0 + 0.012, y + 0.008, role_line, max_units=54, line_gap=0.012, color="#52616b", fontsize=7.2, transform=ax.transAxes)
+            y -= 0.012 * max(len(role_lines), 1)
         headers = ("排序", "層級", "標的", "分數", "程式判斷原因")
         widths = (0.06, 0.06, 0.19, 0.09, 0.48)
         if role_line:
@@ -1697,29 +1709,35 @@ def _draw_pool_top3_sections(ax, rows: list[dict[str, Any]], *, start_y: float =
         y -= 0.029
         for candidate in (row.get("top_candidates") or [])[:3]:
             fill = "#fff7e6" if candidate.get("is_model_target") else "white"
-            row_h = 0.034
-            ax.add_patch(plt.Rectangle((x0, y), 0.88, row_h, facecolor=fill, edgecolor="#e1e7ec", transform=ax.transAxes))
             display = _normalize_display_label(str(candidate.get("display", "")), str(candidate.get("ticker", "")))
-            reason = _compact_display(_user_facing_candidate_reason(candidate.get("gate_reason") or candidate.get("reason", "")), limit=34)
+            reason = _user_facing_candidate_reason(candidate.get("gate_reason") or candidate.get("reason", ""))
+            reason_lines = _wrap_text_lines(reason, max_units=50)
+            display_lines = _wrap_text_lines(display, max_units=18)
+            row_h = max(0.034, 0.014 * max(len(reason_lines), len(display_lines), 1) + 0.018)
+            ax.add_patch(plt.Rectangle((x0, y), 0.88, row_h, facecolor=fill, edgecolor="#e1e7ec", transform=ax.transAxes))
             cells = (
                 str(candidate.get("rank", "")),
-                _compact_display(str(candidate.get("selection_label") or ""), limit=5),
-                _compact_display(display, limit=12),
+                str(candidate.get("selection_label") or ""),
+                display,
                 f"{float(candidate.get('score') or 0):.4f}",
             )
             x = x0
-            for cell, width in zip(cells, widths):
-                ax.text(x + 0.008, y + row_h - 0.018, cell, color="#26323b", fontsize=7.8, transform=ax.transAxes)
+            for cell_index, (cell, width) in enumerate(zip(cells, widths)):
+                if cell_index == 2:
+                    _draw_wrapped_text(ax, x + 0.008, y + row_h - 0.018, cell, max_units=18, line_gap=0.014, color="#26323b", fontsize=7.8, transform=ax.transAxes)
+                else:
+                    ax.text(x + 0.008, y + row_h - 0.018, cell, color="#26323b", fontsize=7.8, transform=ax.transAxes)
                 x += width
             reason_x = x0 + sum(widths[:-1]) + 0.008
-            ax.text(reason_x, y + row_h - 0.018, reason, color="#26323b", fontsize=7.4, transform=ax.transAxes)
+            _draw_wrapped_text(ax, reason_x, y + row_h - 0.018, reason, max_units=50, line_gap=0.014, color="#26323b", fontsize=7.2, transform=ax.transAxes)
             y -= row_h
         missing = row.get("missing_price_tickers") or ""
         source = row.get("source_summary") or ""
         if missing or source:
             note = "；".join(part for part in [f"來源：{source}" if source else "", f"缺價：{missing}" if missing else ""] if part)
-            ax.text(x0 + 0.008, y - 0.004, _compact_display(note, limit=62), color="#66737d", fontsize=7.1, transform=ax.transAxes)
-            y -= 0.018
+            note_lines = _wrap_text_lines(note, max_units=78)
+            _draw_wrapped_text(ax, x0 + 0.008, y - 0.004, note, max_units=78, line_gap=0.012, color="#66737d", fontsize=7.1, transform=ax.transAxes)
+            y -= 0.012 * max(len(note_lines), 1) + 0.006
         y -= 0.012
     for row in skipped_rows[:3]:
         if y < 0.09:
@@ -1877,6 +1895,38 @@ def _vote_color(row: dict[str, Any], consensus: dict[str, Any], index: int) -> s
 def _compact_display(value: str, *, limit: int = 16) -> str:
     text = str(value).replace("（", "(").replace("）", ")").strip()
     return text if len(text) <= limit else text[: limit - 1] + "…"
+
+
+def _display_width_units(value: str) -> int:
+    width = 0
+    for char in str(value):
+        width += 1 if ord(char) < 128 else 2
+    return width
+
+
+def _wrap_text_lines(value: str, *, max_units: int) -> list[str]:
+    text = str(value or "").replace("（", "(").replace("）", ")").strip()
+    if not text:
+        return [""]
+    lines: list[str] = []
+    current = ""
+    for char in text:
+        candidate = current + char
+        if current and _display_width_units(candidate) > max_units:
+            lines.append(current)
+            current = char
+        else:
+            current = candidate
+    if current:
+        lines.append(current)
+    return lines or [""]
+
+
+def _draw_wrapped_text(ax, x: float, y: float, value: str, *, max_units: int, line_gap: float, **kwargs) -> list[str]:
+    lines = _wrap_text_lines(value, max_units=max_units)
+    for index, line in enumerate(lines):
+        ax.text(x, y - index * line_gap, line, **kwargs)
+    return lines
 
 
 def _normalize_display_label(value: str, ticker: str) -> str:

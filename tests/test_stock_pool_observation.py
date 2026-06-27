@@ -17,6 +17,7 @@ from backtest_lab.stock_pool_observation import (
     _sanitize_visible_report_reason,
     _top_candidate_rows,
     _user_facing_candidate_reason,
+    _wrap_text_lines,
     build_dispatched_stock_pool_observation,
     build_stock_pool_observation,
     run_stock_pool_observation_batch,
@@ -38,6 +39,14 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertIn("20日與60日動能品質：未通過", readable)
         self.assertNotIn("base=Y", readable)
         self.assertNotIn("(Y)", readable)
+
+    def test_pdf_text_wrap_preserves_full_visible_text(self) -> None:
+        text = "沒有合格持股目標，模型目標為現金"
+        lines = _wrap_text_lines(text, max_units=15)
+
+        self.assertGreater(len(lines), 1)
+        self.assertEqual("".join(lines), text)
+        self.assertTrue(all("…" not in line for line in lines))
 
     def test_price_loader_uses_current_cache_when_refresh_fails(self) -> None:
         dates = pd.bdate_range("2025-04-01", periods=320)
