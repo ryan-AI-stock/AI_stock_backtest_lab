@@ -133,31 +133,31 @@ def markdown_consensus_report(consensus: dict[str, Any]) -> str:
         "# 候選分歧診斷摘要",
         "",
         f"- 訊號日：{consensus.get('signal_date', '')}",
-        f"- 狀態：{consensus.get('result_state', '')}",
+        f"- 狀態：{_user_facing_state(consensus.get('result_state', ''))}",
         f"- 結論：{consensus.get('winner_display') or '沒有形成明確共識'}",
-        f"- 原因：{consensus.get('reason', '')}",
-        f"- 診斷層：{consensus.get('consensus_type', 'consensus_observation')}；正式交易目標：未設定",
+        f"- 原因：{_user_facing_text(consensus.get('reason', ''))}",
+        f"- 診斷層：候選分歧觀察；正式交易目標：未設定",
         "",
         "## 共識健康診斷",
         "",
-        f"- decision_state：{health.get('decision_state', '')}",
-        f"- 共識強度：{health.get('consensus_strength', '')}",
-        f"- exact_ticker_consensus_rate：{health.get('exact_ticker_consensus_rate', 0)}",
-        f"- direction_consensus_rate：{health.get('direction_consensus_rate', 0)}",
-        f"- divergent_rate：{health.get('divergent_rate', 0)}",
-        f"- no_vote_or_data_insufficient_rate：{health.get('no_vote_or_data_insufficient_rate', 0)}",
-        f"- actionable_decision_rate：{health.get('actionable_decision_rate', 0)}",
-        f"- decision_protocol_used_rate：{health.get('decision_protocol_used_rate', 0)}",
-        f"- raw_consensus_state：{health.get('raw_consensus_state', '')}",
-        f"- exact_ticker_consensus：{health.get('exact_ticker_consensus', '')} / {health.get('exact_ticker_consensus_group', '')}",
-        f"- direction_consensus：{health.get('direction_consensus', '')} / {health.get('direction_consensus_group', '')} / {health.get('direction_consensus_strength', '')}",
-        f"- actionable_decision_state：{health.get('actionable_decision_state', '')}",
-        f"- decision_source：{health.get('decision_source', '')}",
-        f"- decision_protocol_used：{health.get('decision_protocol_used', '')}",
-        f"- protocol_usage_category：{health.get('protocol_usage_category', '')}",
-        f"- fake_consensus_flags：{','.join(health.get('fake_consensus_flags') or []) or 'none'}",
-        f"- consensus_health_bucket：{health.get('consensus_health_bucket', '')}",
-        f"- 診斷：{health.get('health_note', '')}",
+        f"- 決策狀態：{_user_facing_state(health.get('decision_state', ''))}",
+        f"- 共識強度：{_user_facing_state(health.get('consensus_strength', ''))}",
+        f"- 同一標的共識率：{health.get('exact_ticker_consensus_rate', 0)}",
+        f"- 方向共識率：{health.get('direction_consensus_rate', 0)}",
+        f"- 分歧比例：{health.get('divergent_rate', 0)}",
+        f"- 無訊號或資料不足比例：{health.get('no_vote_or_data_insufficient_rate', 0)}",
+        f"- 可形成行動觀察比例：{health.get('actionable_decision_rate', 0)}",
+        f"- 需要人工判讀比例：{health.get('decision_protocol_used_rate', 0)}",
+        f"- 原始共識狀態：{_user_facing_state(health.get('raw_consensus_state', ''))}",
+        f"- 同一標的共識：{_user_facing_text(health.get('exact_ticker_consensus', ''))} / {_user_facing_text(health.get('exact_ticker_consensus_group', ''))}",
+        f"- 方向共識：{_user_facing_text(health.get('direction_consensus', ''))} / {_user_facing_text(health.get('direction_consensus_group', ''))} / {_user_facing_state(health.get('direction_consensus_strength', ''))}",
+        f"- 可行動狀態：{_user_facing_state(health.get('actionable_decision_state', ''))}",
+        f"- 判斷來源：{_user_facing_state(health.get('decision_source', ''))}",
+        f"- 是否需要人工判讀：{_user_facing_bool(health.get('decision_protocol_used', ''))}",
+        f"- 人工判讀類型：{_user_facing_state(health.get('protocol_usage_category', ''))}",
+        f"- 假共識提醒：{_user_facing_flags(health.get('fake_consensus_flags') or [])}",
+        f"- 健康分層：{_user_facing_state(health.get('consensus_health_bucket', ''))}",
+        f"- 診斷：{_user_facing_text(health.get('health_note', ''))}",
         "",
         "| 股票池 | 第一順位 | 入選層級 | 狀態 |",
         "| --- | --- | --- | --- |",
@@ -165,14 +165,14 @@ def markdown_consensus_report(consensus: dict[str, Any]) -> str:
     for row in visible_voters:
         lines.append(
             f"| {row.get('pool_name', '')} | {row.get('top_display') or row.get('top_ticker') or '-'} | "
-            f"{row.get('selection_layer', '')} | {row.get('action_state', '')} |"
+            f"{_user_facing_state(row.get('selection_layer', ''))} | {_user_facing_state(row.get('action_state', ''))} |"
         )
     for row in visible_skipped:
         if not row.get("top_ticker"):
             continue
         lines.append(
             f"| {row.get('pool_name', '')} | {row.get('top_display') or row.get('top_ticker') or '-'} | "
-            f"{row.get('selection_layer', '') or 'no_selection'} | 不投票：{row.get('reason', '')} |"
+            f"{_user_facing_state(row.get('selection_layer', '') or 'no_selection')} | 不納入：{_user_facing_text(row.get('reason', ''))} |"
         )
     lines.extend(
         [
@@ -189,6 +189,74 @@ def _hide_from_visible_consensus_report(row: dict[str, Any]) -> bool:
         for key in ("pool_id", "pool_name", "pool_role", "top_display", "reason", "blocked_reason")
     )
     return any(marker in text for marker in ("large_core_bluechip_v0", "風格補強", "Pool3", "pool3", "Radar"))
+
+
+def _user_facing_text(value: object) -> str:
+    text = str(value or "")
+    replacements = {
+        "combined_cap40_confirmation1_base": "目前正式模型",
+        "pool1_primary_pool2_confirmation_cap40": "主攻池優先、確認池風險確認",
+        "Pool1+Pool2 formal baseline": "正式模型基準",
+        "Pool1+Pool2": "主攻池 + 確認池",
+        "PIT-ready Pool2": "已通過歷史成分檢查的確認池",
+        "selector": "選股邏輯",
+        "formal target": "正式採用版本",
+        "正式 target": "正式採用版本",
+        "no_selection": "未形成正式觀察",
+        "none": "無",
+    }
+    for raw, translated in replacements.items():
+        text = text.replace(raw, translated)
+    return text
+
+
+def _user_facing_state(value: object) -> str:
+    text = _user_facing_text(value)
+    labels = {
+        "consensus": "形成觀察共識",
+        "divergent": "候選分歧",
+        "no_vote": "無正式觀察",
+        "no_selection": "未形成正式觀察",
+        "formal_vote": "正式觀察",
+        "observation_only": "僅供觀察",
+        "diagnostic_only": "僅供診斷",
+        "report_only": "僅供報告說明",
+        "attack": "偏攻擊",
+        "risk_off": "偏防守",
+        "data_insufficient": "資料不足",
+        "strong": "強",
+        "weak": "弱",
+        "weak_consensus": "弱共識",
+        "strong_consensus": "強共識",
+        "divergent_observe": "分歧觀察",
+        "defensive_or_market_exposure": "防守或市場曝險",
+        "protocol_candidate_diagnostic": "人工判讀候選，僅供診斷",
+        "protocol_resolved_divergence": "分歧情境，需人工判讀",
+        "candidate_not_applied": "僅列候選，未套用",
+        "exact_2_of_3_ticker": "兩個觀察池指向同一標的",
+        "exact_3_of_3_ticker": "全部觀察池指向同一標的",
+        "consensus_with_ineligible_pool": "包含未合格觀察池的假共識風險",
+        "observation_only_excluded": "僅供觀察項目已排除",
+        "acceptable": "可接受",
+        "healthy": "健康",
+        "warning": "警示",
+        "none": "無",
+        "False": "否",
+        "True": "是",
+        "false": "否",
+        "true": "是",
+    }
+    return labels.get(text, text)
+
+
+def _user_facing_bool(value: object) -> str:
+    return "是" if str(value).lower() == "true" or value is True else "否"
+
+
+def _user_facing_flags(flags: list[object]) -> str:
+    if not flags:
+        return "無"
+    return "、".join(_user_facing_state(flag) for flag in flags)
 
 
 def _eligible_vote_item(item: dict[str, Any]) -> bool:

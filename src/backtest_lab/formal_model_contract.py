@@ -35,7 +35,7 @@ def get_formal_model_contract() -> dict[str, Any]:
 
 def formal_model_report_description() -> str:
     return (
-        "正式 baseline 已切換為 Pool1 主攻 selector + PIT-ready Pool2 確認/風控層；"
-        "使用 combined_cap40_confirmation1_base，00631L 目標權重上限 40%。"
-        "目前正式報告以 Pool1+Pool2 formal baseline 作為主要模型基準。"
+        "目前正式版以主攻池提出觀察標的，確認池負責做風險確認；"
+        "0050正二目標比重上限為 40%，超過部分保留現金。"
+        "這是正式報告採用的模型基準。"
     )

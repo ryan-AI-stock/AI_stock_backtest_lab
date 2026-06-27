@@ -174,8 +174,14 @@ class StockPoolConsensusTest(unittest.TestCase):
             self.assertTrue((root / "stock_pool_consensus_health.csv").exists())
             report = (root / "stock_pool_consensus_report.md").read_text(encoding="utf-8")
             self.assertIn("共識健康診斷", report)
-            self.assertIn("decision_state：weak_consensus", report)
-            self.assertIn("decision_source：exact_2_of_3_ticker", report)
+            self.assertIn("決策狀態：弱共識", report)
+            self.assertIn("判斷來源：兩個觀察池指向同一標的", report)
+            self.assertNotIn("decision_state", report)
+            self.assertNotIn("decision_source", report)
+            self.assertNotIn("weak_consensus", report)
+            self.assertNotIn("exact_2_of_3_ticker", report)
+            self.assertNotIn("selector", report)
+            self.assertNotIn("combined_cap40_confirmation1_base", report)
 
     def test_consensus_report_hides_legacy_pool3_visible_rows(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

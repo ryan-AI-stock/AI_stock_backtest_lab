@@ -1191,7 +1191,7 @@ def _report_wording_boundary() -> dict[str, Any]:
         "trade_decision_changed": False,
         "report_boundary": "pool1_pool2_formal_baseline_with_report_only_diagnostics",
         "formal_baseline": {
-            "label": "正式 baseline",
+            "label": "正式模型基準",
             "description": formal_model_report_description(),
             "active_in_trade_decision": True,
             "formal_model_target": FORMAL_MODEL_TARGET,
@@ -1210,9 +1210,9 @@ def _report_wording_boundary() -> dict[str, Any]:
             "active_in_trade_decision": False,
         },
         "plain_language_notes": [
-            "正式 baseline：目前切換為 Pool1+Pool2 formal model target，可作為主要 AI 輔助市場觀察基準。",
-            "診斷註解：非正式診斷資訊只解釋風險或資料限制，不是正式 selector。",
-            "執行邊界：目前沒有完整 execution/exit layer；訊號變化不等於完整持倉管理命令。",
+            "正式模型基準：目前以主攻池提出觀察標的，確認池負責做風險確認。",
+            "診斷註解：非正式診斷資訊只解釋風險或資料限制，不是正式交易規則。",
+            "執行邊界：目前沒有完整換倉與出場層；訊號變化不等於完整持倉管理命令。",
         ],
     }
 
@@ -1331,14 +1331,55 @@ def _visible_missing_price_tickers(tickers: list[str]) -> list[str]:
 def _sanitize_visible_report_reason(reason: object) -> str:
     text = str(reason or "")
     prefix = "No price data available for pool tickers:"
+    if text == "missing_formal_radar_candidates":
+        return "未納入正式結論：非正式觀察區目前沒有可用候選。"
+    if text == "no_resolved_symbols":
+        return "資料不足：這個觀察區目前沒有可用成員。"
+    if text.startswith("No exact common price data"):
+        return "資料不足：共同價格資料不完整，無法產生正式觀察。"
     if not text.startswith(prefix):
-        return text
+        return _translate_internal_visible_text(text)
     raw = text[len(prefix):].strip()
     tickers = [item.strip() for item in raw.split(",") if item.strip()]
     visible = _visible_missing_price_tickers(tickers)
     if not visible:
-        return "No visible formal candidate price data available."
-    return f"{prefix} {', '.join(visible)}"
+        return "資料不足：正式候選沒有可用價格資料。"
+    return f"資料不足：缺少價格資料（{', '.join(visible)}）。"
+
+
+def _translate_internal_visible_text(text: object) -> str:
+    value = str(text or "")
+    replacements = {
+        "combined_cap40_confirmation1_base": "目前正式模型",
+        "pool1_primary_pool2_confirmation_cap40": "主攻池優先、確認池風險確認",
+        "Pool1+Pool2 formal baseline": "正式模型基準",
+        "Pool1+Pool2": "主攻池 + 確認池",
+        "PIT-ready Pool2": "已通過歷史成分檢查的確認池",
+        "selector": "選股邏輯",
+        "formal target": "正式採用版本",
+        "正式 target": "正式採用版本",
+        "baseline selection signal": "模型觀察訊號",
+        "execution/exit layer": "換倉與出場層",
+        "formal model target": "正式模型版本",
+    }
+    for raw, translated in replacements.items():
+        value = value.replace(raw, translated)
+    return value
+
+
+def _skipped_reason_summary(rows: list[dict[str, Any]], manifest: dict[str, Any]) -> list[str]:
+    skipped_rows = [row for row in rows if row.get("status") != "generated"]
+    visible = [row for row in skipped_rows if not _hide_from_formal_report(row)]
+    hidden = [row for row in skipped_rows if _hide_from_formal_report(row)]
+    summaries: list[str] = []
+    for row in visible[:3]:
+        pool_name = row.get("pool_short_name") or row.get("pool_name") or "未命名觀察區"
+        summaries.append(f"{pool_name}：{_sanitize_visible_report_reason(row.get('reason'))}")
+    if hidden:
+        summaries.append(f"非正式觀察區：{len(hidden)} 個項目未納入正式摘要。")
+    if not summaries and manifest.get("skipped"):
+        summaries.append("有項目未產生正式摘要，請查看機器可讀 manifest 取得完整內部原因。")
+    return summaries
 
 
 def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[str, Any]]) -> str:
@@ -1347,6 +1388,7 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
     diagnostic_boundary = wording.get("diagnostic_boundary") or {}
     execution_boundary = wording.get("execution_boundary") or {}
     report_rows = _formal_report_rows(rows)
+    skipped_summaries = _skipped_reason_summary(rows, manifest)
     lines = [
         "# 股票池觀察摘要",
         "",
@@ -1354,30 +1396,32 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
         f"- 訊號日：{manifest.get('signal_date', '')}",
         f"- 資料日 fallback：{manifest.get('fallback_reason') or '未啟用'}",
         f"- 正式觀察項目：{len(report_rows)}",
-        f"- 跳過股票池：{len(manifest.get('skipped', []))}",
-        f"- 正式 baseline：{formal_boundary.get('description')}",
+        f"- 未納入正式摘要：{len(manifest.get('skipped', []))}（{'; '.join(skipped_summaries) if skipped_summaries else '無'}）",
+        f"- 正式模型基準：{_translate_internal_visible_text(formal_boundary.get('description'))}",
         f"- 診斷邊界：{diagnostic_boundary.get('description')}",
-        f"- 執行邊界：{execution_boundary.get('description')}",
+        f"- 執行邊界：{_translate_internal_visible_text(execution_boundary.get('description'))}",
         "",
-        "| 狀態 | 正式觀察 | 角色 | 成員檢查 | 前三名 / 跳過原因 | 來源摘要 | 缺價股票 |",
+        "| 狀態 | 正式觀察 | 角色 | 成員檢查 | 前三名 / 未納入原因 | 來源摘要 | 缺價股票 |",
         "| --- | --- | --- | --- | --- | --- | --- |",
     ]
     for row in report_rows:
         if row["status"] == "generated":
             target = row["top_candidates_text"] or row["top_display"] or row["top_ticker"] or row["action_state"] or "無合格候選"
             missing = row["missing_price_tickers"] or "-"
+            status = "已產生"
         else:
             target = row["reason"] or "skipped"
             missing = "-"
+            status = "未納入"
         role = row.get("role_name") or "-"
         review_frequency = _candidate_review_label(row.get("candidate_review_frequency"))
-        lines.append(f"| {row['status']} | {row.get('pool_short_name') or row['pool_name']} | {role} | {review_frequency} | {target} | {row.get('source_summary') or '-'} | {missing} |")
+        lines.append(f"| {status} | {row.get('pool_short_name') or row['pool_name']} | {role} | {review_frequency} | {target} | {row.get('source_summary') or '-'} | {missing} |")
     lines.extend(
         [
             "",
             "本摘要為 AI 輔助股票池觀察輸出，不是投資建議；正式用途仍需搭配策略規則、交易成本、資料完整性與風險檢查。",
-            "正式 baseline 已切換為 Pool1+Pool2；非正式診斷註解不作為正式 selector 或交易規則。",
-            "Execution/exit layer 尚未成立；baseline selection signal 不等於完整持倉管理命令。",
+            "正式模型目前以主攻池提出觀察標的，確認池負責做風險確認；非正式診斷註解不作為正式交易規則。",
+            "換倉與出場層尚未成立；模型觀察訊號不等於完整持倉管理命令。",
         ]
     )
     return "\n".join(lines)
@@ -1415,6 +1459,7 @@ def _draw_observation_summary_pdf_page(ax, manifest: dict[str, Any], rows: list[
     report_rows = _formal_report_rows(rows)
     generated_count = len([row for row in report_rows if row.get("status") == "generated"])
     skipped_count = len(manifest.get("skipped", []))
+    skipped_summaries = _skipped_reason_summary(rows, manifest)
 
     ax.add_patch(plt.Rectangle((0, 0.86), 1, 0.14, color="#17212a", transform=ax.transAxes))
     ax.text(0.06, 0.94, REPORT_TITLE, color="white", fontsize=20, fontweight="bold", transform=ax.transAxes)
@@ -1437,8 +1482,8 @@ def _draw_observation_summary_pdf_page(ax, manifest: dict[str, Any], rows: list[
         )
     cards = [
         ("正式觀察項目", f"{generated_count}", "#13795b"),
-        ("跳過股票池", f"{skipped_count}", "#b42318" if skipped_count else "#13795b"),
-        ("正式模型", "Pool1+Pool2", "#2457a7"),
+        ("未納入摘要", f"{skipped_count}", "#b42318" if skipped_count else "#13795b"),
+        ("正式模型", "主攻池+確認池", "#2457a7"),
         ("使用邊界", "正式/非正式分層", "#17212a"),
     ]
     for index, (label, value, color) in enumerate(cards):
@@ -1449,14 +1494,16 @@ def _draw_observation_summary_pdf_page(ax, manifest: dict[str, Any], rows: list[
         ax.text(x + 0.014, 0.795, label, color="#66737d", fontsize=9.5, transform=ax.transAxes)
         ax.text(x + 0.014, 0.767, _compact_display(str(value), limit=18), color=color, fontsize=11.2, fontweight="bold", transform=ax.transAxes)
 
-    ax.text(0.06, 0.69, "正式模型：Pool1 主攻 selector + PIT-ready Pool2 確認/風控層。", color="#52616b", fontsize=10, transform=ax.transAxes)
+    ax.text(0.06, 0.69, "正式模型：主攻池提出觀察標的，確認池負責風險確認。", color="#52616b", fontsize=10, transform=ax.transAxes)
+    if skipped_summaries:
+        ax.text(0.06, 0.668, _compact_display("未納入摘要：" + "；".join(skipped_summaries), limit=78), color="#7a4b00", fontsize=8.4, transform=ax.transAxes)
     _draw_formal_baseline_panel(ax, manifest, report_rows)
     ax.text(0.06, 0.17, "使用邊界", color="#17212a", fontsize=14, fontweight="bold", transform=ax.transAxes)
     notes = [
-        f"正式 baseline：{FORMAL_MODEL_TARGET}，Pool1 主攻 + Pool2 確認/風控。",
-        "非正式診斷註解不作為正式 selector 或交易規則。",
+        "正式模型基準：主攻池優先，確認池做風險確認。",
+        "非正式診斷註解不作為正式交易規則。",
         "Benchmark ETF 僅作基準或曝險說明，不作正式股票候選。",
-        "execution/exit layer 尚未成立；baseline selection signal 不等於完整持倉管理命令。",
+        "換倉與出場層尚未成立；模型觀察訊號不等於完整持倉管理命令。",
         "本報告為 AI 輔助市場觀察與回測工作流輸出，不是投資建議。",
     ]
     for index, note in enumerate(notes):
@@ -1482,7 +1529,7 @@ def _draw_observation_detail_pdf_page(ax, manifest: dict[str, Any], rows: list[d
     ax.text(
         0.06,
         reminder_y,
-        "提醒：表格列出池內排序與原因；正式模型仍以 Pool1+Pool2 baseline 為主，不代表完整 execution/exit layer。",
+        "提醒：表格列出池內排序與原因；正式模型仍以主攻池 + 確認池為主，不代表完整換倉與出場層。",
         color="#52616b",
         fontsize=8.2,
         transform=ax.transAxes,
@@ -1505,7 +1552,7 @@ def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[st
         )
     )
     ax.text(panel_x + 0.018, panel_y + panel_h - 0.032, "正式模型基準", color="#17212a", fontsize=12.0, fontweight="bold", transform=ax.transAxes)
-    ax.text(panel_x + panel_w - 0.018, panel_y + panel_h - 0.032, "Pool1+Pool2 formal baseline", color="#52616b", fontsize=9.2, ha="right", transform=ax.transAxes)
+    ax.text(panel_x + panel_w - 0.018, panel_y + panel_h - 0.032, "主攻池 + 確認池", color="#52616b", fontsize=9.2, ha="right", transform=ax.transAxes)
 
     ax.add_patch(
         plt.Rectangle(
@@ -1520,9 +1567,9 @@ def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[st
         )
     )
     ax.add_patch(plt.Rectangle((panel_x + 0.03, panel_y + 0.19), 0.012, 0.075, facecolor="#2457a7", edgecolor="#2457a7", transform=ax.transAxes, zorder=4))
-    ax.text(panel_x + 0.055, panel_y + 0.236, "正式 target", color="#c8d5df", fontsize=8.8, transform=ax.transAxes, zorder=4)
-    ax.text(panel_x + 0.055, panel_y + 0.209, FORMAL_MODEL_TARGET, color="white", fontsize=12.6, fontweight="bold", transform=ax.transAxes, zorder=4)
-    ax.text(panel_x + panel_w - 0.04, panel_y + 0.224, "Pool1 主攻 + Pool2 確認/風控", color="#d6e1e8", fontsize=9.2, ha="right", transform=ax.transAxes, zorder=4)
+    ax.text(panel_x + 0.055, panel_y + 0.236, "目前正式模型", color="#c8d5df", fontsize=8.8, transform=ax.transAxes, zorder=4)
+    ax.text(panel_x + 0.055, panel_y + 0.209, "主攻池優先，確認池做風險確認", color="white", fontsize=12.0, fontweight="bold", transform=ax.transAxes, zorder=4)
+    ax.text(panel_x + panel_w - 0.04, panel_y + 0.224, "0050正二上限40%；超出保留現金", color="#d6e1e8", fontsize=9.2, ha="right", transform=ax.transAxes, zorder=4)
 
     formal_rows = [row for row in rows if row["status"] == "generated"][:3]
     card_specs = [(0.095, 0.435), (0.385, 0.435), (0.675, 0.435)]
@@ -1551,7 +1598,7 @@ def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[st
     ax.text(
         panel_x + 0.03,
         panel_y + 0.045,
-        "正式報告以最新 Pool1+Pool2 模型結果為主；其他診斷資訊不作正式交易規則。",
+        "正式報告以最新主攻池 + 確認池模型結果為主；其他診斷資訊不作正式交易規則。",
         color="#52616b",
         fontsize=8.7,
         transform=ax.transAxes,
