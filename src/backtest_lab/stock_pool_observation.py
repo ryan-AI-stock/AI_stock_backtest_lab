@@ -2407,14 +2407,15 @@ def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[st
 def _draw_pool_top3_sections(ax, rows: list[dict[str, Any]], *, start_y: float = 0.635) -> float:
     x0 = 0.06
     y = start_y
+    table_w = 0.88
     generated_rows = [row for row in rows if row["status"] == "generated"]
     skipped_rows = [row for row in rows if row["status"] != "generated"]
     for row in generated_rows[:3]:
-        ax.add_patch(plt.Rectangle((x0, y - 0.021), 0.88, 0.032, facecolor="#e9f0f5", edgecolor="#d7e0e7", transform=ax.transAxes))
+        ax.add_patch(plt.Rectangle((x0, y - 0.023), table_w, 0.034, facecolor="#e9f0f5", edgecolor="#d7e0e7", transform=ax.transAxes))
         title = row.get("pool_short_name") or _short_pool_name(row)
-        ax.text(x0 + 0.012, y - 0.011, title, color="#17212a", fontsize=10.8, fontweight="bold", transform=ax.transAxes)
+        ax.text(x0 + 0.014, y - 0.012, title, color="#17212a", fontsize=10.8, fontweight="bold", transform=ax.transAxes)
         ax.text(
-            0.93,
+            x0 + table_w - 0.012,
             y - 0.011,
             f"資料日 {row['signal_date']}",
             color="#66737d",
@@ -2432,24 +2433,28 @@ def _draw_pool_top3_sections(ax, rows: list[dict[str, Any]], *, start_y: float =
             _draw_wrapped_text(ax, x0 + 0.012, y + 0.008, role_line, max_units=54, line_gap=0.012, color="#52616b", fontsize=7.2, transform=ax.transAxes)
             y -= 0.012 * max(len(role_lines), 1)
         headers = ("排序", "層級", "標的", "分數", "程式判斷原因")
-        widths = (0.06, 0.06, 0.19, 0.09, 0.48)
+        widths = (0.055, 0.09, 0.18, 0.075, 0.48)
         if role_line:
-            y -= 0.006
-        header_h = 0.025
-        ax.add_patch(plt.Rectangle((x0, y), 0.88, header_h, facecolor="#f7fafc", edgecolor="#e1e7ec", transform=ax.transAxes))
+            y -= 0.009
+        header_h = 0.028
+        ax.add_patch(plt.Rectangle((x0, y), table_w, header_h, facecolor="#f7fafc", edgecolor="#dfe8ef", linewidth=0.9, transform=ax.transAxes))
         x = x0
-        for header, width in zip(headers, widths):
-            ax.text(x + 0.008, y + 0.008, header, color="#52616b", fontsize=8.0, fontweight="bold", transform=ax.transAxes)
+        for index, (header, width) in enumerate(zip(headers, widths)):
+            if index == 3:
+                ax.text(x + width / 2, y + 0.009, header, color="#52616b", fontsize=7.8, fontweight="bold", ha="center", transform=ax.transAxes)
+            else:
+                ax.text(x + 0.010, y + 0.009, header, color="#52616b", fontsize=7.8, fontweight="bold", transform=ax.transAxes)
             x += width
-        y -= 0.029
+        y -= 0.004
         for candidate in (row.get("top_candidates") or [])[:3]:
-            fill = "#fff7e6" if candidate.get("is_model_target") else "white"
+            fill = "#fffaf0" if candidate.get("is_model_target") else "white"
             display = _normalize_display_label(str(candidate.get("display", "")), str(candidate.get("ticker", "")))
             reason = _user_facing_candidate_reason(candidate.get("gate_reason") or candidate.get("reason", ""))
-            reason_lines = _wrap_text_lines(reason, max_units=50)
-            display_lines = _wrap_text_lines(display, max_units=18)
-            row_h = max(0.034, 0.014 * max(len(reason_lines), len(display_lines), 1) + 0.018)
-            ax.add_patch(plt.Rectangle((x0, y), 0.88, row_h, facecolor=fill, edgecolor="#e1e7ec", transform=ax.transAxes))
+            reason_lines = _wrap_text_lines(reason, max_units=48)
+            display_lines = _wrap_text_lines(display, max_units=16)
+            row_h = max(0.044, 0.014 * max(len(reason_lines), len(display_lines), 1) + 0.024)
+            y -= row_h
+            ax.add_patch(plt.Rectangle((x0, y), table_w, row_h, facecolor=fill, edgecolor="#e5edf3", linewidth=0.75, transform=ax.transAxes))
             cells = (
                 str(candidate.get("rank", "")),
                 str(candidate.get("selection_label") or ""),
@@ -2459,21 +2464,23 @@ def _draw_pool_top3_sections(ax, rows: list[dict[str, Any]], *, start_y: float =
             x = x0
             for cell_index, (cell, width) in enumerate(zip(cells, widths)):
                 if cell_index == 2:
-                    _draw_wrapped_text(ax, x + 0.008, y + row_h - 0.018, cell, max_units=18, line_gap=0.014, color="#26323b", fontsize=7.8, transform=ax.transAxes)
+                    _draw_wrapped_text(ax, x + 0.010, y + row_h - 0.020, cell, max_units=16, line_gap=0.014, color="#26323b", fontsize=7.7, transform=ax.transAxes)
+                elif cell_index == 3:
+                    ax.text(x + width / 2, y + row_h - 0.020, cell, color="#26323b", fontsize=7.7, ha="center", transform=ax.transAxes)
                 else:
-                    ax.text(x + 0.008, y + row_h - 0.018, cell, color="#26323b", fontsize=7.8, transform=ax.transAxes)
+                    ax.text(x + 0.010, y + row_h - 0.020, cell, color="#26323b", fontsize=7.7, transform=ax.transAxes)
                 x += width
-            reason_x = x0 + sum(widths[:-1]) + 0.008
-            _draw_wrapped_text(ax, reason_x, y + row_h - 0.018, reason, max_units=50, line_gap=0.014, color="#26323b", fontsize=7.2, transform=ax.transAxes)
-            y -= row_h
+            reason_x = x0 + sum(widths[:-1]) + 0.010
+            _draw_wrapped_text(ax, reason_x, y + row_h - 0.020, reason, max_units=48, line_gap=0.014, color="#26323b", fontsize=7.1, transform=ax.transAxes)
+            y -= 0.002
         missing = row.get("missing_price_tickers") or ""
         source = row.get("source_summary") or ""
         if missing or source:
             note = "；".join(part for part in [f"來源：{source}" if source else "", f"缺價：{missing}" if missing else ""] if part)
             note_lines = _wrap_text_lines(note, max_units=78)
-            _draw_wrapped_text(ax, x0 + 0.008, y - 0.004, note, max_units=78, line_gap=0.012, color="#66737d", fontsize=7.1, transform=ax.transAxes)
+            _draw_wrapped_text(ax, x0 + 0.010, y - 0.006, note, max_units=78, line_gap=0.012, color="#66737d", fontsize=7.1, transform=ax.transAxes)
             y -= 0.012 * max(len(note_lines), 1) + 0.006
-        y -= 0.012
+        y -= 0.016
     for row in skipped_rows[:3]:
         if y < 0.09:
             break
