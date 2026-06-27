@@ -23,6 +23,7 @@ from backtest_lab.decision_layers import (
 )
 from backtest_lab.formal_model_contract import FORMAL_MODEL_ROUTE, FORMAL_MODEL_TARGET, formal_model_report_description
 from backtest_lab.formal_radar_candidates import formal_radar_candidates_to_symbols, load_formal_radar_candidates
+from backtest_lab.frozen_market_data import fill_signal_date_from_twse, incomplete_tickers, write_price_cache
 from backtest_lab.market_cap_source import load_first_available_market_caps
 from backtest_lab.risk_factor_source import RiskFactorSignal, load_first_available_risk_factors
 from backtest_lab.frozen_report_pdf import _configure_chinese_font, _save_figure_as_raster_pdf_page
@@ -2250,6 +2251,12 @@ def _load_observation_price_frames(
                 prices[ticker] = cached
             else:
                 missing.append(ticker)
+    incomplete = incomplete_tickers(prices, end_date)
+    if incomplete:
+        prices = fill_signal_date_from_twse(prices, end_date, incomplete)
+        write_price_cache(Path(cache_dir), prices, incomplete)
+        still_incomplete = set(incomplete_tickers(prices, end_date))
+        missing = sorted(set(missing).union(still_incomplete))
     return prices, missing
 
 

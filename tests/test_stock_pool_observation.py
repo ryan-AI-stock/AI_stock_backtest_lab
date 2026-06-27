@@ -61,6 +61,45 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertEqual(missing, [])
             self.assertEqual(prices["6919.TW"].index.max(), dates[-1])
 
+    def test_price_loader_fills_signal_date_from_twse_when_yfinance_lags(self) -> None:
+        dates = pd.bdate_range("2025-04-01", periods=320)
+        lagged = _trend_frame(dates[:-1], start=80, step=0.2, volume=5_000_000)
+
+        def fake_fill(prices, signal_date, tickers):
+            filled = dict(prices)
+            for ticker in tickers:
+                frame = filled[ticker].copy()
+                frame.loc[pd.Timestamp(signal_date)] = {
+                    "open": 150.0,
+                    "high": 152.0,
+                    "low": 149.0,
+                    "close": 151.0,
+                    "adj_close": 151.0,
+                    "volume": 10_000_000,
+                    "dividend": 0.0,
+                    "stock_split": 0.0,
+                }
+                filled[ticker] = frame.sort_index()
+            return filled
+
+        with tempfile.TemporaryDirectory() as tmp:
+            cache_dir = Path(tmp) / "cache"
+            with patch("backtest_lab.stock_pool_observation.download_yfinance_prices", return_value={"0050.TW": lagged}), patch(
+                "backtest_lab.stock_pool_observation.fill_signal_date_from_twse",
+                side_effect=fake_fill,
+            ):
+                prices, missing = _load_observation_price_frames(
+                    tickers=["0050.TW"],
+                    start_date="2020-01-02",
+                    end_date=dates[-1].strftime("%Y-%m-%d"),
+                    cache_dir=cache_dir,
+                )
+
+            self.assertEqual(missing, [])
+            self.assertIn(dates[-1], prices["0050.TW"].index)
+            self.assertEqual(float(prices["0050.TW"].loc[dates[-1], "close"]), 151.0)
+            self.assertTrue((cache_dir / "0050_TW.csv").exists())
+
     def test_build_observation_outputs_unified_schema_and_top_candidate(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)
         tsmc = symbol_entry("2330.TW", source="manual")
@@ -1203,7 +1242,7 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertIn("No exact common price data", manifest["skipped"][0]["reason"])
             self.assertFalse((Path(manifest["output_root"]) / "AI股票池觀察總覽_最新版_v20260612.pdf").exists())
 
-    def test_batch_fallback_writes_pdf_and_manifest_dates_when_exact_not_required(self) -> None:
+    def test_batch_fallback_keeps_manifest_but_does_not_publish_latest_pdf(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)
         requested_signal_date = (dates[-1] + pd.Timedelta(days=3)).strftime("%Y-%m-%d")
         actual_signal_date = dates[-1].strftime("%Y-%m-%d")
@@ -1242,10 +1281,12 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertIn(actual_signal_date, manifest["fallback_reason"])
             self.assertEqual(manifest_payload["requested_signal_date"], requested_signal_date)
             self.assertEqual(manifest_payload["actual_signal_date"], actual_signal_date)
-            self.assertTrue((output_root / "AI股票池觀察總覽_最新版_v20260612.pdf").exists())
+            self.assertFalse(manifest["formal_report_ready"])
+            self.assertFalse((output_root / "AI股票池觀察總覽_最新版_v20260612.pdf").exists())
             report_text = (output_root / "stock_pool_observation_report.md").read_text(encoding="utf-8")
             self.assertIn(f"要求訊號日：{requested_signal_date}", report_text)
             self.assertIn(f"訊號日：{actual_signal_date}", report_text)
+            self.assertIn("正式報告狀態：停止發布，等待完整資料", report_text)
 
 
 def _trend_frame(dates: pd.DatetimeIndex, *, start: float, step: float, volume: int) -> pd.DataFrame:
