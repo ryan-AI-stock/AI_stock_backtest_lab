@@ -62,7 +62,6 @@ REPORT_TITLE = "AI股票池正式觀察總覽"
 REPORT_VERSION = "v20260612"
 REPORT_LATEST_FILENAME = f"{REPORT_NAME}_最新版_{REPORT_VERSION}.pdf"
 TARGET_STABILITY_LOW_SCORE_GAP_THRESHOLD = 0.15
-CHIP_CONTEXT_COVERAGE_END = "2026-05-26"
 FROZEN_BEST_GROUP_ID = "group_c_0050_00631l_plus_mega_caps"
 TW50_ATTACK_GATE_RULE_ID = "tw50_large_breadth_attack_gate_v1"
 TW50_ATTACK_GATE_BENCHMARK = "0050.TW"
@@ -975,6 +974,7 @@ def run_stock_pool_observation_batch(
     tw50_constituents_path: str | Path | None = None,
     radar_top_n: int = 20,
     require_exact_signal_date: bool = False,
+    require_fresh_institutional_flow: bool = False,
     operational_only: bool = True,
 ) -> dict[str, Any]:
     date_key = pd.Timestamp(signal_date).strftime("%Y%m%d")
@@ -1002,11 +1002,13 @@ def run_stock_pool_observation_batch(
         "signal_date_fallback_used": False,
         "fallback_reason": "",
         "require_exact_signal_date": require_exact_signal_date,
+        "require_fresh_institutional_flow": require_fresh_institutional_flow,
         "operational_only": operational_only,
         "market_cap_source": market_cap_source,
         "market_cap_count": len(market_caps),
         "risk_factor_sources": risk_sources,
         "risk_factor_count": len(risk_signals),
+        "risk_factor_coverage_end_by_kind": _risk_factor_coverage_end_by_kind(risk_signals),
         "valuation_source": str(valuation_data or ""),
         "output_root": str(root),
         "generated": [],
@@ -1146,6 +1148,7 @@ def run_stock_pool_observation_batch(
     _attach_live_risk_regime_warning_boundary(manifest)
     _attach_chip_context_report_boundary(manifest)
     _set_formal_report_readiness(manifest)
+    manifest["decision_first_report_contract"] = _decision_first_report_contract(manifest)
     manifest["model_layer_audit"] = default_stock_pool_model_layer_audit(
         signal_date=manifest.get("actual_signal_date") or signal_date,
         generated_pools=manifest["generated"],
@@ -1222,6 +1225,20 @@ def _set_formal_report_readiness(manifest: dict[str, Any]) -> None:
                 "reason_zh": "資料不足：部分正式候選缺少價格資料（" + "、".join(missing) + "）。",
             }
         )
+    chip_context = manifest.get("chip_context") or {}
+    if (
+        manifest.get("require_fresh_institutional_flow")
+        and visible_generated
+        and chip_context.get("chip_context_state") in {"chip_data_insufficient", "chip_not_available"}
+    ):
+        blockers.append(
+            {
+                "pool_id": "chip_context",
+                "pool_name": "籌碼資料",
+                "reason": str(chip_context.get("chip_context_reason") or "chip_context_data_insufficient"),
+                "reason_zh": str(chip_context.get("chip_context_reason") or "資料不足：籌碼資料尚未補齊。"),
+            }
+        )
     ready = bool(visible_generated) and not blockers
     manifest["formal_report_ready"] = ready
     manifest["formal_report_blocker_count"] = len(blockers)
@@ -1262,6 +1279,44 @@ def _report_wording_boundary() -> dict[str, Any]:
             "診斷註解：非正式診斷資訊只解釋風險或資料限制，不是正式交易規則。",
             "執行邊界：目前沒有完整換倉與出場層；訊號變化不等於完整持倉管理命令。",
         ],
+    }
+
+
+def _decision_first_report_contract(manifest: dict[str, Any]) -> dict[str, Any]:
+    visible_generated = [
+        item for item in manifest.get("generated", []) if not _hide_from_formal_report(item)
+    ]
+    active_rows = [item for item in visible_generated if item.get("active_in_trade_decision")]
+    primary = active_rows[0] if active_rows else (visible_generated[0] if visible_generated else {})
+    target = next((row for row in primary.get("top_candidates") or [] if row.get("is_model_target")), None)
+    target = target or ((primary.get("top_candidates") or [{}])[0] if primary.get("top_candidates") else {})
+    target_display = str(target.get("display") or primary.get("top_display") or primary.get("top_ticker") or "")
+    report_ready = bool(manifest.get("formal_report_ready", True))
+    blockers = manifest.get("formal_report_blockers") or []
+    if not report_ready:
+        state = "data_blocked"
+        conclusion = "資料尚未補齊，這份報告不能作為隔天操作判斷。"
+    elif target_display:
+        state = "formal_target_available"
+        conclusion = f"正式觀察標的：{target_display}。"
+    else:
+        state = "no_formal_target"
+        conclusion = "本次沒有形成正式觀察標的。"
+    return {
+        "decision_first_state": state,
+        "decision_first_conclusion_zh": conclusion,
+        "formal_target_display": target_display,
+        "formal_target_ticker": str(target.get("ticker") or primary.get("top_ticker") or ""),
+        "data_completeness_state": "complete" if report_ready else "blocked",
+        "data_blocker_summary_zh": "；".join(str(item.get("reason_zh") or item.get("reason") or "") for item in blockers if item) if blockers else "",
+        "switch_signal_state": "previous_formal_target_contract_missing",
+        "switch_signal_wording_zh": "尚未接入前一交易日正式標的契約，因此本報告目前不能自動判定是否形成換倉訊號。",
+        "score_margin_state": "formal_candidate_ranking_contract_missing",
+        "score_margin_wording_zh": "正式候選排名與第二、第三名分數差距契約尚未完成，不能用 proxy 分數冒充正式分數差距。",
+        "pool1_state_zh": _sanitize_visible_report_reason(primary.get("selection_reason") or primary.get("gate_reason") or "主攻池已產生正式觀察。") if primary else "主攻池未產生正式觀察。",
+        "pool2_state_zh": "確認池風控已納入目前正式模型；更細的確認品質需等待正式候選排名契約補齊。",
+        "active_in_trade_decision": False,
+        "boundary": "report_contract",
     }
 
 
@@ -1503,14 +1558,20 @@ def _chip_context_report_boundary(manifest: dict[str, Any]) -> dict[str, Any]:
     target = target or ((primary.get("top_candidates") or [{}])[0] if primary.get("top_candidates") else {})
     h1_positive = _number_like(target.get("bullish_flow_score")) > 0
     h2_sell_pressure = _number_like(target.get("institutional_risk")) > 0 or _number_like(target.get("flow_risk_score")) > 0
+    coverage_end = _chip_context_coverage_end(manifest, target)
     if not formal_rows:
         state = "chip_not_available"
         reason = "正式觀察資料不足，無法建立籌碼輔助觀察。"
-    elif _date_after(signal_date, CHIP_CONTEXT_COVERAGE_END):
+    elif not coverage_end:
+        state = "chip_data_insufficient"
+        reason = "本次正式產報沒有成功載入當日三大法人籌碼資料，應先補齊資料後再發布。"
+        h1_positive = False
+        h2_sell_pressure = False
+    elif _date_after(signal_date, coverage_end):
         state = "chip_data_insufficient"
         reason = (
-            f"目前籌碼資料只更新到 {CHIP_CONTEXT_COVERAGE_END}，"
-            f"晚於正式訊號日的資料尚未納入，因此不拿來支持或否決本次標的。"
+            f"目前籌碼資料只更新到 {coverage_end}，尚未補到本次正式訊號日 {signal_date}，"
+            f"應先補齊資料後再發布正式報告。"
         )
         h1_positive = False
         h2_sell_pressure = False
@@ -1532,7 +1593,7 @@ def _chip_context_report_boundary(manifest: dict[str, Any]) -> dict[str, Any]:
         "chip_h1_positive_flag": bool(h1_positive),
         "chip_h2_sell_pressure_flag": bool(h2_sell_pressure),
         "chip_neutral_reference_available": False,
-        "chip_data_coverage_end": CHIP_CONTEXT_COVERAGE_END,
+        "chip_data_coverage_end": coverage_end,
         "chip_context_active_in_trade_decision": False,
         "chip_context_boundary": "report_only",
         "chip_context_policy_note": (
@@ -1580,6 +1641,33 @@ def _chip_context_state_label(value: object) -> str:
         "chip_not_available": "籌碼資料未接入",
     }
     return mapping.get(str(value or ""), str(value or "籌碼資料不足"))
+
+
+def _risk_factor_coverage_end_by_kind(risk_signals: dict[str, RiskFactorSignal]) -> dict[str, str]:
+    dates_by_kind: dict[str, list[str]] = {}
+    for signal in risk_signals.values():
+        for kind in signal.source_kinds:
+            dates_by_kind.setdefault(kind, []).extend(signal.source_dates)
+    coverage: dict[str, str] = {}
+    for kind, dates in dates_by_kind.items():
+        valid = sorted({str(date) for date in dates if date})
+        if valid:
+            coverage[kind] = valid[-1]
+    return coverage
+
+
+def _chip_context_coverage_end(manifest: dict[str, Any], target: dict[str, Any]) -> str:
+    by_kind = manifest.get("risk_factor_coverage_end_by_kind")
+    if isinstance(by_kind, dict) and by_kind.get("institutional"):
+        return str(by_kind["institutional"])
+    source_dates = target.get("flow_source_dates")
+    if isinstance(source_dates, (list, tuple)):
+        valid = sorted(str(item) for item in source_dates if item)
+        return valid[-1] if valid else ""
+    if isinstance(source_dates, str) and source_dates:
+        valid = sorted(item.strip() for item in source_dates.split(",") if item.strip())
+        return valid[-1] if valid else ""
+    return ""
 
 
 def _number_like(value: object) -> float:
@@ -1836,6 +1924,7 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
     stability = manifest.get("target_stability_warning") or _target_stability_warning_boundary(manifest)
     live_risk = manifest.get("live_risk_regime_warning") or _live_risk_regime_warning_boundary(manifest)
     chip_context = manifest.get("chip_context") or _chip_context_report_boundary(manifest)
+    decision_first = manifest.get("decision_first_report_contract") or _decision_first_report_contract(manifest)
     report_rows = _formal_report_rows(rows)
     visible_skipped_count = len([row for row in report_rows if row.get("status") != "generated"])
     skipped_summaries = _skipped_reason_summary(rows, manifest)
@@ -1850,6 +1939,17 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
         f"- 暫無正式觀察：{visible_skipped_count}（{'; '.join(skipped_summaries) if skipped_summaries else '無'}）",
         f"- 正式報告狀態：{'可發布' if report_ready else '停止發布，等待完整資料'}",
         f"- 正式模型基準：{_translate_internal_visible_text(formal_boundary.get('description'))}",
+        "",
+        "## 隔天操作判斷",
+        "",
+        f"- 主結論：{decision_first.get('decision_first_conclusion_zh', '')}",
+        f"- 正式標的：{decision_first.get('formal_target_display') or '無'}",
+        f"- 資料完整度：{'資料齊全' if decision_first.get('data_completeness_state') == 'complete' else '資料未補齊'}",
+        f"- 資料缺口：{decision_first.get('data_blocker_summary_zh') or '無'}",
+        f"- 換倉訊號：{decision_first.get('switch_signal_wording_zh', '')}",
+        f"- 分數差距：{decision_first.get('score_margin_wording_zh', '')}",
+        f"- 主攻池狀態：{decision_first.get('pool1_state_zh', '')}",
+        f"- 確認池狀態：{decision_first.get('pool2_state_zh', '')}",
         "",
         "## 現金流健康度（僅供診斷）",
         "",
@@ -2490,6 +2590,7 @@ def main() -> None:
     parser.add_argument("--tw50-constituents", default=os.getenv("TW50_CONSTITUENTS_PATH", ""))
     parser.add_argument("--radar-top-n", type=int, default=20)
     parser.add_argument("--require-exact-signal-date", action="store_true")
+    parser.add_argument("--require-fresh-institutional-flow", action="store_true")
     parser.add_argument(
         "--include-non-operational-pools",
         action="store_true",
@@ -2518,6 +2619,7 @@ def main() -> None:
             tw50_constituents_path=args.tw50_constituents or None,
             radar_top_n=args.radar_top_n,
             require_exact_signal_date=args.require_exact_signal_date,
+            require_fresh_institutional_flow=args.require_fresh_institutional_flow,
             operational_only=not args.include_non_operational_pools,
         )
         print(f"STOCK_POOL_OBSERVATION_MANIFEST={Path(manifest['output_root']).resolve() / 'stock_pool_observation_manifest.json'}")

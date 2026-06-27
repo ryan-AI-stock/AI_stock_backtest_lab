@@ -239,6 +239,23 @@ jobs:
             --allow-seed-fallback \
             "${source_args[@]}"
 
+      - name: Refresh TWSE institutional flow data
+        if: steps.schedule-gate.outputs.should_run == 'true'
+        id: institutional-flow-refresh
+        shell: bash
+        env:
+          PYTHONPATH: src
+        run: |
+          date_key="${{ steps.observation-inputs.outputs.signal_date }}"
+          date_key="${date_key//-/}"
+          output_dir="outputs/stock_pool_observations/${date_key}"
+          output_path="${output_dir}/institutional_flows.latest.csv"
+          mkdir -p "$output_dir"
+          python -m backtest_lab.twse_institutional_flow_refresh \
+            --signal-date "${{ steps.observation-inputs.outputs.signal_date }}" \
+            --output "$output_path"
+          echo "institutional_flow_data=$output_path" >> "$GITHUB_OUTPUT"
+
       - name: Generate stock-pool observations
         if: steps.schedule-gate.outputs.should_run == 'true'
         shell: bash
@@ -247,7 +264,7 @@ jobs:
           RADAR_SNAPSHOT_DIR: ${{ steps.observation-inputs.outputs.radar_snapshot_dir }}
           RADAR_DATA_DIR: ${{ steps.observation-inputs.outputs.radar_data_dir }}
           MARKET_CAP_DATA_PATH: ${{ steps.observation-inputs.outputs.market_cap_data }}
-          INSTITUTIONAL_FLOW_DATA_PATH: ${{ vars.INSTITUTIONAL_FLOW_DATA_PATH }}
+          INSTITUTIONAL_FLOW_DATA_PATH: ${{ steps.institutional-flow-refresh.outputs.institutional_flow_data }}
           MARGIN_SHORT_DATA_PATH: ${{ vars.MARGIN_SHORT_DATA_PATH }}
           BORROW_LENDING_DATA_PATH: ${{ vars.BORROW_LENDING_DATA_PATH }}
           DAY_TRADING_DATA_PATH: ${{ vars.DAY_TRADING_DATA_PATH }}
@@ -291,6 +308,7 @@ jobs:
             --cache-dir backtest_cache/stock_pool_observations \
             --output-root outputs/stock_pool_observations \
             --tw50-constituents data/tw50_constituents.csv \
+            --require-fresh-institutional-flow \
             "${exact_args[@]}" \
             "${radar_args[@]}"
 
@@ -301,7 +319,7 @@ jobs:
           PYTHONPATH: src
           RADAR_DATA_DIR: ${{ steps.observation-inputs.outputs.radar_data_dir }}
           MARKET_CAP_DATA_PATH: ${{ steps.observation-inputs.outputs.market_cap_data }}
-          INSTITUTIONAL_FLOW_DATA_PATH: ${{ vars.INSTITUTIONAL_FLOW_DATA_PATH }}
+          INSTITUTIONAL_FLOW_DATA_PATH: ${{ steps.institutional-flow-refresh.outputs.institutional_flow_data }}
           MARGIN_SHORT_DATA_PATH: ${{ vars.MARGIN_SHORT_DATA_PATH }}
           BORROW_LENDING_DATA_PATH: ${{ vars.BORROW_LENDING_DATA_PATH }}
           DAY_TRADING_DATA_PATH: ${{ vars.DAY_TRADING_DATA_PATH }}

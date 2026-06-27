@@ -22,6 +22,7 @@ from backtest_lab.stock_pool_observation import (
     _load_observation_price_frames,
     _resolve_dynamic_observation_pool,
     _sanitize_visible_report_reason,
+    _set_formal_report_readiness,
     _top_candidate_rows,
     _target_stability_warning_boundary,
     _user_facing_candidate_reason,
@@ -175,11 +176,17 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertNotIn(forbidden, markdown)
 
     def test_chip_context_boundary_is_report_only_and_discloses_coverage(self) -> None:
-        manifest = _chip_context_manifest(signal_date="2026-06-26", bullish=1.0, institutional_risk=0.0, flow_risk=0.0)
+        manifest = _chip_context_manifest(
+            signal_date="2026-06-26",
+            bullish=1.0,
+            institutional_risk=0.0,
+            flow_risk=0.0,
+            coverage_end="2026-06-26",
+        )
         _attach_chip_context_report_boundary(manifest)
 
-        self.assertEqual(manifest["chip_context_state"], "chip_data_insufficient")
-        self.assertEqual(manifest["chip_data_coverage_end"], "2026-05-26")
+        self.assertEqual(manifest["chip_context_state"], "h1_positive_context")
+        self.assertEqual(manifest["chip_data_coverage_end"], "2026-06-26")
         self.assertFalse(manifest["chip_neutral_reference_available"])
         self.assertFalse(manifest["chip_context_active_in_trade_decision"])
         self.assertEqual(manifest["chip_context_boundary"], "report_only")
@@ -188,8 +195,8 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertFalse(manifest["active_in_trade_decision"])
 
     def test_chip_context_h1_h2_states_do_not_become_rules(self) -> None:
-        h1 = _chip_context_report_boundary(_chip_context_manifest(signal_date="2026-05-24", bullish=1.0, institutional_risk=0.0, flow_risk=0.0))
-        h2 = _chip_context_report_boundary(_chip_context_manifest(signal_date="2026-05-24", bullish=0.0, institutional_risk=1.0, flow_risk=1.0))
+        h1 = _chip_context_report_boundary(_chip_context_manifest(signal_date="2026-05-24", bullish=1.0, institutional_risk=0.0, flow_risk=0.0, coverage_end="2026-05-24"))
+        h2 = _chip_context_report_boundary(_chip_context_manifest(signal_date="2026-05-24", bullish=0.0, institutional_risk=1.0, flow_risk=1.0, coverage_end="2026-05-24"))
 
         self.assertEqual(h1["chip_context_state"], "h1_positive_context")
         self.assertEqual(h2["chip_context_state"], "h2_sell_pressure_observation")
@@ -198,8 +205,37 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertFalse(h1["chip_context_active_in_trade_decision"])
         self.assertFalse(h2["chip_context_active_in_trade_decision"])
 
-    def test_chip_context_visible_wording_is_not_trade_instruction(self) -> None:
-        manifest = _chip_context_manifest(signal_date="2026-06-26", bullish=1.0, institutional_risk=0.0, flow_risk=0.0)
+    def test_chip_context_stale_data_blocks_formal_report_readiness(self) -> None:
+        manifest = _chip_context_manifest(
+            signal_date="2026-06-26",
+            bullish=1.0,
+            institutional_risk=0.0,
+            flow_risk=0.0,
+            coverage_end="2026-05-26",
+        )
+        _attach_chip_context_report_boundary(manifest)
+        manifest.update(
+            {
+                "report_ready": True,
+                "require_fresh_institutional_flow": True,
+                "report_wording_boundary": {"formal_baseline": {"description": "主攻池優先，確認池做風險確認"}},
+                "cashflow_report_boundary": _cashflow_report_boundary(),
+                "target_stability_warning": _target_stability_warning_boundary(manifest),
+                "live_risk_regime_warning": _live_risk_regime_warning_boundary(manifest),
+                "generated": manifest["generated"],
+            }
+        )
+        _set_formal_report_readiness(manifest)
+        markdown = markdown_observation_batch_report(manifest, [])
+
+        self.assertIn("籌碼背景觀察（僅供診斷）", markdown)
+        self.assertIn("籌碼資料截止日：2026-05-26", markdown)
+        self.assertIn("停止發布，等待完整資料", markdown)
+        self.assertFalse(manifest["formal_report_ready"])
+        self.assertEqual(manifest["chip_context_state"], "chip_data_insufficient")
+
+    def test_chip_context_visible_wording_is_not_trade_instruction_when_fresh(self) -> None:
+        manifest = _chip_context_manifest(signal_date="2026-05-24", bullish=1.0, institutional_risk=0.0, flow_risk=0.0, coverage_end="2026-05-24")
         _attach_chip_context_report_boundary(manifest)
         manifest.update(
             {
@@ -214,7 +250,7 @@ class StockPoolObservationTest(unittest.TestCase):
         markdown = markdown_observation_batch_report(manifest, [])
 
         self.assertIn("籌碼背景觀察（僅供診斷）", markdown)
-        self.assertIn("籌碼資料截止日：2026-05-26", markdown)
+        self.assertIn("籌碼資料截止日：2026-05-24", markdown)
         self.assertIn("中性對照組：目前不可用", markdown)
         self.assertIn("籌碼賣壓不作正式否決", markdown)
         for forbidden in ("籌碼確認買進", "籌碼賣壓否決", "法人買超提高權重", "賣壓觸發降權", "H1 positive", "H2 sell pressure"):
@@ -964,6 +1000,13 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertIn("candidate_review", manifest["skipped"][0])
             self.assertIn("model_layer_audit", manifest)
             self.assertIn("report_wording_boundary", manifest)
+            self.assertIn("decision_first_report_contract", manifest)
+            decision = manifest["decision_first_report_contract"]
+            self.assertEqual(decision["decision_first_state"], "formal_target_available")
+            self.assertEqual(decision["data_completeness_state"], "complete")
+            self.assertIn("台積電(2330)", decision["formal_target_display"])
+            self.assertEqual(decision["switch_signal_state"], "previous_formal_target_contract_missing")
+            self.assertEqual(decision["score_margin_state"], "formal_candidate_ranking_contract_missing")
             wording = manifest["report_wording_boundary"]
             self.assertFalse(wording["formal_model_changed"])
             self.assertFalse(wording["trade_decision_changed"])
@@ -1719,8 +1762,15 @@ def _live_risk_manifest(*, risk_off_active: bool, attack_gate_active: bool) -> d
     }
 
 
-def _chip_context_manifest(*, signal_date: str, bullish: float, institutional_risk: float, flow_risk: float) -> dict[str, object]:
-    return {
+def _chip_context_manifest(
+    *,
+    signal_date: str,
+    bullish: float,
+    institutional_risk: float,
+    flow_risk: float,
+    coverage_end: str = "",
+) -> dict[str, object]:
+    manifest: dict[str, object] = {
         "signal_date": signal_date,
         "actual_signal_date": signal_date,
         "generated": [
@@ -1751,6 +1801,9 @@ def _chip_context_manifest(*, signal_date: str, bullish: float, institutional_ri
         ],
         "skipped": [],
     }
+    if coverage_end:
+        manifest["risk_factor_coverage_end_by_kind"] = {"institutional": coverage_end}
+    return manifest
 
 
 if __name__ == "__main__":
