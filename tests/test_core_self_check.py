@@ -60,8 +60,6 @@ class CoreSelfCheckTest(unittest.TestCase):
                 "src/backtest_lab/stock_pool_consensus.py",
                 "src/backtest_lab/margin_short_ingestion_spec.py",
                 "src/backtest_lab/chip_valuation_event_study.py",
-                ".github/workflows/frozen_strategy_daily_report.yml",
-                ".github/workflows/model_scorecard_report.yml",
                 ".github/workflows/stock_pool_observation.yml",
             ):
                 path = root / relative

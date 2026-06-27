@@ -31,8 +31,6 @@ REQUIRED_CORE_FILES = (
 )
 
 REQUIRED_WORKFLOWS = (
-    ".github/workflows/frozen_strategy_daily_report.yml",
-    ".github/workflows/model_scorecard_report.yml",
     ".github/workflows/stock_pool_observation.yml",
 )
 

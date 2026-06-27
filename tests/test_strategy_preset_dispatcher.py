@@ -24,7 +24,7 @@ class StrategyPresetDispatcherTest(unittest.TestCase):
     def test_scorecard_preset_is_not_operational_observation(self) -> None:
         spec = resolve_strategy_preset("delayed_public_scorecard_v1")
 
-        self.assertEqual(spec.workflow_file, "model_scorecard_report.yml")
+        self.assertEqual(spec.workflow_file, "")
         self.assertFalse(spec.operational_observation)
         self.assertTrue(spec.public_scorecard)
 

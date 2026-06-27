@@ -48,7 +48,7 @@ class StockPoolStoreTest(unittest.TestCase):
         self.assertFalse(large["operational_observation"])
         self.assertFalse(scorecard["operational_observation"])
         self.assertEqual(large["dispatch"]["workflow_file"], "stock_pool_observation.yml")
-        self.assertEqual(scorecard["dispatch"]["workflow_file"], "model_scorecard_report.yml")
+        self.assertEqual(scorecard["dispatch"]["workflow_file"], "")
 
     def test_scorecard_pool_dynamic_third_symbol_follows_latest_signal(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

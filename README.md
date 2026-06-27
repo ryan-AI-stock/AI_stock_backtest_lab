@@ -206,31 +206,25 @@ python -m backtest_lab.model_scorecard_report `
   --output-root outputs/model_scorecard_report
 ```
 
-固定最新版檔名：
-
-```text
-AI模型延遲公開成績單_最新版_v20260612.pdf
-```
-
-GitHub Actions workflow：`.github/workflows/model_scorecard_report.yml`。Drive 目標資料夾預設為 `1NDqeKNo3Sa08t0PUqWiSkCLQTZGfKHIe`，也可用 `SCORECARD_REPORT_DRIVE_FOLDER_ID` 覆蓋；若要固定覆蓋同一個 Drive file id，可設定 `SCORECARD_REPORT_DRIVE_FILE_ID`。
+這是本機研究與內容素材用 runner；目前不再保留 GitHub Actions 自動產出或 Drive 固定發布入口。正式每日操作判斷只看 `Stock Pool Observation`。
 
 ## 股票池觀察框架
 
 `stock_pool_observation` 是統一股票池觀察輸出層，用來把實際操盤觀察池整理成同一套 JSON/CSV/PDF schema。它只產出觀察排名與候選股分數，不直接取代最佳版正式持倉引擎。
 
-目前 `strategy_preset` dispatcher 的路由：
+目前 `strategy_preset` dispatcher 的正式 Actions 路由：
 
-- `best_v20260605`：正式最佳版每日報告，workflow `frozen_strategy_daily_report.yml`。
+- `best_v20260605`：納入正式股票池觀察總覽，workflow `stock_pool_observation.yml`。
 - `radar_core_mid_small_calibrated_v1`：雷達中小型操盤觀察池，workflow `stock_pool_observation.yml`。
 - `universal_pool_custom`：自訂股票池通用觀察，workflow `stock_pool_observation.yml`。
-- `delayed_public_scorecard_v1`：免費用戶延遲公開驗證工具，workflow `model_scorecard_report.yml`。
+- `delayed_public_scorecard_v1`：非正式每日操作報告；保留本機 runner，不再有 GitHub Actions workflow。
 
 `AI股票池觀察總覽_最新版_v20260612.pdf` 定位為創作者本人隔日操作前看的實際操盤觀察報告。預設只包含 `operational_observation=true` 的股票池，例如：
 
 - `AI中大型權值股池最佳版 v20260605`
 - `雷達中小型校準版`
 
-`模型延遲公開成績單池` 不會出現在這份操盤觀察總覽中。它屬於另一條免費用戶驗證工具產品線，由 `model_scorecard_report.yml` 產出 `AI模型延遲公開成績單_最新版_v20260612.pdf`，用來延遲公開「最佳版每日建議、0050、0050正二」三條資金曲線。
+`模型延遲公開成績單池` 不會出現在這份操盤觀察總覽中。它屬於另一條歷史研究 / 內容素材產品線，目前不再有 GitHub Actions 自動產出或 Drive 固定發布入口。
 
 本機批次產出範例：
 
