@@ -1148,7 +1148,7 @@ def run_stock_pool_observation_batch(
     _attach_live_risk_regime_warning_boundary(manifest)
     _attach_chip_context_report_boundary(manifest)
     _set_formal_report_readiness(manifest)
-    manifest["decision_first_report_contract"] = _decision_first_report_contract(manifest)
+    manifest["decision_first_report_contract"] = _decision_first_report_contract(manifest, output_root=Path(output_root))
     manifest["model_layer_audit"] = default_stock_pool_model_layer_audit(
         signal_date=manifest.get("actual_signal_date") or signal_date,
         generated_pools=manifest["generated"],
@@ -1282,7 +1282,7 @@ def _report_wording_boundary() -> dict[str, Any]:
     }
 
 
-def _decision_first_report_contract(manifest: dict[str, Any]) -> dict[str, Any]:
+def _decision_first_report_contract(manifest: dict[str, Any], *, output_root: str | Path | None = None) -> dict[str, Any]:
     visible_generated = [
         item for item in manifest.get("generated", []) if not _hide_from_formal_report(item)
     ]
@@ -1291,6 +1291,7 @@ def _decision_first_report_contract(manifest: dict[str, Any]) -> dict[str, Any]:
     target = next((row for row in primary.get("top_candidates") or [] if row.get("is_model_target")), None)
     target = target or ((primary.get("top_candidates") or [{}])[0] if primary.get("top_candidates") else {})
     target_display = str(target.get("display") or primary.get("top_display") or primary.get("top_ticker") or "")
+    target_ticker = str(target.get("ticker") or primary.get("top_ticker") or "")
     report_ready = bool(manifest.get("formal_report_ready", True))
     blockers = manifest.get("formal_report_blockers") or []
     if not report_ready:
@@ -1302,15 +1303,25 @@ def _decision_first_report_contract(manifest: dict[str, Any]) -> dict[str, Any]:
     else:
         state = "no_formal_target"
         conclusion = "本次沒有形成正式觀察標的。"
+    previous = _previous_formal_target_contract(manifest, output_root=output_root)
+    switch_state, switch_wording = _switch_signal_state(
+        current_ticker=target_ticker,
+        current_display=target_display,
+        previous=previous,
+        report_ready=report_ready,
+    )
     return {
         "decision_first_state": state,
         "decision_first_conclusion_zh": conclusion,
         "formal_target_display": target_display,
-        "formal_target_ticker": str(target.get("ticker") or primary.get("top_ticker") or ""),
+        "formal_target_ticker": target_ticker,
+        "previous_formal_target_date": previous.get("previous_formal_target_date", ""),
+        "previous_formal_target_display": previous.get("previous_formal_target_display", ""),
+        "previous_formal_target_ticker": previous.get("previous_formal_target_ticker", ""),
         "data_completeness_state": "complete" if report_ready else "blocked",
         "data_blocker_summary_zh": "；".join(str(item.get("reason_zh") or item.get("reason") or "") for item in blockers if item) if blockers else "",
-        "switch_signal_state": "previous_formal_target_contract_missing",
-        "switch_signal_wording_zh": "尚未接入前一交易日正式標的契約，因此本報告目前不能自動判定是否形成換倉訊號。",
+        "switch_signal_state": switch_state,
+        "switch_signal_wording_zh": switch_wording,
         "score_margin_state": "formal_candidate_ranking_contract_missing",
         "score_margin_wording_zh": "正式候選排名與第二、第三名分數差距契約尚未完成，不能用 proxy 分數冒充正式分數差距。",
         "pool1_state_zh": _sanitize_visible_report_reason(primary.get("selection_reason") or primary.get("gate_reason") or "主攻池已產生正式觀察。") if primary else "主攻池未產生正式觀察。",
@@ -1318,6 +1329,85 @@ def _decision_first_report_contract(manifest: dict[str, Any]) -> dict[str, Any]:
         "active_in_trade_decision": False,
         "boundary": "report_contract",
     }
+
+
+def _previous_formal_target_contract(manifest: dict[str, Any], *, output_root: str | Path | None = None) -> dict[str, str]:
+    current_date = str(manifest.get("actual_signal_date") or manifest.get("signal_date") or "")
+    if not output_root:
+        return {}
+    base = Path(output_root)
+    if not base.exists():
+        return {}
+    candidates: list[tuple[pd.Timestamp, dict[str, Any]]] = []
+    for path in base.glob("*/stock_pool_observation_manifest.json"):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if not payload.get("formal_report_ready", True):
+            continue
+        signal_date = str(payload.get("actual_signal_date") or payload.get("signal_date") or "")
+        if not signal_date or signal_date >= current_date:
+            continue
+        target = _extract_formal_target(payload)
+        if not target.get("formal_target_ticker"):
+            continue
+        try:
+            candidates.append((pd.Timestamp(signal_date), {"date": signal_date, **target}))
+        except Exception:
+            continue
+    if not candidates:
+        return {}
+    _, latest = max(candidates, key=lambda item: item[0])
+    return {
+        "previous_formal_target_date": str(latest.get("date") or ""),
+        "previous_formal_target_display": str(latest.get("formal_target_display") or ""),
+        "previous_formal_target_ticker": str(latest.get("formal_target_ticker") or ""),
+    }
+
+
+def _extract_formal_target(manifest: dict[str, Any]) -> dict[str, str]:
+    decision = manifest.get("decision_first_report_contract")
+    if isinstance(decision, dict) and decision.get("formal_target_ticker"):
+        return {
+            "formal_target_display": str(decision.get("formal_target_display") or decision.get("formal_target_ticker") or ""),
+            "formal_target_ticker": str(decision.get("formal_target_ticker") or ""),
+        }
+    visible_generated = [
+        item for item in manifest.get("generated", []) if not _hide_from_formal_report(item)
+    ]
+    active_rows = [item for item in visible_generated if item.get("active_in_trade_decision")]
+    primary = active_rows[0] if active_rows else (visible_generated[0] if visible_generated else {})
+    target = next((row for row in primary.get("top_candidates") or [] if row.get("is_model_target")), None)
+    target = target or ((primary.get("top_candidates") or [{}])[0] if primary.get("top_candidates") else {})
+    return {
+        "formal_target_display": str(target.get("display") or primary.get("top_display") or primary.get("top_ticker") or ""),
+        "formal_target_ticker": str(target.get("ticker") or primary.get("top_ticker") or ""),
+    }
+
+
+def _switch_signal_state(
+    *,
+    current_ticker: str,
+    current_display: str,
+    previous: dict[str, str],
+    report_ready: bool,
+) -> tuple[str, str]:
+    if not report_ready:
+        return "data_blocked", "資料尚未補齊，不能判定今日是否形成換倉訊號。"
+    previous_ticker = str(previous.get("previous_formal_target_ticker") or "")
+    previous_display = str(previous.get("previous_formal_target_display") or previous_ticker or "")
+    previous_date = str(previous.get("previous_formal_target_date") or "")
+    if not current_ticker:
+        return "no_formal_target", "今日沒有形成正式標的，因此沒有換倉訊號。"
+    if not previous_ticker:
+        return "previous_target_missing", "找不到前一份已完成正式報告，因此只能顯示今日正式標的，不能比較是否換倉。"
+    if current_ticker == previous_ticker:
+        return "maintain_formal_target", f"今日正式標的仍是 {current_display or current_ticker}，相對前一份正式報告（{previous_date}）維持不變。"
+    return (
+        "formal_target_changed",
+        f"正式目標已從 {previous_display}（{previous_date}）轉向 {current_display or current_ticker}；這是模型目標轉向，是否執行換倉仍需看執行層與人工確認。",
+    )
 
 
 def _cashflow_report_boundary() -> dict[str, Any]:
@@ -1944,6 +2034,8 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
         "",
         f"- 主結論：{decision_first.get('decision_first_conclusion_zh', '')}",
         f"- 正式標的：{decision_first.get('formal_target_display') or '無'}",
+        f"- 前一份正式報告標的：{decision_first.get('previous_formal_target_display') or '無'}"
+        f"{'（' + str(decision_first.get('previous_formal_target_date')) + '）' if decision_first.get('previous_formal_target_date') else ''}",
         f"- 資料完整度：{'資料齊全' if decision_first.get('data_completeness_state') == 'complete' else '資料未補齊'}",
         f"- 資料缺口：{decision_first.get('data_blocker_summary_zh') or '無'}",
         f"- 換倉訊號：{decision_first.get('switch_signal_wording_zh', '')}",

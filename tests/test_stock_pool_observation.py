@@ -1005,7 +1005,7 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertEqual(decision["decision_first_state"], "formal_target_available")
             self.assertEqual(decision["data_completeness_state"], "complete")
             self.assertIn("台積電(2330)", decision["formal_target_display"])
-            self.assertEqual(decision["switch_signal_state"], "previous_formal_target_contract_missing")
+            self.assertEqual(decision["switch_signal_state"], "previous_target_missing")
             self.assertEqual(decision["score_margin_state"], "formal_candidate_ranking_contract_missing")
             wording = manifest["report_wording_boundary"]
             self.assertFalse(wording["formal_model_changed"])
@@ -1043,6 +1043,104 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertTrue(
                 (Path(manifest["generated"][0]["output_dir"]) / "stock_pool_observation.json").exists()
             )
+
+    def test_decision_first_contract_detects_maintained_previous_target(self) -> None:
+        dates = pd.bdate_range("2025-01-02", periods=160)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache_dir = root / "cache"
+            cache_dir.mkdir()
+            _trend_frame(dates, start=100, step=0.2, volume=20_000_000).reset_index(names="date").to_csv(
+                cache_dir / "2330_TW.csv",
+                index=False,
+            )
+            previous_dir = root / "out" / "20250731"
+            previous_dir.mkdir(parents=True)
+            (previous_dir / "stock_pool_observation_manifest.json").write_text(
+                json.dumps(
+                    {
+                        "formal_report_ready": True,
+                        "actual_signal_date": "2025-07-31",
+                        "decision_first_report_contract": {
+                            "formal_target_display": "台積電(2330)",
+                            "formal_target_ticker": "2330.TW",
+                        },
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+
+            manifest = run_stock_pool_observation_batch(
+                pools=[
+                    {
+                        "pool_id": "custom_ai_pool",
+                        "name": "自訂AI觀察池",
+                        "strategy_preset": "universal_pool_custom",
+                        "resolved_symbols": [symbol_entry("2330.TW", source="manual")],
+                    }
+                ],
+                signal_date=dates[-1].strftime("%Y-%m-%d"),
+                warmup_start=dates[0].strftime("%Y-%m-%d"),
+                cache_dir=cache_dir,
+                output_root=root / "out",
+            )
+
+            decision = manifest["decision_first_report_contract"]
+            self.assertEqual(decision["previous_formal_target_ticker"], "2330.TW")
+            self.assertEqual(decision["switch_signal_state"], "maintain_formal_target")
+            self.assertIn("維持不變", decision["switch_signal_wording_zh"])
+
+    def test_decision_first_contract_detects_formal_target_change(self) -> None:
+        dates = pd.bdate_range("2025-01-02", periods=160)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache_dir = root / "cache"
+            cache_dir.mkdir()
+            _trend_frame(dates, start=100, step=0.2, volume=20_000_000).reset_index(names="date").to_csv(
+                cache_dir / "2330_TW.csv",
+                index=False,
+            )
+            previous_dir = root / "out" / "20250731"
+            previous_dir.mkdir(parents=True)
+            (previous_dir / "stock_pool_observation_manifest.json").write_text(
+                json.dumps(
+                    {
+                        "formal_report_ready": True,
+                        "actual_signal_date": "2025-07-31",
+                        "decision_first_report_contract": {
+                            "formal_target_display": "鴻海(2317)",
+                            "formal_target_ticker": "2317.TW",
+                        },
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+
+            manifest = run_stock_pool_observation_batch(
+                pools=[
+                    {
+                        "pool_id": "custom_ai_pool",
+                        "name": "自訂AI觀察池",
+                        "strategy_preset": "universal_pool_custom",
+                        "resolved_symbols": [symbol_entry("2330.TW", source="manual")],
+                    }
+                ],
+                signal_date=dates[-1].strftime("%Y-%m-%d"),
+                warmup_start=dates[0].strftime("%Y-%m-%d"),
+                cache_dir=cache_dir,
+                output_root=root / "out",
+            )
+
+            decision = manifest["decision_first_report_contract"]
+            self.assertEqual(decision["previous_formal_target_ticker"], "2317.TW")
+            self.assertEqual(decision["switch_signal_state"], "formal_target_changed")
+            self.assertIn("正式目標已從 鴻海(2317)", decision["switch_signal_wording_zh"])
+            report_text = (Path(manifest["output_root"]) / "stock_pool_observation_report.md").read_text(encoding="utf-8")
+            self.assertIn("前一份正式報告標的：鴻海(2317)（2025-07-31）", report_text)
 
     def test_batch_excludes_non_operational_scorecard_pool_by_default(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)
