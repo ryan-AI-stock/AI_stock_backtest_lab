@@ -1292,6 +1292,7 @@ def _decision_first_report_contract(manifest: dict[str, Any], *, output_root: st
     target = target or ((primary.get("top_candidates") or [{}])[0] if primary.get("top_candidates") else {})
     target_display = str(target.get("display") or primary.get("top_display") or primary.get("top_ticker") or "")
     target_ticker = str(target.get("ticker") or primary.get("top_ticker") or "")
+    ranking_contract = _formal_candidate_ranking_contract(primary)
     report_ready = bool(manifest.get("formal_report_ready", True))
     blockers = manifest.get("formal_report_blockers") or []
     if not report_ready:
@@ -1322,13 +1323,70 @@ def _decision_first_report_contract(manifest: dict[str, Any], *, output_root: st
         "data_blocker_summary_zh": "；".join(str(item.get("reason_zh") or item.get("reason") or "") for item in blockers if item) if blockers else "",
         "switch_signal_state": switch_state,
         "switch_signal_wording_zh": switch_wording,
-        "score_margin_state": "formal_candidate_ranking_contract_missing",
-        "score_margin_wording_zh": "正式候選排名與第二、第三名分數差距契約尚未完成，不能用 proxy 分數冒充正式分數差距。",
+        "score_margin_state": ranking_contract.get("score_margin_state", "data_insufficient"),
+        "score_margin_wording_zh": ranking_contract.get("score_margin_wording_zh", ""),
+        "formal_candidate_ranking": ranking_contract.get("formal_candidate_ranking", []),
+        "score_margin_to_rank2": ranking_contract.get("score_margin_to_rank2", ""),
+        "score_margin_to_rank3": ranking_contract.get("score_margin_to_rank3", ""),
         "pool1_state_zh": _sanitize_visible_report_reason(primary.get("selection_reason") or primary.get("gate_reason") or "主攻池已產生正式觀察。") if primary else "主攻池未產生正式觀察。",
         "pool2_state_zh": "確認池風控已納入目前正式模型；更細的確認品質需等待正式候選排名契約補齊。",
         "active_in_trade_decision": False,
         "boundary": "report_contract",
     }
+
+
+def _formal_candidate_ranking_contract(primary: dict[str, Any]) -> dict[str, Any]:
+    candidates = [
+        row for row in (primary.get("top_candidates") or [])
+        if str(row.get("ticker") or "").strip()
+    ]
+    ranking: list[dict[str, Any]] = []
+    for index, row in enumerate(candidates[:3], start=1):
+        score = _score_value(row)
+        ranking.append(
+            {
+                "candidate_rank": int(row.get("rank") or index),
+                "candidate_ticker": str(row.get("ticker") or ""),
+                "candidate_display": str(row.get("display") or row.get("ticker") or ""),
+                "candidate_score": score,
+                "selection_label": str(row.get("selection_label") or ""),
+                "is_model_target": bool(row.get("is_model_target")),
+            }
+        )
+    if not ranking:
+        return {
+            "score_margin_state": "data_insufficient",
+            "score_margin_wording_zh": "本次沒有可用的正式候選排名資料。",
+            "formal_candidate_ranking": [],
+            "score_margin_to_rank2": "",
+            "score_margin_to_rank3": "",
+        }
+    top = ranking[0]
+    rank2 = ranking[1] if len(ranking) >= 2 else None
+    rank3 = ranking[2] if len(ranking) >= 3 else None
+    margin2 = round(float(top["candidate_score"]) - float(rank2["candidate_score"]), 6) if rank2 else ""
+    margin3 = round(float(top["candidate_score"]) - float(rank3["candidate_score"]), 6) if rank3 else ""
+    parts = [f"第一名 {top['candidate_display']} 分數 {float(top['candidate_score']):.4f}"]
+    if rank2:
+        parts.append(f"領先第二名 {rank2['candidate_display']} {float(margin2):.4f} 分")
+    else:
+        parts.append("沒有第二名可比較")
+    if rank3:
+        parts.append(f"領先第三名 {rank3['candidate_display']} {float(margin3):.4f} 分")
+    return {
+        "score_margin_state": "formal_candidate_ranking_ready",
+        "score_margin_wording_zh": "；".join(parts) + "。",
+        "formal_candidate_ranking": ranking,
+        "score_margin_to_rank2": margin2,
+        "score_margin_to_rank3": margin3,
+    }
+
+
+def _score_value(row: dict[str, Any]) -> float:
+    try:
+        return round(float(row.get("score") if row.get("score") not in {None, ""} else row.get("rank_score") or 0), 6)
+    except (TypeError, ValueError):
+        return 0.0
 
 
 def _previous_formal_target_contract(manifest: dict[str, Any], *, output_root: str | Path | None = None) -> dict[str, str]:
@@ -1894,12 +1952,37 @@ def write_stock_pool_observation_batch_summary(root: Path, manifest: dict[str, A
             }
         )
     pd.DataFrame(rows).to_csv(root / "stock_pool_observation_summary.csv", index=False, encoding="utf-8-sig")
+    write_formal_candidate_ranking_panel(root, manifest)
     (root / "stock_pool_observation_report.md").write_text(
         markdown_observation_batch_report(manifest, rows),
         encoding="utf-8",
     )
     if manifest.get("generated") and manifest.get("formal_report_ready", True):
         write_stock_pool_observation_batch_pdf(root / REPORT_LATEST_FILENAME, manifest, rows)
+
+
+def write_formal_candidate_ranking_panel(root: Path, manifest: dict[str, Any]) -> None:
+    decision = manifest.get("decision_first_report_contract") or _decision_first_report_contract(manifest)
+    rows: list[dict[str, Any]] = []
+    for candidate in decision.get("formal_candidate_ranking") or []:
+        rows.append(
+            {
+                "signal_date": manifest.get("actual_signal_date") or manifest.get("signal_date") or "",
+                "formal_target_ticker": decision.get("formal_target_ticker", ""),
+                "formal_target_display": decision.get("formal_target_display", ""),
+                "candidate_rank": candidate.get("candidate_rank", ""),
+                "candidate_ticker": candidate.get("candidate_ticker", ""),
+                "candidate_display": candidate.get("candidate_display", ""),
+                "candidate_score": candidate.get("candidate_score", ""),
+                "score_margin_to_rank2": decision.get("score_margin_to_rank2", ""),
+                "score_margin_to_rank3": decision.get("score_margin_to_rank3", ""),
+                "selection_label": candidate.get("selection_label", ""),
+                "is_model_target": candidate.get("is_model_target", False),
+                "contract_boundary": "formal_report_candidate_ranking",
+                "active_in_trade_decision": False,
+            }
+        )
+    pd.DataFrame(rows).to_csv(root / "formal_candidate_ranking_panel.csv", index=False, encoding="utf-8-sig")
 
 
 def _manifest_pool_candidate_tickers(manifest: dict[str, Any], pool_id: str) -> set[str]:
@@ -2010,7 +2093,6 @@ def _skipped_reason_summary(rows: list[dict[str, Any]], manifest: dict[str, Any]
 def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[str, Any]]) -> str:
     wording = manifest.get("report_wording_boundary") or _report_wording_boundary()
     formal_boundary = wording.get("formal_baseline") or {}
-    cashflow = manifest.get("cashflow_report_boundary") or _cashflow_report_boundary()
     stability = manifest.get("target_stability_warning") or _target_stability_warning_boundary(manifest)
     live_risk = manifest.get("live_risk_regime_warning") or _live_risk_regime_warning_boundary(manifest)
     chip_context = manifest.get("chip_context") or _chip_context_report_boundary(manifest)
@@ -2042,17 +2124,6 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
         f"- 分數差距：{decision_first.get('score_margin_wording_zh', '')}",
         f"- 主攻池狀態：{decision_first.get('pool1_state_zh', '')}",
         f"- 確認池狀態：{decision_first.get('pool2_state_zh', '')}",
-        "",
-        "## 現金流健康度（僅供診斷）",
-        "",
-        f"- 目標本金：{_format_twd(cashflow.get('cashflow_objective_capital_twd'))}",
-        f"- 月生活費目標上限：{_format_twd(cashflow.get('cashflow_monthly_target_twd'))}",
-        f"- 目前定位：{cashflow.get('cashflow_wording_zh', '')}",
-        f"- 歷史達標參考：完整領到15萬的月份約{float(cashflow.get('cashflow_target_hit_rate_reference') or 0) * 100:.2f}%",
-        f"- 外部現金緩衝需求：{_format_twd(cashflow.get('cashflow_cash_buffer_required_twd'))}，用來支付連續短缺期。",
-        f"- 診斷說明：{cashflow.get('cashflow_reference_wording_zh', '')}",
-        f"- 舊高壓測試：{cashflow.get('cashflow_legacy_stress_wording_zh', '')}",
-        f"- 邊界：僅供報告參考，不改正式模型、不改交易決策、不代表提款指令。",
         "",
         "## 標的穩定度提醒（僅供診斷）",
         "",
@@ -2168,9 +2239,18 @@ def _draw_observation_summary_pdf_page(ax, manifest: dict[str, Any], rows: list[
 
     ax.text(0.06, 0.69, "正式模型：主攻池提出觀察標的，確認池負責風險確認。", color="#52616b", fontsize=10, transform=ax.transAxes)
     if skipped_summaries:
-        ax.text(0.06, 0.668, _compact_display("暫無正式觀察：" + "；".join(skipped_summaries), limit=78), color="#7a4b00", fontsize=8.4, transform=ax.transAxes)
+        _draw_wrapped_text(
+            ax,
+            0.06,
+            0.668,
+            "資料提醒：" + "；".join(skipped_summaries),
+            max_units=76,
+            line_gap=0.014,
+            color="#7a4b00",
+            fontsize=8.2,
+            transform=ax.transAxes,
+        )
     _draw_formal_baseline_panel(ax, manifest, report_rows)
-    _draw_cashflow_report_panel(ax, manifest)
     ax.text(0.06, 0.026, f"{REPORT_TITLE} · {manifest.get('signal_date', '')}", color="#9aa7b1", fontsize=8.5, transform=ax.transAxes)
     ax.text(0.94, 0.026, "AI_stock_backtest_lab", color="#9aa7b1", fontsize=8.5, ha="right", transform=ax.transAxes)
 
@@ -2218,7 +2298,7 @@ def _draw_observation_detail_pdf_page(ax, manifest: dict[str, Any], rows: list[d
 
 
 def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[str, Any]]) -> None:
-    panel_x, panel_y, panel_w, panel_h = 0.065, 0.355, 0.87, 0.325
+    panel_x, panel_y, panel_w, panel_h = 0.065, 0.235, 0.87, 0.445
     ax.add_patch(
         plt.Rectangle(
             (panel_x, panel_y),
@@ -2235,7 +2315,7 @@ def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[st
 
     ax.add_patch(
         plt.Rectangle(
-            (panel_x + 0.03, panel_y + 0.19),
+            (panel_x + 0.03, panel_y + 0.285),
             panel_w - 0.06,
             0.075,
             facecolor="#17212a",
@@ -2245,23 +2325,24 @@ def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[st
             zorder=3,
         )
     )
-    ax.add_patch(plt.Rectangle((panel_x + 0.03, panel_y + 0.19), 0.012, 0.075, facecolor="#2457a7", edgecolor="#2457a7", transform=ax.transAxes, zorder=4))
-    ax.text(panel_x + 0.055, panel_y + 0.236, "目前正式模型", color="#c8d5df", fontsize=8.8, transform=ax.transAxes, zorder=4)
-    ax.text(panel_x + 0.055, panel_y + 0.209, "主攻池優先，確認池做風險確認", color="white", fontsize=12.0, fontweight="bold", transform=ax.transAxes, zorder=4)
-    ax.text(panel_x + panel_w - 0.04, panel_y + 0.224, "0050正二上限40%；超出保留現金", color="#d6e1e8", fontsize=9.2, ha="right", transform=ax.transAxes, zorder=4)
+    ax.add_patch(plt.Rectangle((panel_x + 0.03, panel_y + 0.285), 0.012, 0.075, facecolor="#2457a7", edgecolor="#2457a7", transform=ax.transAxes, zorder=4))
+    ax.text(panel_x + 0.055, panel_y + 0.331, "目前正式模型", color="#c8d5df", fontsize=8.8, transform=ax.transAxes, zorder=4)
+    ax.text(panel_x + 0.055, panel_y + 0.304, "主攻池優先，確認池做風險確認", color="white", fontsize=12.0, fontweight="bold", transform=ax.transAxes, zorder=4)
+    ax.text(panel_x + panel_w - 0.04, panel_y + 0.319, "0050正二上限40%；超出保留現金", color="#d6e1e8", fontsize=9.2, ha="right", transform=ax.transAxes, zorder=4)
 
     formal_rows = [row for row in rows if row["status"] == "generated"][:3]
-    card_specs = [(0.095, 0.435), (0.385, 0.435), (0.675, 0.435)]
+    card_specs = [(0.095, 0.345), (0.385, 0.345), (0.675, 0.345)]
     for index, row in enumerate(formal_rows):
         x, y = card_specs[index]
         active = bool(row.get("active_in_trade_decision", False))
         color = "#13795b" if active else "#6b7780"
         fill = "#f4fbf8" if active else "#f8fafb"
-        ax.add_patch(plt.Rectangle((x, y), 0.235, 0.108, facecolor=fill, edgecolor="#d5e0e6", linewidth=1.0, transform=ax.transAxes, zorder=2))
-        ax.add_patch(plt.Rectangle((x, y), 0.012, 0.108, facecolor=color, edgecolor=color, transform=ax.transAxes, zorder=3))
+        card_h = 0.145
+        ax.add_patch(plt.Rectangle((x, y), 0.235, card_h, facecolor=fill, edgecolor="#d5e0e6", linewidth=1.0, transform=ax.transAxes, zorder=2))
+        ax.add_patch(plt.Rectangle((x, y), 0.012, card_h, facecolor=color, edgecolor=color, transform=ax.transAxes, zorder=3))
         ax.text(
             x + 0.022,
-            y + 0.078,
+            y + card_h - 0.033,
             _short_pool_name(row),
             color="#17212a",
             fontsize=9.5,
@@ -2274,20 +2355,20 @@ def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[st
         _draw_wrapped_text(
             ax,
             x + 0.022,
-            y + 0.057,
+            y + card_h - 0.064,
             str(top_text),
-            max_units=21,
-            line_gap=0.017,
+            max_units=15,
+            line_gap=0.014,
             color="#26323b",
-            fontsize=8.2,
+            fontsize=7.7,
             transform=ax.transAxes,
             zorder=4,
         )
-        ax.text(x + 0.022, y + 0.023, layer, color=color, fontsize=8.0, fontweight="bold", transform=ax.transAxes, zorder=4)
+        ax.text(x + 0.022, y + 0.020, layer, color=color, fontsize=8.0, fontweight="bold", transform=ax.transAxes, zorder=4)
 
     ax.text(
         panel_x + 0.03,
-        panel_y + 0.045,
+        panel_y + 0.070,
         "正式報告以最新主攻池 + 確認池模型結果為主；其他診斷資訊不作正式交易規則。",
         color="#52616b",
         fontsize=8.7,
@@ -2298,7 +2379,7 @@ def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[st
     _draw_wrapped_text(
         ax,
         panel_x + 0.03,
-        panel_y + 0.022,
+        panel_y + 0.044,
         warning_text,
         max_units=86,
         line_gap=0.013,
@@ -2314,7 +2395,7 @@ def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[st
     _draw_wrapped_text(
         ax,
         panel_x + 0.03,
-        panel_y + 0.006,
+        panel_y + 0.020,
         risk_text,
         max_units=86,
         line_gap=0.013,
@@ -2322,55 +2403,6 @@ def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[st
         fontsize=7.5,
         transform=ax.transAxes,
     )
-
-
-def _draw_cashflow_report_panel(ax, manifest: dict[str, Any]) -> None:
-    cashflow = manifest.get("cashflow_report_boundary") or _cashflow_report_boundary()
-    x, y, w, h = 0.065, 0.205, 0.87, 0.115
-    ax.add_patch(
-        plt.Rectangle(
-            (x, y),
-            w,
-            h,
-            facecolor="#fffaf0",
-            edgecolor="#ead7a3",
-            linewidth=1.0,
-            transform=ax.transAxes,
-        )
-    )
-    ax.text(x + 0.018, y + h - 0.029, "現金流健康度（報告參考）", color="#17212a", fontsize=11.0, fontweight="bold", transform=ax.transAxes)
-    ax.text(
-        x + w - 0.018,
-        y + h - 0.029,
-        f"本金 {_format_twd(cashflow.get('cashflow_objective_capital_twd'))}｜月目標上限 {_format_twd(cashflow.get('cashflow_monthly_target_twd'))}",
-        color="#7a4b00",
-        fontsize=8.3,
-        ha="right",
-        transform=ax.transAxes,
-    )
-    _draw_wrapped_text(
-        ax,
-        x + 0.018,
-        y + 0.058,
-        "模型偏資產成長，不是固定月薪；15萬目標約45%月份完整達標，固定生活費仍需約240萬外部緩衝。",
-        max_units=78,
-        line_gap=0.014,
-        color="#26323b",
-        fontsize=8.4,
-        transform=ax.transAxes,
-    )
-    _draw_wrapped_text(
-        ax,
-        x + 0.018,
-        y + 0.026,
-        str(cashflow.get("cashflow_legacy_stress_wording_zh") or ""),
-        max_units=78,
-        line_gap=0.014,
-        color="#7a4b00",
-        fontsize=7.6,
-        transform=ax.transAxes,
-    )
-
 
 def _draw_pool_top3_sections(ax, rows: list[dict[str, Any]], *, start_y: float = 0.635) -> float:
     x0 = 0.06

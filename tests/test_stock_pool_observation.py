@@ -18,6 +18,7 @@ from backtest_lab.stock_pool_observation import (
     _attach_target_stability_warning_boundary,
     _cashflow_report_boundary,
     _chip_context_report_boundary,
+    _decision_first_report_contract,
     _live_risk_regime_warning_boundary,
     _load_observation_price_frames,
     _resolve_dynamic_observation_pool,
@@ -72,7 +73,7 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertFalse(manifest["formal_model_changed"])
         self.assertFalse(manifest["trade_decision_changed"])
 
-    def test_cashflow_visible_wording_avoids_income_promise(self) -> None:
+    def test_cashflow_metadata_is_not_visible_in_formal_report(self) -> None:
         cashflow = _cashflow_report_boundary()
         manifest = {
             "signal_date": "2026-06-26",
@@ -83,11 +84,21 @@ class StockPoolObservationTest(unittest.TestCase):
         }
         markdown = markdown_observation_batch_report(manifest, [])
 
-        self.assertIn("月生活費目標上限：150,000 元", markdown)
-        self.assertIn("外部現金緩衝需求：2,400,000 元", markdown)
-        self.assertIn("完整領到15萬的月份約45.28%", markdown)
-        self.assertIn("舊20萬高壓測試", markdown)
-        for forbidden in ("穩定月領", "保證收入", "固定可提領", "report-only"):
+        for forbidden in (
+            "現金流健康度",
+            "本金 4,000,000",
+            "目標本金",
+            "月生活費目標上限",
+            "月目標上限 150,000",
+            "固定每月硬提",
+            "20萬壓力測試",
+            "舊20萬高壓測試",
+            "外部現金緩衝需求",
+            "穩定月領",
+            "保證收入",
+            "固定可提領",
+            "report-only",
+        ):
             self.assertNotIn(forbidden, markdown)
 
     def test_target_stability_warning_boundary_is_report_only(self) -> None:
@@ -1006,7 +1017,9 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertEqual(decision["data_completeness_state"], "complete")
             self.assertIn("台積電(2330)", decision["formal_target_display"])
             self.assertEqual(decision["switch_signal_state"], "previous_target_missing")
-            self.assertEqual(decision["score_margin_state"], "formal_candidate_ranking_contract_missing")
+            self.assertEqual(decision["score_margin_state"], "formal_candidate_ranking_ready")
+            self.assertIn("第一名 台積電(2330)", decision["score_margin_wording_zh"])
+            self.assertTrue((Path(manifest["output_root"]) / "formal_candidate_ranking_panel.csv").exists())
             wording = manifest["report_wording_boundary"]
             self.assertFalse(wording["formal_model_changed"])
             self.assertFalse(wording["trade_decision_changed"])
@@ -1022,6 +1035,9 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertTrue(manifest_path.exists())
             self.assertTrue((Path(manifest["output_root"]) / "model_layer_audit.json").exists())
             self.assertTrue((Path(manifest["output_root"]) / "stock_pool_observation_summary.csv").exists())
+            ranking_panel = (Path(manifest["output_root"]) / "formal_candidate_ranking_panel.csv").read_text(encoding="utf-8-sig")
+            self.assertIn("formal_report_candidate_ranking", ranking_panel)
+            self.assertIn("台積電(2330)", ranking_panel)
             self.assertTrue((Path(manifest["output_root"]) / "stock_pool_candidate_reviews.csv").exists())
             self.assertTrue((Path(manifest["output_root"]) / "stock_pool_candidate_reviews.json").exists())
             self.assertFalse((Path(manifest["output_root"]) / "pool3_radar_attack_satellite.json").exists())
@@ -1141,6 +1157,21 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertIn("正式目標已從 鴻海(2317)", decision["switch_signal_wording_zh"])
             report_text = (Path(manifest["output_root"]) / "stock_pool_observation_report.md").read_text(encoding="utf-8")
             self.assertIn("前一份正式報告標的：鴻海(2317)（2025-07-31）", report_text)
+
+    def test_decision_first_contract_reports_score_margins_from_formal_candidates(self) -> None:
+        manifest = _target_stability_manifest(score_a=2.8, score_b=2.1)
+        manifest["generated"][0]["top_candidates"].append(
+            {"rank": 3, "ticker": "2303.TW", "display": "聯電(2303)", "score": 1.9}
+        )
+
+        decision = _decision_first_report_contract(manifest)
+
+        self.assertEqual(decision["score_margin_state"], "formal_candidate_ranking_ready")
+        self.assertEqual(decision["score_margin_to_rank2"], 0.7)
+        self.assertEqual(decision["score_margin_to_rank3"], 0.9)
+        self.assertIn("第一名 緯穎(6669) 分數 2.8000", decision["score_margin_wording_zh"])
+        self.assertIn("領先第二名 0050正二(00631L) 0.7000 分", decision["score_margin_wording_zh"])
+        self.assertIn("領先第三名 聯電(2303) 0.9000 分", decision["score_margin_wording_zh"])
 
     def test_batch_excludes_non_operational_scorecard_pool_by_default(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)
