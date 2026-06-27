@@ -121,6 +121,14 @@ def write_consensus_outputs(root: Path, manifest: dict[str, Any]) -> dict[str, A
 
 def markdown_consensus_report(consensus: dict[str, Any]) -> str:
     health = consensus.get("health_diagnostic") or {}
+    visible_voters = [
+        row for row in consensus.get("voters", [])
+        if not _hide_from_visible_consensus_report(row)
+    ]
+    visible_skipped = [
+        row for row in consensus.get("skipped_vote_pools", [])
+        if not _hide_from_visible_consensus_report(row)
+    ]
     lines = [
         "# 候選分歧診斷摘要",
         "",
@@ -154,12 +162,12 @@ def markdown_consensus_report(consensus: dict[str, Any]) -> str:
         "| 股票池 | 第一順位 | 入選層級 | 狀態 |",
         "| --- | --- | --- | --- |",
     ]
-    for row in consensus.get("voters", []):
+    for row in visible_voters:
         lines.append(
             f"| {row.get('pool_name', '')} | {row.get('top_display') or row.get('top_ticker') or '-'} | "
             f"{row.get('selection_layer', '')} | {row.get('action_state', '')} |"
         )
-    for row in consensus.get("skipped_vote_pools", []):
+    for row in visible_skipped:
         if not row.get("top_ticker"):
             continue
         lines.append(
@@ -173,6 +181,14 @@ def markdown_consensus_report(consensus: dict[str, Any]) -> str:
         ]
     )
     return "\n".join(lines)
+
+
+def _hide_from_visible_consensus_report(row: dict[str, Any]) -> bool:
+    text = " ".join(
+        str(row.get(key) or "")
+        for key in ("pool_id", "pool_name", "pool_role", "top_display", "reason", "blocked_reason")
+    )
+    return any(marker in text for marker in ("large_core_bluechip_v0", "風格補強", "Pool3", "pool3", "Radar"))
 
 
 def _eligible_vote_item(item: dict[str, Any]) -> bool:

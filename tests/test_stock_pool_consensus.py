@@ -177,6 +177,28 @@ class StockPoolConsensusTest(unittest.TestCase):
             self.assertIn("decision_state：weak_consensus", report)
             self.assertIn("decision_source：exact_2_of_3_ticker", report)
 
+    def test_consensus_report_hides_legacy_pool3_visible_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest = {
+                "signal_date": "2026-06-25",
+                "generated": [
+                    _generated("AI主線池", "2454.TW", "聯發科(2454)"),
+                    _generated("大型廣度池", "2303.TW", "聯電(2303)"),
+                    _generated("large_core_bluechip_v0", "00631L.TW", "0050正二(00631L)"),
+                ],
+                "skipped": [],
+            }
+
+            consensus = write_consensus_outputs(root, manifest)
+            report = (root / "stock_pool_consensus_report.md").read_text(encoding="utf-8")
+
+            self.assertEqual(len(consensus["pool_diagnostics"]), 3)
+            self.assertIn("AI主線池", report)
+            self.assertIn("大型廣度池", report)
+            self.assertNotIn("large_core_bluechip_v0", report)
+            self.assertNotIn("風格補強", report)
+
     def test_build_consensus_marks_direction_consensus_as_protocol_candidate_only(self) -> None:
         consensus = build_consensus(
             {

@@ -926,7 +926,7 @@ def _source_summary(metadata: dict[str, Any]) -> str:
         candidates = "、".join(metadata.get("candidate_displays") or [])
         return f"RADAR正式候選 {date_text}：{candidates}"
     if metadata.get("source_type") == "tw50_constituents":
-        return f"動態0050成分股：{metadata.get('candidate_count', 0)}檔，來源 {metadata.get('source_path') or '未標'}"
+        return f"大型權值成分股：{metadata.get('candidate_count', 0)}檔，來源 {metadata.get('source_path') or '未標'}"
     if metadata.get("source_type") == "core_defensive_style_representatives":
         return (
             f"風格補強代表：{metadata.get('representative_count', 0)}檔，"
@@ -1250,7 +1250,7 @@ def write_stock_pool_observation_batch_summary(root: Path, manifest: dict[str, A
                 "source_module": item.get("source_module", ""),
                 "report_line": (item.get("dispatch") or {}).get("report_line", ""),
                 "workflow_file": (item.get("dispatch") or {}).get("workflow_file", ""),
-                "missing_price_tickers": ",".join(item.get("missing_price_tickers") or []),
+                "missing_price_tickers": ",".join(_visible_missing_price_tickers(item.get("missing_price_tickers") or [])),
                 "source_summary": _source_summary(item.get("source_metadata") or {}),
                 "top_candidates": item.get("top_candidates") or [],
                 "top_candidates_text": _top_candidates_text(item.get("top_candidates") or []),
@@ -1280,9 +1280,9 @@ def write_stock_pool_observation_batch_summary(root: Path, manifest: dict[str, A
                 "attack_gate_open": "",
                 "eligible_for_pool_selection": False,
                 "selection_layer": SELECTION_NO_SELECTION,
-                "selection_reason": item.get("reason", ""),
+                "selection_reason": _sanitize_visible_report_reason(item.get("reason", "")),
                 "gate_rule_id": "",
-                "gate_reason": item.get("reason", ""),
+                "gate_reason": _sanitize_visible_report_reason(item.get("reason", "")),
                 "action_state": "",
                 "decision_layer": item.get("decision_layer", ""),
                 "active_in_trade_decision": item.get("active_in_trade_decision", False),
@@ -1293,7 +1293,7 @@ def write_stock_pool_observation_batch_summary(root: Path, manifest: dict[str, A
                 "source_summary": "",
                 "top_candidates": [],
                 "top_candidates_text": "",
-                "reason": item.get("reason", ""),
+                "reason": _sanitize_visible_report_reason(item.get("reason", "")),
                 "output_dir": "",
             }
         )
@@ -1318,6 +1318,27 @@ def _manifest_pool_candidate_tickers(manifest: dict[str, Any], pool_id: str) -> 
             if ticker:
                 result.add(ticker)
     return result
+
+
+def _visible_missing_price_tickers(tickers: list[str]) -> list[str]:
+    return [
+        str(ticker)
+        for ticker in tickers
+        if _normalize_ticker(str(ticker)) not in FORMAL_CANDIDATE_EXCLUDED_TICKERS
+    ]
+
+
+def _sanitize_visible_report_reason(reason: object) -> str:
+    text = str(reason or "")
+    prefix = "No price data available for pool tickers:"
+    if not text.startswith(prefix):
+        return text
+    raw = text[len(prefix):].strip()
+    tickers = [item.strip() for item in raw.split(",") if item.strip()]
+    visible = _visible_missing_price_tickers(tickers)
+    if not visible:
+        return "No visible formal candidate price data available."
+    return f"{prefix} {', '.join(visible)}"
 
 
 def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[str, Any]]) -> str:
@@ -1434,7 +1455,7 @@ def _draw_observation_summary_pdf_page(ax, manifest: dict[str, Any], rows: list[
     notes = [
         f"正式 baseline：{FORMAL_MODEL_TARGET}，Pool1 主攻 + Pool2 確認/風控。",
         "非正式診斷註解不作為正式 selector 或交易規則。",
-        "0050/00631L 屬市場曝險工具，不支援 formal stock exact consensus。",
+        "Benchmark ETF 僅作基準或曝險說明，不作正式股票候選。",
         "execution/exit layer 尚未成立；baseline selection signal 不等於完整持倉管理命令。",
         "本報告為 AI 輔助市場觀察與回測工作流輸出，不是投資建議。",
     ]
@@ -1529,10 +1550,10 @@ def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[st
 
     ax.text(
         panel_x + 0.03,
-        panel_y + 0.13,
+        panel_y + 0.045,
         "正式報告以最新 Pool1+Pool2 模型結果為主；其他診斷資訊不作正式交易規則。",
         color="#52616b",
-        fontsize=9.4,
+        fontsize=8.7,
         transform=ax.transAxes,
     )
 

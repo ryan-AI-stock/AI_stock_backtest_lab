@@ -765,6 +765,8 @@ class StockPoolObservationTest(unittest.TestCase):
 
             self.assertNotIn("0050.TW", [row["ticker"] for row in top_rows])
             self.assertNotIn("0050(0050)", report)
+            self.assertNotIn("動態0050成分股", report)
+            self.assertIn("大型權值成分股", report)
             self.assertIn("聯電(2303)", report)
             self.assertIn("華邦電(2344)", report)
             self.assertNotIn("2303(2303)", report)
@@ -773,6 +775,41 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertNotIn("Pool3", report)
             self.assertNotIn("風格補強池", report)
             self.assertNotIn("large_core_bluechip_v0", report)
+
+    def test_visible_report_sanitizes_0050_from_skipped_pool_reason(self) -> None:
+        dates = pd.bdate_range("2025-01-02", periods=180)
+
+        def fake_download(*, tickers, **kwargs):
+            return {}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with patch("backtest_lab.stock_pool_observation.download_yfinance_prices", side_effect=fake_download):
+                manifest = run_stock_pool_observation_batch(
+                    pools=[
+                        {
+                            "pool_id": "tw50_dynamic_constituents_v0",
+                            "name": "大型市場廣度池 v0",
+                            "strategy_preset": "universal_pool_custom",
+                            "operational_observation": True,
+                            "resolved_symbols": [
+                                {"ticker": "0050.TW", "display": "0050", "asset_type": "etf"},
+                                {"ticker": "2303.TW", "display": "2303", "asset_type": "stock"},
+                            ],
+                            "dynamic_constituents": {"source": "tw50_history_csv", "path": "data/tw50_constituents.csv"},
+                        }
+                    ],
+                    signal_date=dates[-1].strftime("%Y-%m-%d"),
+                    warmup_start=dates[0].strftime("%Y-%m-%d"),
+                    cache_dir=root / "cache",
+                    output_root=root / "out",
+                )
+
+            report = (Path(manifest["output_root"]) / "stock_pool_observation_report.md").read_text(encoding="utf-8")
+
+            self.assertIn("2303.TW", report)
+            self.assertNotIn("0050.TW", report)
+            self.assertNotIn("0050(0050)", report)
 
     def test_batch_resolves_radar_pool_from_formal_radar_metrics(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)
