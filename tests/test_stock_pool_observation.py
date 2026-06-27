@@ -13,9 +13,11 @@ import test_paths  # noqa: F401
 from backtest_lab.decision_layers import CANDIDATE_SOURCE, DATA_READINESS
 from backtest_lab.stock_pool_observation import (
     _attach_cashflow_report_boundary,
+    _attach_chip_context_report_boundary,
     _attach_live_risk_regime_warning_boundary,
     _attach_target_stability_warning_boundary,
     _cashflow_report_boundary,
+    _chip_context_report_boundary,
     _live_risk_regime_warning_boundary,
     _load_observation_price_frames,
     _resolve_dynamic_observation_pool,
@@ -170,6 +172,52 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertIn("市場廣度資料尚未納入正式契約", markdown)
         self.assertIn("目前沒有啟用正式降曝險規則", markdown)
         for forbidden in ("應降曝險", "禁止買進", "系統已切換防守", "此訊號會提升收益"):
+            self.assertNotIn(forbidden, markdown)
+
+    def test_chip_context_boundary_is_report_only_and_discloses_coverage(self) -> None:
+        manifest = _chip_context_manifest(signal_date="2026-06-26", bullish=1.0, institutional_risk=0.0, flow_risk=0.0)
+        _attach_chip_context_report_boundary(manifest)
+
+        self.assertEqual(manifest["chip_context_state"], "chip_data_insufficient")
+        self.assertEqual(manifest["chip_data_coverage_end"], "2026-05-26")
+        self.assertFalse(manifest["chip_neutral_reference_available"])
+        self.assertFalse(manifest["chip_context_active_in_trade_decision"])
+        self.assertEqual(manifest["chip_context_boundary"], "report_only")
+        self.assertFalse(manifest["formal_model_changed"])
+        self.assertFalse(manifest["trade_decision_changed"])
+        self.assertFalse(manifest["active_in_trade_decision"])
+
+    def test_chip_context_h1_h2_states_do_not_become_rules(self) -> None:
+        h1 = _chip_context_report_boundary(_chip_context_manifest(signal_date="2026-05-24", bullish=1.0, institutional_risk=0.0, flow_risk=0.0))
+        h2 = _chip_context_report_boundary(_chip_context_manifest(signal_date="2026-05-24", bullish=0.0, institutional_risk=1.0, flow_risk=1.0))
+
+        self.assertEqual(h1["chip_context_state"], "h1_positive_context")
+        self.assertEqual(h2["chip_context_state"], "h2_sell_pressure_observation")
+        self.assertIn("不提高正式權重", h1["chip_context_reason"])
+        self.assertIn("不支持作為正式否決或降權", h2["chip_context_reason"])
+        self.assertFalse(h1["chip_context_active_in_trade_decision"])
+        self.assertFalse(h2["chip_context_active_in_trade_decision"])
+
+    def test_chip_context_visible_wording_is_not_trade_instruction(self) -> None:
+        manifest = _chip_context_manifest(signal_date="2026-06-26", bullish=1.0, institutional_risk=0.0, flow_risk=0.0)
+        _attach_chip_context_report_boundary(manifest)
+        manifest.update(
+            {
+                "report_ready": True,
+                "report_wording_boundary": {"formal_baseline": {"description": "主攻池優先，確認池做風險確認"}},
+                "cashflow_report_boundary": _cashflow_report_boundary(),
+                "target_stability_warning": _target_stability_warning_boundary(manifest),
+                "live_risk_regime_warning": _live_risk_regime_warning_boundary(manifest),
+                "generated": manifest["generated"],
+            }
+        )
+        markdown = markdown_observation_batch_report(manifest, [])
+
+        self.assertIn("籌碼背景觀察（僅供診斷）", markdown)
+        self.assertIn("籌碼資料截止日：2026-05-26", markdown)
+        self.assertIn("中性對照組：目前不可用", markdown)
+        self.assertIn("籌碼賣壓不作正式否決", markdown)
+        for forbidden in ("籌碼確認買進", "籌碼賣壓否決", "法人買超提高權重", "賣壓觸發降權", "H1 positive", "H2 sell pressure"):
             self.assertNotIn(forbidden, markdown)
 
     def test_price_loader_uses_current_cache_when_refresh_fails(self) -> None:
@@ -1658,6 +1706,40 @@ def _live_risk_manifest(*, risk_off_active: bool, attack_gate_active: bool) -> d
                 "top_candidates": [
                     {"rank": 1, "ticker": "6669.TW", "display": "緯穎(6669)", "score": 1.0},
                     {"rank": 2, "ticker": "00631L.TW", "display": "0050正二(00631L)", "score": 0.8},
+                ],
+            },
+            {
+                "pool_id": "tw50_dynamic_constituents_v0",
+                "pool_name": "大型廣度池",
+                "active_in_trade_decision": False,
+                "top_candidates": [],
+            },
+        ],
+        "skipped": [],
+    }
+
+
+def _chip_context_manifest(*, signal_date: str, bullish: float, institutional_risk: float, flow_risk: float) -> dict[str, object]:
+    return {
+        "signal_date": signal_date,
+        "actual_signal_date": signal_date,
+        "generated": [
+            {
+                "pool_id": "ai_theme_large_cap_v20260613",
+                "pool_name": "AI主線池",
+                "data_end_date": signal_date,
+                "active_in_trade_decision": True,
+                "top_candidates": [
+                    {
+                        "rank": 1,
+                        "ticker": "6669.TW",
+                        "display": "緯穎(6669)",
+                        "score": 1.0,
+                        "is_model_target": True,
+                        "bullish_flow_score": bullish,
+                        "institutional_risk": institutional_risk,
+                        "flow_risk_score": flow_risk,
+                    }
                 ],
             },
             {

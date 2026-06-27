@@ -62,6 +62,7 @@ REPORT_TITLE = "AI股票池正式觀察總覽"
 REPORT_VERSION = "v20260612"
 REPORT_LATEST_FILENAME = f"{REPORT_NAME}_最新版_{REPORT_VERSION}.pdf"
 TARGET_STABILITY_LOW_SCORE_GAP_THRESHOLD = 0.15
+CHIP_CONTEXT_COVERAGE_END = "2026-05-26"
 FROZEN_BEST_GROUP_ID = "group_c_0050_00631l_plus_mega_caps"
 TW50_ATTACK_GATE_RULE_ID = "tw50_large_breadth_attack_gate_v1"
 TW50_ATTACK_GATE_BENCHMARK = "0050.TW"
@@ -1143,6 +1144,7 @@ def run_stock_pool_observation_batch(
     _attach_cashflow_report_boundary(manifest)
     _attach_target_stability_warning_boundary(manifest)
     _attach_live_risk_regime_warning_boundary(manifest)
+    _attach_chip_context_report_boundary(manifest)
     _set_formal_report_readiness(manifest)
     manifest["model_layer_audit"] = default_stock_pool_model_layer_audit(
         signal_date=manifest.get("actual_signal_date") or signal_date,
@@ -1477,6 +1479,87 @@ def _attach_live_risk_regime_warning_boundary(manifest: dict[str, Any]) -> None:
     manifest["active_in_trade_decision"] = False
 
 
+def _chip_context_report_boundary(manifest: dict[str, Any]) -> dict[str, Any]:
+    explicit = manifest.get("chip_context")
+    if isinstance(explicit, dict):
+        return explicit
+    signal_date = str(manifest.get("actual_signal_date") or manifest.get("signal_date") or "")
+    generated = manifest.get("generated") or []
+    formal_rows = [
+        row for row in generated
+        if not _hide_from_formal_report(
+            {
+                "pool_id": row.get("pool_id", ""),
+                "pool_name": row.get("pool_name", ""),
+                "pool_short_name": _short_pool_name(row),
+                "role_name": row.get("role_name", ""),
+                "role_description": row.get("role_description", ""),
+            }
+        )
+    ]
+    active_rows = [row for row in formal_rows if bool(row.get("active_in_trade_decision", False))]
+    primary = active_rows[0] if active_rows else (formal_rows[0] if formal_rows else {})
+    target = next((row for row in primary.get("top_candidates") or [] if row.get("is_model_target")), None)
+    target = target or ((primary.get("top_candidates") or [{}])[0] if primary.get("top_candidates") else {})
+    h1_positive = _number_like(target.get("bullish_flow_score")) > 0
+    h2_sell_pressure = _number_like(target.get("institutional_risk")) > 0 or _number_like(target.get("flow_risk_score")) > 0
+    if not formal_rows:
+        state = "chip_not_available"
+        reason = "正式觀察資料不足，無法建立籌碼輔助觀察。"
+    elif _date_after(signal_date, CHIP_CONTEXT_COVERAGE_END):
+        state = "chip_data_insufficient"
+        reason = (
+            f"目前籌碼資料只更新到 {CHIP_CONTEXT_COVERAGE_END}，"
+            f"晚於正式訊號日的資料尚未納入，因此不拿來支持或否決本次標的。"
+        )
+        h1_positive = False
+        h2_sell_pressure = False
+    elif h1_positive and h2_sell_pressure:
+        state = "mixed_chip_context"
+        reason = "法人籌碼同時出現偏正向與賣壓訊號，只作輔助觀察。"
+    elif h1_positive:
+        state = "h1_positive_context"
+        reason = "法人籌碼偏正向，僅作輔助觀察，不提高正式權重。"
+    elif h2_sell_pressure:
+        state = "h2_sell_pressure_observation"
+        reason = "籌碼賣壓存在，但歷史診斷不支持作為正式否決或降權。"
+    else:
+        state = "chip_data_insufficient"
+        reason = "目前沒有乾淨中性對照組，籌碼資料只作背景觀察。"
+    return {
+        "chip_context_state": state,
+        "chip_context_reason": reason,
+        "chip_h1_positive_flag": bool(h1_positive),
+        "chip_h2_sell_pressure_flag": bool(h2_sell_pressure),
+        "chip_neutral_reference_available": False,
+        "chip_data_coverage_end": CHIP_CONTEXT_COVERAGE_END,
+        "chip_context_active_in_trade_decision": False,
+        "chip_context_boundary": "report_only",
+        "chip_context_policy_note": (
+            "法人籌碼偏正向只能作輔助觀察；籌碼賣壓不作正式否決、降權或換倉規則。"
+        ),
+    }
+
+
+def _attach_chip_context_report_boundary(manifest: dict[str, Any]) -> None:
+    context = _chip_context_report_boundary(manifest)
+    manifest["chip_context"] = context
+    for key in (
+        "chip_context_state",
+        "chip_context_reason",
+        "chip_h1_positive_flag",
+        "chip_h2_sell_pressure_flag",
+        "chip_neutral_reference_available",
+        "chip_data_coverage_end",
+        "chip_context_active_in_trade_decision",
+        "chip_context_boundary",
+    ):
+        manifest[key] = context.get(key)
+    manifest["formal_model_changed"] = False
+    manifest["trade_decision_changed"] = False
+    manifest["active_in_trade_decision"] = False
+
+
 def _live_risk_regime_state_label(value: object) -> str:
     mapping = {
         "risk_on": "市場環境偏強",
@@ -1486,6 +1569,33 @@ def _live_risk_regime_state_label(value: object) -> str:
         "breadth_not_ready": "市場廣度資料尚未納入正式契約",
     }
     return mapping.get(str(value or ""), str(value or "資料不足"))
+
+
+def _chip_context_state_label(value: object) -> str:
+    mapping = {
+        "h1_positive_context": "法人籌碼偏正向",
+        "h2_sell_pressure_observation": "籌碼賣壓觀察",
+        "mixed_chip_context": "籌碼訊號混合",
+        "chip_data_insufficient": "籌碼資料不足",
+        "chip_not_available": "籌碼資料未接入",
+    }
+    return mapping.get(str(value or ""), str(value or "籌碼資料不足"))
+
+
+def _number_like(value: object) -> float:
+    try:
+        return float(value or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _date_after(left: str, right: str) -> bool:
+    if not left or not right:
+        return False
+    try:
+        return pd.Timestamp(left).normalize() > pd.Timestamp(right).normalize()
+    except (TypeError, ValueError):
+        return False
 
 
 def _top_score_gap(candidates: list[dict[str, Any]]) -> float | None:
@@ -1725,6 +1835,7 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
     cashflow = manifest.get("cashflow_report_boundary") or _cashflow_report_boundary()
     stability = manifest.get("target_stability_warning") or _target_stability_warning_boundary(manifest)
     live_risk = manifest.get("live_risk_regime_warning") or _live_risk_regime_warning_boundary(manifest)
+    chip_context = manifest.get("chip_context") or _chip_context_report_boundary(manifest)
     report_rows = _formal_report_rows(rows)
     visible_skipped_count = len([row for row in report_rows if row.get("status") != "generated"])
     skipped_summaries = _skipped_reason_summary(rows, manifest)
@@ -1766,6 +1877,15 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
         f"- 資料來源：{live_risk.get('live_risk_regime_feature_source', '')}",
         f"- 市場廣度資料狀態：{_live_risk_regime_state_label(live_risk.get('live_risk_regime_breadth_readiness'))}",
         f"- 診斷說明：{live_risk.get('live_risk_regime_throttle_diagnostic_note', '')}",
+        f"- 提醒：僅供報告提醒，不改正式模型、不改正式標的、不代表交易指令。",
+        "",
+        "## 籌碼背景觀察（僅供診斷）",
+        "",
+        f"- 狀態：{_chip_context_state_label(chip_context.get('chip_context_state'))}",
+        f"- 原因：{chip_context.get('chip_context_reason', '')}",
+        f"- 籌碼資料截止日：{chip_context.get('chip_data_coverage_end', '')}",
+        f"- 中性對照組：{'可用' if chip_context.get('chip_neutral_reference_available') else '目前不可用'}",
+        f"- 診斷說明：{chip_context.get('chip_context_policy_note', '')}",
         f"- 提醒：僅供報告提醒，不改正式模型、不改正式標的、不代表交易指令。",
         "",
         "| 狀態 | 正式觀察 | 角色 | 成員檢查 | 前三名 / 暫無觀察原因 | 來源摘要 | 缺價股票 |",
@@ -1877,6 +1997,22 @@ def _draw_observation_detail_pdf_page(ax, manifest: dict[str, Any], rows: list[d
     )
     bottom_y = _draw_pool_top3_sections(ax, report_rows, start_y=0.84)
     reminder_y = max(min(bottom_y - 0.018, 0.075), 0.062)
+    chip_context = manifest.get("chip_context") or _chip_context_report_boundary(manifest)
+    chip_line = (
+        f"籌碼背景：{_chip_context_state_label(chip_context.get('chip_context_state'))}；"
+        f"{chip_context.get('chip_context_reason', '')}"
+    )
+    _draw_wrapped_text(
+        ax,
+        0.06,
+        reminder_y + 0.018,
+        chip_line,
+        max_units=86,
+        line_gap=0.012,
+        color="#7a4b00",
+        fontsize=7.8,
+        transform=ax.transAxes,
+    )
     ax.text(
         0.06,
         reminder_y,
@@ -2165,6 +2301,11 @@ def _top_candidate_rows(observation: StockPoolObservation, limit: int = 3) -> li
                 "gate_rule_id": gate["gate_rule_id"],
                 "gate_reason": gate["gate_reason"],
                 "is_model_target": candidate.ticker == observation.top_ticker,
+                "flow_risk_score": round(candidate.flow_risk_score, 6),
+                "institutional_risk": round(candidate.institutional_risk, 6),
+                "bullish_flow_score": round(candidate.bullish_flow_score, 6),
+                "flow_source_dates": candidate.flow_source_dates,
+                "flow_source_kinds": candidate.flow_source_kinds,
                 "reason": _candidate_reason(observation, candidate),
             }
         )
