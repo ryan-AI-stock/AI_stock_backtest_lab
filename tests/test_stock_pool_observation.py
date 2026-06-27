@@ -13,11 +13,13 @@ import test_paths  # noqa: F401
 from backtest_lab.decision_layers import CANDIDATE_SOURCE, DATA_READINESS
 from backtest_lab.stock_pool_observation import (
     _attach_cashflow_report_boundary,
+    _attach_target_stability_warning_boundary,
     _cashflow_report_boundary,
     _load_observation_price_frames,
     _resolve_dynamic_observation_pool,
     _sanitize_visible_report_reason,
     _top_candidate_rows,
+    _target_stability_warning_boundary,
     _user_facing_candidate_reason,
     _wrap_text_lines,
     build_dispatched_stock_pool_observation,
@@ -81,6 +83,50 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertIn("完整領到15萬的月份約45.28%", markdown)
         self.assertIn("舊20萬高壓測試", markdown)
         for forbidden in ("穩定月領", "保證收入", "固定可提領", "report-only"):
+            self.assertNotIn(forbidden, markdown)
+
+    def test_target_stability_warning_boundary_is_report_only(self) -> None:
+        manifest = _target_stability_manifest(score_a=1.00, score_b=0.94)
+        _attach_target_stability_warning_boundary(manifest)
+
+        self.assertEqual(manifest["target_stability_warning_state"], "low_score_margin_watch")
+        self.assertTrue(manifest["low_score_gap_proxy_flag"])
+        self.assertFalse(manifest["target_stability_warning_active_in_trade_decision"])
+        self.assertEqual(manifest["target_stability_warning_boundary"], "report_only")
+        self.assertFalse(manifest["formal_model_changed"])
+        self.assertFalse(manifest["trade_decision_changed"])
+        self.assertFalse(manifest["active_in_trade_decision"])
+        self.assertIn("不是正式候選排序契約", manifest["target_stability_proxy_contract"])
+
+    def test_target_stability_ignores_pool2_disagreement_and_any_low_confidence(self) -> None:
+        manifest = _target_stability_manifest(score_a=1.00, score_b=0.70)
+        manifest["pool2_disagreement"] = True
+        manifest["any_low_confidence_warning"] = True
+
+        warning = _target_stability_warning_boundary(manifest)
+
+        self.assertEqual(warning["target_stability_warning_state"], "mixed_or_insufficient")
+        self.assertFalse(warning["pool2_disagreement_negative_warning_used"])
+        self.assertFalse(warning["any_low_confidence_warning_used"])
+
+    def test_target_stability_visible_wording_keeps_proxy_boundary(self) -> None:
+        manifest = _target_stability_manifest(score_a=1.00, score_b=0.70)
+        _attach_target_stability_warning_boundary(manifest)
+        manifest.update(
+            {
+                "signal_date": "2026-06-26",
+                "report_ready": True,
+                "report_wording_boundary": {"formal_baseline": {"description": "主攻池優先，確認池做風險確認"}},
+                "cashflow_report_boundary": _cashflow_report_boundary(),
+                "generated": manifest["generated"],
+            }
+        )
+        markdown = markdown_observation_batch_report(manifest, [])
+
+        self.assertIn("標的穩定度提醒（僅供診斷）", markdown)
+        self.assertIn("不是正式候選排序契約", markdown)
+        self.assertIn("不代表換倉指令", markdown)
+        for forbidden in ("應賣出", "禁止換倉", "明天一定轉弱", "target_drop_from_top3", "pool_signal_panel", "score margin contract", "target drop proxy"):
             self.assertNotIn(forbidden, markdown)
 
     def test_price_loader_uses_current_cache_when_refresh_fails(self) -> None:
@@ -1526,6 +1572,29 @@ def _write_stock_metrics(path: Path, rows: list[dict[str, object]]) -> None:
 def _write_formal_candidate_interface(path: Path, rows: list[dict[str, object]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(rows).to_csv(path, index=False, encoding="utf-8-sig")
+
+
+def _target_stability_manifest(*, score_a: float, score_b: float) -> dict[str, object]:
+    return {
+        "generated": [
+            {
+                "pool_id": "ai_theme_large_cap_v20260613",
+                "pool_name": "AI主線池",
+                "active_in_trade_decision": True,
+                "top_candidates": [
+                    {"rank": 1, "ticker": "6669.TW", "display": "緯穎(6669)", "score": score_a},
+                    {"rank": 2, "ticker": "00631L.TW", "display": "0050正二(00631L)", "score": score_b},
+                ],
+            },
+            {
+                "pool_id": "tw50_dynamic_constituents_v0",
+                "pool_name": "大型廣度池",
+                "active_in_trade_decision": False,
+                "top_candidates": [],
+            },
+        ],
+        "skipped": [],
+    }
 
 
 if __name__ == "__main__":

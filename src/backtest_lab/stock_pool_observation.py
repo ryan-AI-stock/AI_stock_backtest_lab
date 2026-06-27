@@ -61,6 +61,7 @@ REPORT_NAME = "AI股票池觀察總覽"
 REPORT_TITLE = "AI股票池正式觀察總覽"
 REPORT_VERSION = "v20260612"
 REPORT_LATEST_FILENAME = f"{REPORT_NAME}_最新版_{REPORT_VERSION}.pdf"
+TARGET_STABILITY_LOW_SCORE_GAP_THRESHOLD = 0.15
 FROZEN_BEST_GROUP_ID = "group_c_0050_00631l_plus_mega_caps"
 TW50_ATTACK_GATE_RULE_ID = "tw50_large_breadth_attack_gate_v1"
 TW50_ATTACK_GATE_BENCHMARK = "0050.TW"
@@ -1140,6 +1141,7 @@ def run_stock_pool_observation_batch(
     manifest["consensus"] = build_consensus(manifest)
     manifest["report_wording_boundary"] = _report_wording_boundary()
     _attach_cashflow_report_boundary(manifest)
+    _attach_target_stability_warning_boundary(manifest)
     _set_formal_report_readiness(manifest)
     manifest["model_layer_audit"] = default_stock_pool_model_layer_audit(
         signal_date=manifest.get("actual_signal_date") or signal_date,
@@ -1320,6 +1322,123 @@ def _attach_cashflow_report_boundary(manifest: dict[str, Any]) -> None:
         manifest[key] = cashflow.get(key)
     manifest["formal_model_changed"] = False
     manifest["trade_decision_changed"] = False
+
+
+def _target_stability_warning_boundary(manifest: dict[str, Any]) -> dict[str, Any]:
+    explicit = manifest.get("target_stability_warning")
+    if isinstance(explicit, dict):
+        return explicit
+    generated = manifest.get("generated") or []
+    formal_rows = [
+        row for row in generated
+        if not _hide_from_formal_report(
+            {
+                "pool_id": row.get("pool_id", ""),
+                "pool_name": row.get("pool_name", ""),
+                "pool_short_name": _short_pool_name(row),
+                "role_name": row.get("role_name", ""),
+                "role_description": row.get("role_description", ""),
+            }
+        )
+    ]
+    primary = next((row for row in formal_rows if bool(row.get("active_in_trade_decision", False))), formal_rows[0] if formal_rows else {})
+    top_candidates = primary.get("top_candidates") or []
+    score_gap = _top_score_gap(top_candidates)
+    low_score_gap = score_gap is not None and score_gap < TARGET_STABILITY_LOW_SCORE_GAP_THRESHOLD
+    target_drop = _bool_like(manifest.get("target_drop_from_top3_3d_proxy_flag"))
+    new_target_age_1 = _bool_like(manifest.get("new_target_confirmation_age_1_flag"))
+    proxy_available = manifest.get("target_drop_from_top3_3d_proxy_flag") is not None
+    if not formal_rows:
+        state = "data_insufficient"
+        reason = "正式觀察資料不足，無法判斷標的穩定度。"
+    elif target_drop:
+        state = "target_stability_watch"
+        reason = "診斷 proxy 顯示目前標的在三個交易日內掉出前三名，穩定度需觀察。"
+    elif low_score_gap:
+        state = "low_score_margin_watch"
+        reason = f"第一名與第二名分數差距約 {_format_score_gap(score_gap)}，優勢不夠明顯。"
+    elif new_target_age_1:
+        state = "new_target_unconfirmed_watch"
+        reason = "新標的剛出現，尚未累積足夠確認天數。"
+    elif not proxy_available:
+        state = "mixed_or_insufficient"
+        reason = "每日正式報告尚未接入短期掉出前三名的診斷來源；目前只顯示分數差距與新訊號觀察。"
+    else:
+        state = "stable_target"
+        reason = "目前沒有偵測到分數差距偏低或短期掉出前三名 proxy 警示。"
+    return {
+        "target_stability_warning_state": state,
+        "target_stability_warning_reason": reason,
+        "target_drop_from_top3_3d_proxy_flag": bool(target_drop),
+        "target_drop_from_top3_3d_proxy_available": bool(proxy_available),
+        "low_score_gap_proxy_flag": bool(low_score_gap),
+        "new_target_confirmation_age_1_flag": bool(new_target_age_1),
+        "pool2_disagreement_negative_warning_used": False,
+        "any_low_confidence_warning_used": False,
+        "target_score_gap_to_second": score_gap,
+        "target_stability_warning_active_in_trade_decision": False,
+        "target_stability_warning_boundary": "report_only",
+        "target_stability_proxy_contract": (
+            "短期掉出前三名目前來自重建的分數排序診斷，"
+            "不是正式候選排序契約；未建立正式分數差距資料契約前不得升級為交易規則。"
+        ),
+    }
+
+
+def _attach_target_stability_warning_boundary(manifest: dict[str, Any]) -> None:
+    warning = _target_stability_warning_boundary(manifest)
+    manifest["target_stability_warning"] = warning
+    for key in (
+        "target_stability_warning_state",
+        "target_stability_warning_reason",
+        "target_drop_from_top3_3d_proxy_flag",
+        "low_score_gap_proxy_flag",
+        "new_target_confirmation_age_1_flag",
+        "target_stability_warning_active_in_trade_decision",
+        "target_stability_warning_boundary",
+        "target_stability_proxy_contract",
+    ):
+        manifest[key] = warning.get(key)
+    manifest["formal_model_changed"] = False
+    manifest["trade_decision_changed"] = False
+    manifest["active_in_trade_decision"] = False
+
+
+def _top_score_gap(candidates: list[dict[str, Any]]) -> float | None:
+    scores = []
+    for row in candidates[:2]:
+        try:
+            scores.append(float(row.get("score") or row.get("rank_score") or 0))
+        except (TypeError, ValueError):
+            scores.append(0.0)
+    if len(scores) < 2:
+        return None
+    return round(scores[0] - scores[1], 6)
+
+
+def _format_score_gap(value: float | None) -> str:
+    if value is None:
+        return "資料不足"
+    return f"{value:.4f}"
+
+
+def _target_stability_state_label(value: object) -> str:
+    mapping = {
+        "stable_target": "目前未見明顯穩定度警示",
+        "target_stability_watch": "短期排名穩定度需觀察",
+        "low_score_margin_watch": "分數優勢偏低",
+        "new_target_unconfirmed_watch": "新標的尚未確認",
+        "mixed_or_insufficient": "診斷資料不足，僅作觀察",
+        "data_insufficient": "資料不足",
+    }
+    return mapping.get(str(value or ""), str(value or "資料不足"))
+
+
+def _bool_like(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    text = str(value or "").strip().lower()
+    return text in {"1", "true", "yes", "y", "是"}
 
 
 def write_stock_pool_observation_batch_summary(root: Path, manifest: dict[str, Any]) -> None:
@@ -1520,6 +1639,7 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
     wording = manifest.get("report_wording_boundary") or _report_wording_boundary()
     formal_boundary = wording.get("formal_baseline") or {}
     cashflow = manifest.get("cashflow_report_boundary") or _cashflow_report_boundary()
+    stability = manifest.get("target_stability_warning") or _target_stability_warning_boundary(manifest)
     report_rows = _formal_report_rows(rows)
     visible_skipped_count = len([row for row in report_rows if row.get("status") != "generated"])
     skipped_summaries = _skipped_reason_summary(rows, manifest)
@@ -1545,6 +1665,13 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
         f"- 診斷說明：{cashflow.get('cashflow_reference_wording_zh', '')}",
         f"- 舊高壓測試：{cashflow.get('cashflow_legacy_stress_wording_zh', '')}",
         f"- 邊界：僅供報告參考，不改正式模型、不改交易決策、不代表提款指令。",
+        "",
+        "## 標的穩定度提醒（僅供診斷）",
+        "",
+        f"- 狀態：{_target_stability_state_label(stability.get('target_stability_warning_state'))}",
+        f"- 原因：{stability.get('target_stability_warning_reason', '')}",
+        f"- 診斷來源邊界：{stability.get('target_stability_proxy_contract', '')}",
+        f"- 邊界：僅供報告提醒，不改正式模型、不改正式標的、不代表換倉指令。",
         "",
         "| 狀態 | 正式觀察 | 角色 | 成員檢查 | 前三名 / 暫無觀察原因 | 來源摘要 | 缺價股票 |",
         "| --- | --- | --- | --- | --- | --- | --- |",
@@ -1741,6 +1868,19 @@ def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[st
         "正式報告以最新主攻池 + 確認池模型結果為主；其他診斷資訊不作正式交易規則。",
         color="#52616b",
         fontsize=8.7,
+        transform=ax.transAxes,
+    )
+    stability = manifest.get("target_stability_warning") or _target_stability_warning_boundary(manifest)
+    warning_text = f"標的穩定度：{_target_stability_state_label(stability.get('target_stability_warning_state'))}；{stability.get('target_stability_warning_reason', '')}"
+    _draw_wrapped_text(
+        ax,
+        panel_x + 0.03,
+        panel_y + 0.022,
+        warning_text,
+        max_units=86,
+        line_gap=0.013,
+        color="#7a4b00" if stability.get("target_stability_warning_state") != "stable_target" else "#52616b",
+        fontsize=7.7,
         transform=ax.transAxes,
     )
 
