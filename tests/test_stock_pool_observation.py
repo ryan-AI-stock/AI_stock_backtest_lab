@@ -13,7 +13,9 @@ import test_paths  # noqa: F401
 from backtest_lab.decision_layers import CANDIDATE_SOURCE, DATA_READINESS
 from backtest_lab.stock_pool_observation import (
     _resolve_dynamic_observation_pool,
+    _sanitize_visible_report_reason,
     _top_candidate_rows,
+    _user_facing_candidate_reason,
     build_dispatched_stock_pool_observation,
     build_stock_pool_observation,
     run_stock_pool_observation_batch,
@@ -24,6 +26,18 @@ from backtest_lab.valuation_source import ValuationSignal
 
 
 class StockPoolObservationTest(unittest.TestCase):
+    def test_visible_reason_wording_is_user_facing_chinese(self) -> None:
+        self.assertEqual(
+            _sanitize_visible_report_reason("No market data for signal date 2026-06-26; latest available is 2026-06-25"),
+            "資料不足：2026-06-26 還沒有完整市場資料，目前可用到 2026-06-25。",
+        )
+        readable = _user_facing_candidate_reason("大型廣度池 v1：base=Y；60日相對0050超額=2.3%(Y)；20/60動能品質=N")
+        self.assertIn("基本條件通過", readable)
+        self.assertIn("60日表現相對0050=2.3%，通過", readable)
+        self.assertIn("20日與60日動能品質：未通過", readable)
+        self.assertNotIn("base=Y", readable)
+        self.assertNotIn("(Y)", readable)
+
     def test_build_observation_outputs_unified_schema_and_top_candidate(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)
         tsmc = symbol_entry("2330.TW", source="manual")
@@ -149,6 +163,9 @@ class StockPoolObservationTest(unittest.TestCase):
                 {"ticker": "0050.TW", "display": "0050", "asset_type": "etf"},
                 {"ticker": "2303.TW", "display": "2303", "asset_type": "stock"},
                 {"ticker": "2344.TW", "display": "2344", "asset_type": "stock"},
+                {"ticker": "2327.TW", "display": "2327", "asset_type": "stock"},
+                {"ticker": "5876.TW", "display": "5876", "asset_type": "stock"},
+                {"ticker": "6919.TW", "display": "6919", "asset_type": "stock"},
                 {"ticker": "00631L.TW", "display": "0050正二", "asset_type": "etf"},
             ],
             "dynamic_constituents": {"source": "tw50_history_csv", "path": "data/tw50_constituents.csv"},
@@ -157,6 +174,9 @@ class StockPoolObservationTest(unittest.TestCase):
             "0050.TW": _trend_frame(dates, start=100, step=1.5, volume=20_000_000),
             "2303.TW": _trend_frame(dates, start=100, step=0.9, volume=20_000_000),
             "2344.TW": _trend_frame(dates, start=100, step=1.0, volume=20_000_000),
+            "2327.TW": _trend_frame(dates, start=100, step=0.8, volume=20_000_000),
+            "5876.TW": _trend_frame(dates, start=100, step=0.7, volume=20_000_000),
+            "6919.TW": _trend_frame(dates, start=100, step=0.6, volume=20_000_000),
             "00631L.TW": _trend_frame(dates, start=100, step=1.1, volume=20_000_000),
         }
 
@@ -165,7 +185,7 @@ class StockPoolObservationTest(unittest.TestCase):
             prices_by_ticker=prices,
             signal_date=dates[-1],
         )
-        top_rows = _top_candidate_rows(observation, limit=4)
+        top_rows = _top_candidate_rows(observation, limit=7)
         candidate_tickers = [candidate.ticker for candidate in observation.candidates]
         displays = [row["display"] for row in top_rows]
 
@@ -174,8 +194,14 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertIn("00631L.TW", candidate_tickers)
         self.assertIn("聯電(2303)", displays)
         self.assertIn("華邦電(2344)", displays)
+        self.assertIn("國巨(2327)", displays)
+        self.assertIn("上海商銀(5876)", displays)
+        self.assertIn("康霈*(6919)", displays)
         self.assertNotIn("2303(2303)", displays)
         self.assertNotIn("2344(2344)", displays)
+        self.assertNotIn("2327(2327)", displays)
+        self.assertNotIn("5876(5876)", displays)
+        self.assertNotIn("6919(6919)", displays)
 
     def test_tw50_pool_blocks_high_rank_when_benchmark_margin_is_insufficient(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)
@@ -814,11 +840,12 @@ class StockPoolObservationTest(unittest.TestCase):
             report = (Path(manifest["output_root"]) / "stock_pool_observation_report.md").read_text(encoding="utf-8")
 
             self.assertIn("2303.TW", report)
-            self.assertIn("未納入正式摘要", report)
+            self.assertIn("暫無正式觀察", report)
             self.assertIn("資料不足：缺少價格資料", report)
             self.assertNotIn("0050.TW", report)
             self.assertNotIn("0050(0050)", report)
             self.assertNotIn("跳過股票池", report)
+            self.assertNotIn("未納入摘要", report)
             self.assertNotIn("No price data available", report)
 
     def test_batch_resolves_radar_pool_from_formal_radar_metrics(self) -> None:

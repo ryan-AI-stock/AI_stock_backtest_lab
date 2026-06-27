@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
@@ -1337,6 +1338,10 @@ def _sanitize_visible_report_reason(reason: object) -> str:
         return "資料不足：這個觀察區目前沒有可用成員。"
     if text.startswith("No exact common price data"):
         return "資料不足：共同價格資料不完整，無法產生正式觀察。"
+    market_data_match = re.search(r"No market data for signal date ([0-9-]+); latest available is ([0-9-]+)", text)
+    if market_data_match:
+        requested, latest = market_data_match.groups()
+        return f"資料不足：{requested} 還沒有完整市場資料，目前可用到 {latest}。"
     if not text.startswith(prefix):
         return _translate_internal_visible_text(text)
     raw = text[len(prefix):].strip()
@@ -1345,6 +1350,31 @@ def _sanitize_visible_report_reason(reason: object) -> str:
     if not visible:
         return "資料不足：正式候選沒有可用價格資料。"
     return f"資料不足：缺少價格資料（{', '.join(visible)}）。"
+
+
+def _user_facing_candidate_reason(reason: object) -> str:
+    text = _sanitize_visible_report_reason(reason)
+    text = text.replace("大型廣度池 v1：", "")
+    text = text.replace("風格補強池 v1：", "")
+    text = text.replace("通用池基礎 gate：", "")
+    text = text.replace("通用池基礎 gate 未通過：", "基本條件未通過：")
+    text = re.sub(r"base=Y", "基本條件通過", text)
+    text = re.sub(r"base=N", "基本條件未通過", text)
+    text = re.sub(r"=Y(?=；|。|$)", "：通過", text)
+    text = re.sub(r"=N(?=；|。|$)", "：未通過", text)
+    text = re.sub(r"\(Y\)", "，通過", text)
+    text = re.sub(r"\(N\)", "，未通過", text)
+    text = text.replace("20/60動能品質", "20日與60日動能品質")
+    text = text.replace("60日相對0050超額", "60日表現相對0050")
+    text = text.replace("60日相對0050強度", "60日表現相對0050")
+    text = text.replace("60/120中期上攻力", "60日與120日中期上攻力")
+    text = text.replace("120日機會成本", "120日相對0050機會成本")
+    text = text.replace("20日回撤控管", "20日回撤風險")
+    text = text.replace("籌碼風險", "籌碼風險分數")
+    text = text.replace("benchmark", "基準")
+    text = text.replace("ETF", "市場型 ETF")
+    text = text.replace("gate", "門檻")
+    return _translate_internal_visible_text(text)
 
 
 def _translate_internal_visible_text(text: object) -> str:
@@ -1376,9 +1406,9 @@ def _skipped_reason_summary(rows: list[dict[str, Any]], manifest: dict[str, Any]
         pool_name = row.get("pool_short_name") or row.get("pool_name") or "未命名觀察區"
         summaries.append(f"{pool_name}：{_sanitize_visible_report_reason(row.get('reason'))}")
     if hidden:
-        summaries.append(f"非正式觀察區：{len(hidden)} 個項目未納入正式摘要。")
+        summaries.append(f"非正式觀察區：{len(hidden)} 個項目不列入正式報告主表。")
     if not summaries and manifest.get("skipped"):
-        summaries.append("有項目未產生正式摘要，請查看機器可讀 manifest 取得完整內部原因。")
+        summaries.append("有項目暫時無法產生正式觀察，請查看機器可讀 manifest 取得完整內部原因。")
     return summaries
 
 
@@ -1396,12 +1426,12 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
         f"- 訊號日：{manifest.get('signal_date', '')}",
         f"- 資料日 fallback：{manifest.get('fallback_reason') or '未啟用'}",
         f"- 正式觀察項目：{len(report_rows)}",
-        f"- 未納入正式摘要：{len(manifest.get('skipped', []))}（{'; '.join(skipped_summaries) if skipped_summaries else '無'}）",
+        f"- 暫無正式觀察：{len(manifest.get('skipped', []))}（{'; '.join(skipped_summaries) if skipped_summaries else '無'}）",
         f"- 正式模型基準：{_translate_internal_visible_text(formal_boundary.get('description'))}",
         f"- 診斷邊界：{diagnostic_boundary.get('description')}",
         f"- 執行邊界：{_translate_internal_visible_text(execution_boundary.get('description'))}",
         "",
-        "| 狀態 | 正式觀察 | 角色 | 成員檢查 | 前三名 / 未納入原因 | 來源摘要 | 缺價股票 |",
+        "| 狀態 | 正式觀察 | 角色 | 成員檢查 | 前三名 / 暫無觀察原因 | 來源摘要 | 缺價股票 |",
         "| --- | --- | --- | --- | --- | --- | --- |",
     ]
     for row in report_rows:
@@ -1412,7 +1442,7 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
         else:
             target = row["reason"] or "skipped"
             missing = "-"
-            status = "未納入"
+            status = "暫無觀察"
         role = row.get("role_name") or "-"
         review_frequency = _candidate_review_label(row.get("candidate_review_frequency"))
         lines.append(f"| {status} | {row.get('pool_short_name') or row['pool_name']} | {role} | {review_frequency} | {target} | {row.get('source_summary') or '-'} | {missing} |")
@@ -1482,7 +1512,7 @@ def _draw_observation_summary_pdf_page(ax, manifest: dict[str, Any], rows: list[
         )
     cards = [
         ("正式觀察項目", f"{generated_count}", "#13795b"),
-        ("未納入摘要", f"{skipped_count}", "#b42318" if skipped_count else "#13795b"),
+        ("暫無正式觀察", f"{skipped_count}", "#b42318" if skipped_count else "#13795b"),
         ("正式模型", "主攻池+確認池", "#2457a7"),
         ("使用邊界", "正式/非正式分層", "#17212a"),
     ]
@@ -1496,7 +1526,7 @@ def _draw_observation_summary_pdf_page(ax, manifest: dict[str, Any], rows: list[
 
     ax.text(0.06, 0.69, "正式模型：主攻池提出觀察標的，確認池負責風險確認。", color="#52616b", fontsize=10, transform=ax.transAxes)
     if skipped_summaries:
-        ax.text(0.06, 0.668, _compact_display("未納入摘要：" + "；".join(skipped_summaries), limit=78), color="#7a4b00", fontsize=8.4, transform=ax.transAxes)
+        ax.text(0.06, 0.668, _compact_display("暫無正式觀察：" + "；".join(skipped_summaries), limit=78), color="#7a4b00", fontsize=8.4, transform=ax.transAxes)
     _draw_formal_baseline_panel(ax, manifest, report_rows)
     ax.text(0.06, 0.17, "使用邊界", color="#17212a", fontsize=14, fontweight="bold", transform=ax.transAxes)
     notes = [
@@ -1647,7 +1677,7 @@ def _draw_pool_top3_sections(ax, rows: list[dict[str, Any]], *, start_y: float =
             row_h = 0.034
             ax.add_patch(plt.Rectangle((x0, y), 0.88, row_h, facecolor=fill, edgecolor="#e1e7ec", transform=ax.transAxes))
             display = _normalize_display_label(str(candidate.get("display", "")), str(candidate.get("ticker", "")))
-            reason = _compact_display(str(candidate.get("gate_reason") or candidate.get("reason", "")), limit=30)
+            reason = _compact_display(_user_facing_candidate_reason(candidate.get("gate_reason") or candidate.get("reason", "")), limit=34)
             cells = (
                 str(candidate.get("rank", "")),
                 _compact_display(str(candidate.get("selection_label") or ""), limit=5),
@@ -1671,7 +1701,7 @@ def _draw_pool_top3_sections(ax, rows: list[dict[str, Any]], *, start_y: float =
     for row in skipped_rows[:3]:
         if y < 0.09:
             break
-        ax.text(x0, y, f"跳過：{row['pool_name']}，原因：{row['reason']}", color="#b42318", fontsize=8.0, transform=ax.transAxes)
+        ax.text(x0, y, f"暫無正式觀察：{row['pool_name']}，原因：{_sanitize_visible_report_reason(row['reason'])}", color="#b42318", fontsize=8.0, transform=ax.transAxes)
         y -= 0.024
     return max(y, 0.095)
 
