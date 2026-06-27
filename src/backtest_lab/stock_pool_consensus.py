@@ -403,7 +403,7 @@ def _build_health_diagnostic(
         "actionable_decision_rate": 1.0 if result_state == "consensus" and winner_ticker else 0.0,
         "decision_protocol_used_rate": 1.0 if protocol_used else 0.0,
         "health_note": _health_note(decision_state, divergent=divergent, no_vote=no_vote),
-        "boundary": "report-only diagnostic；不是正式交易決策。",
+        "boundary": "僅供報告診斷，不是正式交易決策。",
     }
 
 
@@ -643,5 +643,5 @@ def _health_note(decision_state: str, *, divergent: bool, no_vote: bool) -> str:
     if decision_state == "weak_consensus":
         return "形成 2/3 共識；少數池意見仍應保留為風險觀察。"
     if decision_state == "forced_stop":
-        return "偵測到強制防守或停損語意，僅作 report-only 風險診斷。"
-    return "report-only 共識健康診斷。"
+        return "偵測到強制防守或停損語意，僅作報告風險診斷。"
+    return "共識健康診斷僅供報告參考。"
