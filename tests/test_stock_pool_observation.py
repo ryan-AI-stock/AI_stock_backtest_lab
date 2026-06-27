@@ -109,6 +109,49 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertEqual(float(prices["0050.TW"].loc[dates[-1], "close"]), 151.0)
             self.assertTrue((cache_dir / "0050_TW.csv").exists())
 
+    def test_price_loader_recovers_lagged_history_before_twse_fill(self) -> None:
+        dates = pd.bdate_range("2025-04-01", periods=320)
+        lagged = _trend_frame(dates[:-1], start=80, step=0.2, volume=5_000_000)
+
+        def fake_download(*, tickers, start_date, end_date, cache_dir, allow_edge_gap):
+            if not allow_edge_gap:
+                raise ValueError("strict signal date missing")
+            return {tickers[0]: lagged}
+
+        def fake_fill(prices, signal_date, tickers):
+            filled = dict(prices)
+            for ticker in tickers:
+                frame = filled[ticker].copy()
+                frame.loc[pd.Timestamp(signal_date)] = {
+                    "open": 150.0,
+                    "high": 152.0,
+                    "low": 149.0,
+                    "close": 151.0,
+                    "adj_close": 151.0,
+                    "volume": 10_000_000,
+                    "dividend": 0.0,
+                    "stock_split": 0.0,
+                }
+                filled[ticker] = frame.sort_index()
+            return filled
+
+        with tempfile.TemporaryDirectory() as tmp:
+            cache_dir = Path(tmp) / "cache"
+            with patch("backtest_lab.stock_pool_observation.download_yfinance_prices", side_effect=fake_download), patch(
+                "backtest_lab.stock_pool_observation.fill_signal_date_from_twse",
+                side_effect=fake_fill,
+            ):
+                prices, missing = _load_observation_price_frames(
+                    tickers=["0050.TW"],
+                    start_date="2020-01-02",
+                    end_date=dates[-1].strftime("%Y-%m-%d"),
+                    cache_dir=cache_dir,
+                )
+
+            self.assertEqual(missing, [])
+            self.assertIn(dates[-1], prices["0050.TW"].index)
+            self.assertEqual(float(prices["0050.TW"].loc[dates[-1], "close"]), 151.0)
+
     def test_build_observation_outputs_unified_schema_and_top_candidate(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)
         tsmc = symbol_entry("2330.TW", source="manual")

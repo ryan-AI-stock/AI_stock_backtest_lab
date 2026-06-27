@@ -273,16 +273,50 @@ jobs:
         id: observation-pdf
         shell: bash
         run: |
-          path="outputs/stock_pool_observations/$(echo '${{ steps.observation-inputs.outputs.signal_date }}' | tr -d '-')/AI股票池觀察總覽_最新版_v20260612.pdf"
-          if [ -f "$path" ]; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-            echo "path=$path" >> "$GITHUB_OUTPUT"
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-            echo "Formal stock-pool report is not ready; latest PDF was not produced."
-            echo "Keep Google Drive unchanged instead of publishing an incomplete report."
-            exit 1
-          fi
+          date_key="$(echo '${{ steps.observation-inputs.outputs.signal_date }}' | tr -d '-')"
+          manifest_path="outputs/stock_pool_observations/${date_key}/stock_pool_observation_manifest.json"
+          export MANIFEST_PATH="$manifest_path"
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          manifest_path = Path(os.environ["MANIFEST_PATH"])
+          output_file = Path(os.environ["GITHUB_OUTPUT"])
+          latest_name = "AI股票池觀察總覽_最新版_v20260612.pdf"
+
+          if not manifest_path.exists():
+              print(f"Formal stock-pool report manifest was not produced: {manifest_path}")
+              print("Keep Google Drive unchanged instead of publishing an incomplete report.")
+              with output_file.open("a", encoding="utf-8") as handle:
+                  handle.write("exists=false\n")
+              raise SystemExit(1)
+
+          manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+          if not manifest.get("formal_report_ready", True):
+              print("Formal stock-pool report is not ready; latest PDF was not produced.")
+              print(f"Actual signal date: {manifest.get('actual_signal_date') or manifest.get('signal_date')}")
+              print(f"Blockers: {manifest.get('formal_report_blockers')}")
+              print("Keep Google Drive unchanged instead of publishing an incomplete report.")
+              with output_file.open("a", encoding="utf-8") as handle:
+                  handle.write("exists=false\n")
+              raise SystemExit(1)
+
+          output_root = Path(str(manifest.get("output_root") or manifest_path.parent))
+          path = output_root / latest_name
+          if not path.exists():
+              print(f"Formal stock-pool latest PDF was not found: {path}")
+              print("Keep Google Drive unchanged instead of publishing an incomplete report.")
+              with output_file.open("a", encoding="utf-8") as handle:
+                  handle.write("exists=false\n")
+              raise SystemExit(1)
+
+          with output_file.open("a", encoding="utf-8") as handle:
+              handle.write("exists=true\n")
+              handle.write(f"path={path.as_posix()}\n")
+              handle.write(f"actual_signal_date={manifest.get('actual_signal_date') or manifest.get('signal_date') or ''}\n")
+          print(f"Formal stock-pool latest PDF ready: {path.as_posix()}")
+          PY
 
       - name: Publish latest PDF to Google Drive
         if: steps.schedule-gate.outputs.should_run == 'true' && steps.observation-pdf.outputs.exists == 'true'

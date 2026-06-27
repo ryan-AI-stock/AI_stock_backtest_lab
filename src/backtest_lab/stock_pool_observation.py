@@ -2292,6 +2292,19 @@ def _load_observation_price_frames(
             )
             prices.update(loaded)
         except Exception:
+            try:
+                lagged = download_yfinance_prices(
+                    tickers=[ticker],
+                    start_date=start_date,
+                    end_date=end_date,
+                    cache_dir=cache_dir,
+                    allow_edge_gap=True,
+                )
+            except Exception:
+                lagged = {}
+            if lagged:
+                prices.update(lagged)
+                continue
             cached = _load_current_cached_price_frame(
                 ticker=ticker,
                 end_date=end_date,
