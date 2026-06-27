@@ -1139,6 +1139,7 @@ def run_stock_pool_observation_batch(
     _finalize_batch_signal_date_metadata(manifest)
     manifest["consensus"] = build_consensus(manifest)
     manifest["report_wording_boundary"] = _report_wording_boundary()
+    _attach_cashflow_report_boundary(manifest)
     _set_formal_report_readiness(manifest)
     manifest["model_layer_audit"] = default_stock_pool_model_layer_audit(
         signal_date=manifest.get("actual_signal_date") or signal_date,
@@ -1241,14 +1242,14 @@ def _report_wording_boundary() -> dict[str, Any]:
             "components": ["pool1_primary_selector", "pool2_tw50_pit_ready_confirmation_risk_layer", "combined_cap40_confirmation1_base"],
         },
         "diagnostic_boundary": {
-            "label": "診斷 / report-only",
+            "label": "診斷註解",
             "description": "非正式診斷註解目前只作內部檢查或風險說明，不得解讀成正式交易決策。",
             "active_in_trade_decision": False,
             "components": ["three_pool_vote_diagnostic", "pool3_shadow_or_diagnostic", "final_decision_layer_report_only", "chip_factor_shadow_diagnostic"],
         },
         "execution_boundary": {
             "label": "尚未成立",
-            "description": "execution/exit layer 尚未建立；baseline selection signal 不等於完整持倉管理命令。",
+            "description": "正式換倉與出場規則尚未建立；目前模型訊號不等於完整持倉管理命令。",
             "active_in_trade_decision": False,
         },
         "plain_language_notes": [
@@ -1257,6 +1258,68 @@ def _report_wording_boundary() -> dict[str, Any]:
             "執行邊界：目前沒有完整換倉與出場層；訊號變化不等於完整持倉管理命令。",
         ],
     }
+
+
+def _cashflow_report_boundary() -> dict[str, Any]:
+    return {
+        "cashflow_objective_capital_twd": 4_000_000,
+        "cashflow_monthly_target_twd": 150_000,
+        "cashflow_target_source": "user_updated_2026_06_27",
+        "cashflow_model_objective_state": "growth_model_not_fixed_income",
+        "cashflow_policy_state": "cashflow_objective_requires_cash_buffer",
+        "cashflow_policy_reference": "capped_profit_withdrawal_150k",
+        "cashflow_secondary_policy_reference": "drawdown_pause_withdrawal_10_cap_150k",
+        "cashflow_cash_buffer_required_twd": 2_400_000,
+        "cashflow_shortfall_months_reference": 16,
+        "cashflow_target_hit_rate_reference": 0.4528,
+        "cashflow_longest_under_target_reference": 16,
+        "cashflow_capped_profit_total_withdrawal_twd": 3_600_000,
+        "cashflow_capped_profit_final_equity_twd": 67_420_000,
+        "cashflow_partial_profit_total_withdrawal_twd": 3_849_300,
+        "cashflow_partial_profit_final_equity_twd": 63_690_000,
+        "cashflow_drawdown_pause_hit_rate_reference": 0.4340,
+        "cashflow_drawdown_pause_total_withdrawal_twd": 3_450_000,
+        "cashflow_drawdown_pause_final_equity_twd": 68_260_000,
+        "cashflow_fixed_150k_final_equity_twd": 2_556_900,
+        "cashflow_fixed_150k_max_drawdown": -0.6932,
+        "cashflow_account_depletion_warning": "legacy_200k_fixed_withdrawal_depleted_2023_12",
+        "cashflow_legacy_stress_test_reference": "fixed_200k_every_month_depleted_2023_12",
+        "cashflow_drawdown_pause_reference": "drawdown_pause_withdrawal_10_cap_150k",
+        "cashflow_active_in_trade_decision": False,
+        "cashflow_boundary": "report_only",
+        "cashflow_wording_zh": (
+            "模型目前定位是資產成長，不是固定月薪機器。新版現金流目標是400萬本金、月生活費上限15萬；"
+            "若當月收益未達15萬，不應硬提到15萬。"
+        ),
+        "cashflow_reference_wording_zh": (
+            "15萬目標比20萬高壓版更接近可執行，但歷史回測中完整領到15萬的月份約45%；"
+            "若每月支出固定15萬且不靠硬提本金補缺口，至少需要約240萬外部生活費緩衝。"
+        ),
+        "cashflow_legacy_stress_wording_zh": "舊20萬高壓測試顯示，固定每月硬提20萬曾在2023-12歸零；此結果只作高壓提醒。",
+        "cashflow_wording_policy": "現金流診斷不得寫成收入承諾或固定提款能力。",
+    }
+
+
+def _attach_cashflow_report_boundary(manifest: dict[str, Any]) -> None:
+    cashflow = _cashflow_report_boundary()
+    manifest["cashflow_report_boundary"] = cashflow
+    for key in (
+        "cashflow_objective_capital_twd",
+        "cashflow_monthly_target_twd",
+        "cashflow_target_source",
+        "cashflow_policy_state",
+        "cashflow_policy_reference",
+        "cashflow_cash_buffer_required_twd",
+        "cashflow_shortfall_months_reference",
+        "cashflow_account_depletion_warning",
+        "cashflow_target_hit_rate_reference",
+        "cashflow_longest_under_target_reference",
+        "cashflow_active_in_trade_decision",
+        "cashflow_boundary",
+    ):
+        manifest[key] = cashflow.get(key)
+    manifest["formal_model_changed"] = False
+    manifest["trade_decision_changed"] = False
 
 
 def write_stock_pool_observation_batch_summary(root: Path, manifest: dict[str, Any]) -> None:
@@ -1456,6 +1519,7 @@ def _skipped_reason_summary(rows: list[dict[str, Any]], manifest: dict[str, Any]
 def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[str, Any]]) -> str:
     wording = manifest.get("report_wording_boundary") or _report_wording_boundary()
     formal_boundary = wording.get("formal_baseline") or {}
+    cashflow = manifest.get("cashflow_report_boundary") or _cashflow_report_boundary()
     report_rows = _formal_report_rows(rows)
     visible_skipped_count = len([row for row in report_rows if row.get("status") != "generated"])
     skipped_summaries = _skipped_reason_summary(rows, manifest)
@@ -1470,6 +1534,17 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
         f"- 暫無正式觀察：{visible_skipped_count}（{'; '.join(skipped_summaries) if skipped_summaries else '無'}）",
         f"- 正式報告狀態：{'可發布' if report_ready else '停止發布，等待完整資料'}",
         f"- 正式模型基準：{_translate_internal_visible_text(formal_boundary.get('description'))}",
+        "",
+        "## 現金流健康度（僅供診斷）",
+        "",
+        f"- 目標本金：{_format_twd(cashflow.get('cashflow_objective_capital_twd'))}",
+        f"- 月生活費目標上限：{_format_twd(cashflow.get('cashflow_monthly_target_twd'))}",
+        f"- 目前定位：{cashflow.get('cashflow_wording_zh', '')}",
+        f"- 歷史達標參考：完整領到15萬的月份約{float(cashflow.get('cashflow_target_hit_rate_reference') or 0) * 100:.2f}%",
+        f"- 外部現金緩衝需求：{_format_twd(cashflow.get('cashflow_cash_buffer_required_twd'))}，用來支付連續短缺期。",
+        f"- 診斷說明：{cashflow.get('cashflow_reference_wording_zh', '')}",
+        f"- 舊高壓測試：{cashflow.get('cashflow_legacy_stress_wording_zh', '')}",
+        f"- 邊界：僅供報告參考，不改正式模型、不改交易決策、不代表提款指令。",
         "",
         "| 狀態 | 正式觀察 | 角色 | 成員檢查 | 前三名 / 暫無觀察原因 | 來源摘要 | 缺價股票 |",
         "| --- | --- | --- | --- | --- | --- | --- |",
@@ -1561,6 +1636,7 @@ def _draw_observation_summary_pdf_page(ax, manifest: dict[str, Any], rows: list[
     if skipped_summaries:
         ax.text(0.06, 0.668, _compact_display("暫無正式觀察：" + "；".join(skipped_summaries), limit=78), color="#7a4b00", fontsize=8.4, transform=ax.transAxes)
     _draw_formal_baseline_panel(ax, manifest, report_rows)
+    _draw_cashflow_report_panel(ax, manifest)
     ax.text(0.06, 0.026, f"{REPORT_TITLE} · {manifest.get('signal_date', '')}", color="#9aa7b1", fontsize=8.5, transform=ax.transAxes)
     ax.text(0.94, 0.026, "AI_stock_backtest_lab", color="#9aa7b1", fontsize=8.5, ha="right", transform=ax.transAxes)
 
@@ -1665,6 +1741,54 @@ def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[st
         "正式報告以最新主攻池 + 確認池模型結果為主；其他診斷資訊不作正式交易規則。",
         color="#52616b",
         fontsize=8.7,
+        transform=ax.transAxes,
+    )
+
+
+def _draw_cashflow_report_panel(ax, manifest: dict[str, Any]) -> None:
+    cashflow = manifest.get("cashflow_report_boundary") or _cashflow_report_boundary()
+    x, y, w, h = 0.065, 0.205, 0.87, 0.115
+    ax.add_patch(
+        plt.Rectangle(
+            (x, y),
+            w,
+            h,
+            facecolor="#fffaf0",
+            edgecolor="#ead7a3",
+            linewidth=1.0,
+            transform=ax.transAxes,
+        )
+    )
+    ax.text(x + 0.018, y + h - 0.029, "現金流健康度（報告參考）", color="#17212a", fontsize=11.0, fontweight="bold", transform=ax.transAxes)
+    ax.text(
+        x + w - 0.018,
+        y + h - 0.029,
+        f"本金 {_format_twd(cashflow.get('cashflow_objective_capital_twd'))}｜月目標上限 {_format_twd(cashflow.get('cashflow_monthly_target_twd'))}",
+        color="#7a4b00",
+        fontsize=8.3,
+        ha="right",
+        transform=ax.transAxes,
+    )
+    _draw_wrapped_text(
+        ax,
+        x + 0.018,
+        y + 0.058,
+        "模型偏資產成長，不是固定月薪；15萬目標約45%月份完整達標，固定生活費仍需約240萬外部緩衝。",
+        max_units=78,
+        line_gap=0.014,
+        color="#26323b",
+        fontsize=8.4,
+        transform=ax.transAxes,
+    )
+    _draw_wrapped_text(
+        ax,
+        x + 0.018,
+        y + 0.026,
+        str(cashflow.get("cashflow_legacy_stress_wording_zh") or ""),
+        max_units=78,
+        line_gap=0.014,
+        color="#7a4b00",
+        fontsize=7.6,
         transform=ax.transAxes,
     )
 
@@ -1895,6 +2019,15 @@ def _vote_color(row: dict[str, Any], consensus: dict[str, Any], index: int) -> s
 def _compact_display(value: str, *, limit: int = 16) -> str:
     text = str(value).replace("（", "(").replace("）", ")").strip()
     return text if len(text) <= limit else text[: limit - 1] + "…"
+
+
+def _format_twd(value: object) -> str:
+    if value is None or value == "":
+        return "-"
+    try:
+        return f"{float(value):,.0f} 元"
+    except (TypeError, ValueError):
+        return str(value)
 
 
 def _display_width_units(value: str) -> int:

@@ -12,6 +12,8 @@ import test_paths  # noqa: F401
 
 from backtest_lab.decision_layers import CANDIDATE_SOURCE, DATA_READINESS
 from backtest_lab.stock_pool_observation import (
+    _attach_cashflow_report_boundary,
+    _cashflow_report_boundary,
     _load_observation_price_frames,
     _resolve_dynamic_observation_pool,
     _sanitize_visible_report_reason,
@@ -20,6 +22,7 @@ from backtest_lab.stock_pool_observation import (
     _wrap_text_lines,
     build_dispatched_stock_pool_observation,
     build_stock_pool_observation,
+    markdown_observation_batch_report,
     run_stock_pool_observation_batch,
     write_stock_pool_observation,
 )
@@ -47,6 +50,38 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertGreater(len(lines), 1)
         self.assertEqual("".join(lines), text)
         self.assertTrue(all("…" not in line for line in lines))
+
+    def test_cashflow_boundary_uses_150k_report_only_reference(self) -> None:
+        manifest: dict[str, object] = {}
+        _attach_cashflow_report_boundary(manifest)
+
+        self.assertEqual(manifest["cashflow_objective_capital_twd"], 4_000_000)
+        self.assertEqual(manifest["cashflow_monthly_target_twd"], 150_000)
+        self.assertEqual(manifest["cashflow_target_source"], "user_updated_2026_06_27")
+        self.assertEqual(manifest["cashflow_policy_reference"], "capped_profit_withdrawal_150k")
+        self.assertEqual(manifest["cashflow_cash_buffer_required_twd"], 2_400_000)
+        self.assertEqual(manifest["cashflow_boundary"], "report_only")
+        self.assertFalse(manifest["cashflow_active_in_trade_decision"])
+        self.assertFalse(manifest["formal_model_changed"])
+        self.assertFalse(manifest["trade_decision_changed"])
+
+    def test_cashflow_visible_wording_avoids_income_promise(self) -> None:
+        cashflow = _cashflow_report_boundary()
+        manifest = {
+            "signal_date": "2026-06-26",
+            "report_ready": True,
+            "report_wording_boundary": {"formal_baseline": {"description": "主攻池優先，確認池做風險確認"}},
+            "cashflow_report_boundary": cashflow,
+            "generated": [],
+        }
+        markdown = markdown_observation_batch_report(manifest, [])
+
+        self.assertIn("月生活費目標上限：150,000 元", markdown)
+        self.assertIn("外部現金緩衝需求：2,400,000 元", markdown)
+        self.assertIn("完整領到15萬的月份約45.28%", markdown)
+        self.assertIn("舊20萬高壓測試", markdown)
+        for forbidden in ("穩定月領", "保證收入", "固定可提領", "report-only"):
+            self.assertNotIn(forbidden, markdown)
 
     def test_price_loader_uses_current_cache_when_refresh_fails(self) -> None:
         dates = pd.bdate_range("2025-04-01", periods=320)
@@ -799,7 +834,7 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertFalse(wording["diagnostic_boundary"]["active_in_trade_decision"])
             self.assertFalse(wording["execution_boundary"]["active_in_trade_decision"])
             self.assertIn("非正式診斷", wording["diagnostic_boundary"]["description"])
-            self.assertIn("execution/exit layer", wording["execution_boundary"]["description"])
+            self.assertIn("換倉與出場規則", wording["execution_boundary"]["description"])
             self.assertTrue(manifest["formal_report_ready"])
             self.assertEqual(manifest["formal_report_blocker_count"], 0)
             self.assertNotIn("pool3_radar_attack_satellite", manifest)
