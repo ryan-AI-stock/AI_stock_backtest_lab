@@ -1142,6 +1142,7 @@ def run_stock_pool_observation_batch(
     manifest["report_wording_boundary"] = _report_wording_boundary()
     _attach_cashflow_report_boundary(manifest)
     _attach_target_stability_warning_boundary(manifest)
+    _attach_live_risk_regime_warning_boundary(manifest)
     _set_formal_report_readiness(manifest)
     manifest["model_layer_audit"] = default_stock_pool_model_layer_audit(
         signal_date=manifest.get("actual_signal_date") or signal_date,
@@ -1404,6 +1405,89 @@ def _attach_target_stability_warning_boundary(manifest: dict[str, Any]) -> None:
     manifest["active_in_trade_decision"] = False
 
 
+def _live_risk_regime_warning_boundary(manifest: dict[str, Any]) -> dict[str, Any]:
+    explicit = manifest.get("live_risk_regime_warning")
+    if isinstance(explicit, dict):
+        return explicit
+    generated = manifest.get("generated") or []
+    formal_rows = [
+        row for row in generated
+        if not _hide_from_formal_report(
+            {
+                "pool_id": row.get("pool_id", ""),
+                "pool_name": row.get("pool_name", ""),
+                "pool_short_name": _short_pool_name(row),
+                "role_name": row.get("role_name", ""),
+                "role_description": row.get("role_description", ""),
+            }
+        )
+    ]
+    active_rows = [row for row in formal_rows if bool(row.get("active_in_trade_decision", False))]
+    primary = active_rows[0] if active_rows else (formal_rows[0] if formal_rows else {})
+    metadata = primary.get("source_metadata") if isinstance(primary.get("source_metadata"), dict) else {}
+    risk_off_active = _bool_like(metadata.get("risk_off_active"))
+    attack_gate_active = _bool_like(metadata.get("attack_gate_active"))
+    market_regime_label = str(metadata.get("market_regime_label") or "").strip()
+    data_end_date = str(primary.get("data_end_date") or manifest.get("actual_signal_date") or manifest.get("signal_date") or "")
+    if not formal_rows:
+        state = "data_insufficient"
+        reason = "正式觀察資料不足，無法判斷目前市場風險環境。"
+    elif risk_off_active:
+        state = "risk_off_watch"
+        reason = "正式訊號顯示市場環境偏防守，歷史診斷中這類狀態的回撤壓力較高。"
+    elif not attack_gate_active:
+        state = "weak_regime_watch"
+        reason = "主攻條件尚未完全打開，市場環境偏弱，需留意回撤與月度現金流壓力。"
+    else:
+        state = "risk_on"
+        reason = "目前主攻條件維持開啟，尚未偵測到正式風險提醒。"
+    if market_regime_label:
+        source = f"正式主攻訊號、市場狀態={_translate_internal_visible_text(market_regime_label)}"
+    else:
+        source = "正式主攻訊號的攻擊條件與風險狀態"
+    return {
+        "live_risk_regime_state": state,
+        "live_risk_regime_warning_reason": reason,
+        "live_risk_regime_feature_source": source,
+        "live_risk_regime_data_end_date": data_end_date,
+        "live_risk_regime_active_in_trade_decision": False,
+        "live_risk_regime_boundary": "report_only",
+        "live_risk_regime_breadth_readiness": "breadth_not_ready",
+        "live_risk_regime_throttle_diagnostic_note": (
+            "曝險縮放只停留在歷史診斷；目前沒有啟用正式降曝險規則，也不改變正式標的。"
+        ),
+    }
+
+
+def _attach_live_risk_regime_warning_boundary(manifest: dict[str, Any]) -> None:
+    warning = _live_risk_regime_warning_boundary(manifest)
+    manifest["live_risk_regime_warning"] = warning
+    for key in (
+        "live_risk_regime_state",
+        "live_risk_regime_warning_reason",
+        "live_risk_regime_feature_source",
+        "live_risk_regime_data_end_date",
+        "live_risk_regime_active_in_trade_decision",
+        "live_risk_regime_boundary",
+        "live_risk_regime_breadth_readiness",
+    ):
+        manifest[key] = warning.get(key)
+    manifest["formal_model_changed"] = False
+    manifest["trade_decision_changed"] = False
+    manifest["active_in_trade_decision"] = False
+
+
+def _live_risk_regime_state_label(value: object) -> str:
+    mapping = {
+        "risk_on": "市場環境偏強",
+        "weak_regime_watch": "市場環境偏弱，留意風險",
+        "risk_off_watch": "防守環境觀察",
+        "data_insufficient": "資料不足",
+        "breadth_not_ready": "市場廣度資料尚未納入正式契約",
+    }
+    return mapping.get(str(value or ""), str(value or "資料不足"))
+
+
 def _top_score_gap(candidates: list[dict[str, Any]]) -> float | None:
     scores = []
     for row in candidates[:2]:
@@ -1640,6 +1724,7 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
     formal_boundary = wording.get("formal_baseline") or {}
     cashflow = manifest.get("cashflow_report_boundary") or _cashflow_report_boundary()
     stability = manifest.get("target_stability_warning") or _target_stability_warning_boundary(manifest)
+    live_risk = manifest.get("live_risk_regime_warning") or _live_risk_regime_warning_boundary(manifest)
     report_rows = _formal_report_rows(rows)
     visible_skipped_count = len([row for row in report_rows if row.get("status") != "generated"])
     skipped_summaries = _skipped_reason_summary(rows, manifest)
@@ -1672,6 +1757,16 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
         f"- 原因：{stability.get('target_stability_warning_reason', '')}",
         f"- 診斷來源邊界：{stability.get('target_stability_proxy_contract', '')}",
         f"- 邊界：僅供報告提醒，不改正式模型、不改正式標的、不代表換倉指令。",
+        "",
+        "## 市場風險環境提醒（僅供診斷）",
+        "",
+        f"- 狀態：{_live_risk_regime_state_label(live_risk.get('live_risk_regime_state'))}",
+        f"- 原因：{live_risk.get('live_risk_regime_warning_reason', '')}",
+        f"- 資料截止日：{live_risk.get('live_risk_regime_data_end_date', '')}",
+        f"- 資料來源：{live_risk.get('live_risk_regime_feature_source', '')}",
+        f"- 市場廣度資料狀態：{_live_risk_regime_state_label(live_risk.get('live_risk_regime_breadth_readiness'))}",
+        f"- 診斷說明：{live_risk.get('live_risk_regime_throttle_diagnostic_note', '')}",
+        f"- 提醒：僅供報告提醒，不改正式模型、不改正式標的、不代表交易指令。",
         "",
         "| 狀態 | 正式觀察 | 角色 | 成員檢查 | 前三名 / 暫無觀察原因 | 來源摘要 | 缺價股票 |",
         "| --- | --- | --- | --- | --- | --- | --- |",
@@ -1881,6 +1976,22 @@ def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[st
         line_gap=0.013,
         color="#7a4b00" if stability.get("target_stability_warning_state") != "stable_target" else "#52616b",
         fontsize=7.7,
+        transform=ax.transAxes,
+    )
+    live_risk = manifest.get("live_risk_regime_warning") or _live_risk_regime_warning_boundary(manifest)
+    risk_text = (
+        f"市場環境：{_live_risk_regime_state_label(live_risk.get('live_risk_regime_state'))}；"
+        f"{live_risk.get('live_risk_regime_warning_reason', '')}"
+    )
+    _draw_wrapped_text(
+        ax,
+        panel_x + 0.03,
+        panel_y + 0.006,
+        risk_text,
+        max_units=86,
+        line_gap=0.013,
+        color="#7a4b00" if live_risk.get("live_risk_regime_state") != "risk_on" else "#52616b",
+        fontsize=7.5,
         transform=ax.transAxes,
     )
 

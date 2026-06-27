@@ -13,8 +13,10 @@ import test_paths  # noqa: F401
 from backtest_lab.decision_layers import CANDIDATE_SOURCE, DATA_READINESS
 from backtest_lab.stock_pool_observation import (
     _attach_cashflow_report_boundary,
+    _attach_live_risk_regime_warning_boundary,
     _attach_target_stability_warning_boundary,
     _cashflow_report_boundary,
+    _live_risk_regime_warning_boundary,
     _load_observation_price_frames,
     _resolve_dynamic_observation_pool,
     _sanitize_visible_report_reason,
@@ -127,6 +129,47 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertIn("不是正式候選排序契約", markdown)
         self.assertIn("不代表換倉指令", markdown)
         for forbidden in ("應賣出", "禁止換倉", "明天一定轉弱", "target_drop_from_top3", "pool_signal_panel", "score margin contract", "target drop proxy"):
+            self.assertNotIn(forbidden, markdown)
+
+    def test_live_risk_regime_warning_boundary_is_report_only(self) -> None:
+        manifest = _live_risk_manifest(risk_off_active=True, attack_gate_active=False)
+        _attach_live_risk_regime_warning_boundary(manifest)
+
+        self.assertEqual(manifest["live_risk_regime_state"], "risk_off_watch")
+        self.assertEqual(manifest["live_risk_regime_boundary"], "report_only")
+        self.assertEqual(manifest["live_risk_regime_breadth_readiness"], "breadth_not_ready")
+        self.assertFalse(manifest["live_risk_regime_active_in_trade_decision"])
+        self.assertFalse(manifest["formal_model_changed"])
+        self.assertFalse(manifest["trade_decision_changed"])
+        self.assertFalse(manifest["active_in_trade_decision"])
+
+    def test_live_risk_regime_marks_data_insufficient(self) -> None:
+        warning = _live_risk_regime_warning_boundary({"generated": [], "signal_date": "2026-06-26"})
+
+        self.assertEqual(warning["live_risk_regime_state"], "data_insufficient")
+        self.assertEqual(warning["live_risk_regime_boundary"], "report_only")
+        self.assertFalse(warning["live_risk_regime_active_in_trade_decision"])
+
+    def test_live_risk_regime_visible_wording_is_not_trade_instruction(self) -> None:
+        manifest = _live_risk_manifest(risk_off_active=False, attack_gate_active=False)
+        _attach_live_risk_regime_warning_boundary(manifest)
+        manifest.update(
+            {
+                "signal_date": "2026-06-26",
+                "report_ready": True,
+                "report_wording_boundary": {"formal_baseline": {"description": "主攻池優先，確認池做風險確認"}},
+                "cashflow_report_boundary": _cashflow_report_boundary(),
+                "target_stability_warning": _target_stability_warning_boundary(manifest),
+                "generated": manifest["generated"],
+            }
+        )
+        markdown = markdown_observation_batch_report(manifest, [])
+
+        self.assertIn("市場風險環境提醒（僅供診斷）", markdown)
+        self.assertIn("市場環境偏弱", markdown)
+        self.assertIn("市場廣度資料尚未納入正式契約", markdown)
+        self.assertIn("目前沒有啟用正式降曝險規則", markdown)
+        for forbidden in ("應降曝險", "禁止買進", "系統已切換防守", "此訊號會提升收益"):
             self.assertNotIn(forbidden, markdown)
 
     def test_price_loader_uses_current_cache_when_refresh_fails(self) -> None:
@@ -1584,6 +1627,37 @@ def _target_stability_manifest(*, score_a: float, score_b: float) -> dict[str, o
                 "top_candidates": [
                     {"rank": 1, "ticker": "6669.TW", "display": "緯穎(6669)", "score": score_a},
                     {"rank": 2, "ticker": "00631L.TW", "display": "0050正二(00631L)", "score": score_b},
+                ],
+            },
+            {
+                "pool_id": "tw50_dynamic_constituents_v0",
+                "pool_name": "大型廣度池",
+                "active_in_trade_decision": False,
+                "top_candidates": [],
+            },
+        ],
+        "skipped": [],
+    }
+
+
+def _live_risk_manifest(*, risk_off_active: bool, attack_gate_active: bool) -> dict[str, object]:
+    return {
+        "signal_date": "2026-06-26",
+        "actual_signal_date": "2026-06-26",
+        "generated": [
+            {
+                "pool_id": "ai_theme_large_cap_v20260613",
+                "pool_name": "AI主線池",
+                "data_end_date": "2026-06-26",
+                "active_in_trade_decision": True,
+                "source_metadata": {
+                    "risk_off_active": risk_off_active,
+                    "attack_gate_active": attack_gate_active,
+                    "market_regime_label": "正式風險診斷",
+                },
+                "top_candidates": [
+                    {"rank": 1, "ticker": "6669.TW", "display": "緯穎(6669)", "score": 1.0},
+                    {"rank": 2, "ticker": "00631L.TW", "display": "0050正二(00631L)", "score": 0.8},
                 ],
             },
             {
