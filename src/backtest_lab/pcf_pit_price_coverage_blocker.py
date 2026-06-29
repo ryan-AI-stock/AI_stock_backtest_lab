@@ -9,6 +9,7 @@ import pandas as pd
 
 from backtest_lab.data import download_yfinance_prices, load_price_csv
 from backtest_lab.pcf_pit_candidate_adapter import DEFAULT_MONTHLY_ANCHOR_PATH, load_0050_pcf_monthly_anchor
+from backtest_lab.supplemental_price_sources import DEFAULT_PRICE_SOURCE_REGISTRY, load_price_source_registry
 from backtest_lab.tw50_constituent_price_backfill import DEFAULT_CACHE_DIR
 
 
@@ -22,6 +23,7 @@ def run_0050_pit_price_coverage_blocker(
     *,
     monthly_anchor_path: str | Path = DEFAULT_MONTHLY_ANCHOR_PATH,
     cache_dir: str | Path = DEFAULT_CACHE_DIR,
+    registry_path: str | Path = DEFAULT_PRICE_SOURCE_REGISTRY,
     output_dir: str | Path = DEFAULT_OUTPUT_DIR,
     replay_end_date: str = DEFAULT_REPLAY_END_DATE,
     refresh_missing: bool = False,
@@ -48,7 +50,8 @@ def run_0050_pit_price_coverage_blocker(
         log("load_monthly_anchor", "started", str(monthly_anchor_path))
         anchor = load_0050_pcf_monthly_anchor(monthly_anchor_path)
         requirements = _ticker_requirements(anchor, replay_end_date)
-        before = _coverage_status(requirements, cache)
+        registry = load_price_source_registry(registry_path)
+        before = _coverage_status(requirements, cache, registry)
         gap_before = before[before["coverage_status"].ne("price_only_ready")].copy()
 
         completed_rows: list[dict[str, object]] = []
@@ -66,7 +69,7 @@ def run_0050_pit_price_coverage_blocker(
                     frame = downloaded.get(ticker)
                     if frame is None or frame.empty:
                         raise ValueError("download returned no price frame")
-                    cov = _coverage_for_ticker(ticker, cache, loaded_frame=frame)
+                    cov = _coverage_for_ticker(ticker, cache, registry, loaded_frame=frame)
                     completed_rows.append(
                         {
                             "ticker": ticker,
@@ -80,7 +83,7 @@ def run_0050_pit_price_coverage_blocker(
                     )
                     log(step, "completed", f"{cov['first_date']} to {cov['last_date']}")
                 except Exception as exc:  # noqa: BLE001 - per-ticker failure must be observable.
-                    cov = _coverage_for_ticker(ticker, cache)
+                    cov = _coverage_for_ticker(ticker, cache, registry)
                     failed_rows.append(
                         {
                             "ticker": ticker,
@@ -92,10 +95,13 @@ def run_0050_pit_price_coverage_blocker(
                     )
                     log(step, "failed", str(exc))
 
-        after = _coverage_status(requirements, cache)
+        after = _coverage_status(requirements, cache, registry)
         missing = after[after["coverage_status"].eq("missing_coverage_row")].copy()
         not_ready = after[after["coverage_status"].eq("not_ready")].copy()
-        ready = after[after["coverage_status"].eq("price_only_ready")].copy()
+        price_ready_mask = after["coverage_status"].isin(["price_only_ready", "price_only_ready_unadjusted"])
+        ready = after[price_ready_mask].copy()
+        adjusted_ready = after[after["coverage_status"].eq("price_only_ready")].copy()
+        unadjusted_ready = after[after["coverage_status"].eq("price_only_ready_unadjusted")].copy()
         blockers = _remaining_blockers(after)
 
         after.to_csv(output / "pit_universe_price_coverage_status.csv", index=False, encoding="utf-8-sig")
@@ -122,14 +128,18 @@ def run_0050_pit_price_coverage_blocker(
             "generated_at": pd.Timestamp.now(tz="Asia/Taipei").isoformat(),
             "monthly_anchor_path": str(monthly_anchor_path),
             "cache_dir": str(cache),
+            "registry_path": str(registry_path),
             "refresh_missing_attempted": bool(refresh_missing),
             "pit_universe_tickers": int(after["ticker"].nunique()),
             "price_ready_tickers": int(len(ready)),
+            "adjusted_close_ready_tickers": int(len(adjusted_ready)),
+            "unadjusted_price_only_ready_tickers": int(len(unadjusted_ready)),
             "missing_coverage_tickers": int(len(missing)),
             "not_ready_tickers": int(len(not_ready)),
             "price_backfill_completed_count": int(len(completed_rows)),
             "price_backfill_failed_count": int(len(failed_rows)),
-            "price_blocker_cleared": bool(missing.empty and not_ready.empty),
+            "price_blocker_cleared_for_price_only": bool(missing.empty and not_ready.empty),
+            "adjusted_close_blocker_cleared": bool(len(unadjusted_ready) == 0 and missing.empty and not_ready.empty),
             "formal_model_changed": False,
             "trade_decision_changed": False,
             "formal_exact": False,
@@ -173,11 +183,11 @@ def _ticker_requirements(anchor: pd.DataFrame, replay_end_date: str) -> pd.DataF
     return pd.DataFrame(rows).sort_values("ticker").reset_index(drop=True)
 
 
-def _coverage_status(requirements: pd.DataFrame, cache_dir: Path) -> pd.DataFrame:
+def _coverage_status(requirements: pd.DataFrame, cache_dir: Path, registry: pd.DataFrame) -> pd.DataFrame:
     rows: list[dict[str, object]] = []
     for req in requirements.to_dict(orient="records"):
         ticker = str(req["ticker"])
-        cov = _coverage_for_ticker(ticker, cache_dir)
+        cov = _coverage_for_ticker(ticker, cache_dir, registry)
         first = str(cov.get("first_date", ""))
         last = str(cov.get("last_date", ""))
         adjusted = _as_bool(cov.get("adjusted_close_available"))
@@ -187,8 +197,8 @@ def _coverage_status(requirements: pd.DataFrame, cache_dir: Path) -> pd.DataFram
         last_ok = bool(last and pd.Timestamp(last) >= required_end - pd.Timedelta(days=10))
         if not first:
             status = "missing_coverage_row"
-        elif first_ok and last_ok and adjusted:
-            status = "price_only_ready"
+        elif first_ok and last_ok:
+            status = "price_only_ready" if adjusted else "price_only_ready_unadjusted"
         else:
             status = "not_ready"
         rows.append(
@@ -201,20 +211,42 @@ def _coverage_status(requirements: pd.DataFrame, cache_dir: Path) -> pd.DataFram
                 "adjusted_close_available": str(adjusted).lower(),
                 "ready_for_backtest_price_only": str(status == "price_only_ready").lower(),
                 "cache_path": cov.get("cache_path", ""),
+                "source_type": cov.get("source_type", ""),
+                "source_id": cov.get("source_id", ""),
+                "synthetic_used": str(_as_bool(cov.get("synthetic_used"))).lower(),
                 "missing_periods": _missing_period_text(first, last, str(req["required_start_date"]), str(req["required_end_date"])),
             }
         )
     return pd.DataFrame(rows)
 
 
-def _coverage_for_ticker(ticker: str, cache_dir: Path, *, loaded_frame: pd.DataFrame | None = None) -> dict[str, object]:
+def _coverage_for_ticker(
+    ticker: str,
+    cache_dir: Path,
+    registry: pd.DataFrame,
+    *,
+    loaded_frame: pd.DataFrame | None = None,
+) -> dict[str, object]:
     path = _cache_path(cache_dir, ticker)
     frame = loaded_frame
+    source_type = "cache"
+    source_id = ""
+    synthetic_used = False
     if frame is None and path.exists():
         try:
             frame = load_price_csv(path)
         except Exception:
             frame = None
+    if (frame is None or frame.empty) and not registry.empty:
+        supplemental = _supplemental_row_for_ticker(ticker, registry)
+        if supplemental:
+            source_path = Path(str(supplemental["source_path"]))
+            if source_path.exists():
+                frame = load_price_csv(source_path)
+                path = source_path
+                source_type = str(supplemental.get("source_type", ""))
+                source_id = str(supplemental.get("source_id", ""))
+                synthetic_used = _as_bool(supplemental.get("synthetic_used"))
     if frame is None or frame.empty:
         return {
             "ticker": ticker,
@@ -223,6 +255,9 @@ def _coverage_for_ticker(ticker: str, cache_dir: Path, *, loaded_frame: pd.DataF
             "row_count": 0,
             "adjusted_close_available": False,
             "cache_path": str(path),
+            "source_type": "",
+            "source_id": "",
+            "synthetic_used": False,
         }
     return {
         "ticker": ticker,
@@ -231,7 +266,20 @@ def _coverage_for_ticker(ticker: str, cache_dir: Path, *, loaded_frame: pd.DataF
         "row_count": int(len(frame)),
         "adjusted_close_available": "adj_close" in frame.columns and pd.to_numeric(frame["adj_close"], errors="coerce").notna().any(),
         "cache_path": str(path),
+        "source_type": source_type,
+        "source_id": source_id,
+        "synthetic_used": synthetic_used,
     }
+
+
+def _supplemental_row_for_ticker(ticker: str, registry: pd.DataFrame) -> dict[str, object] | None:
+    candidates = registry[registry["ticker"].astype(str).eq(ticker)].copy()
+    if candidates.empty:
+        return None
+    candidates = candidates[candidates["price_source_ready"].map(_as_bool)]
+    if candidates.empty:
+        return None
+    return candidates.sort_values(["first_date", "last_date"]).iloc[0].to_dict()
 
 
 def _download_one_ticker(tickers: list[str], start_date: str, end_date: str, cache_dir: str | Path) -> dict[str, pd.DataFrame]:
@@ -266,13 +314,22 @@ def _missing_period_text(first: str, last: str, start_date: str, end_date: str) 
 def _remaining_blockers(status: pd.DataFrame) -> pd.DataFrame:
     missing = int((status["coverage_status"] == "missing_coverage_row").sum())
     not_ready = int((status["coverage_status"] == "not_ready").sum())
+    unadjusted = int((status["coverage_status"] == "price_only_ready_unadjusted").sum())
+    ready = int(status["coverage_status"].isin(["price_only_ready", "price_only_ready_unadjusted"]).sum())
     return pd.DataFrame(
         [
             {
                 "blocker": "pit_universe_price_coverage",
                 "status": "cleared" if missing == 0 and not_ready == 0 else "partial",
                 "blocks_2014_2023_backtest": missing > 0 or not_ready > 0,
-                "detail": f"missing={missing}; not_ready={not_ready}; ready={int((status['coverage_status'] == 'price_only_ready').sum())}",
+                "detail": f"missing={missing}; not_ready={not_ready}; price_only_ready={ready}",
+                "next_owner": "Core/Data",
+            },
+            {
+                "blocker": "adjusted_close_total_return_coverage",
+                "status": "partial" if unadjusted else "cleared",
+                "blocks_2014_2023_backtest": False,
+                "detail": f"unadjusted_price_only_ready={unadjusted}; total-return adjusted replay still needs adjusted source or explicit price-only policy.",
                 "next_owner": "Core/Data",
             },
             {
@@ -301,7 +358,9 @@ def _price_data_fill_plan(status: pd.DataFrame, refresh_missing: bool) -> str:
 ## Current status
 
 - PIT universe tickers: {status['ticker'].nunique()}
-- price_only_ready: {(status['coverage_status'] == 'price_only_ready').sum()}
+- price_only_ready: {status['coverage_status'].isin(['price_only_ready', 'price_only_ready_unadjusted']).sum()}
+- adjusted_close_ready: {(status['coverage_status'] == 'price_only_ready').sum()}
+- unadjusted price-only ready: {(status['coverage_status'] == 'price_only_ready_unadjusted').sum()}
 - missing coverage rows: {len(missing)}
 - not ready rows: {len(not_ready)}
 - refresh attempted in this run: {str(refresh_missing).lower()}
@@ -347,10 +406,13 @@ def _summary_zh(manifest: dict[str, object], status: pd.DataFrame) -> str:
 
 - PIT universe tickers：{manifest['pit_universe_tickers']}
 - price-ready：{manifest['price_ready_tickers']}
+- adjusted close ready：{manifest['adjusted_close_ready_tickers']}
+- unadjusted price-only ready：{manifest['unadjusted_price_only_ready_tickers']}
 - missing coverage：{manifest['missing_coverage_tickers']}
 - not ready：{manifest['not_ready_tickers']}
 - refresh attempted：{manifest['refresh_missing_attempted']}
-- price blocker cleared：{manifest['price_blocker_cleared']}
+- price blocker cleared for price-only：{manifest['price_blocker_cleared_for_price_only']}
+- adjusted close blocker cleared：{manifest['adjusted_close_blocker_cleared']}
 
 這一棒只處理價格覆蓋 blocker，不改正式 selector、不改交易決策、不把 PCF candidate 升成 formal exact。
 
@@ -372,6 +434,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Build or refresh 0050 PIT universe price coverage blocker package.")
     parser.add_argument("--monthly-anchor-path", default=DEFAULT_MONTHLY_ANCHOR_PATH)
     parser.add_argument("--cache-dir", default=DEFAULT_CACHE_DIR)
+    parser.add_argument("--registry-path", default=DEFAULT_PRICE_SOURCE_REGISTRY)
     parser.add_argument("--output-dir", default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--replay-end-date", default=DEFAULT_REPLAY_END_DATE)
     parser.add_argument("--refresh-missing", action="store_true")
@@ -379,6 +442,7 @@ def main() -> None:
     output = run_0050_pit_price_coverage_blocker(
         monthly_anchor_path=args.monthly_anchor_path,
         cache_dir=args.cache_dir,
+        registry_path=args.registry_path,
         output_dir=args.output_dir,
         replay_end_date=args.replay_end_date,
         refresh_missing=args.refresh_missing,

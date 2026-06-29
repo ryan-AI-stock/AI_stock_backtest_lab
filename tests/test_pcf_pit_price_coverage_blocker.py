@@ -32,6 +32,7 @@ class PcfPitPriceCoverageBlockerTest(unittest.TestCase):
             self.assertFalse(manifest["trade_decision_changed"])
             self.assertEqual(manifest["pit_universe_tickers"], 2)
             self.assertEqual(manifest["price_ready_tickers"], 1)
+            self.assertEqual(manifest["adjusted_close_ready_tickers"], 1)
             self.assertEqual(manifest["missing_coverage_tickers"], 1)
 
             status = pd.read_csv(out / "pit_universe_price_coverage_status.csv")
@@ -68,10 +69,63 @@ class PcfPitPriceCoverageBlockerTest(unittest.TestCase):
             manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(manifest["price_ready_tickers"], 1)
             self.assertEqual(manifest["missing_coverage_tickers"], 0)
-            self.assertTrue(manifest["price_blocker_cleared"])
+            self.assertTrue(manifest["price_blocker_cleared_for_price_only"])
+            self.assertTrue(manifest["adjusted_close_blocker_cleared"])
 
             completed = pd.read_csv(out / "price_backfill_completed.csv")
             self.assertEqual(completed["ticker"].tolist(), ["1101.TW"])
+
+    def test_supplemental_unadjusted_source_clears_price_only_not_total_return(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            anchor = root / "anchor.csv"
+            cache = root / "cache"
+            normalized = root / "normalized"
+            registry = root / "registry.csv"
+            out = root / "out"
+            cache.mkdir()
+            normalized.mkdir()
+            _anchor_csv(anchor, tickers=(("2311", "日月光", "2014-11", "2014-11-28"),))
+            source = normalized / "2311_TW.csv"
+            frame = _price_frame("2014-11-28", "2018-03-31").copy()
+            frame["adj_close"] = ""
+            frame.reset_index(names="date").to_csv(source, index=False)
+            pd.DataFrame(
+                [
+                    {
+                        "ticker": "2311.TW",
+                        "source_id": "2311_twse_stock_day_unadjusted",
+                        "source_path": source.as_posix(),
+                        "source_type": "twse_stock_day_unadjusted_ohlcv_candidate",
+                        "first_date": "2014-11-28",
+                        "last_date": "2018-03-31",
+                        "price_source_ready": True,
+                        "strategy_ready": False,
+                        "synthetic_used": False,
+                        "provenance": "test",
+                        "notes": "unadjusted",
+                    }
+                ]
+            ).to_csv(registry, index=False)
+
+            run_0050_pit_price_coverage_blocker(
+                monthly_anchor_path=anchor,
+                cache_dir=cache,
+                registry_path=registry,
+                output_dir=out,
+                replay_end_date="2023-12-31",
+            )
+
+            manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["price_ready_tickers"], 1)
+            self.assertEqual(manifest["adjusted_close_ready_tickers"], 0)
+            self.assertEqual(manifest["unadjusted_price_only_ready_tickers"], 1)
+            self.assertTrue(manifest["price_blocker_cleared_for_price_only"])
+            self.assertFalse(manifest["adjusted_close_blocker_cleared"])
+
+            status = pd.read_csv(out / "pit_universe_price_coverage_status.csv")
+            self.assertEqual(status["coverage_status"].iloc[0], "price_only_ready_unadjusted")
+            self.assertEqual(status["source_type"].iloc[0], "twse_stock_day_unadjusted_ohlcv_candidate")
 
 
 def _anchor_csv(
