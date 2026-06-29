@@ -216,7 +216,7 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertFalse(h1["chip_context_active_in_trade_decision"])
         self.assertFalse(h2["chip_context_active_in_trade_decision"])
 
-    def test_chip_context_stale_data_blocks_formal_report_readiness(self) -> None:
+    def test_chip_context_stale_data_is_report_only_and_does_not_block_formal_report(self) -> None:
         manifest = _chip_context_manifest(
             signal_date="2026-06-26",
             bullish=1.0,
@@ -241,9 +241,40 @@ class StockPoolObservationTest(unittest.TestCase):
 
         self.assertIn("籌碼背景觀察（僅供診斷）", markdown)
         self.assertIn("籌碼資料截止日：2026-05-26", markdown)
-        self.assertIn("停止發布，等待完整資料", markdown)
-        self.assertFalse(manifest["formal_report_ready"])
+        self.assertNotIn("停止發布，等待完整資料", markdown)
+        self.assertTrue(manifest["formal_report_ready"])
+        self.assertEqual(manifest["formal_report_blocker_count"], 0)
+        self.assertEqual(manifest["formal_report_blockers"], [])
         self.assertEqual(manifest["chip_context_state"], "chip_data_insufficient")
+
+    def test_chip_context_neutral_reference_unavailable_does_not_block_formal_report(self) -> None:
+        manifest = _chip_context_manifest(
+            signal_date="2026-06-29",
+            bullish=0.0,
+            institutional_risk=0.0,
+            flow_risk=0.0,
+            coverage_end="2026-06-29",
+        )
+        _attach_chip_context_report_boundary(manifest)
+        manifest.update(
+            {
+                "report_ready": True,
+                "require_fresh_institutional_flow": True,
+                "report_wording_boundary": {"formal_baseline": {"description": "主攻池優先，確認池做風險確認"}},
+                "cashflow_report_boundary": _cashflow_report_boundary(),
+                "target_stability_warning": _target_stability_warning_boundary(manifest),
+                "live_risk_regime_warning": _live_risk_regime_warning_boundary(manifest),
+                "generated": manifest["generated"],
+            }
+        )
+        _set_formal_report_readiness(manifest)
+
+        self.assertEqual(manifest["chip_context_state"], "mixed_chip_context")
+        self.assertFalse(manifest["chip_context_active_in_trade_decision"])
+        self.assertEqual(manifest["chip_context_boundary"], "report_only")
+        self.assertTrue(manifest["formal_report_ready"])
+        self.assertEqual(manifest["formal_report_blocker_count"], 0)
+        self.assertEqual(manifest["formal_report_blockers"], [])
 
     def test_chip_context_visible_wording_is_not_trade_instruction_when_fresh(self) -> None:
         manifest = _chip_context_manifest(signal_date="2026-05-24", bullish=1.0, institutional_risk=0.0, flow_risk=0.0, coverage_end="2026-05-24")

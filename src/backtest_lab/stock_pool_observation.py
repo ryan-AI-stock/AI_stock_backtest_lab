@@ -1225,20 +1225,6 @@ def _set_formal_report_readiness(manifest: dict[str, Any]) -> None:
                 "reason_zh": "資料不足：部分正式候選缺少價格資料（" + "、".join(missing) + "）。",
             }
         )
-    chip_context = manifest.get("chip_context") or {}
-    if (
-        manifest.get("require_fresh_institutional_flow")
-        and visible_generated
-        and chip_context.get("chip_context_state") in {"chip_data_insufficient", "chip_not_available"}
-    ):
-        blockers.append(
-            {
-                "pool_id": "chip_context",
-                "pool_name": "籌碼資料",
-                "reason": str(chip_context.get("chip_context_reason") or "chip_context_data_insufficient"),
-                "reason_zh": str(chip_context.get("chip_context_reason") or "資料不足：籌碼資料尚未補齊。"),
-            }
-        )
     ready = bool(visible_generated) and not blockers
     manifest["formal_report_ready"] = ready
     manifest["formal_report_blocker_count"] = len(blockers)
@@ -1733,7 +1719,7 @@ def _chip_context_report_boundary(manifest: dict[str, Any]) -> dict[str, Any]:
         state = "h2_sell_pressure_observation"
         reason = "籌碼賣壓存在，但歷史診斷不支持作為正式否決或降權。"
     else:
-        state = "chip_data_insufficient"
+        state = "mixed_chip_context"
         reason = "目前沒有乾淨中性對照組，籌碼資料只作背景觀察。"
     return {
         "chip_context_state": state,
