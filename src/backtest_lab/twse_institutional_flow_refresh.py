@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -20,9 +21,25 @@ def fetch_twse_institutional_flows(signal_date: str) -> pd.DataFrame:
         f"{TWSE_T86_ENDPOINT}?{query}",
         headers={"User-Agent": "AI_stock_backtest_lab/1.0"},
     )
-    with urllib.request.urlopen(request, timeout=30) as response:
-        payload = json.loads(response.read().decode("utf-8"))
+    payload = _read_json_with_redirects(request)
     return parse_twse_t86_payload(payload, signal_date=signal_date)
+
+
+def _read_json_with_redirects(request: urllib.request.Request, *, timeout: int = 30, max_redirects: int = 5) -> dict[str, Any]:
+    current = request
+    for _ in range(max_redirects + 1):
+        try:
+            with urllib.request.urlopen(current, timeout=timeout) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            if exc.code not in {301, 302, 303, 307, 308}:
+                raise
+            location = exc.headers.get("Location")
+            if not location:
+                raise
+            target = urllib.parse.urljoin(current.full_url, location)
+            current = urllib.request.Request(target, headers=dict(current.header_items()))
+    raise RuntimeError(f"TWSE institutional flow fetch exceeded {max_redirects} redirects")
 
 
 def parse_twse_t86_payload(payload: dict[str, Any], *, signal_date: str) -> pd.DataFrame:

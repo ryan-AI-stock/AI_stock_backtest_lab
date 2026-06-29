@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+import urllib.error
+import urllib.request
 from pathlib import Path
+from unittest.mock import patch
 
 import test_paths  # noqa: F401
 
-from backtest_lab.twse_institutional_flow_refresh import parse_twse_t86_payload, write_twse_institutional_flows
+from backtest_lab.twse_institutional_flow_refresh import _read_json_with_redirects, parse_twse_t86_payload, write_twse_institutional_flows
 
 
 class TwseInstitutionalFlowRefreshTest(unittest.TestCase):
@@ -53,6 +56,39 @@ class TwseInstitutionalFlowRefreshTest(unittest.TestCase):
 
         self.assertIn("2303.TW", text)
         self.assertIn("foreign_net_buy_shares", text)
+
+    def test_follows_twse_temporary_redirect(self) -> None:
+        request = urllib.request.Request("https://example.test/original", headers={"User-Agent": "test"})
+        redirect = urllib.error.HTTPError(
+            request.full_url,
+            307,
+            "Temporary Redirect",
+            {"Location": "https://example.test/redirected"},
+            None,
+        )
+        response = _FakeResponse(b'{"stat":"OK","fields":[],"data":[]}')
+
+        with patch("urllib.request.urlopen", side_effect=[redirect, response]) as mocked:
+            payload = _read_json_with_redirects(request)
+
+        self.assertEqual(payload["stat"], "OK")
+        self.assertEqual(mocked.call_count, 2)
+        second_request = mocked.call_args_list[1].args[0]
+        self.assertEqual(second_request.full_url, "https://example.test/redirected")
+
+
+class _FakeResponse:
+    def __init__(self, payload: bytes) -> None:
+        self.payload = payload
+
+    def __enter__(self) -> "_FakeResponse":
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        return None
+
+    def read(self) -> bytes:
+        return self.payload
 
 
 if __name__ == "__main__":
