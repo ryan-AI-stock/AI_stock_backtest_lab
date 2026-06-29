@@ -22,6 +22,12 @@ from backtest_lab.tw50_backfill_audit import (
 DEFAULT_OUTPUT_DIR = "outputs/core_data_backfill_tw50_201411_202312_phase2_runner_20260629"
 TASK_ID = "TASK-BACKTEST-CORE-DATA-BACKFILL-TW50-201411-202312-PHASE2-RUNNER-20260629"
 AUDIT_REFERENCE = "outputs/core_data_backfill_tw50_201411_202312_audit_20260629"
+RADAR_SOURCE_ACQUISITION_REFERENCE = (
+    "AI_stock_rotation_radar commit a12313a / "
+    "outputs/radar_tw50_pit_source_acquisition_201411_202312_20260629"
+)
+ETF_00631L_201411_TRADING_STATUS = "confirmed_traded_2014_11"
+ETF_00631L_201411_TRADING_EVIDENCE = "TWSE STOCK_DAY small-range check returned stat=OK for ROC 103/11 with 20 daily rows."
 
 
 def run_tw50_pit_backfill(
@@ -188,7 +194,7 @@ def _benchmark_name(ticker: str) -> str:
 
 def _price_job_status(ticker: str, row: dict[str, Any]) -> str:
     if ticker == "00631L.TW" and str(row.get("first_date", "")) > AUDIT_START:
-        return "needs_inception_or_source_review"
+        return "needs_price_backfill_confirmed_traded"
     if bool(row.get("formal_ready", False)):
         return "price_ready_skip_download"
     if str(row.get("status", "")) == "missing":
@@ -198,7 +204,7 @@ def _price_job_status(ticker: str, row: dict[str, Any]) -> str:
 
 def _price_missing_reason(ticker: str, row: dict[str, Any]) -> str:
     if ticker == "00631L.TW" and str(row.get("first_date", "")) > AUDIT_START:
-        return "00631L local coverage starts after 2014-11; confirm listing/inception before treating 2014-2015 as missing price data."
+        return "00631L has official TWSE trading rows in 2014-11; local cache starts after 2014-11, so this is a price/source/cache backfill gap, not an inception/not-trading blocker."
     if bool(row.get("formal_ready", False)):
         return ""
     if str(row.get("status", "")) == "missing":
@@ -302,13 +308,13 @@ def _readiness_ledger(price_jobs: pd.DataFrame, constituents: pd.DataFrame) -> p
             "next_action": "Run safe batch price backfill only after source policy is approved; final universe waits for PIT.",
         },
         {
-            "layer": "00631l_inception_review",
-            "status": "needs_inception_or_source_review",
+            "layer": "00631l_price_source_backfill",
+            "status": "confirmed_traded_2014_11_needs_price_source_backfill",
             "formal_ready": False,
             "blocks_full_2014_2023_replay": True,
             "owner": "Core/Data",
-            "gap": "Local 00631L coverage starts after 2014-11.",
-            "next_action": "Confirm listing/inception and official availability before classifying 2014-2015 as missing or not applicable.",
+            "gap": "RADAR/Data confirmed 00631L has official TWSE trading data in 2014-11, but Core local adjusted-price cache starts later.",
+            "next_action": "Backfill real 00631L price/source cache for 2014/11-2015; do not use synthetic 0050x2 as true ETF price.",
         },
         {
             "layer": "formal_signal_feature_replay",
@@ -427,8 +433,11 @@ def _manifest(
         "status": "phase2_runner_plan_ready",
         "phase": "plan",
         "audit_reference": AUDIT_REFERENCE,
+        "radar_source_acquisition_reference": RADAR_SOURCE_ACQUISITION_REFERENCE,
         "audit_start": AUDIT_START,
         "audit_end": AUDIT_END,
+        "etf_00631l_201411_trading_status": ETF_00631L_201411_TRADING_STATUS,
+        "etf_00631l_201411_trading_evidence": ETF_00631L_201411_TRADING_EVIDENCE,
         "output_dir": str(output.resolve()),
         "formal_model_changed": False,
         "trade_decision_changed": False,
@@ -483,7 +492,8 @@ def _summary_zh(manifest: dict[str, Any], job_plan: pd.DataFrame, readiness: pd.
             "",
             "## 是否需要 Radar/Data 支援",
             "",
-            "- 需要。Core 已建立 runner 與資料治理結構，但 PIT source acquisition 應交 Radar/Data 或資料專線協助取得 FTSE/TWSE/issuer historical constituent notices。",
+            "- 仍需要。RADAR/Data 已確認 00631L 在 2014/11 有官方日成交資料，因此 Core 對 00631L 的缺口應標為價格/source/cache backfill gap；但 TW50 exact PIT archive 仍未取得。",
+            f"- RADAR/Data 參考：{RADAR_SOURCE_ACQUISITION_REFERENCE}。",
         ]
     )
     lines.append("")

@@ -64,6 +64,7 @@ class Tw50PitBackfillTest(unittest.TestCase):
             self.assertFalse(manifest["trade_decision_changed"])
             self.assertFalse(manifest["large_download_started"])
             self.assertTrue(manifest["can_resume"])
+            self.assertEqual(manifest["etf_00631l_201411_trading_status"], "confirmed_traded_2014_11")
             self.assertEqual(manifest["exact_historical_total_ticker_count"], "blocked_until_PIT_archive_acquired")
             self.assertIn("formal_target_stream_rebuild", manifest["missing_layers_for_full_previous_best_replay"])
 
@@ -74,7 +75,11 @@ class Tw50PitBackfillTest(unittest.TestCase):
             jobs = pd.read_csv(output / "provisional_price_backfill_jobs.csv")
             self.assertEqual(
                 jobs.loc[jobs["ticker"] == "00631L.TW", "job_status"].iloc[0],
-                "needs_inception_or_source_review",
+                "needs_price_backfill_confirmed_traded",
+            )
+            self.assertIn(
+                "price/source/cache backfill gap",
+                jobs.loc[jobs["ticker"] == "00631L.TW", "missing_reason"].iloc[0],
             )
             self.assertEqual(
                 jobs.loc[jobs["ticker"] == "0050.TW", "job_status"].iloc[0],
@@ -89,6 +94,10 @@ class Tw50PitBackfillTest(unittest.TestCase):
             self.assertEqual(
                 readiness.loc[readiness["layer"] == "formal_target_stream_rebuild", "status"].iloc[0],
                 "blocked_missing_2014_2021_target_evidence",
+            )
+            self.assertEqual(
+                readiness.loc[readiness["layer"] == "00631l_price_source_backfill", "status"].iloc[0],
+                "confirmed_traded_2014_11_needs_price_source_backfill",
             )
 
             sample = pd.read_csv(output / "normalized_pit_constituents_sample.csv")
