@@ -1,0 +1,2 @@
+﻿ticker,source_id,source_path,source_type,first_date,last_date,price_source_ready,strategy_ready,synthetic_used,provenance,notes
+00631L.TW,00631l_twse_stock_day_201411_201512,data/normalized_prices/00631L_twse_stock_day_201411_201512.csv,twse_stock_day_backfill,2014-11-03,2015-12-31,True,False,False,TASK-BACKTEST-CORE-00631L-PRICE-BACKFILL-201411-201512-PHASE4-20260629,Official TWSE STOCK_DAY real price rows. Price-only source; PIT/target stream/execution ledger still required.
