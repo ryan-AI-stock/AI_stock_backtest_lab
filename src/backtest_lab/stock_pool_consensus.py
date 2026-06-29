@@ -188,8 +188,8 @@ def _hide_from_visible_consensus_report(row: dict[str, Any]) -> bool:
 def _user_facing_text(value: object) -> str:
     text = str(value or "")
     replacements = {
-        "combined_cap40_confirmation1_base": "目前正式模型",
-        "pool1_primary_pool2_confirmation_cap40": "主攻池優先、確認池風險確認",
+        "pool1_pool2_confirmation1_base": "目前正式模型",
+        "pool1_primary_pool2_confirmation": "主攻池優先、確認池風險確認",
         "Pool1+Pool2 formal baseline": "正式模型基準",
         "Pool1+Pool2": "主攻池 + 確認池",
         "PIT-ready Pool2": "已通過歷史成分檢查的確認池",

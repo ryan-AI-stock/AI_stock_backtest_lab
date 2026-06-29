@@ -182,6 +182,8 @@ class StockPoolConsensusTest(unittest.TestCase):
             self.assertNotIn("exact_2_of_3_ticker", report)
             self.assertNotIn("selector", report)
             self.assertNotIn("combined_cap40_confirmation1_base", report)
+            self.assertNotIn("pool1_pool2_confirmation1_base", report)
+            self.assertNotIn("pool1_primary_pool2_confirmation", report)
             self.assertNotIn("report-only", report)
 
     def test_consensus_report_hides_legacy_pool3_visible_rows(self) -> None:

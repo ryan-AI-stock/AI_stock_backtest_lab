@@ -4,9 +4,9 @@ from copy import deepcopy
 from typing import Any
 
 
-FORMAL_MODEL_TARGET = "combined_cap40_confirmation1_base"
-FORMAL_MODEL_ROUTE = "pool1_primary_pool2_confirmation_cap40"
-FORMAL_MODEL_EFFECTIVE_DATE = "2026-06-26"
+FORMAL_MODEL_TARGET = "pool1_pool2_confirmation1_base"
+FORMAL_MODEL_ROUTE = "pool1_primary_pool2_confirmation"
+FORMAL_MODEL_EFFECTIVE_DATE = "2026-06-29"
 
 
 FORMAL_MODEL_CONTRACT: dict[str, Any] = {
@@ -19,7 +19,7 @@ FORMAL_MODEL_CONTRACT: dict[str, Any] = {
     "pool2_policy": "confirmation_1_signal_day_when_pool2_disagrees_with_pool1",
     "pool3_role": "shadow_or_diagnostic_only",
     "pool3_shadow_used_as_formal": False,
-    "leveraged_etf_cap": {"ticker": "00631L.TW", "max_weight": 0.40, "residual": "cash"},
+    "leveraged_etf_max_weight_limit": None,
     "market_exposure_override_absorbed": False,
     "0050x2_opportunity_label_active_in_trade_decision": False,
     "rr_partial_switch_used_in_performance": False,
@@ -36,6 +36,5 @@ def get_formal_model_contract() -> dict[str, Any]:
 def formal_model_report_description() -> str:
     return (
         "目前正式版以主攻池提出觀察標的，確認池負責做風險確認；"
-        "0050正二目標比重上限為 40%，超過部分保留現金。"
         "這是正式報告採用的模型基準。"
     )

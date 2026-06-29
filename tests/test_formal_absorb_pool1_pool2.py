@@ -151,6 +151,8 @@ class FormalAbsorbPool1Pool2Test(unittest.TestCase):
         self.assertTrue(contract["three_pool_formal_route_abandoned"])
         self.assertFalse(contract["pool3_shadow_used_as_formal"])
         self.assertFalse(contract["market_exposure_override_absorbed"])
+        self.assertIsNone(contract["leveraged_etf_max_weight_limit"])
+        self.assertNotIn("leveraged_etf_cap", contract)
 
 
 if __name__ == "__main__":

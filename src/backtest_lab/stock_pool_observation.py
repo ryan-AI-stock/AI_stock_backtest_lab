@@ -1261,7 +1261,7 @@ def _report_wording_boundary() -> dict[str, Any]:
             "active_in_trade_decision": True,
             "formal_model_target": FORMAL_MODEL_TARGET,
             "formal_model_route": FORMAL_MODEL_ROUTE,
-            "components": ["pool1_primary_selector", "pool2_tw50_pit_ready_confirmation_risk_layer", "combined_cap40_confirmation1_base"],
+            "components": ["pool1_primary_selector", "pool2_tw50_pit_ready_confirmation_risk_layer", FORMAL_MODEL_TARGET],
         },
         "diagnostic_boundary": {
             "label": "診斷註解",
@@ -2058,8 +2058,8 @@ def _user_facing_candidate_reason(reason: object) -> str:
 def _translate_internal_visible_text(text: object) -> str:
     value = str(text or "")
     replacements = {
-        "combined_cap40_confirmation1_base": "目前正式模型",
-        "pool1_primary_pool2_confirmation_cap40": "主攻池優先、確認池風險確認",
+        "pool1_pool2_confirmation1_base": "目前正式模型",
+        "pool1_primary_pool2_confirmation": "主攻池優先、確認池風險確認",
         "Pool1+Pool2 formal baseline": "正式模型基準",
         "Pool1+Pool2": "主攻池 + 確認池",
         "PIT-ready Pool2": "已通過歷史成分檢查的確認池",
@@ -2328,7 +2328,7 @@ def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[st
     ax.add_patch(plt.Rectangle((panel_x + 0.03, panel_y + 0.285), 0.012, 0.075, facecolor="#2457a7", edgecolor="#2457a7", transform=ax.transAxes, zorder=4))
     ax.text(panel_x + 0.055, panel_y + 0.331, "目前正式模型", color="#c8d5df", fontsize=8.8, transform=ax.transAxes, zorder=4)
     ax.text(panel_x + 0.055, panel_y + 0.304, "主攻池優先，確認池做風險確認", color="white", fontsize=12.0, fontweight="bold", transform=ax.transAxes, zorder=4)
-    ax.text(panel_x + panel_w - 0.04, panel_y + 0.319, "0050正二上限40%；超出保留現金", color="#d6e1e8", fontsize=9.2, ha="right", transform=ax.transAxes, zorder=4)
+    ax.text(panel_x + panel_w - 0.04, panel_y + 0.319, "主攻池提出目標，確認池做風險確認", color="#d6e1e8", fontsize=9.2, ha="right", transform=ax.transAxes, zorder=4)
 
     formal_rows = [row for row in rows if row["status"] == "generated"][:3]
     card_specs = [(0.095, 0.345), (0.385, 0.345), (0.675, 0.345)]

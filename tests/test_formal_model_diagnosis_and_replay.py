@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from backtest_lab.formal_model_contract import FORMAL_MODEL_ROUTE, FORMAL_MODEL_TARGET
 from backtest_lab.formal_model_diagnosis_and_replay import run_formal_model_diagnosis_and_replay
 
 
@@ -26,8 +27,8 @@ class FormalModelDiagnosisAndReplayTest(unittest.TestCase):
                 json.dumps(
                     {
                         "task_id": "absorb",
-                        "formal_model_target": "combined_cap40_confirmation1_base",
-                        "formal_model_route": "pool1_primary_pool2_confirmation_cap40",
+                        "formal_model_target": FORMAL_MODEL_TARGET,
+                        "formal_model_route": FORMAL_MODEL_ROUTE,
                         "formal_absorption_ready": True,
                         "latest_complete_common_date": "2022-01-05",
                     }
@@ -162,7 +163,7 @@ class FormalModelDiagnosisAndReplayTest(unittest.TestCase):
             )
 
             manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
-            self.assertEqual(manifest["formal_model_target"], "combined_cap40_confirmation1_base")
+            self.assertEqual(manifest["formal_model_target"], FORMAL_MODEL_TARGET)
             self.assertFalse(manifest["formal_model_changed_in_this_task"])
             self.assertFalse(manifest["trade_decision_changed_in_this_task"])
             self.assertFalse(manifest["pool3_shadow_used_as_formal"])
