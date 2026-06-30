@@ -1204,6 +1204,79 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertIn("領先第二名 0050正二(00631L) 0.7000 分", decision["score_margin_wording_zh"])
         self.assertIn("領先第三名 聯電(2303) 0.9000 分", decision["score_margin_wording_zh"])
 
+    def test_decision_first_contract_explains_pool2_market_exposure_confirmation(self) -> None:
+        manifest = {
+            "signal_date": "2026-06-29",
+            "formal_report_ready": True,
+            "report_wording_boundary": {"formal_baseline": {"description": "主攻池優先，確認池做風險確認"}},
+            "generated": [
+                {
+                    "pool_id": "ai_theme_large_cap_v20260613",
+                    "pool_name": "AI主線池",
+                    "active_in_trade_decision": True,
+                    "top_ticker": "00631L.TW",
+                    "top_display": "0050正二(00631L)",
+                    "top_asset_type": "etf",
+                    "selection_reason": "市場曝險工具依池內市場狀態或策略規則入選，不套用個股攻擊閘門。",
+                    "top_candidates": [
+                        {
+                            "rank": 1,
+                            "ticker": "00631L.TW",
+                            "display": "0050正二(00631L)",
+                            "asset_type": "etf",
+                            "score": 2.8,
+                            "selection_label": "曝險工具",
+                            "is_model_target": True,
+                        },
+                        {
+                            "rank": 2,
+                            "ticker": "2454.TW",
+                            "display": "聯發科(2454)",
+                            "asset_type": "stock",
+                            "score": 3.1,
+                            "selection_label": "觀察",
+                            "is_model_target": False,
+                        },
+                    ],
+                },
+                {
+                    "pool_id": "tw50_dynamic_constituents_v0",
+                    "pool_name": "大型廣度池",
+                    "active_in_trade_decision": False,
+                    "top_ticker": "2327.TW",
+                    "top_display": "國巨(2327)",
+                    "top_asset_type": "stock",
+                    "eligible_for_pool_selection": True,
+                    "selection_layer": "formal_candidate",
+                    "top_candidates": [
+                        {
+                            "rank": 1,
+                            "ticker": "2327.TW",
+                            "display": "國巨(2327)",
+                            "asset_type": "stock",
+                            "score": 2.0,
+                            "selection_label": "正式候選",
+                            "is_model_target": True,
+                        }
+                    ],
+                },
+            ],
+        }
+
+        decision = _decision_first_report_contract(manifest)
+        markdown = markdown_observation_batch_report(manifest, [])
+
+        self.assertEqual(decision["pool1_target_display"], "0050正二(00631L)")
+        self.assertEqual(decision["pool2_representative_display"], "國巨(2327)")
+        self.assertEqual(decision["pool2_confirmation_state"], "market_exposure_supported_by_breadth")
+        self.assertFalse(decision["pool2_same_ticker_required"])
+        self.assertIn("不要求確認池也選到0050正二", decision["pool2_confirmation_wording_zh"])
+        self.assertIn("原始分數低於第二名 聯發科(2454)（觀察）", decision["score_margin_wording_zh"])
+        self.assertIn("確認池對主攻目標的判讀：支持大盤曝險", markdown)
+        self.assertIn("確認池代表標的：國巨(2327)", markdown)
+        self.assertNotIn("Pool2", markdown)
+        self.assertNotIn("selector", markdown)
+
     def test_batch_excludes_non_operational_scorecard_pool_by_default(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)
         prices = {"2330.TW": _trend_frame(dates, start=100, step=0.5, volume=20_000_000)}

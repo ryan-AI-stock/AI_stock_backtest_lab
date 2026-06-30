@@ -1274,11 +1274,13 @@ def _decision_first_report_contract(manifest: dict[str, Any], *, output_root: st
     ]
     active_rows = [item for item in visible_generated if item.get("active_in_trade_decision")]
     primary = active_rows[0] if active_rows else (visible_generated[0] if visible_generated else {})
+    pool2 = _pool2_confirmation_row(visible_generated)
     target = next((row for row in primary.get("top_candidates") or [] if row.get("is_model_target")), None)
     target = target or ((primary.get("top_candidates") or [{}])[0] if primary.get("top_candidates") else {})
     target_display = str(target.get("display") or primary.get("top_display") or primary.get("top_ticker") or "")
     target_ticker = str(target.get("ticker") or primary.get("top_ticker") or "")
     ranking_contract = _formal_candidate_ranking_contract(primary)
+    confirmation = _pool2_confirmation_interpretation(primary=primary, pool2=pool2, target=target)
     report_ready = bool(manifest.get("formal_report_ready", True))
     blockers = manifest.get("formal_report_blockers") or []
     if not report_ready:
@@ -1315,10 +1317,116 @@ def _decision_first_report_contract(manifest: dict[str, Any], *, output_root: st
         "score_margin_to_rank2": ranking_contract.get("score_margin_to_rank2", ""),
         "score_margin_to_rank3": ranking_contract.get("score_margin_to_rank3", ""),
         "pool1_state_zh": _sanitize_visible_report_reason(primary.get("selection_reason") or primary.get("gate_reason") or "主攻池已產生正式觀察。") if primary else "主攻池未產生正式觀察。",
-        "pool2_state_zh": "確認池風控已納入目前正式模型；更細的確認品質需等待正式候選排名契約補齊。",
+        "pool1_target_display": target_display,
+        "pool1_target_ticker": target_ticker,
+        "pool2_representative_display": confirmation.get("pool2_representative_display", ""),
+        "pool2_representative_ticker": confirmation.get("pool2_representative_ticker", ""),
+        "pool2_confirmation_state": confirmation.get("pool2_confirmation_state", ""),
+        "pool2_confirmation_label_zh": confirmation.get("pool2_confirmation_label_zh", ""),
+        "pool2_confirmation_wording_zh": confirmation.get("pool2_confirmation_wording_zh", ""),
+        "pool2_confirmation_contract": confirmation.get("pool2_confirmation_contract", ""),
+        "pool2_same_ticker_required": False,
+        "pool2_state_zh": confirmation.get("pool2_confirmation_wording_zh", ""),
         "active_in_trade_decision": False,
         "boundary": "report_contract",
     }
+
+
+def _pool2_confirmation_row(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    for row in rows:
+        if str(row.get("pool_id") or "") == "tw50_dynamic_constituents_v0":
+            return row
+    for row in rows:
+        if _short_pool_name(row) == "大型廣度池":
+            return row
+    return {}
+
+
+def _pool2_confirmation_interpretation(
+    *,
+    primary: dict[str, Any],
+    pool2: dict[str, Any],
+    target: dict[str, Any],
+) -> dict[str, str]:
+    target_ticker = str(target.get("ticker") or primary.get("top_ticker") or "")
+    target_display = str(target.get("display") or primary.get("top_display") or target_ticker or "")
+    target_asset_type = _normalize_asset_type(str(target.get("asset_type") or primary.get("top_asset_type") or ""))
+    pool2_ticker = str(pool2.get("top_ticker") or "")
+    pool2_display = str(pool2.get("top_display") or pool2_ticker or "")
+    pool2_is_eligible = bool(pool2.get("eligible_for_pool_selection"))
+    pool2_layer = str(pool2.get("selection_layer") or "")
+
+    base = {
+        "pool2_representative_display": pool2_display,
+        "pool2_representative_ticker": pool2_ticker,
+        "pool2_confirmation_contract": (
+            "確認池不是要求和主攻池選到同一檔；當主攻池目標是0050正二這類大盤曝險工具時，"
+            "確認池用大型權值股強弱與廣度狀態判讀是否支持大盤曝險。"
+        ),
+    }
+    if not target_ticker:
+        return {
+            **base,
+            "pool2_confirmation_state": "no_pool1_target",
+            "pool2_confirmation_label_zh": "無主攻目標",
+            "pool2_confirmation_wording_zh": "主攻池沒有形成正式觀察標的，因此確認池不需要判讀同意或分歧。",
+        }
+    if not pool2:
+        return {
+            **base,
+            "pool2_confirmation_state": "pool2_data_missing",
+            "pool2_confirmation_label_zh": "確認資料不足",
+            "pool2_confirmation_wording_zh": f"主攻池目標是 {target_display}；確認池資料不足，無法判讀是否支持。",
+        }
+    if pool2_ticker and pool2_ticker == target_ticker:
+        return {
+            **base,
+            "pool2_confirmation_state": "same_target_confirmed",
+            "pool2_confirmation_label_zh": "同標的確認",
+            "pool2_confirmation_wording_zh": f"主攻池與確認池都指向 {target_display}，確認池給出同標的確認。",
+        }
+    if _is_market_exposure_target(target_ticker, target_asset_type):
+        if pool2_ticker and pool2_is_eligible and pool2_layer == SELECTION_FORMAL_CANDIDATE:
+            return {
+                **base,
+                "pool2_confirmation_state": "market_exposure_supported_by_breadth",
+                "pool2_confirmation_label_zh": "支持大盤曝險",
+                "pool2_confirmation_wording_zh": (
+                    f"主攻池目標是 {target_display}；確認池代表標的是 {pool2_display}。"
+                    "兩者不是同一候選宇宙，因此不要求確認池也選到0050正二；"
+                    "目前大型權值池有正式候選，解讀為支持大盤曝險，但不是同標的確認。"
+                ),
+            }
+        return {
+            **base,
+            "pool2_confirmation_state": "market_exposure_not_fully_confirmed",
+            "pool2_confirmation_label_zh": "未充分確認",
+            "pool2_confirmation_wording_zh": (
+                f"主攻池目標是 {target_display}；確認池目前沒有形成可用的大型權值正式候選，"
+                "大盤曝險尚未取得充分確認。"
+            ),
+        }
+    if pool2_ticker:
+        return {
+            **base,
+            "pool2_confirmation_state": "different_stock_watch",
+            "pool2_confirmation_label_zh": "分歧觀察",
+            "pool2_confirmation_wording_zh": (
+                f"主攻池目標是 {target_display}；確認池代表標的是 {pool2_display}。"
+                "兩者不同，代表主攻方向與大型廣度代表標的不同步，需列為分歧觀察。"
+            ),
+        }
+    return {
+        **base,
+        "pool2_confirmation_state": "pool2_no_representative",
+        "pool2_confirmation_label_zh": "未充分確認",
+        "pool2_confirmation_wording_zh": f"主攻池目標是 {target_display}；確認池沒有代表標的，尚未形成確認。",
+    }
+
+
+def _is_market_exposure_target(ticker: str, asset_type: str | None) -> bool:
+    normalized = _normalize_ticker(ticker)
+    return normalized in {"0050.TW", "00631L.TW"} or _normalize_asset_type(asset_type) == ASSET_TYPE_ETF
 
 
 def _formal_candidate_ranking_contract(primary: dict[str, Any]) -> dict[str, Any]:
@@ -1354,11 +1462,11 @@ def _formal_candidate_ranking_contract(primary: dict[str, Any]) -> dict[str, Any
     margin3 = round(float(top["candidate_score"]) - float(rank3["candidate_score"]), 6) if rank3 else ""
     parts = [f"第一名 {top['candidate_display']} 分數 {float(top['candidate_score']):.4f}"]
     if rank2:
-        parts.append(f"領先第二名 {rank2['candidate_display']} {float(margin2):.4f} 分")
+        parts.append(_score_margin_phrase("第二名", rank2, float(margin2)))
     else:
         parts.append("沒有第二名可比較")
     if rank3:
-        parts.append(f"領先第三名 {rank3['candidate_display']} {float(margin3):.4f} 分")
+        parts.append(_score_margin_phrase("第三名", rank3, float(margin3)))
     return {
         "score_margin_state": "formal_candidate_ranking_ready",
         "score_margin_wording_zh": "；".join(parts) + "。",
@@ -1366,6 +1474,15 @@ def _formal_candidate_ranking_contract(primary: dict[str, Any]) -> dict[str, Any
         "score_margin_to_rank2": margin2,
         "score_margin_to_rank3": margin3,
     }
+
+
+def _score_margin_phrase(rank_label: str, row: dict[str, Any], margin: float) -> str:
+    display = row.get("candidate_display")
+    if margin >= 0:
+        return f"領先{rank_label} {display} {margin:.4f} 分"
+    selection = str(row.get("selection_label") or "")
+    suffix = f"（{selection}）" if selection else ""
+    return f"原始分數低於{rank_label} {display}{suffix} {abs(margin):.4f} 分"
 
 
 def _score_value(row: dict[str, Any]) -> float:
@@ -2109,7 +2226,9 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
         f"- 換倉訊號：{decision_first.get('switch_signal_wording_zh', '')}",
         f"- 分數差距：{decision_first.get('score_margin_wording_zh', '')}",
         f"- 主攻池狀態：{decision_first.get('pool1_state_zh', '')}",
-        f"- 確認池狀態：{decision_first.get('pool2_state_zh', '')}",
+        f"- 主攻池目標：{decision_first.get('pool1_target_display') or '無'}",
+        f"- 確認池代表標的：{decision_first.get('pool2_representative_display') or '無'}",
+        f"- 確認池對主攻目標的判讀：{decision_first.get('pool2_confirmation_label_zh') or '未判定'}。{decision_first.get('pool2_confirmation_wording_zh', '')}",
         "",
         "## 標的穩定度提醒（僅供診斷）",
         "",
@@ -2352,12 +2471,20 @@ def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[st
         )
         ax.text(x + 0.022, y + 0.020, layer, color=color, fontsize=8.0, fontweight="bold", transform=ax.transAxes, zorder=4)
 
-    ax.text(
+    decision = manifest.get("decision_first_report_contract") or _decision_first_report_contract(manifest)
+    confirmation_text = (
+        f"確認池判讀：{decision.get('pool2_confirmation_label_zh') or '未判定'}；"
+        f"{decision.get('pool2_confirmation_wording_zh') or ''}"
+    )
+    _draw_wrapped_text(
+        ax,
         panel_x + 0.03,
-        panel_y + 0.070,
-        "正式報告以最新主攻池 + 確認池模型結果為主；其他診斷資訊不作正式交易規則。",
+        panel_y + 0.074,
+        confirmation_text,
+        max_units=86,
+        line_gap=0.013,
         color="#52616b",
-        fontsize=8.7,
+        fontsize=7.8,
         transform=ax.transAxes,
     )
     stability = manifest.get("target_stability_warning") or _target_stability_warning_boundary(manifest)
