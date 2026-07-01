@@ -8,7 +8,7 @@ from typing import Any
 
 import pandas as pd
 
-from backtest_lab.costs import TaiwanCostModel
+from backtest_lab.costs import COST_MODEL_VERSION, TaiwanCostModel
 from backtest_lab.data import load_price_csv
 
 
@@ -371,11 +371,12 @@ def _execute_order(
         if not price or shares <= 0:
             continue
         gross = shares * price
-        cost = cost_model.sell_cost(gross, _asset_type(ticker))
+        breakdown = cost_model.sell_cost_breakdown(gross, _asset_type(ticker))
+        cost = breakdown["total_transaction_cost"]
         account.cash += gross - cost
         account.positions[ticker] = 0
         account.positions.pop(ticker, None)
-        trades.append(_trade_row(date, ticker, "sell", shares, price, gross, cost, account.cash, reason))
+        trades.append(_trade_row(date, ticker, "sell", shares, price, gross, cost, account.cash, reason, breakdown))
 
     for ticker, weight in normalized.items():
         price = price_map.get(ticker, 0.0)
@@ -392,10 +393,11 @@ def _execute_order(
         if shares <= 0:
             continue
         gross = shares * price
-        cost = cost_model.buy_cost(gross)
+        breakdown = cost_model.buy_cost_breakdown(gross)
+        cost = breakdown["total_transaction_cost"]
         account.cash -= gross + cost
         account.positions[ticker] = account.positions.get(ticker, 0) + shares
-        trades.append(_trade_row(date, ticker, "buy", shares, price, gross, cost, account.cash, reason))
+        trades.append(_trade_row(date, ticker, "buy", shares, price, gross, cost, account.cash, reason, breakdown))
     return trades, ""
 
 
@@ -506,7 +508,19 @@ def _asset_type(ticker: str) -> str:
     return "etf" if ticker in {"0050.TW", "00631L.TW"} else "stock"
 
 
-def _trade_row(date: str, ticker: str, action: str, shares: int, price: float, gross: float, cost: float, cash_after: float, reason: str) -> dict[str, Any]:
+def _trade_row(
+    date: str,
+    ticker: str,
+    action: str,
+    shares: int,
+    price: float,
+    gross: float,
+    cost: float,
+    cash_after: float,
+    reason: str,
+    breakdown: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    parts = breakdown or {}
     return {
         "date": date,
         "ticker": ticker,
@@ -515,6 +529,11 @@ def _trade_row(date: str, ticker: str, action: str, shares: int, price: float, g
         "price": round(float(price), 6),
         "gross_amount": round(float(gross), 2),
         "transaction_cost": round(float(cost), 2),
+        "buy_fee": round(float(parts.get("buy_fee", cost if action == "buy" else 0)), 2),
+        "sell_fee": round(float(parts.get("sell_fee", cost if action == "sell" else 0)), 2),
+        "securities_transaction_tax": round(float(parts.get("securities_transaction_tax", 0)), 2),
+        "total_transaction_cost": round(float(parts.get("total_transaction_cost", cost)), 2),
+        "cost_model_version": COST_MODEL_VERSION,
         "cash_after": round(float(cash_after), 2),
         "reason": reason,
         "execution_diagnostic_active_in_trade_decision": False,

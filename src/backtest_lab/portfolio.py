@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from backtest_lab.costs import TaiwanCostModel
+from backtest_lab.costs import COST_MODEL_VERSION, TaiwanCostModel
 
 
 @dataclass
@@ -16,6 +16,11 @@ class Trade:
     costs: int
     cash_after: float
     reason: str
+    buy_fee: int = 0
+    sell_fee: int = 0
+    securities_transaction_tax: int = 0
+    total_transaction_cost: int = 0
+    cost_model_version: str = COST_MODEL_VERSION
 
 
 @dataclass
@@ -48,7 +53,8 @@ class Portfolio:
         if shares <= 0:
             return None
         gross = shares * price
-        costs = self.cost_model.buy_cost(gross)
+        breakdown = self.cost_model.buy_cost_breakdown(gross)
+        costs = breakdown["total_transaction_cost"]
         if gross + costs > self.cash:
             raise ValueError("Internal buy sizing error: gross plus costs exceeds cash")
         self.cash -= gross + costs
@@ -63,6 +69,10 @@ class Portfolio:
             costs=costs,
             cash_after=self.cash,
             reason=reason,
+            buy_fee=breakdown["buy_fee"],
+            sell_fee=breakdown["sell_fee"],
+            securities_transaction_tax=breakdown["securities_transaction_tax"],
+            total_transaction_cost=breakdown["total_transaction_cost"],
         )
         self.trades.append(trade)
         return trade
@@ -72,7 +82,8 @@ class Portfolio:
         if shares <= 0:
             return None
         gross = shares * price
-        costs = self.cost_model.sell_cost(gross, asset_type)
+        breakdown = self.cost_model.sell_cost_breakdown(gross, asset_type)
+        costs = breakdown["total_transaction_cost"]
         self.cash += gross - costs
         self.positions[ticker] = Position(ticker=ticker, shares=0)
         trade = Trade(
@@ -85,6 +96,10 @@ class Portfolio:
             costs=costs,
             cash_after=self.cash,
             reason=reason,
+            buy_fee=breakdown["buy_fee"],
+            sell_fee=breakdown["sell_fee"],
+            securities_transaction_tax=breakdown["securities_transaction_tax"],
+            total_transaction_cost=breakdown["total_transaction_cost"],
         )
         self.trades.append(trade)
         return trade

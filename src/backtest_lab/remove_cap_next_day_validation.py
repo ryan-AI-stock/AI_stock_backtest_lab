@@ -7,6 +7,7 @@ from typing import Any
 
 import pandas as pd
 
+from backtest_lab.costs import COST_MODEL_VERSION, cost_model_metadata
 from backtest_lab.execution_layer_next_day_ab_pool1_pool2_formal import (
     INITIAL_CASH,
     VariantSpec as ExecutionVariantSpec,
@@ -135,6 +136,14 @@ def run_remove_cap_next_day_validation(
             "trade_decision_changed": True,
             "active_in_trade_decision": False,
             "production_grade_next_day_ledger": True,
+            "cost_model_version": COST_MODEL_VERSION,
+            "cost_model": cost_model_metadata(),
+            "required_cost_fields": [
+                "buy_fee",
+                "sell_fee",
+                "securities_transaction_tax",
+                "total_transaction_cost",
+            ],
             "simplified_experiments_ledger_used_for_formal_performance": False,
             "uses_forward_return_as_rule": False,
             "pool3_shadow_used": False,

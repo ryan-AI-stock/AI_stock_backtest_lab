@@ -8,7 +8,7 @@ from typing import Any
 
 import pandas as pd
 
-from backtest_lab.costs import TaiwanCostModel
+from backtest_lab.costs import COST_MODEL_VERSION, TaiwanCostModel
 from backtest_lab.data import load_price_csv
 
 
@@ -460,7 +460,32 @@ def _asset_type(ticker: str) -> str:
 
 
 def _trade_row(variant: str, date: str, ticker: str, action: str, shares: int, price: float, gross: float, costs: int, cash: float, reason: str) -> dict[str, Any]:
-    return {"variant": variant, "date": date, "ticker": ticker, "action": action, "shares": shares, "price": round(price, 4), "gross_amount": round(gross, 2), "costs": costs, "cash_after": round(cash, 2), "reason": reason}
+    model = TaiwanCostModel()
+    breakdown = (
+        model.buy_cost_breakdown(gross)
+        if action == "buy"
+        else model.sell_cost_breakdown(gross, _asset_type(ticker))
+        if action == "sell"
+        else {"buy_fee": 0, "sell_fee": 0, "securities_transaction_tax": 0, "total_transaction_cost": costs}
+    )
+    return {
+        "variant": variant,
+        "date": date,
+        "ticker": ticker,
+        "action": action,
+        "shares": shares,
+        "price": round(price, 4),
+        "gross_amount": round(gross, 2),
+        "costs": costs,
+        "transaction_cost": costs,
+        "buy_fee": breakdown["buy_fee"],
+        "sell_fee": breakdown["sell_fee"],
+        "securities_transaction_tax": breakdown["securities_transaction_tax"],
+        "total_transaction_cost": breakdown["total_transaction_cost"],
+        "cost_model_version": COST_MODEL_VERSION,
+        "cash_after": round(cash, 2),
+        "reason": reason,
+    }
 
 
 def _position_label(shares: dict[str, int]) -> str:

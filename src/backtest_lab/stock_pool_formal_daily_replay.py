@@ -9,6 +9,7 @@ from typing import Any
 
 import pandas as pd
 
+from backtest_lab.costs import COST_MODEL_VERSION, cost_model_metadata
 from backtest_lab.costs import TaiwanCostModel
 from backtest_lab.data import load_price_csv
 from backtest_lab.portfolio import Portfolio
@@ -61,6 +62,13 @@ def run_stock_pool_formal_daily_replay(
         "initial_cash": initial_cash,
         "rows": {"decision_panel": len(decision_panel), "daily_equity": len(daily)},
         "policy": "trade only when 2/3 consensus winner exists; otherwise keep existing position or cash",
+        "cost_model_version": COST_MODEL_VERSION,
+        "cost_model": cost_model_metadata(),
+        "cost_fields": {
+            "daily_equity": ["transaction_cost"],
+            "trade_ledger": "not_written_by_this_legacy_runner",
+            "boundary": "daily transaction_cost is netted in portfolio cash/equity; no buy_fee/sell_fee/tax split in legacy daily output",
+        },
         "outputs": {
             "decision_panel": "formal_three_pool_decision_panel.csv",
             "daily_equity": "baseline_three_pool_formal_daily_equity.csv",

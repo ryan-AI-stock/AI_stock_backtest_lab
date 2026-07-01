@@ -71,6 +71,16 @@ class ExecutionLayerNextDayABPool1Pool2FormalTest(unittest.TestCase):
 
             trades = pd.read_csv(result / "next_day_fill_trade_ledger.csv")
             self.assertIn("signal_date", trades.columns)
+            for column in (
+                "buy_fee",
+                "sell_fee",
+                "securities_transaction_tax",
+                "total_transaction_cost",
+                "cost_model_version",
+            ):
+                self.assertIn(column, trades.columns)
+            self.assertTrue((pd.to_numeric(trades["total_transaction_cost"], errors="coerce") == pd.to_numeric(trades["transaction_cost"], errors="coerce")).all())
+            self.assertTrue((pd.to_numeric(trades["securities_transaction_tax"], errors="coerce").fillna(0) >= 0).all())
             self.assertFalse(trades["execution_diagnostic_active_in_trade_decision"].astype(bool).any())
 
             events = pd.read_csv(result / "fill_event_panel.csv")

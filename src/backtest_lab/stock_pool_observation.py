@@ -13,6 +13,7 @@ from matplotlib import pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
 from backtest_lab.config import load_config
+from backtest_lab.costs import cost_model_metadata
 from backtest_lab.data import download_yfinance_prices, load_price_csv
 from backtest_lab.decision_layers import (
     CANDIDATE_SOURCE,
@@ -1143,6 +1144,7 @@ def run_stock_pool_observation_batch(
     _finalize_batch_signal_date_metadata(manifest)
     manifest["consensus"] = build_consensus(manifest)
     manifest["report_wording_boundary"] = _report_wording_boundary()
+    manifest["cost_model_boundary"] = _report_cost_model_boundary()
     _attach_cashflow_report_boundary(manifest)
     _attach_target_stability_warning_boundary(manifest)
     _attach_live_risk_regime_warning_boundary(manifest)
@@ -1266,6 +1268,22 @@ def _report_wording_boundary() -> dict[str, Any]:
             "執行邊界：目前沒有完整換倉與出場層；訊號變化不等於完整持倉管理命令。",
         ],
     }
+
+
+def _report_cost_model_boundary() -> dict[str, Any]:
+    metadata = cost_model_metadata()
+    metadata.update(
+        {
+            "daily_observation_profit_fields_present": False,
+            "daily_observation_cost_deducted": "not_applicable_no_profit_or_pnl_fields",
+            "formal_replay_cost_deducted_when_profit_is_reported": True,
+            "report_wording_zh": (
+                "本日報第一層是隔天觀察標的，不是損益對帳單；若正式回測或 ledger 顯示收益/損益，"
+                "成本口徑為買賣手續費與賣出證券交易稅皆已納入。"
+            ),
+        }
+    )
+    return metadata
 
 
 def _decision_first_report_contract(manifest: dict[str, Any], *, output_root: str | Path | None = None) -> dict[str, Any]:
@@ -2238,6 +2256,7 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
         f"- 暫無正式觀察：{visible_skipped_count}（{'; '.join(skipped_summaries) if skipped_summaries else '無'}）",
         f"- 正式報告狀態：{'可發布' if report_ready else '停止發布，等待完整資料'}",
         f"- 正式模型基準：{_translate_internal_visible_text(formal_boundary.get('description'))}",
+        f"- 成本口徑：{manifest.get('cost_model_boundary', _report_cost_model_boundary()).get('report_wording_zh', '')}",
         "",
         "## 隔天操作判斷",
         "",

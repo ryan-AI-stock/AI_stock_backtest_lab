@@ -7,6 +7,7 @@ from typing import Any
 
 import pandas as pd
 
+from backtest_lab.costs import COST_MODEL_VERSION, cost_model_metadata
 from backtest_lab.execution_layer_next_day_ab_pool1_pool2_formal import (
     INITIAL_CASH,
     VariantSpec as ExecutionVariantSpec,
@@ -117,6 +118,14 @@ def run_previous_best_next_day_replay(
             "execution_basis": "next_day",
             "initial_capital_twd": float(initial_cash),
             "taiwan_cost_model": True,
+            "cost_model_version": COST_MODEL_VERSION,
+            "cost_model": cost_model_metadata(),
+            "required_cost_fields": [
+                "buy_fee",
+                "sell_fee",
+                "securities_transaction_tax",
+                "total_transaction_cost",
+            ],
             "price_cache_dir": str(price_cache_dir),
             "signal_start_date": str(target_stream["signal_date"].iloc[0]),
             "signal_end_date": str(target_stream["signal_date"].iloc[-1]),
