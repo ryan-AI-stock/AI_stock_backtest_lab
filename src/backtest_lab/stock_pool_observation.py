@@ -2794,6 +2794,10 @@ def _wrap_text_lines(value: str, *, max_units: int) -> list[str]:
     for char in text:
         candidate = current + char
         if current and _display_width_units(candidate) > max_units:
+            if char in ")]}」』":
+                lines.append(candidate)
+                current = ""
+                continue
             lines.append(current)
             current = char
         else:

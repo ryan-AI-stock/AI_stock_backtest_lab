@@ -59,6 +59,13 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertEqual("".join(lines), text)
         self.assertTrue(all("…" not in line for line in lines))
 
+    def test_pdf_text_wrap_does_not_orphan_closing_parenthesis(self) -> None:
+        lines = _wrap_text_lines("0050正二(00631L)", max_units=15)
+
+        self.assertEqual("".join(lines), "0050正二(00631L)")
+        self.assertNotEqual(lines[-1], ")")
+        self.assertTrue(all(line != ")" for line in lines))
+
     def test_cashflow_boundary_uses_150k_report_only_reference(self) -> None:
         manifest: dict[str, object] = {}
         _attach_cashflow_report_boundary(manifest)
