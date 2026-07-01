@@ -1316,6 +1316,8 @@ def _decision_first_report_contract(manifest: dict[str, Any], *, output_root: st
         "formal_candidate_ranking": ranking_contract.get("formal_candidate_ranking", []),
         "score_margin_to_rank2": ranking_contract.get("score_margin_to_rank2", ""),
         "score_margin_to_rank3": ranking_contract.get("score_margin_to_rank3", ""),
+        "score_margin_direction_to_rank2": ranking_contract.get("score_margin_direction_to_rank2", ""),
+        "score_margin_direction_to_rank3": ranking_contract.get("score_margin_direction_to_rank3", ""),
         "pool1_state_zh": _sanitize_visible_report_reason(primary.get("selection_reason") or primary.get("gate_reason") or "主攻池已產生正式觀察。") if primary else "主攻池未產生正式觀察。",
         "pool1_target_display": target_display,
         "pool1_target_ticker": target_ticker,
@@ -1471,8 +1473,10 @@ def _formal_candidate_ranking_contract(primary: dict[str, Any]) -> dict[str, Any
         "score_margin_state": "formal_candidate_ranking_ready",
         "score_margin_wording_zh": "；".join(parts) + "。",
         "formal_candidate_ranking": ranking,
-        "score_margin_to_rank2": margin2,
-        "score_margin_to_rank3": margin3,
+        "score_margin_to_rank2": _non_negative_margin_value(margin2),
+        "score_margin_to_rank3": _non_negative_margin_value(margin3),
+        "score_margin_direction_to_rank2": _score_margin_direction(margin2),
+        "score_margin_direction_to_rank3": _score_margin_direction(margin3),
     }
 
 
@@ -1483,6 +1487,18 @@ def _score_margin_phrase(rank_label: str, row: dict[str, Any], margin: float) ->
     selection = str(row.get("selection_label") or "")
     suffix = f"（{selection}）" if selection else ""
     return f"原始分數低於{rank_label} {display}{suffix} {abs(margin):.4f} 分"
+
+
+def _non_negative_margin_value(value: float | str) -> float | str:
+    if value == "":
+        return ""
+    return round(abs(float(value)), 6)
+
+
+def _score_margin_direction(value: float | str) -> str:
+    if value == "":
+        return ""
+    return "lead" if float(value) >= 0 else "below"
 
 
 def _score_value(row: dict[str, Any]) -> float:
@@ -1687,7 +1703,8 @@ def _target_stability_warning_boundary(manifest: dict[str, Any]) -> dict[str, An
         "new_target_confirmation_age_1_flag": bool(new_target_age_1),
         "pool2_disagreement_negative_warning_used": False,
         "any_low_confidence_warning_used": False,
-        "target_score_gap_to_second": score_gap,
+        "target_score_gap_to_second": _non_negative_margin_value(score_gap) if score_gap is not None else None,
+        "target_score_gap_direction_to_second": _score_margin_direction(score_gap) if score_gap is not None else "",
         "target_stability_warning_active_in_trade_decision": False,
         "target_stability_warning_boundary": "report_only",
         "target_stability_proxy_contract": (
@@ -1709,6 +1726,8 @@ def _attach_target_stability_warning_boundary(manifest: dict[str, Any]) -> None:
         "target_stability_warning_active_in_trade_decision",
         "target_stability_warning_boundary",
         "target_stability_proxy_contract",
+        "target_score_gap_to_second",
+        "target_score_gap_direction_to_second",
     ):
         manifest[key] = warning.get(key)
     manifest["formal_model_changed"] = False
@@ -2082,6 +2101,8 @@ def write_formal_candidate_ranking_panel(root: Path, manifest: dict[str, Any]) -
                 "candidate_score": candidate.get("candidate_score", ""),
                 "score_margin_to_rank2": decision.get("score_margin_to_rank2", ""),
                 "score_margin_to_rank3": decision.get("score_margin_to_rank3", ""),
+                "score_margin_direction_to_rank2": decision.get("score_margin_direction_to_rank2", ""),
+                "score_margin_direction_to_rank3": decision.get("score_margin_direction_to_rank3", ""),
                 "selection_label": candidate.get("selection_label", ""),
                 "is_model_target": candidate.get("is_model_target", False),
                 "contract_boundary": "formal_report_candidate_ranking",

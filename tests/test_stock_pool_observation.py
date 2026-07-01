@@ -120,6 +120,8 @@ class StockPoolObservationTest(unittest.TestCase):
         reason = str(manifest["target_stability_warning_reason"])
 
         self.assertIn("主攻池目標不是候選排序第一名", reason)
+        self.assertEqual(manifest["target_score_gap_to_second"], 0.5558)
+        self.assertEqual(manifest["target_score_gap_direction_to_second"], "below")
         self.assertNotIn("差距約 -", reason)
         self.assertNotIn("-0.", reason)
 
@@ -135,6 +137,7 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertIn("主攻池目標不是候選排序第一名", markdown)
         self.assertNotIn("差距約 -", markdown)
         self.assertNotIn("分數差距約 -", markdown)
+        self.assertNotIn("-0.5558", markdown)
 
     def test_target_stability_ignores_pool2_disagreement_and_any_low_confidence(self) -> None:
         manifest = _target_stability_manifest(score_a=1.00, score_b=0.70)
@@ -1222,9 +1225,26 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertEqual(decision["score_margin_state"], "formal_candidate_ranking_ready")
         self.assertEqual(decision["score_margin_to_rank2"], 0.7)
         self.assertEqual(decision["score_margin_to_rank3"], 0.9)
+        self.assertEqual(decision["score_margin_direction_to_rank2"], "lead")
+        self.assertEqual(decision["score_margin_direction_to_rank3"], "lead")
         self.assertIn("第一名 緯穎(6669) 分數 2.8000", decision["score_margin_wording_zh"])
         self.assertIn("領先第二名 0050正二(00631L) 0.7000 分", decision["score_margin_wording_zh"])
         self.assertIn("領先第三名 聯電(2303) 0.9000 分", decision["score_margin_wording_zh"])
+
+    def test_decision_first_contract_uses_direction_for_negative_score_margin(self) -> None:
+        manifest = _target_stability_manifest(score_a=1.0, score_b=1.5558)
+        manifest["generated"][0]["top_candidates"].append(
+            {"rank": 3, "ticker": "2330.TW", "display": "台積電(2330)", "score": 0.65}
+        )
+
+        decision = _decision_first_report_contract(manifest)
+
+        self.assertEqual(decision["score_margin_state"], "formal_candidate_ranking_ready")
+        self.assertEqual(decision["score_margin_to_rank2"], 0.5558)
+        self.assertEqual(decision["score_margin_direction_to_rank2"], "below")
+        self.assertIn("原始分數低於第二名", decision["score_margin_wording_zh"])
+        self.assertNotIn("差距約 -", decision["score_margin_wording_zh"])
+        self.assertNotIn("-0.5558", decision["score_margin_wording_zh"])
 
     def test_decision_first_contract_explains_pool2_market_exposure_confirmation(self) -> None:
         manifest = {
