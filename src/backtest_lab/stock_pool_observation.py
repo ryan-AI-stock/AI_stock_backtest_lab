@@ -62,6 +62,7 @@ REPORT_NAME = "AI股票池觀察總覽"
 REPORT_TITLE = "AI股票池正式觀察總覽"
 REPORT_VERSION = "v20260612"
 REPORT_LATEST_FILENAME = f"{REPORT_NAME}_最新版_{REPORT_VERSION}.pdf"
+CURRENT_FORMAL_MODEL_VERSION_LABEL = "目前正式版：Pool1 主攻 + Pool2 確認/風控"
 TARGET_STABILITY_LOW_SCORE_GAP_THRESHOLD = 0.15
 FROZEN_BEST_GROUP_ID = "group_c_0050_00631l_plus_mega_caps"
 TW50_ATTACK_GATE_RULE_ID = "tw50_large_breadth_attack_gate_v1"
@@ -1151,6 +1152,7 @@ def run_stock_pool_observation_batch(
     _attach_chip_context_report_boundary(manifest)
     _set_formal_report_readiness(manifest)
     manifest["decision_first_report_contract"] = _decision_first_report_contract(manifest, output_root=Path(output_root))
+    manifest["formal_operation_conclusion"] = _formal_operation_conclusion(manifest["decision_first_report_contract"], manifest)
     manifest["model_layer_audit"] = default_stock_pool_model_layer_audit(
         signal_date=manifest.get("actual_signal_date") or signal_date,
         generated_pools=manifest["generated"],
@@ -1165,6 +1167,7 @@ def run_stock_pool_observation_batch(
     write_stock_pool_observation_batch_summary(root, manifest)
     write_consensus_outputs(root, manifest)
     write_candidate_reviews(root, manifest)
+    write_formal_operation_decision_ledger(root, manifest)
     return manifest
 
 
@@ -1295,6 +1298,9 @@ def _decision_first_report_contract(manifest: dict[str, Any], *, output_root: st
     pool2 = _pool2_confirmation_row(visible_generated)
     target = next((row for row in primary.get("top_candidates") or [] if row.get("is_model_target")), None)
     target = target or ((primary.get("top_candidates") or [{}])[0] if primary.get("top_candidates") else {})
+    pool1_candidate = (primary.get("top_candidates") or [{}])[0] if primary.get("top_candidates") else {}
+    pool1_candidate_display = str(pool1_candidate.get("display") or pool1_candidate.get("ticker") or primary.get("top_display") or "")
+    pool1_candidate_ticker = str(pool1_candidate.get("ticker") or primary.get("top_ticker") or "")
     target_display = str(target.get("display") or primary.get("top_display") or primary.get("top_ticker") or "")
     target_ticker = str(target.get("ticker") or primary.get("top_ticker") or "")
     ranking_contract = _formal_candidate_ranking_contract(primary)
@@ -1317,7 +1323,33 @@ def _decision_first_report_contract(manifest: dict[str, Any], *, output_root: st
         previous=previous,
         report_ready=report_ready,
     )
+    action_state, action_label = _operation_action_state(
+        switch_state=switch_state,
+        report_ready=report_ready,
+        formal_target_ticker=target_ticker,
+    )
+    next_action_date = _next_action_date(manifest.get("actual_signal_date") or manifest.get("signal_date") or "")
+    pool_relation_reason = _pool_relation_reason_zh(
+        formal_target_display=target_display,
+        formal_target_ticker=target_ticker,
+        pool1_candidate_display=pool1_candidate_display,
+        pool1_candidate_ticker=pool1_candidate_ticker,
+        confirmation=confirmation,
+        report_ready=report_ready,
+    )
+    operation_reason = _operation_reason_zh(
+        action_label=action_label,
+        switch_wording=switch_wording,
+        pool_relation_reason=pool_relation_reason,
+        report_ready=report_ready,
+        formal_target_display=target_display,
+    )
     return {
+        "model_version_label": CURRENT_FORMAL_MODEL_VERSION_LABEL,
+        "report_date": manifest.get("actual_signal_date") or manifest.get("signal_date") or "",
+        "data_date": manifest.get("actual_signal_date") or manifest.get("signal_date") or "",
+        "next_action_date": next_action_date,
+        "next_action_date_basis": "next_business_day_approximation",
         "decision_first_state": state,
         "decision_first_conclusion_zh": conclusion,
         "formal_target_display": target_display,
@@ -1329,6 +1361,13 @@ def _decision_first_report_contract(manifest: dict[str, Any], *, output_root: st
         "data_blocker_summary_zh": "；".join(str(item.get("reason_zh") or item.get("reason") or "") for item in blockers if item) if blockers else "",
         "switch_signal_state": switch_state,
         "switch_signal_wording_zh": switch_wording,
+        "action_state": action_state,
+        "action_state_zh": action_label,
+        "post_action_holding": target_display if target_display else ("現金/空手" if action_state == "cash_watch" else ""),
+        "current_formal_holding_action_zh": _current_formal_holding_action(action_state, target_display),
+        "non_formal_holding_action_zh": _non_formal_holding_action(action_state, target_display),
+        "operation_reason_zh": operation_reason,
+        "pool_relation_reason_zh": pool_relation_reason,
         "score_margin_state": ranking_contract.get("score_margin_state", "data_insufficient"),
         "score_margin_wording_zh": ranking_contract.get("score_margin_wording_zh", ""),
         "formal_candidate_ranking": ranking_contract.get("formal_candidate_ranking", []),
@@ -1337,6 +1376,8 @@ def _decision_first_report_contract(manifest: dict[str, Any], *, output_root: st
         "score_margin_direction_to_rank2": ranking_contract.get("score_margin_direction_to_rank2", ""),
         "score_margin_direction_to_rank3": ranking_contract.get("score_margin_direction_to_rank3", ""),
         "pool1_state_zh": _sanitize_visible_report_reason(primary.get("selection_reason") or primary.get("gate_reason") or "主攻池已產生正式觀察。") if primary else "主攻池未產生正式觀察。",
+        "pool1_candidate_display": pool1_candidate_display,
+        "pool1_candidate_ticker": pool1_candidate_ticker,
         "pool1_target_display": target_display,
         "pool1_target_ticker": target_ticker,
         "pool2_representative_display": confirmation.get("pool2_representative_display", ""),
@@ -1603,6 +1644,103 @@ def _switch_signal_state(
         "formal_target_changed",
         f"正式目標已從 {previous_display}（{previous_date}）轉向 {current_display or current_ticker}；這是模型目標轉向，是否執行換倉仍需看執行層與人工確認。",
     )
+
+
+def _operation_action_state(*, switch_state: str, report_ready: bool, formal_target_ticker: str) -> tuple[str, str]:
+    if not report_ready:
+        return "data_insufficient", "資料不足"
+    if not formal_target_ticker or switch_state == "no_formal_target":
+        return "cash_watch", "空手觀察"
+    if switch_state == "maintain_formal_target":
+        return "hold_watch", "續抱觀察"
+    if switch_state == "formal_target_changed":
+        return "switch_watch", "換倉觀察"
+    return "observe_without_previous", "待前日對照"
+
+
+def _next_action_date(signal_date: object) -> str:
+    if not signal_date:
+        return ""
+    try:
+        return (pd.Timestamp(str(signal_date)) + pd.offsets.BDay(1)).strftime("%Y-%m-%d")
+    except Exception:
+        return ""
+
+
+def _current_formal_holding_action(action_state: str, formal_target_display: str) -> str:
+    if action_state == "data_insufficient":
+        return "資料不足，今天不應把任何候選標的當成正式結論。"
+    if action_state == "cash_watch":
+        return "目前沒有正式持股目標；若已有持倉，需另外用風險與執行規則確認。"
+    if not formal_target_display:
+        return "目前沒有可對照的正式目標。"
+    return f"若目前已持有 {formal_target_display}，動作是續抱觀察，不因候選池雜訊自行改判。"
+
+
+def _non_formal_holding_action(action_state: str, formal_target_display: str) -> str:
+    if action_state == "data_insufficient":
+        return "資料不足，不應把任何非正式候選當成換倉依據。"
+    if action_state == "cash_watch":
+        return "正式目標為現金/空手；若目前持有個股，需用自身持倉風險另外檢查。"
+    if not formal_target_display:
+        return "沒有正式目標可對照。"
+    return f"若目前持有的不是 {formal_target_display}，代表模型正式目標已不同，需對照自身持倉評估是否調整。"
+
+
+def _pool_relation_reason_zh(
+    *,
+    formal_target_display: str,
+    formal_target_ticker: str,
+    pool1_candidate_display: str,
+    pool1_candidate_ticker: str,
+    confirmation: dict[str, str],
+    report_ready: bool,
+) -> str:
+    if not report_ready:
+        return "資料不足，今天不應把任何候選標的當成正式結論。"
+    if not formal_target_ticker:
+        return "正式目標為現金/空手，代表模型目前沒有正式持股目標。"
+    candidate = pool1_candidate_display or pool1_candidate_ticker
+    target = formal_target_display or formal_target_ticker
+    if candidate and _normalize_ticker(pool1_candidate_ticker) != _normalize_ticker(formal_target_ticker):
+        return f"主攻池排序候選是 {candidate}，但確認/風控後正式目標是 {target}，本日正式結論不是直接換到 {candidate}。"
+    label = str(confirmation.get("pool2_confirmation_label_zh") or "未判定")
+    return f"主攻池正式目標是 {target}；確認池判讀為「{label}」，用來補充風險確認，不改寫正式目標。"
+
+
+def _operation_reason_zh(
+    *,
+    action_label: str,
+    switch_wording: str,
+    pool_relation_reason: str,
+    report_ready: bool,
+    formal_target_display: str,
+) -> str:
+    if not report_ready:
+        return "資料不足，今天不應把任何候選標的當成正式結論。"
+    if not formal_target_display:
+        return "正式目標為現金/空手，沒有新的正式持股標的。"
+    if action_label == "續抱觀察":
+        return f"正式目標未變，模型沒有產生新的換倉結論。{pool_relation_reason}"
+    return f"{switch_wording} {pool_relation_reason}".strip()
+
+
+def _formal_operation_conclusion(decision: dict[str, Any], manifest: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "report_date": decision.get("report_date") or manifest.get("actual_signal_date") or manifest.get("signal_date") or "",
+        "next_action_date": decision.get("next_action_date", ""),
+        "previous_formal_target": decision.get("previous_formal_target_display", ""),
+        "previous_formal_target_ticker": decision.get("previous_formal_target_ticker", ""),
+        "formal_target": decision.get("formal_target_display", ""),
+        "formal_target_ticker": decision.get("formal_target_ticker", ""),
+        "action_state": decision.get("action_state", ""),
+        "action_state_zh": decision.get("action_state_zh", ""),
+        "post_action_holding": decision.get("post_action_holding", ""),
+        "reason_zh": decision.get("operation_reason_zh", ""),
+        "model_version_label": decision.get("model_version_label", CURRENT_FORMAL_MODEL_VERSION_LABEL),
+        "formal_model_changed": False,
+        "trade_decision_changed": False,
+    }
 
 
 def _cashflow_report_boundary() -> dict[str, Any]:
@@ -2130,6 +2268,31 @@ def write_formal_candidate_ranking_panel(root: Path, manifest: dict[str, Any]) -
     pd.DataFrame(rows).to_csv(root / "formal_candidate_ranking_panel.csv", index=False, encoding="utf-8-sig")
 
 
+def write_formal_operation_decision_ledger(root: Path, manifest: dict[str, Any]) -> None:
+    decision = manifest.get("decision_first_report_contract") or _decision_first_report_contract(manifest)
+    operation = manifest.get("formal_operation_conclusion") or _formal_operation_conclusion(decision, manifest)
+    row = {
+        "report_date": operation.get("report_date", ""),
+        "next_action_date": operation.get("next_action_date", ""),
+        "previous_formal_target": operation.get("previous_formal_target", ""),
+        "previous_formal_target_ticker": operation.get("previous_formal_target_ticker", ""),
+        "formal_target": operation.get("formal_target", ""),
+        "formal_target_ticker": operation.get("formal_target_ticker", ""),
+        "action_state": operation.get("action_state", ""),
+        "action_state_zh": operation.get("action_state_zh", ""),
+        "post_action_holding": operation.get("post_action_holding", ""),
+        "reason_zh": operation.get("reason_zh", ""),
+        "pool1_candidate": decision.get("pool1_candidate_display", ""),
+        "pool1_candidate_ticker": decision.get("pool1_candidate_ticker", ""),
+        "pool2_confirmation_label_zh": decision.get("pool2_confirmation_label_zh", ""),
+        "pool2_representative_display": decision.get("pool2_representative_display", ""),
+        "model_version_label": operation.get("model_version_label", CURRENT_FORMAL_MODEL_VERSION_LABEL),
+        "formal_model_changed": False,
+        "trade_decision_changed": False,
+    }
+    pd.DataFrame([row]).to_csv(root / "formal_operation_decision_ledger.csv", index=False, encoding="utf-8-sig")
+
+
 def _manifest_pool_candidate_tickers(manifest: dict[str, Any], pool_id: str) -> set[str]:
     result: set[str] = set()
     for item in manifest.get("generated", []):
@@ -2242,6 +2405,7 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
     live_risk = manifest.get("live_risk_regime_warning") or _live_risk_regime_warning_boundary(manifest)
     chip_context = manifest.get("chip_context") or _chip_context_report_boundary(manifest)
     decision_first = manifest.get("decision_first_report_contract") or _decision_first_report_contract(manifest)
+    operation = manifest.get("formal_operation_conclusion") or _formal_operation_conclusion(decision_first, manifest)
     report_rows = _formal_report_rows(rows)
     visible_skipped_count = len([row for row in report_rows if row.get("status") != "generated"])
     skipped_summaries = _skipped_reason_summary(rows, manifest)
@@ -2255,21 +2419,38 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
         f"- 正式觀察項目：{len(report_rows)}",
         f"- 暫無正式觀察：{visible_skipped_count}（{'; '.join(skipped_summaries) if skipped_summaries else '無'}）",
         f"- 正式報告狀態：{'可發布' if report_ready else '停止發布，等待完整資料'}",
-        f"- 正式模型基準：{_translate_internal_visible_text(formal_boundary.get('description'))}",
+        f"- 模型版本：{decision_first.get('model_version_label', CURRENT_FORMAL_MODEL_VERSION_LABEL)}",
         f"- 成本口徑：{manifest.get('cost_model_boundary', _report_cost_model_boundary()).get('report_wording_zh', '')}",
         "",
-        "## 隔天操作判斷",
+        "## 明日操作結論",
+        "",
+        f"- 報告日 / 資料日：{operation.get('report_date') or '-'}",
+        f"- 隔日可操作日：{operation.get('next_action_date') or '-'}",
+        f"- 今日正式目標：{operation.get('formal_target') or '無'}",
+        f"- 前一日正式目標：{operation.get('previous_formal_target') or '無'}"
+        f"{'（' + str(decision_first.get('previous_formal_target_date')) + '）' if decision_first.get('previous_formal_target_date') else ''}",
+        f"- 與前一日相比：{operation.get('action_state_zh') or '-'}",
+        f"- 若目前持有正式目標：{decision_first.get('current_formal_holding_action_zh', '')}",
+        f"- 若目前持有非正式目標：{decision_first.get('non_formal_holding_action_zh', '')}",
+        f"- 白話理由：{operation.get('reason_zh') or decision_first.get('operation_reason_zh', '')}",
+        "",
+        "## 正式 / 診斷分層",
+        "",
+        f"- 第一層：正式操作/觀察結論，只看 current formal 結果：{operation.get('formal_target') or '無'}，狀態 {operation.get('action_state_zh') or '-'}。",
+        f"- 第二層：Pool1 主攻候選：{decision_first.get('pool1_candidate_display') or '無'}。候選，不等於正式最終目標。",
+        f"- 第三層：Pool2 確認/風控：{decision_first.get('pool2_confirmation_label_zh') or '未判定'}；代表標的 {decision_first.get('pool2_representative_display') or '無'}。",
+        "- 第四層：標的穩定度、籌碼、市場環境等診斷提醒只作輔助觀察，不改交易結論。",
+        "",
+        "## 正式模型細節",
         "",
         f"- 主結論：{decision_first.get('decision_first_conclusion_zh', '')}",
-        f"- 正式標的：{decision_first.get('formal_target_display') or '無'}",
-        f"- 前一份正式報告標的：{decision_first.get('previous_formal_target_display') or '無'}"
-        f"{'（' + str(decision_first.get('previous_formal_target_date')) + '）' if decision_first.get('previous_formal_target_date') else ''}",
         f"- 資料完整度：{'資料齊全' if decision_first.get('data_completeness_state') == 'complete' else '資料未補齊'}",
         f"- 資料缺口：{decision_first.get('data_blocker_summary_zh') or '無'}",
         f"- 換倉訊號：{decision_first.get('switch_signal_wording_zh', '')}",
         f"- 分數差距：{decision_first.get('score_margin_wording_zh', '')}",
         f"- 主攻池狀態：{decision_first.get('pool1_state_zh', '')}",
-        f"- 主攻池目標：{decision_first.get('pool1_target_display') or '無'}",
+        f"- Pool1 主攻候選：{decision_first.get('pool1_candidate_display') or '無'}",
+        f"- 正式最終目標：{decision_first.get('formal_target_display') or '無'}",
         f"- 確認池代表標的：{decision_first.get('pool2_representative_display') or '無'}",
         f"- 確認池對主攻目標的判讀：{decision_first.get('pool2_confirmation_label_zh') or '未判定'}。{decision_first.get('pool2_confirmation_wording_zh', '')}",
         "",
@@ -2446,7 +2627,9 @@ def _draw_observation_detail_pdf_page(ax, manifest: dict[str, Any], rows: list[d
 
 
 def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[str, Any]]) -> None:
-    panel_x, panel_y, panel_w, panel_h = 0.065, 0.235, 0.87, 0.445
+    decision = manifest.get("decision_first_report_contract") or _decision_first_report_contract(manifest)
+    operation = manifest.get("formal_operation_conclusion") or _formal_operation_conclusion(decision, manifest)
+    panel_x, panel_y, panel_w, panel_h = 0.065, 0.13, 0.87, 0.50
     ax.add_patch(
         plt.Rectangle(
             (panel_x, panel_y),
@@ -2458,14 +2641,22 @@ def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[st
             transform=ax.transAxes,
         )
     )
-    ax.text(panel_x + 0.018, panel_y + panel_h - 0.032, "正式模型基準", color="#17212a", fontsize=12.0, fontweight="bold", transform=ax.transAxes)
-    ax.text(panel_x + panel_w - 0.018, panel_y + panel_h - 0.032, "主攻池 + 確認池", color="#52616b", fontsize=9.2, ha="right", transform=ax.transAxes)
+    ax.text(panel_x + 0.018, panel_y + panel_h - 0.032, "明日操作結論", color="#17212a", fontsize=12.4, fontweight="bold", transform=ax.transAxes)
+    ax.text(
+        panel_x + panel_w - 0.018,
+        panel_y + panel_h - 0.032,
+        operation.get("model_version_label", CURRENT_FORMAL_MODEL_VERSION_LABEL),
+        color="#52616b",
+        fontsize=8.4,
+        ha="right",
+        transform=ax.transAxes,
+    )
 
     ax.add_patch(
         plt.Rectangle(
-            (panel_x + 0.03, panel_y + 0.285),
+            (panel_x + 0.03, panel_y + 0.345),
             panel_w - 0.06,
-            0.075,
+            0.095,
             facecolor="#17212a",
             edgecolor="#2457a7",
             linewidth=1.8,
@@ -2473,72 +2664,122 @@ def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[st
             zorder=3,
         )
     )
-    ax.add_patch(plt.Rectangle((panel_x + 0.03, panel_y + 0.285), 0.012, 0.075, facecolor="#2457a7", edgecolor="#2457a7", transform=ax.transAxes, zorder=4))
-    ax.text(panel_x + 0.055, panel_y + 0.331, "目前正式模型", color="#c8d5df", fontsize=8.8, transform=ax.transAxes, zorder=4)
-    ax.text(panel_x + 0.055, panel_y + 0.304, "主攻池優先，確認池做風險確認", color="white", fontsize=12.0, fontweight="bold", transform=ax.transAxes, zorder=4)
-    ax.text(panel_x + panel_w - 0.04, panel_y + 0.319, "主攻池提出目標，確認池做風險確認", color="#d6e1e8", fontsize=9.2, ha="right", transform=ax.transAxes, zorder=4)
+    ax.add_patch(plt.Rectangle((panel_x + 0.03, panel_y + 0.345), 0.012, 0.095, facecolor="#2457a7", edgecolor="#2457a7", transform=ax.transAxes, zorder=4))
+    ax.text(panel_x + 0.055, panel_y + 0.413, "今日正式目標", color="#c8d5df", fontsize=8.6, transform=ax.transAxes, zorder=4)
+    _draw_wrapped_text(
+        ax,
+        panel_x + 0.055,
+        panel_y + 0.383,
+        str(operation.get("formal_target") or "無"),
+        max_units=34,
+        line_gap=0.018,
+        color="white",
+        fontsize=13.2,
+        fontweight="bold",
+        transform=ax.transAxes,
+        zorder=4,
+    )
+    ax.text(panel_x + panel_w - 0.04, panel_y + 0.414, "與前一日相比", color="#c8d5df", fontsize=8.2, ha="right", transform=ax.transAxes, zorder=4)
+    ax.text(
+        panel_x + panel_w - 0.04,
+        panel_y + 0.383,
+        str(operation.get("action_state_zh") or "-"),
+        color="#f6c177" if operation.get("action_state") in {"switch_watch", "data_insufficient"} else "#d6e1e8",
+        fontsize=12.0,
+        fontweight="bold",
+        ha="right",
+        transform=ax.transAxes,
+        zorder=4,
+    )
+    ax.text(
+        panel_x + panel_w - 0.04,
+        panel_y + 0.358,
+        f"隔日可操作日 {operation.get('next_action_date') or '-'}",
+        color="#d6e1e8",
+        fontsize=8.0,
+        ha="right",
+        transform=ax.transAxes,
+        zorder=4,
+    )
 
-    formal_rows = [row for row in rows if row["status"] == "generated"][:3]
-    card_specs = [(0.095, 0.345), (0.385, 0.345), (0.675, 0.345)]
-    for index, row in enumerate(formal_rows):
-        x, y = card_specs[index]
-        active = bool(row.get("active_in_trade_decision", False))
-        color = "#13795b" if active else "#6b7780"
-        fill = "#f4fbf8" if active else "#f8fafb"
-        card_h = 0.145
-        ax.add_patch(plt.Rectangle((x, y), 0.235, card_h, facecolor=fill, edgecolor="#d5e0e6", linewidth=1.0, transform=ax.transAxes, zorder=2))
-        ax.add_patch(plt.Rectangle((x, y), 0.012, card_h, facecolor=color, edgecolor=color, transform=ax.transAxes, zorder=3))
+    card_specs = [
+        ("前一日正式目標", operation.get("previous_formal_target") or "無", "#6b7780"),
+        ("Pool1 主攻候選", decision.get("pool1_candidate_display") or "無", "#13795b"),
+        ("Pool2 確認/風控", f"{decision.get('pool2_confirmation_label_zh') or '未判定'}｜{decision.get('pool2_representative_display') or '無'}", "#2457a7"),
+    ]
+    for index, (label, value, color) in enumerate(card_specs):
+        x = panel_x + 0.03 + index * 0.275
+        y = panel_y + 0.215
+        card_h = 0.105
+        ax.add_patch(plt.Rectangle((x, y), 0.25, card_h, facecolor="#f8fafb", edgecolor="#d5e0e6", linewidth=1.0, transform=ax.transAxes, zorder=2))
+        ax.add_patch(plt.Rectangle((x, y), 0.010, card_h, facecolor=color, edgecolor=color, transform=ax.transAxes, zorder=3))
         ax.text(
-            x + 0.022,
+            x + 0.020,
             y + card_h - 0.033,
-            _short_pool_name(row),
+            label,
             color="#17212a",
-            fontsize=9.5,
+            fontsize=8.6,
             fontweight="bold",
             transform=ax.transAxes,
             zorder=4,
         )
-        layer = "正式訊號" if active else "候選觀察"
-        top_text = row.get("top_display") or row.get("top_ticker") or row.get("action_state") or "無合格候選"
         _draw_wrapped_text(
             ax,
-            x + 0.022,
-            y + card_h - 0.064,
-            str(top_text),
-            max_units=15,
-            line_gap=0.014,
+            x + 0.020,
+            y + card_h - 0.061,
+            str(value),
+            max_units=18,
+            line_gap=0.015,
             color="#26323b",
-            fontsize=7.7,
+            fontsize=7.6,
             transform=ax.transAxes,
             zorder=4,
         )
-        ax.text(x + 0.022, y + 0.020, layer, color=color, fontsize=8.0, fontweight="bold", transform=ax.transAxes, zorder=4)
-
-    decision = manifest.get("decision_first_report_contract") or _decision_first_report_contract(manifest)
-    confirmation_text = _decision_first_pdf_confirmation_line(decision)
-    stability = manifest.get("target_stability_warning") or _target_stability_warning_boundary(manifest)
-    warning_text = f"標的穩定度：{_target_stability_state_label(stability.get('target_stability_warning_state'))}"
-    live_risk = manifest.get("live_risk_regime_warning") or _live_risk_regime_warning_boundary(manifest)
-    risk_text = f"市場環境：{_live_risk_regime_state_label(live_risk.get('live_risk_regime_state'))}"
-    footer_rows = (
-        (confirmation_text, "#52616b", 7.6),
-        (warning_text, "#7a4b00" if stability.get("target_stability_warning_state") != "stable_target" else "#52616b", 7.5),
-        (risk_text, "#7a4b00" if live_risk.get("live_risk_regime_state") != "risk_on" else "#52616b", 7.4),
+    reason_text = str(operation.get("reason_zh") or decision.get("operation_reason_zh") or "")
+    _draw_wrapped_text(
+        ax,
+        panel_x + 0.03,
+        panel_y + 0.185,
+        "白話理由：" + reason_text,
+        max_units=82,
+        line_gap=0.014,
+        color="#26323b",
+        fontsize=7.8,
+        transform=ax.transAxes,
     )
-    footer_y = panel_y + 0.078
-    for text, color, fontsize in footer_rows:
-        lines = _draw_wrapped_text(
-            ax,
-            panel_x + 0.03,
-            footer_y,
-            text,
-            max_units=78,
-            line_gap=0.012,
-            color=color,
-            fontsize=fontsize,
-            transform=ax.transAxes,
-        )
-        footer_y -= 0.012 * max(len(lines), 1) + 0.010
+    ax.text(panel_x + 0.03, panel_y + 0.120, "正式/診斷分層", color="#17212a", fontsize=9.4, fontweight="bold", transform=ax.transAxes)
+    layer_text = (
+        "第一層只看正式目標；Pool1 是候選，不等於最終目標；"
+        "Pool2 負責確認/風控；下列提醒不改交易結論。"
+    )
+    _draw_wrapped_text(
+        ax,
+        panel_x + 0.03,
+        panel_y + 0.097,
+        layer_text,
+        max_units=82,
+        line_gap=0.013,
+        color="#52616b",
+        fontsize=7.5,
+        transform=ax.transAxes,
+    )
+    stability = manifest.get("target_stability_warning") or _target_stability_warning_boundary(manifest)
+    live_risk = manifest.get("live_risk_regime_warning") or _live_risk_regime_warning_boundary(manifest)
+    diagnostic_text = (
+        f"診斷提醒：標的穩定度 {_target_stability_state_label(stability.get('target_stability_warning_state'))}；"
+        f"市場環境 {_live_risk_regime_state_label(live_risk.get('live_risk_regime_state'))}。"
+    )
+    _draw_wrapped_text(
+        ax,
+        panel_x + 0.03,
+        panel_y + 0.050,
+        diagnostic_text,
+        max_units=82,
+        line_gap=0.012,
+        color="#7a4b00",
+        fontsize=7.4,
+        transform=ax.transAxes,
+    )
 
 
 def _decision_first_pdf_confirmation_line(decision: dict[str, Any]) -> str:

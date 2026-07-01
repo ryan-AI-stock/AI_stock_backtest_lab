@@ -19,6 +19,7 @@ from backtest_lab.stock_pool_observation import (
     _cashflow_report_boundary,
     _chip_context_report_boundary,
     _decision_first_report_contract,
+    _formal_operation_conclusion,
     _live_risk_regime_warning_boundary,
     _load_observation_price_frames,
     _resolve_dynamic_observation_pool,
@@ -1081,12 +1082,23 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertIn("decision_first_report_contract", manifest)
             decision = manifest["decision_first_report_contract"]
             self.assertEqual(decision["decision_first_state"], "formal_target_available")
+            self.assertEqual(decision["model_version_label"], "目前正式版：Pool1 主攻 + Pool2 確認/風控")
             self.assertEqual(decision["data_completeness_state"], "complete")
             self.assertIn("台積電(2330)", decision["formal_target_display"])
             self.assertEqual(decision["switch_signal_state"], "previous_target_missing")
+            self.assertEqual(decision["action_state"], "observe_without_previous")
+            self.assertIn("若目前已持有 台積電(2330)", decision["current_formal_holding_action_zh"])
+            self.assertIn("若目前持有的不是 台積電(2330)", decision["non_formal_holding_action_zh"])
             self.assertEqual(decision["score_margin_state"], "formal_candidate_ranking_ready")
             self.assertIn("第一名 台積電(2330)", decision["score_margin_wording_zh"])
             self.assertTrue((Path(manifest["output_root"]) / "formal_candidate_ranking_panel.csv").exists())
+            self.assertIn("formal_operation_conclusion", manifest)
+            self.assertEqual(manifest["formal_operation_conclusion"]["formal_target"], "台積電(2330)")
+            operation_ledger_path = Path(manifest["output_root"]) / "formal_operation_decision_ledger.csv"
+            self.assertTrue(operation_ledger_path.exists())
+            operation_ledger = pd.read_csv(operation_ledger_path)
+            self.assertEqual(operation_ledger.loc[0, "formal_target"], "台積電(2330)")
+            self.assertEqual(operation_ledger.loc[0, "model_version_label"], "目前正式版：Pool1 主攻 + Pool2 確認/風控")
             wording = manifest["report_wording_boundary"]
             self.assertFalse(wording["formal_model_changed"])
             self.assertFalse(wording["trade_decision_changed"])
@@ -1117,8 +1129,15 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertNotIn("三池", report_text)
             self.assertNotIn("風格補強池", report_text)
             self.assertNotIn("Pool3 Radar Top10 攻擊衛星觀察", report_text)
-            self.assertIn("正式模型基準", report_text)
+            self.assertIn("模型版本：目前正式版：Pool1 主攻 + Pool2 確認/風控", report_text)
             self.assertIn("正式報告狀態：可發布", report_text)
+            self.assertIn("## 明日操作結論", report_text)
+            self.assertIn("隔日可操作日", report_text)
+            self.assertIn("若目前持有正式目標", report_text)
+            self.assertIn("若目前持有非正式目標", report_text)
+            self.assertIn("## 正式 / 診斷分層", report_text)
+            self.assertIn("候選，不等於正式最終目標", report_text)
+            self.assertIn("不改交易結論", report_text)
             self.assertIn("成本口徑", report_text)
             self.assertIn("買賣手續費與賣出證券交易稅皆已納入", report_text)
             self.assertNotIn("使用邊界", report_text)
@@ -1225,7 +1244,7 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertEqual(decision["switch_signal_state"], "formal_target_changed")
             self.assertIn("正式目標已從 鴻海(2317)", decision["switch_signal_wording_zh"])
             report_text = (Path(manifest["output_root"]) / "stock_pool_observation_report.md").read_text(encoding="utf-8")
-            self.assertIn("前一份正式報告標的：鴻海(2317)（2025-07-31）", report_text)
+            self.assertIn("前一日正式目標：鴻海(2317)（2025-07-31）", report_text)
 
     def test_decision_first_contract_reports_score_margins_from_formal_candidates(self) -> None:
         manifest = _target_stability_manifest(score_a=2.8, score_b=2.1)
@@ -1329,8 +1348,64 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertIn("原始分數低於第二名 聯發科(2454)（觀察）", decision["score_margin_wording_zh"])
         self.assertIn("確認池對主攻目標的判讀：支持大盤曝險", markdown)
         self.assertIn("確認池代表標的：國巨(2327)", markdown)
-        self.assertNotIn("Pool2", markdown)
+        self.assertIn("目前正式版：Pool1 主攻 + Pool2 確認/風控", markdown)
         self.assertNotIn("selector", markdown)
+
+    def test_decision_first_contract_separates_pool1_candidate_from_formal_target(self) -> None:
+        manifest = {
+            "signal_date": "2026-06-30",
+            "actual_signal_date": "2026-06-30",
+            "formal_report_ready": True,
+            "generated": [
+                {
+                    "pool_id": "ai_theme_large_cap_v20260613",
+                    "pool_name": "AI主線池",
+                    "active_in_trade_decision": True,
+                    "top_candidates": [
+                        {
+                            "rank": 1,
+                            "ticker": "6669.TW",
+                            "display": "緯穎(6669)",
+                            "asset_type": "stock",
+                            "score": 2.8,
+                            "selection_label": "候選觀察",
+                            "is_model_target": False,
+                        },
+                        {
+                            "rank": 2,
+                            "ticker": "00631L.TW",
+                            "display": "0050正二(00631L)",
+                            "asset_type": "etf",
+                            "score": 2.2,
+                            "selection_label": "正式目標",
+                            "is_model_target": True,
+                        },
+                    ],
+                },
+                {
+                    "pool_id": "tw50_dynamic_constituents_v0",
+                    "pool_name": "大型廣度池",
+                    "active_in_trade_decision": False,
+                    "top_ticker": "2327.TW",
+                    "top_display": "國巨(2327)",
+                    "eligible_for_pool_selection": True,
+                    "selection_layer": "formal_candidate",
+                    "top_candidates": [],
+                },
+            ],
+        }
+
+        decision = _decision_first_report_contract(manifest)
+        manifest["decision_first_report_contract"] = decision
+        manifest["formal_operation_conclusion"] = _formal_operation_conclusion(decision, manifest)
+        markdown = markdown_observation_batch_report(manifest, [])
+
+        self.assertEqual(decision["pool1_candidate_display"], "緯穎(6669)")
+        self.assertEqual(decision["formal_target_display"], "0050正二(00631L)")
+        self.assertIn("本日正式結論不是直接換到 緯穎(6669)", decision["pool_relation_reason_zh"])
+        self.assertIn("Pool1 主攻候選：緯穎(6669)", markdown)
+        self.assertIn("正式最終目標：0050正二(00631L)", markdown)
+        self.assertIn("本日正式結論不是直接換到 緯穎(6669)", markdown)
 
     def test_batch_excludes_non_operational_scorecard_pool_by_default(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)
@@ -1715,7 +1790,7 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertNotIn("三立場股票池表決摘要", report)
             self.assertNotIn("三池", report)
             summary_report = (Path(manifest["output_root"]) / "stock_pool_observation_report.md").read_text(encoding="utf-8")
-            self.assertIn("正式模型基準", summary_report)
+            self.assertIn("模型版本：目前正式版：Pool1 主攻 + Pool2 確認/風控", summary_report)
             self.assertNotIn("三池", summary_report)
             self.assertNotIn("風格補強池", summary_report)
             self.assertNotIn("舊三池診斷", summary_report)
