@@ -1665,7 +1665,10 @@ def _target_stability_warning_boundary(manifest: dict[str, Any]) -> dict[str, An
         reason = "診斷 proxy 顯示目前標的在三個交易日內掉出前三名，穩定度需觀察。"
     elif low_score_gap:
         state = "low_score_margin_watch"
-        reason = f"第一名與第二名分數差距約 {_format_score_gap(score_gap)}，優勢不夠明顯。"
+        if score_gap is not None and score_gap < 0:
+            reason = "主攻池目標不是候選排序第一名，分數低於第一名；僅作穩定度提醒，不代表交易否決。"
+        else:
+            reason = f"第一名與第二名分數差距約 {_format_score_gap(score_gap)}，優勢不夠明顯。"
     elif new_target_age_1:
         state = "new_target_unconfirmed_watch"
         reason = "新標的剛出現，尚未累積足夠確認天數。"
@@ -2472,50 +2475,38 @@ def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[st
         ax.text(x + 0.022, y + 0.020, layer, color=color, fontsize=8.0, fontweight="bold", transform=ax.transAxes, zorder=4)
 
     decision = manifest.get("decision_first_report_contract") or _decision_first_report_contract(manifest)
-    confirmation_text = (
-        f"確認池判讀：{decision.get('pool2_confirmation_label_zh') or '未判定'}；"
-        f"{decision.get('pool2_confirmation_wording_zh') or ''}"
-    )
-    _draw_wrapped_text(
-        ax,
-        panel_x + 0.03,
-        panel_y + 0.074,
-        confirmation_text,
-        max_units=86,
-        line_gap=0.013,
-        color="#52616b",
-        fontsize=7.8,
-        transform=ax.transAxes,
-    )
+    confirmation_text = _decision_first_pdf_confirmation_line(decision)
     stability = manifest.get("target_stability_warning") or _target_stability_warning_boundary(manifest)
-    warning_text = f"標的穩定度：{_target_stability_state_label(stability.get('target_stability_warning_state'))}；{stability.get('target_stability_warning_reason', '')}"
-    _draw_wrapped_text(
-        ax,
-        panel_x + 0.03,
-        panel_y + 0.044,
-        warning_text,
-        max_units=86,
-        line_gap=0.013,
-        color="#7a4b00" if stability.get("target_stability_warning_state") != "stable_target" else "#52616b",
-        fontsize=7.7,
-        transform=ax.transAxes,
-    )
+    warning_text = f"標的穩定度：{_target_stability_state_label(stability.get('target_stability_warning_state'))}"
     live_risk = manifest.get("live_risk_regime_warning") or _live_risk_regime_warning_boundary(manifest)
-    risk_text = (
-        f"市場環境：{_live_risk_regime_state_label(live_risk.get('live_risk_regime_state'))}；"
-        f"{live_risk.get('live_risk_regime_warning_reason', '')}"
+    risk_text = f"市場環境：{_live_risk_regime_state_label(live_risk.get('live_risk_regime_state'))}"
+    footer_rows = (
+        (confirmation_text, "#52616b", 7.6),
+        (warning_text, "#7a4b00" if stability.get("target_stability_warning_state") != "stable_target" else "#52616b", 7.5),
+        (risk_text, "#7a4b00" if live_risk.get("live_risk_regime_state") != "risk_on" else "#52616b", 7.4),
     )
-    _draw_wrapped_text(
-        ax,
-        panel_x + 0.03,
-        panel_y + 0.020,
-        risk_text,
-        max_units=86,
-        line_gap=0.013,
-        color="#7a4b00" if live_risk.get("live_risk_regime_state") != "risk_on" else "#52616b",
-        fontsize=7.5,
-        transform=ax.transAxes,
-    )
+    footer_y = panel_y + 0.078
+    for text, color, fontsize in footer_rows:
+        lines = _draw_wrapped_text(
+            ax,
+            panel_x + 0.03,
+            footer_y,
+            text,
+            max_units=78,
+            line_gap=0.012,
+            color=color,
+            fontsize=fontsize,
+            transform=ax.transAxes,
+        )
+        footer_y -= 0.012 * max(len(lines), 1) + 0.010
+
+
+def _decision_first_pdf_confirmation_line(decision: dict[str, Any]) -> str:
+    label = str(decision.get("pool2_confirmation_label_zh") or "未判定")
+    representative = str(decision.get("pool2_representative_display") or "").strip()
+    if representative:
+        return f"確認池判讀：{label}；代表標的：{representative}"
+    return f"確認池判讀：{label}"
 
 def _draw_pool_top3_sections(ax, rows: list[dict[str, Any]], *, start_y: float = 0.635) -> float:
     x0 = 0.06

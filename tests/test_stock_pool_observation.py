@@ -114,6 +114,28 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertFalse(manifest["active_in_trade_decision"])
         self.assertIn("不是正式候選排序契約", manifest["target_stability_proxy_contract"])
 
+    def test_target_stability_negative_score_gap_uses_plain_wording(self) -> None:
+        manifest = _target_stability_manifest(score_a=1.00, score_b=1.5558)
+        _attach_target_stability_warning_boundary(manifest)
+        reason = str(manifest["target_stability_warning_reason"])
+
+        self.assertIn("主攻池目標不是候選排序第一名", reason)
+        self.assertNotIn("差距約 -", reason)
+        self.assertNotIn("-0.", reason)
+
+        manifest.update(
+            {
+                "signal_date": "2026-06-30",
+                "report_ready": True,
+                "report_wording_boundary": {"formal_baseline": {"description": "主攻池優先，確認池做風險確認"}},
+                "generated": manifest["generated"],
+            }
+        )
+        markdown = markdown_observation_batch_report(manifest, [])
+        self.assertIn("主攻池目標不是候選排序第一名", markdown)
+        self.assertNotIn("差距約 -", markdown)
+        self.assertNotIn("分數差距約 -", markdown)
+
     def test_target_stability_ignores_pool2_disagreement_and_any_low_confidence(self) -> None:
         manifest = _target_stability_manifest(score_a=1.00, score_b=0.70)
         manifest["pool2_disagreement"] = True
