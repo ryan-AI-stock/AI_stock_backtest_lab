@@ -19,6 +19,7 @@ from backtest_lab.stock_pool_observation import (
     _cashflow_report_boundary,
     _chip_context_report_boundary,
     _decision_first_report_contract,
+    _extract_formal_target,
     _formal_operation_conclusion,
     _live_risk_regime_warning_boundary,
     _load_observation_price_frames,
@@ -1418,6 +1419,75 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertIn("Pool1 主攻候選：緯穎(6669)", markdown)
         self.assertIn("正式最終目標：0050正二(00631L)", markdown)
         self.assertIn("本日正式結論不是直接換到 緯穎(6669)", markdown)
+
+    def test_decision_first_contract_does_not_promote_observation_candidate_to_formal_target(self) -> None:
+        manifest = {
+            "signal_date": "2026-06-26",
+            "actual_signal_date": "2026-06-26",
+            "formal_report_ready": True,
+            "generated": [
+                {
+                    "pool_id": "ai_theme_large_cap_v20260613",
+                    "pool_name": "AI主線池",
+                    "active_in_trade_decision": True,
+                    "top_ticker": "2454.TW",
+                    "top_display": "聯發科(2454)",
+                    "selection_reason": "正式模型目前沒有可投票的池內目標。",
+                    "top_candidates": [
+                        {
+                            "rank": 1,
+                            "ticker": "2454.TW",
+                            "display": "聯發科(2454)",
+                            "asset_type": "stock",
+                            "score": 0.924986,
+                            "selection_label": "觀察",
+                            "is_model_target": False,
+                            "attack_gate_open": False,
+                        },
+                        {
+                            "rank": 2,
+                            "ticker": "00631L.TW",
+                            "display": "0050正二(00631L)",
+                            "asset_type": "etf",
+                            "score": 0.469382,
+                            "selection_label": "觀察",
+                            "is_model_target": False,
+                        },
+                    ],
+                },
+                {
+                    "pool_id": "tw50_dynamic_constituents_v0",
+                    "pool_name": "大型廣度池",
+                    "active_in_trade_decision": False,
+                    "top_ticker": "2327.TW",
+                    "top_display": "國巨(2327)",
+                    "eligible_for_pool_selection": True,
+                    "selection_layer": "formal_candidate",
+                    "top_candidates": [
+                        {
+                            "rank": 1,
+                            "ticker": "2327.TW",
+                            "display": "國巨(2327)",
+                            "asset_type": "stock",
+                            "score": 2.088193,
+                            "selection_label": "正式候選",
+                            "is_model_target": True,
+                        }
+                    ],
+                },
+            ],
+        }
+
+        decision = _decision_first_report_contract(manifest)
+        extracted = _extract_formal_target(manifest)
+
+        self.assertEqual(decision["decision_first_state"], "no_formal_target")
+        self.assertEqual(decision["formal_target_display"], "")
+        self.assertEqual(decision["formal_target_ticker"], "")
+        self.assertEqual(decision["pool1_candidate_display"], "聯發科(2454)")
+        self.assertEqual(decision["pool2_confirmation_state"], "no_pool1_target")
+        self.assertEqual(extracted["formal_target_display"], "")
+        self.assertEqual(extracted["formal_target_ticker"], "")
 
     def test_batch_excludes_non_operational_scorecard_pool_by_default(self) -> None:
         dates = pd.bdate_range("2025-01-02", periods=160)

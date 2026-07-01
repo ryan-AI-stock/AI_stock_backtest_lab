@@ -1296,13 +1296,12 @@ def _decision_first_report_contract(manifest: dict[str, Any], *, output_root: st
     active_rows = [item for item in visible_generated if item.get("active_in_trade_decision")]
     primary = active_rows[0] if active_rows else (visible_generated[0] if visible_generated else {})
     pool2 = _pool2_confirmation_row(visible_generated)
-    target = next((row for row in primary.get("top_candidates") or [] if row.get("is_model_target")), None)
-    target = target or ((primary.get("top_candidates") or [{}])[0] if primary.get("top_candidates") else {})
+    target = _formal_model_target_from_primary(primary)
     pool1_candidate = (primary.get("top_candidates") or [{}])[0] if primary.get("top_candidates") else {}
     pool1_candidate_display = str(pool1_candidate.get("display") or pool1_candidate.get("ticker") or primary.get("top_display") or "")
     pool1_candidate_ticker = str(pool1_candidate.get("ticker") or primary.get("top_ticker") or "")
-    target_display = str(target.get("display") or primary.get("top_display") or primary.get("top_ticker") or "")
-    target_ticker = str(target.get("ticker") or primary.get("top_ticker") or "")
+    target_display = str(target.get("display") or "")
+    target_ticker = str(target.get("ticker") or "")
     ranking_contract = _formal_candidate_ranking_contract(primary)
     confirmation = _pool2_confirmation_interpretation(primary=primary, pool2=pool2, target=target)
     report_ready = bool(manifest.get("formal_report_ready", True))
@@ -1415,15 +1414,22 @@ def _pool2_confirmation_row(rows: list[dict[str, Any]]) -> dict[str, Any]:
     return {}
 
 
+def _formal_model_target_from_primary(primary: dict[str, Any]) -> dict[str, Any]:
+    """Return only the row explicitly marked as the formal model target."""
+    if not primary:
+        return {}
+    return next((row for row in primary.get("top_candidates") or [] if row.get("is_model_target")), {})
+
+
 def _pool2_confirmation_interpretation(
     *,
     primary: dict[str, Any],
     pool2: dict[str, Any],
     target: dict[str, Any],
 ) -> dict[str, str]:
-    target_ticker = str(target.get("ticker") or primary.get("top_ticker") or "")
-    target_display = str(target.get("display") or primary.get("top_display") or target_ticker or "")
-    target_asset_type = _normalize_asset_type(str(target.get("asset_type") or primary.get("top_asset_type") or ""))
+    target_ticker = str(target.get("ticker") or "")
+    target_display = str(target.get("display") or target_ticker or "")
+    target_asset_type = _normalize_asset_type(str(target.get("asset_type") or ""))
     pool2_ticker = str(pool2.get("top_ticker") or "")
     pool2_display = str(pool2.get("top_display") or pool2_ticker or "")
     pool2_is_eligible = bool(pool2.get("eligible_for_pool_selection"))
@@ -1626,11 +1632,10 @@ def _extract_formal_target(manifest: dict[str, Any]) -> dict[str, str]:
     ]
     active_rows = [item for item in visible_generated if item.get("active_in_trade_decision")]
     primary = active_rows[0] if active_rows else (visible_generated[0] if visible_generated else {})
-    target = next((row for row in primary.get("top_candidates") or [] if row.get("is_model_target")), None)
-    target = target or ((primary.get("top_candidates") or [{}])[0] if primary.get("top_candidates") else {})
+    target = _formal_model_target_from_primary(primary)
     return {
-        "formal_target_display": str(target.get("display") or primary.get("top_display") or primary.get("top_ticker") or ""),
-        "formal_target_ticker": str(target.get("ticker") or primary.get("top_ticker") or ""),
+        "formal_target_display": str(target.get("display") or ""),
+        "formal_target_ticker": str(target.get("ticker") or ""),
     }
 
 
@@ -2035,8 +2040,7 @@ def _chip_context_report_boundary(manifest: dict[str, Any]) -> dict[str, Any]:
     ]
     active_rows = [row for row in formal_rows if bool(row.get("active_in_trade_decision", False))]
     primary = active_rows[0] if active_rows else (formal_rows[0] if formal_rows else {})
-    target = next((row for row in primary.get("top_candidates") or [] if row.get("is_model_target")), None)
-    target = target or ((primary.get("top_candidates") or [{}])[0] if primary.get("top_candidates") else {})
+    target = _formal_model_target_from_primary(primary)
     h1_positive = _number_like(target.get("bullish_flow_score")) > 0
     h2_sell_pressure = _number_like(target.get("institutional_risk")) > 0 or _number_like(target.get("flow_risk_score")) > 0
     coverage_end = _chip_context_coverage_end(manifest, target)
