@@ -1328,6 +1328,16 @@ def _decision_first_report_contract(manifest: dict[str, Any], *, output_root: st
         report_ready=report_ready,
         formal_target_ticker=target_ticker,
     )
+    current_position_reference = _current_position_reference_zh(
+        action_state=action_state,
+        formal_target_display=target_display,
+        previous_target_display=str(previous.get("previous_formal_target_display") or ""),
+    )
+    model_action = _model_action_zh(
+        action_state=action_state,
+        formal_target_display=target_display,
+        previous_target_display=str(previous.get("previous_formal_target_display") or ""),
+    )
     next_action_date = _next_action_date(manifest.get("actual_signal_date") or manifest.get("signal_date") or "")
     pool_relation_reason = _pool_relation_reason_zh(
         formal_target_display=target_display,
@@ -1364,6 +1374,8 @@ def _decision_first_report_contract(manifest: dict[str, Any], *, output_root: st
         "action_state": action_state,
         "action_state_zh": action_label,
         "post_action_holding": target_display if target_display else ("現金/空手" if action_state == "cash_watch" else ""),
+        "current_position_reference_zh": current_position_reference,
+        "model_action_zh": model_action,
         "current_formal_holding_action_zh": _current_formal_holding_action(action_state, target_display),
         "non_formal_holding_action_zh": _non_formal_holding_action(action_state, target_display),
         "operation_reason_zh": operation_reason,
@@ -1650,12 +1662,12 @@ def _operation_action_state(*, switch_state: str, report_ready: bool, formal_tar
     if not report_ready:
         return "data_insufficient", "資料不足"
     if not formal_target_ticker or switch_state == "no_formal_target":
-        return "cash_watch", "空手觀察"
+        return "cash_watch", "現金/空手觀察"
     if switch_state == "maintain_formal_target":
-        return "hold_watch", "續抱觀察"
+        return "hold_watch", "續抱"
     if switch_state == "formal_target_changed":
-        return "switch_watch", "換倉觀察"
-    return "observe_without_previous", "待前日對照"
+        return "switch_watch", "換倉"
+    return "observe_without_previous", "首次/待前日對照"
 
 
 def _next_action_date(signal_date: object) -> str:
@@ -1685,6 +1697,44 @@ def _non_formal_holding_action(action_state: str, formal_target_display: str) ->
     if not formal_target_display:
         return "沒有正式目標可對照。"
     return f"若目前持有的不是 {formal_target_display}，代表模型正式目標已不同，需對照自身持倉評估是否調整。"
+
+
+def _current_position_reference_zh(
+    *,
+    action_state: str,
+    formal_target_display: str,
+    previous_target_display: str,
+) -> str:
+    if action_state == "data_insufficient":
+        return "資料不足"
+    if action_state == "cash_watch":
+        return previous_target_display or "現金/空手"
+    if action_state == "switch_watch":
+        return previous_target_display or "現金/空手"
+    if action_state == "hold_watch":
+        return formal_target_display or previous_target_display or "現金/空手"
+    return previous_target_display or "現金/空手"
+
+
+def _model_action_zh(
+    *,
+    action_state: str,
+    formal_target_display: str,
+    previous_target_display: str,
+) -> str:
+    if action_state == "data_insufficient":
+        return "資料不足，不產生正式模型動作。"
+    if action_state == "cash_watch":
+        return "不新增正式持股目標 / 轉為現金觀察。"
+    if action_state == "switch_watch" and formal_target_display:
+        if previous_target_display:
+            return f"賣出/離開 {previous_target_display}，轉入 {formal_target_display}。"
+        return f"轉入 {formal_target_display}。"
+    if action_state == "hold_watch" and formal_target_display:
+        return f"續抱 {formal_target_display}。"
+    if formal_target_display:
+        return f"轉入 {formal_target_display}。"
+    return "不新增正式持股目標 / 轉為現金觀察。"
 
 
 def _pool_relation_reason_zh(
@@ -1720,7 +1770,7 @@ def _operation_reason_zh(
         return "資料不足，今天不應把任何候選標的當成正式結論。"
     if not formal_target_display:
         return "正式目標為現金/空手，沒有新的正式持股標的。"
-    if action_label == "續抱觀察":
+    if action_label == "續抱":
         return f"正式目標未變，模型沒有產生新的換倉結論。{pool_relation_reason}"
     return f"{switch_wording} {pool_relation_reason}".strip()
 
@@ -1736,6 +1786,8 @@ def _formal_operation_conclusion(decision: dict[str, Any], manifest: dict[str, A
         "action_state": decision.get("action_state", ""),
         "action_state_zh": decision.get("action_state_zh", ""),
         "post_action_holding": decision.get("post_action_holding", ""),
+        "current_position_reference_zh": decision.get("current_position_reference_zh", ""),
+        "model_action_zh": decision.get("model_action_zh", ""),
         "reason_zh": decision.get("operation_reason_zh", ""),
         "model_version_label": decision.get("model_version_label", CURRENT_FORMAL_MODEL_VERSION_LABEL),
         "formal_model_changed": False,
@@ -2281,6 +2333,8 @@ def write_formal_operation_decision_ledger(root: Path, manifest: dict[str, Any])
         "action_state": operation.get("action_state", ""),
         "action_state_zh": operation.get("action_state_zh", ""),
         "post_action_holding": operation.get("post_action_holding", ""),
+        "current_position_reference_zh": operation.get("current_position_reference_zh", ""),
+        "model_action_zh": operation.get("model_action_zh", ""),
         "reason_zh": operation.get("reason_zh", ""),
         "pool1_candidate": decision.get("pool1_candidate_display", ""),
         "pool1_candidate_ticker": decision.get("pool1_candidate_ticker", ""),
@@ -2426,12 +2480,12 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
         "",
         f"- 報告日 / 資料日：{operation.get('report_date') or '-'}",
         f"- 隔日可操作日：{operation.get('next_action_date') or '-'}",
-        f"- 今日正式目標：{operation.get('formal_target') or '無'}",
+        f"- 正式目標：{operation.get('formal_target') or '無'}",
+        f"- 狀態：{operation.get('action_state_zh') or '-'}",
+        f"- 如果目前現金或者持有：{operation.get('current_position_reference_zh') or '-'}",
+        f"- 模型動作：{operation.get('model_action_zh') or '-'}",
         f"- 前一日正式目標：{operation.get('previous_formal_target') or '無'}"
         f"{'（' + str(decision_first.get('previous_formal_target_date')) + '）' if decision_first.get('previous_formal_target_date') else ''}",
-        f"- 與前一日相比：{operation.get('action_state_zh') or '-'}",
-        f"- 若目前持有正式目標：{decision_first.get('current_formal_holding_action_zh', '')}",
-        f"- 若目前持有非正式目標：{decision_first.get('non_formal_holding_action_zh', '')}",
         f"- 白話理由：{operation.get('reason_zh') or decision_first.get('operation_reason_zh', '')}",
         "",
         "## 正式 / 診斷分層",
@@ -2654,9 +2708,9 @@ def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[st
 
     ax.add_patch(
         plt.Rectangle(
-            (panel_x + 0.03, panel_y + 0.345),
+            (panel_x + 0.03, panel_y + 0.325),
             panel_w - 0.06,
-            0.095,
+            0.125,
             facecolor="#17212a",
             edgecolor="#2457a7",
             linewidth=1.8,
@@ -2664,14 +2718,14 @@ def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[st
             zorder=3,
         )
     )
-    ax.add_patch(plt.Rectangle((panel_x + 0.03, panel_y + 0.345), 0.012, 0.095, facecolor="#2457a7", edgecolor="#2457a7", transform=ax.transAxes, zorder=4))
-    ax.text(panel_x + 0.055, panel_y + 0.413, "今日正式目標", color="#c8d5df", fontsize=8.6, transform=ax.transAxes, zorder=4)
+    ax.add_patch(plt.Rectangle((panel_x + 0.03, panel_y + 0.325), 0.012, 0.125, facecolor="#2457a7", edgecolor="#2457a7", transform=ax.transAxes, zorder=4))
+    ax.text(panel_x + 0.055, panel_y + 0.423, "正式目標", color="#c8d5df", fontsize=8.6, transform=ax.transAxes, zorder=4)
     _draw_wrapped_text(
         ax,
         panel_x + 0.055,
-        panel_y + 0.383,
+        panel_y + 0.397,
         str(operation.get("formal_target") or "無"),
-        max_units=34,
+        max_units=36,
         line_gap=0.018,
         color="white",
         fontsize=13.2,
@@ -2679,10 +2733,35 @@ def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[st
         transform=ax.transAxes,
         zorder=4,
     )
-    ax.text(panel_x + panel_w - 0.04, panel_y + 0.414, "與前一日相比", color="#c8d5df", fontsize=8.2, ha="right", transform=ax.transAxes, zorder=4)
+    _draw_wrapped_text(
+        ax,
+        panel_x + 0.055,
+        panel_y + 0.356,
+        f"如果目前現金或者持有：{operation.get('current_position_reference_zh') or '-'}",
+        max_units=42,
+        line_gap=0.013,
+        color="#d6e1e8",
+        fontsize=7.6,
+        transform=ax.transAxes,
+        zorder=4,
+    )
+    _draw_wrapped_text(
+        ax,
+        panel_x + 0.055,
+        panel_y + 0.335,
+        f"模型動作：{operation.get('model_action_zh') or '-'}",
+        max_units=78,
+        line_gap=0.013,
+        color="#f6c177",
+        fontsize=7.4,
+        fontweight="bold",
+        transform=ax.transAxes,
+        zorder=4,
+    )
+    ax.text(panel_x + panel_w - 0.04, panel_y + 0.423, "狀態", color="#c8d5df", fontsize=8.2, ha="right", transform=ax.transAxes, zorder=4)
     ax.text(
         panel_x + panel_w - 0.04,
-        panel_y + 0.383,
+        panel_y + 0.397,
         str(operation.get("action_state_zh") or "-"),
         color="#f6c177" if operation.get("action_state") in {"switch_watch", "data_insufficient"} else "#d6e1e8",
         fontsize=12.0,
@@ -2693,7 +2772,7 @@ def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[st
     )
     ax.text(
         panel_x + panel_w - 0.04,
-        panel_y + 0.358,
+        panel_y + 0.356,
         f"隔日可操作日 {operation.get('next_action_date') or '-'}",
         color="#d6e1e8",
         fontsize=8.0,
@@ -2709,7 +2788,7 @@ def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[st
     ]
     for index, (label, value, color) in enumerate(card_specs):
         x = panel_x + 0.03 + index * 0.275
-        y = panel_y + 0.215
+        y = panel_y + 0.185
         card_h = 0.105
         ax.add_patch(plt.Rectangle((x, y), 0.25, card_h, facecolor="#f8fafb", edgecolor="#d5e0e6", linewidth=1.0, transform=ax.transAxes, zorder=2))
         ax.add_patch(plt.Rectangle((x, y), 0.010, card_h, facecolor=color, edgecolor=color, transform=ax.transAxes, zorder=3))
@@ -2728,7 +2807,7 @@ def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[st
             x + 0.020,
             y + card_h - 0.061,
             str(value),
-            max_units=18,
+            max_units=24,
             line_gap=0.015,
             color="#26323b",
             fontsize=7.6,
@@ -2739,7 +2818,7 @@ def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[st
     _draw_wrapped_text(
         ax,
         panel_x + 0.03,
-        panel_y + 0.185,
+        panel_y + 0.155,
         "白話理由：" + reason_text,
         max_units=82,
         line_gap=0.014,
@@ -2747,7 +2826,7 @@ def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[st
         fontsize=7.8,
         transform=ax.transAxes,
     )
-    ax.text(panel_x + 0.03, panel_y + 0.120, "正式/診斷分層", color="#17212a", fontsize=9.4, fontweight="bold", transform=ax.transAxes)
+    ax.text(panel_x + 0.03, panel_y + 0.095, "正式/診斷分層", color="#17212a", fontsize=9.4, fontweight="bold", transform=ax.transAxes)
     layer_text = (
         "第一層只看正式目標；Pool1 是候選，不等於最終目標；"
         "Pool2 負責確認/風控；下列提醒不改交易結論。"
@@ -2755,7 +2834,7 @@ def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[st
     _draw_wrapped_text(
         ax,
         panel_x + 0.03,
-        panel_y + 0.097,
+        panel_y + 0.073,
         layer_text,
         max_units=82,
         line_gap=0.013,
@@ -2772,7 +2851,7 @@ def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[st
     _draw_wrapped_text(
         ax,
         panel_x + 0.03,
-        panel_y + 0.050,
+        panel_y + 0.035,
         diagnostic_text,
         max_units=82,
         line_gap=0.012,

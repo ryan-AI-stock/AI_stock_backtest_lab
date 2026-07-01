@@ -1087,6 +1087,8 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertIn("台積電(2330)", decision["formal_target_display"])
             self.assertEqual(decision["switch_signal_state"], "previous_target_missing")
             self.assertEqual(decision["action_state"], "observe_without_previous")
+            self.assertEqual(decision["current_position_reference_zh"], "現金/空手")
+            self.assertEqual(decision["model_action_zh"], "轉入 台積電(2330)。")
             self.assertIn("若目前已持有 台積電(2330)", decision["current_formal_holding_action_zh"])
             self.assertIn("若目前持有的不是 台積電(2330)", decision["non_formal_holding_action_zh"])
             self.assertEqual(decision["score_margin_state"], "formal_candidate_ranking_ready")
@@ -1098,6 +1100,8 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertTrue(operation_ledger_path.exists())
             operation_ledger = pd.read_csv(operation_ledger_path)
             self.assertEqual(operation_ledger.loc[0, "formal_target"], "台積電(2330)")
+            self.assertEqual(operation_ledger.loc[0, "current_position_reference_zh"], "現金/空手")
+            self.assertEqual(operation_ledger.loc[0, "model_action_zh"], "轉入 台積電(2330)。")
             self.assertEqual(operation_ledger.loc[0, "model_version_label"], "目前正式版：Pool1 主攻 + Pool2 確認/風控")
             wording = manifest["report_wording_boundary"]
             self.assertFalse(wording["formal_model_changed"])
@@ -1133,8 +1137,8 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertIn("正式報告狀態：可發布", report_text)
             self.assertIn("## 明日操作結論", report_text)
             self.assertIn("隔日可操作日", report_text)
-            self.assertIn("若目前持有正式目標", report_text)
-            self.assertIn("若目前持有非正式目標", report_text)
+            self.assertIn("如果目前現金或者持有：現金/空手", report_text)
+            self.assertIn("模型動作：轉入 台積電(2330)。", report_text)
             self.assertIn("## 正式 / 診斷分層", report_text)
             self.assertIn("候選，不等於正式最終目標", report_text)
             self.assertIn("不改交易結論", report_text)
@@ -1194,6 +1198,9 @@ class StockPoolObservationTest(unittest.TestCase):
             decision = manifest["decision_first_report_contract"]
             self.assertEqual(decision["previous_formal_target_ticker"], "2330.TW")
             self.assertEqual(decision["switch_signal_state"], "maintain_formal_target")
+            self.assertEqual(decision["action_state_zh"], "續抱")
+            self.assertEqual(decision["current_position_reference_zh"], "台積電(2330)")
+            self.assertEqual(decision["model_action_zh"], "續抱 台積電(2330)。")
             self.assertIn("維持不變", decision["switch_signal_wording_zh"])
 
     def test_decision_first_contract_detects_formal_target_change(self) -> None:
@@ -1242,9 +1249,14 @@ class StockPoolObservationTest(unittest.TestCase):
             decision = manifest["decision_first_report_contract"]
             self.assertEqual(decision["previous_formal_target_ticker"], "2317.TW")
             self.assertEqual(decision["switch_signal_state"], "formal_target_changed")
+            self.assertEqual(decision["action_state_zh"], "換倉")
+            self.assertEqual(decision["current_position_reference_zh"], "鴻海(2317)")
+            self.assertEqual(decision["model_action_zh"], "賣出/離開 鴻海(2317)，轉入 台積電(2330)。")
             self.assertIn("正式目標已從 鴻海(2317)", decision["switch_signal_wording_zh"])
             report_text = (Path(manifest["output_root"]) / "stock_pool_observation_report.md").read_text(encoding="utf-8")
             self.assertIn("前一日正式目標：鴻海(2317)（2025-07-31）", report_text)
+            self.assertIn("如果目前現金或者持有：鴻海(2317)", report_text)
+            self.assertIn("模型動作：賣出/離開 鴻海(2317)，轉入 台積電(2330)。", report_text)
 
     def test_decision_first_contract_reports_score_margins_from_formal_candidates(self) -> None:
         manifest = _target_stability_manifest(score_a=2.8, score_b=2.1)
