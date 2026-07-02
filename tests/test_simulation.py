@@ -6,6 +6,7 @@ import test_paths  # noqa: F401
 
 from backtest_lab.costs import TaiwanCostModel
 from backtest_lab.simulation import (
+    _common_trade_dates,
     simulate_buy_and_hold,
     simulate_dual_momentum_vol_control,
     simulate_relative_strength_top1,
@@ -31,6 +32,21 @@ def price_frame(open_price: float, close_start: float, daily_step: float, rows: 
 
 
 class SimulationTest(unittest.TestCase):
+    def test_common_trade_dates_excludes_zero_price_rows(self) -> None:
+        first = price_frame(100, 100, 1, rows=5)
+        second = price_frame(100, 100, 1, rows=5)
+        zero_date = first.index[2]
+        first.loc[zero_date, "open"] = 0.0
+
+        dates = _common_trade_dates(
+            {"0050.TW": first, "00631L.TW": second},
+            first.index.min().strftime("%Y-%m-%d"),
+            first.index.max().strftime("%Y-%m-%d"),
+        )
+
+        self.assertNotIn(zero_date, dates)
+        self.assertEqual(len(dates), 4)
+
     def test_benchmark_buys_own_asset_on_first_trade_date(self) -> None:
         prices = price_frame(100, 100, 1)
         result = simulate_buy_and_hold(

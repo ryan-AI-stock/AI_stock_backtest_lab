@@ -253,7 +253,12 @@ def simulate_theme_enhanced_dual_momentum(
 def _trade_dates(prices: pd.DataFrame, start_date: str, end_date: str) -> list[pd.Timestamp]:
     start = pd.Timestamp(start_date)
     end = pd.Timestamp(end_date)
-    return list(prices.loc[(prices.index >= start) & (prices.index <= end)].index)
+    frame = prices.loc[(prices.index >= start) & (prices.index <= end)].copy()
+    for column in ("open", "close", "adj_close"):
+        if column not in frame.columns:
+            continue
+        frame = frame[pd.to_numeric(frame[column], errors="coerce") > 0]
+    return list(frame.index)
 
 
 def _common_trade_dates(
