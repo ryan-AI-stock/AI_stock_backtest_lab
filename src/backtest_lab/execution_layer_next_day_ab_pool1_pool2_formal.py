@@ -26,6 +26,8 @@ class VariantSpec:
     minimum_hold_rows: int | None = None
     cooldown_after_exit_rows: int | None = None
     no_formal_target_policy: str = "hold_previous"
+    no_formal_target_max_cash_rows: int = 0
+    no_formal_target_reduce_ratio: float = 0.5
     description: str = ""
 
 
@@ -186,8 +188,10 @@ def _simulate_variant(
     cost_model = TaiwanCostModel()
     pending: list[dict[str, Any]] = []
     accepted_target: dict[str, float] = {}
+    last_non_empty_target: dict[str, float] = {}
     last_signal_target: dict[str, float] = {}
     consecutive_signal_rows = 0
+    no_formal_target_rows = 0
     exit_to_cash_index: int | None = None
     running_max = float(initial_cash)
     previous_equity = float(initial_cash)
@@ -216,9 +220,15 @@ def _simulate_variant(
                 )
             else:
                 accepted_target = dict(order["target_weights"])
+                if accepted_target:
+                    last_non_empty_target = dict(accepted_target)
                 trade_rows.extend({**trade, "variant_id": variant.variant_id, "signal_date": order["signal_date"]} for trade in trades)
 
         signal_weights = _parse_weights(item.get("target_weights"))
+        if signal_weights:
+            no_formal_target_rows = 0
+        else:
+            no_formal_target_rows += 1
         if signal_weights == last_signal_target:
             consecutive_signal_rows += 1
         else:
@@ -228,8 +238,10 @@ def _simulate_variant(
         policy_weights, policy_blocked_reason = _policy_target_weights(
             signal_weights=signal_weights,
             accepted_target=accepted_target,
+            last_non_empty_target=last_non_empty_target,
             variant=variant,
             consecutive_signal_rows=consecutive_signal_rows,
+            no_formal_target_rows=no_formal_target_rows,
             row_index=index,
             exit_to_cash_index=exit_to_cash_index,
         )
@@ -279,6 +291,8 @@ def _simulate_variant(
                     )
                 else:
                     accepted_target = dict(policy_weights)
+                    if accepted_target:
+                        last_non_empty_target = dict(accepted_target)
                     trade_rows.extend({**trade, "variant_id": variant.variant_id, "signal_date": date} for trade in trades)
                     event_rows.append(_fill_event(variant, date, date, policy_weights, "same_day_fill", policy_blocked_reason))
                     if not policy_weights:
@@ -317,6 +331,8 @@ def _simulate_variant(
                 "consecutive_signal_rows": consecutive_signal_rows,
                 "minimum_hold_rows": variant.minimum_hold_rows or "",
                 "cooldown_after_exit_rows": variant.cooldown_after_exit_rows or "",
+                "no_formal_target_policy": variant.no_formal_target_policy,
+                "no_formal_target_rows": no_formal_target_rows,
                 "execution_diagnostic_active_in_trade_decision": False,
             }
         )
@@ -328,14 +344,30 @@ def _policy_target_weights(
     *,
     signal_weights: dict[str, float],
     accepted_target: dict[str, float],
+    last_non_empty_target: dict[str, float],
     variant: VariantSpec,
     consecutive_signal_rows: int,
+    no_formal_target_rows: int,
     row_index: int,
     exit_to_cash_index: int | None,
 ) -> tuple[dict[str, float], str]:
     if not signal_weights:
         if variant.no_formal_target_policy == "exit_to_cash":
-            return {}, "no_formal_target_exit_to_cash"
+            return {}, ""
+        if variant.no_formal_target_policy == "cash_max_3":
+            limit = variant.no_formal_target_max_cash_rows or 3
+            if no_formal_target_rows <= limit:
+                return {}, ""
+            restored = dict(last_non_empty_target or accepted_target)
+            if restored:
+                return restored, ""
+            return {}, "no_formal_target_cash_max_3_no_previous_target"
+        if variant.no_formal_target_policy == "reduce_exposure_50":
+            base = dict(accepted_target or last_non_empty_target)
+            if not base:
+                return {}, "no_formal_target_reduce_exposure_no_previous_target"
+            ratio = min(max(float(variant.no_formal_target_reduce_ratio), 0.0), 1.0)
+            return {ticker: weight * ratio for ticker, weight in base.items()}, ""
         return dict(accepted_target), "no_formal_target_hold_previous"
     if variant.minimum_hold_rows is not None and signal_weights != accepted_target:
         if consecutive_signal_rows < variant.minimum_hold_rows:
@@ -430,6 +462,9 @@ def _variant_matrix() -> pd.DataFrame:
                 "fill_delay_days": variant.fill_delay_days,
                 "minimum_hold_rows": variant.minimum_hold_rows or "",
                 "cooldown_after_exit_rows": variant.cooldown_after_exit_rows or "",
+                "no_formal_target_policy": variant.no_formal_target_policy,
+                "no_formal_target_max_cash_rows": variant.no_formal_target_max_cash_rows or "",
+                "no_formal_target_reduce_ratio": variant.no_formal_target_reduce_ratio,
                 "description": variant.description,
                 "formal_model_changed": False,
                 "trade_decision_changed": False,

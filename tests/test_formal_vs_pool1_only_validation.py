@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pandas as pd
 
+import test_paths  # noqa: F401
+
 from backtest_lab.formal_vs_pool1_only_validation import run_formal_vs_pool1_only_validation
 
 

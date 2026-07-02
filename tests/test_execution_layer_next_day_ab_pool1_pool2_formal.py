@@ -135,6 +135,37 @@ class ExecutionLayerNextDayABPool1Pool2FormalTest(unittest.TestCase):
         self.assertEqual(row["top_holding"], "2454.TW")
         self.assertEqual(json.loads(row["accepted_target_weights"]), {"2454.TW": 1.0})
 
+    def test_explicit_no_formal_target_exit_to_cash_challenger_can_sell(self) -> None:
+        dates = pd.to_datetime(["2026-06-05", "2026-06-08", "2026-06-09"])
+        frame = pd.DataFrame(
+            [
+                _stream_row(dates[0], '{"2454.TW": 1.0}'),
+                _stream_row(dates[1], "{}"),
+                _stream_row(dates[2], "{}"),
+            ]
+        )
+        frame.loc[0, "action"] = "switch"
+        frame.loc[0, "turnover"] = 1
+        frame.loc[1, "action"] = "switch"
+        frame.loc[1, "turnover"] = 1
+        prices = {"2454.TW": pd.Series([100.0, 95.0, 90.0], index=dates)}
+
+        daily, trades, _events, blocked = _simulate_variant(
+            frame,
+            prices,
+            VariantSpec("explicit_cash_challenger", 1, no_formal_target_policy="exit_to_cash"),
+            1_000_000.0,
+        )
+
+        no_target_sell = trades[
+            trades["signal_date"].astype(str).eq("2026-06-08")
+            & trades["action"].astype(str).eq("sell")
+        ]
+        self.assertFalse(no_target_sell.empty)
+        self.assertTrue(blocked.empty)
+        row = daily[daily["date"].astype(str).eq("2026-06-09")].iloc[0]
+        self.assertEqual(row["top_holding"], "cash")
+
 
 def _stream_row(date: pd.Timestamp, target_weights: str) -> dict:
     return {

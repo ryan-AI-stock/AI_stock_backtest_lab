@@ -1482,10 +1482,14 @@ class StockPoolObservationTest(unittest.TestCase):
         extracted = _extract_formal_target(manifest)
 
         self.assertEqual(decision["decision_first_state"], "no_formal_target")
+        self.assertEqual(decision["action_state"], "no_new_formal_target")
+        self.assertEqual(decision["action_state_zh"], "無新正式目標")
         self.assertEqual(decision["formal_target_display"], "")
         self.assertEqual(decision["formal_target_ticker"], "")
         self.assertEqual(decision["pool1_candidate_display"], "聯發科(2454)")
         self.assertEqual(decision["pool2_confirmation_state"], "no_pool1_target")
+        self.assertNotIn("現金/空手觀察", json.dumps(decision, ensure_ascii=False))
+        self.assertNotIn("轉為現金觀察", json.dumps(decision, ensure_ascii=False))
         self.assertEqual(extracted["formal_target_display"], "")
         self.assertEqual(extracted["formal_target_ticker"], "")
 
