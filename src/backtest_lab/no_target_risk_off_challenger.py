@@ -151,19 +151,27 @@ def run_no_target_risk_off_challenger(
         costs = _trade_cost_summary(trade_ledger)
         performance = _attach_trade_costs(_period_performance(daily_ledger), costs)
         variant_contract = _variant_contract()
+        before_after = _before_after_contract(variant_contract)
+        drawdown_mdd = _drawdown_mdd_summary(performance)
+        event_attribution = _event_attribution(no_target_events, daily_ledger)
         no_target_summary = _no_target_summary(no_target_events, daily_ledger)
+        wording_boundary = _wording_boundary_markdown()
 
         log("write_outputs", "started", "")
         variant_contract.to_csv(output / "variant_contract.csv", index=False, encoding="utf-8-sig")
+        before_after.to_csv(output / "formal_challenger_before_after_contract.csv", index=False, encoding="utf-8-sig")
         daily_ledger.to_csv(output / "daily_equity_by_variant.csv", index=False, encoding="utf-8-sig")
         trade_ledger.to_csv(output / "trade_ledger_by_variant.csv", index=False, encoding="utf-8-sig")
         blocked.to_csv(output / "blocked_execution_events.csv", index=False, encoding="utf-8-sig")
         performance.to_csv(output / "performance_by_variant.csv", index=False, encoding="utf-8-sig")
+        drawdown_mdd.to_csv(output / "drawdown_mdd_summary.csv", index=False, encoding="utf-8-sig")
         monthly.to_csv(output / "monthly_performance.csv", index=False, encoding="utf-8-sig")
         worst.to_csv(output / "worst_month.csv", index=False, encoding="utf-8-sig")
         costs.to_csv(output / "trade_cost_summary.csv", index=False, encoding="utf-8-sig")
         no_target_events.to_csv(output / "no_target_event_panel.csv", index=False, encoding="utf-8-sig")
+        event_attribution.to_csv(output / "no_target_event_attribution.csv", index=False, encoding="utf-8-sig")
         no_target_summary.to_csv(output / "no_target_event_summary.csv", index=False, encoding="utf-8-sig")
+        (output / "report_wording_boundary_zh.md").write_text(wording_boundary, encoding="utf-8")
         (output / "no_target_risk_off_challenger_contract_zh.md").write_text(
             _contract_markdown(variant_contract, performance, no_target_summary),
             encoding="utf-8",
@@ -177,6 +185,7 @@ def run_no_target_risk_off_challenger(
             "formal_default_no_formal_target_policy": "hold_previous",
             "bug_cash_mapping_used_as_baseline": False,
             "explicit_no_target_risk_off_challenger": True,
+            "main_challenger_variant": "no_target_cash_all",
             "formal_model_changed": False,
             "trade_decision_changed": False,
             "formal_execution_layer_activated": False,
@@ -188,10 +197,14 @@ def run_no_target_risk_off_challenger(
             "latest_complete_common_date": str(decision["date"].iloc[-1]) if not decision.empty else "",
             "outputs": {
                 "variant_contract": "variant_contract.csv",
+                "before_after_contract": "formal_challenger_before_after_contract.csv",
                 "daily_ledger": "daily_equity_by_variant.csv",
                 "trade_ledger": "trade_ledger_by_variant.csv",
                 "performance": "performance_by_variant.csv",
+                "drawdown_mdd": "drawdown_mdd_summary.csv",
                 "no_target_events": "no_target_event_panel.csv",
+                "event_attribution": "no_target_event_attribution.csv",
+                "wording_boundary": "report_wording_boundary_zh.md",
                 "summary": "no_target_risk_off_challenger_contract_zh.md",
             },
         }
@@ -230,6 +243,99 @@ def _variant_contract() -> pd.DataFrame:
                 "description_zh": variant.description_zh,
             }
             for variant in VARIANTS
+        ]
+    )
+
+
+def _before_after_contract(contract: pd.DataFrame) -> pd.DataFrame:
+    rows = []
+    labels = {
+        "baseline_hold_through": "before_current_formal_baseline",
+        "no_target_cash_all": "after_explicit_formal_challenger_candidate",
+    }
+    for variant_id, label in labels.items():
+        subset = contract[contract["variant_id"].eq(variant_id)]
+        if subset.empty:
+            continue
+        row = subset.iloc[0].to_dict()
+        rows.append(
+            {
+                "contract_stage": label,
+                "variant_id": variant_id,
+                "formal_model_target": FORMAL_MODEL_TARGET,
+                "formal_model_route": FORMAL_MODEL_ROUTE,
+                "no_formal_target_policy": row.get("no_formal_target_policy", ""),
+                "selector_changed": False,
+                "formal_model_changed": False,
+                "trade_decision_changed": False,
+                "active_in_trade_decision": False,
+                "bug_cash_mapping_used_as_baseline": False,
+                "description_zh": row.get("description_zh", ""),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _drawdown_mdd_summary(performance: pd.DataFrame) -> pd.DataFrame:
+    if performance.empty:
+        return pd.DataFrame()
+    columns = [
+        "variant_id",
+        "execution_basis",
+        "period_label",
+        "start_date",
+        "end_date",
+        "return_pct",
+        "max_drawdown_pct",
+        "trade_rows",
+        "total_transaction_cost",
+    ]
+    available = [column for column in columns if column in performance.columns]
+    return performance[available].copy()
+
+
+def _event_attribution(events: pd.DataFrame, daily: pd.DataFrame) -> pd.DataFrame:
+    rows = []
+    for variant, group in daily.groupby("variant_id", dropna=False):
+        variant_events = events[events["variant_id"].eq(variant)] if not events.empty else pd.DataFrame()
+        rows.append(
+            {
+                "variant_id": variant,
+                "no_target_event_days": int(variant_events["date"].nunique()) if not variant_events.empty else 0,
+                "cash_top_holding_days": int(group["top_holding"].astype(str).eq("cash").sum()),
+                "non_cash_top_holding_days": int(group["top_holding"].astype(str).ne("cash").sum()),
+                "event_attribution_boundary": "policy_behavior_count_only_not_forward_return",
+                "uses_forward_return_as_rule": False,
+                "active_in_trade_decision": False,
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _wording_boundary_markdown() -> str:
+    return "\n".join(
+        [
+            "# No-target risk-off report wording boundary",
+            "",
+            "本區塊只描述顯式 no-target risk-off challenger，不啟用正式模型。",
+            "",
+            "允許用語：",
+            "- 顯式 no-target risk-off challenger",
+            "- 沒有正式目標時暫時降低曝險或空手，作為候選策略驗證",
+            "- 與目前正式 baseline hold-through 做 apples-to-apples 比較",
+            "",
+            "禁止用語：",
+            "- 舊 bug cash mapping 是正式規則",
+            "- 現在正式日報已改成 no-target 空手",
+            "- no formal target 自動賣出空手",
+            "- 此候選已正式吸收",
+            "",
+            "正式邊界：",
+            "- formal_model_changed=false",
+            "- trade_decision_changed=false",
+            "- active_in_trade_decision=false",
+            "- bug_cash_mapping_used_as_baseline=false",
+            "",
         ]
     )
 

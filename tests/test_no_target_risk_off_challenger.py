@@ -44,8 +44,16 @@ class NoTargetRiskOffChallengerTest(unittest.TestCase):
             manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(manifest["formal_default_no_formal_target_policy"], "hold_previous")
             self.assertFalse(manifest["bug_cash_mapping_used_as_baseline"])
+            self.assertEqual(manifest["main_challenger_variant"], "no_target_cash_all")
             self.assertFalse(manifest["formal_model_changed"])
             self.assertFalse(manifest["trade_decision_changed"])
+            for filename in (
+                "formal_challenger_before_after_contract.csv",
+                "drawdown_mdd_summary.csv",
+                "no_target_event_attribution.csv",
+                "report_wording_boundary_zh.md",
+            ):
+                self.assertTrue((output / filename).exists())
 
             contract = pd.read_csv(output / "variant_contract.csv")
             baseline = contract[contract["variant_id"].eq("baseline_hold_through")].iloc[0]
@@ -64,6 +72,13 @@ class NoTargetRiskOffChallengerTest(unittest.TestCase):
             ].iloc[0]
             self.assertEqual(baseline_day["top_holding"], "2454.TW")
             self.assertEqual(cash_day["top_holding"], "cash")
+
+            before_after = pd.read_csv(output / "formal_challenger_before_after_contract.csv")
+            self.assertIn("before_current_formal_baseline", set(before_after["contract_stage"]))
+            self.assertIn("after_explicit_formal_challenger_candidate", set(before_after["contract_stage"]))
+            wording = (output / "report_wording_boundary_zh.md").read_text(encoding="utf-8")
+            self.assertIn("bug_cash_mapping_used_as_baseline=false", wording)
+            self.assertIn("禁止用語", wording)
 
 
 def _price_csv(path: Path, dates: pd.DatetimeIndex, prices: list[float]) -> None:
