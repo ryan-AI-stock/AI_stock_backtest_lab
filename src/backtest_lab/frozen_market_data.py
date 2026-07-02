@@ -35,7 +35,7 @@ def incomplete_tickers(prices_by_ticker: dict[str, pd.DataFrame], signal_date: s
             incomplete.append(ticker)
             continue
         row = frame.loc[signal_ts]
-        if pd.isna(row.get("open")) or pd.isna(row.get("close")) or pd.isna(row.get("adj_close")):
+        if not _has_complete_price_row(row):
             incomplete.append(ticker)
     return sorted(incomplete)
 
@@ -54,6 +54,8 @@ def fill_signal_date_from_twse(
         except (OSError, urllib.error.URLError, TimeoutError):
             row = None
         if row is None:
+            continue
+        if not _has_complete_price_row(row):
             continue
         frame = filled[ticker].copy()
         frame.loc[pd.Timestamp(signal_date)] = row
@@ -102,11 +104,16 @@ def fetch_twse_stock_day(ticker: str, signal_date: str) -> dict[str, float] | No
     for item in data:
         if roc_date_to_timestamp(str(item[date_i])) != target:
             continue
+        open_price = twse_float(item[open_i])
+        high = twse_float(item[high_i])
+        low = twse_float(item[low_i])
         close = twse_float(item[close_i])
+        if min(open_price, high, low, close) <= 0:
+            return None
         return {
-            "open": twse_float(item[open_i]),
-            "high": twse_float(item[high_i]),
-            "low": twse_float(item[low_i]),
+            "open": open_price,
+            "high": high,
+            "low": low,
             "close": close,
             "adj_close": close,
             "volume": twse_float(item[volume_i]),
@@ -124,3 +131,14 @@ def roc_date_to_timestamp(value: str) -> pd.Timestamp:
 def twse_float(value: str) -> float:
     cleaned = str(value).replace(",", "").replace("--", "").strip()
     return float(cleaned) if cleaned else 0.0
+
+
+def _has_complete_price_row(row: object) -> bool:
+    for column in ("open", "high", "low", "close", "adj_close"):
+        try:
+            value = float(row.get(column))  # type: ignore[attr-defined]
+        except (TypeError, ValueError):
+            return False
+        if pd.isna(value) or value <= 0:
+            return False
+    return True
