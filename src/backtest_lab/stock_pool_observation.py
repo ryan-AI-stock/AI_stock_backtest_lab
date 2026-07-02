@@ -1154,9 +1154,21 @@ def run_stock_pool_observation_batch(
     _attach_live_risk_regime_warning_boundary(manifest)
     _attach_chip_context_report_boundary(manifest)
     _set_formal_report_readiness(manifest)
+    manifest["previous_formal_target_fallback"] = _previous_formal_target_model_fallback(
+        pools=pools,
+        current_signal_date=manifest.get("actual_signal_date") or signal_date,
+        warmup_start=warmup_start,
+        cache_dir=cache_dir,
+        radar_snapshot_dir=radar_snapshot_dir,
+        radar_data_dir=radar_data_dir,
+        tw50_constituents_path=tw50_constituents_path,
+        radar_top_n=radar_top_n,
+        operational_only=operational_only,
+    )
     manifest["decision_first_report_contract"] = _decision_first_report_contract(manifest, output_root=Path(output_root))
     manifest["previous_target_status"] = manifest["decision_first_report_contract"].get("previous_target_status", "")
     manifest["previous_target_source"] = manifest["decision_first_report_contract"].get("previous_target_source", "")
+    manifest["previous_target_signal_date"] = manifest["decision_first_report_contract"].get("previous_target_signal_date", "")
     manifest["previous_target_reason"] = manifest["decision_first_report_contract"].get("previous_target_reason", "")
     manifest["formal_operation_conclusion"] = _formal_operation_conclusion(manifest["decision_first_report_contract"], manifest)
     _attach_no_target_risk_off_formal_activation(manifest)
@@ -1176,6 +1188,99 @@ def run_stock_pool_observation_batch(
     write_candidate_reviews(root, manifest)
     write_formal_operation_decision_ledger(root, manifest)
     return manifest
+
+
+def _previous_formal_target_model_fallback(
+    *,
+    pools: list[dict[str, Any]],
+    current_signal_date: object,
+    warmup_start: str,
+    cache_dir: str | Path,
+    radar_snapshot_dir: str | Path | None,
+    radar_data_dir: str | Path | None,
+    tw50_constituents_path: str | Path | None,
+    radar_top_n: int,
+    operational_only: bool,
+) -> dict[str, str]:
+    try:
+        previous_requested = (pd.Timestamp(str(current_signal_date)).normalize() - pd.offsets.BDay(1)).strftime("%Y-%m-%d")
+    except Exception as error:
+        return _missing_previous_target_contract(
+            source="formal_model_previous_signal_replay",
+            reason=f"無法解析目前訊號日以重建前一交易日正式目標：{error}",
+        )
+
+    last_error = ""
+    for pool in _observation_pools(pools, operational_only=operational_only):
+        try:
+            spec = resolve_strategy_preset(pool.get("strategy_preset"))
+        except Exception:
+            continue
+        if spec.preset not in {"best_v20260605", "ai_theme_large_cap_v20260613"}:
+            continue
+        try:
+            resolved_pool = _resolve_dynamic_observation_pool(
+                pool,
+                signal_date=previous_requested,
+                radar_snapshot_dir=radar_snapshot_dir,
+                radar_data_dir=radar_data_dir,
+                radar_top_n=radar_top_n,
+                tw50_constituents_path=tw50_constituents_path,
+            )
+            tickers = [symbol["ticker"] for symbol in resolved_pool.get("resolved_symbols", [])]
+            if not tickers:
+                last_error = "正式主攻池沒有 resolved symbols。"
+                continue
+            price_tickers = _observation_price_tickers(resolved_pool, tickers)
+            prices, missing_price_tickers = _load_observation_price_frames(
+                tickers=price_tickers,
+                start_date=_price_start_for_pool(resolved_pool, warmup_start),
+                end_date=previous_requested,
+                cache_dir=cache_dir,
+            )
+            if missing_price_tickers:
+                last_error = "前一交易日正式模型重建缺少價格資料：" + "、".join(missing_price_tickers)
+                continue
+            observation = build_dispatched_stock_pool_observation(
+                pool=resolved_pool,
+                prices_by_ticker=prices,
+                signal_date=previous_requested,
+                warmup_start=warmup_start,
+                market_cap_by_ticker=None,
+                risk_signal_by_ticker=None,
+                valuation_signal_by_ticker=None,
+                require_exact_signal_date=False,
+            )
+            if not observation.active_in_trade_decision:
+                last_error = "前一交易日重建結果不是 active formal trade signal。"
+                continue
+            signal_date = observation.signal_date
+            if observation.top_ticker:
+                return {
+                    "previous_formal_target_date": signal_date,
+                    "previous_formal_target_display": str(observation.top_display or observation.top_ticker),
+                    "previous_formal_target_ticker": str(observation.top_ticker),
+                    "previous_target_status": "found",
+                    "previous_target_source": "formal_model_previous_signal_replay",
+                    "previous_target_signal_date": signal_date,
+                    "previous_target_reason": f"由正式模型用前一個可用交易日 {signal_date} 重建取得。",
+                }
+            return {
+                "previous_formal_target_date": signal_date,
+                "previous_formal_target_display": RISK_CONTROL_CASH_DISPLAY,
+                "previous_formal_target_ticker": RISK_CONTROL_CASH_TICKER,
+                "previous_target_status": "found",
+                "previous_target_source": "formal_model_previous_signal_replay",
+                "previous_target_signal_date": signal_date,
+                "previous_target_reason": f"由正式模型用前一個可用交易日 {signal_date} 重建取得；該日正式規則為風險控管空手。",
+            }
+        except Exception as error:
+            last_error = str(error)
+            continue
+    return _missing_previous_target_contract(
+        source="formal_model_previous_signal_replay_failed",
+        reason=f"無法用正式模型重建前一交易日正式目標：{last_error or '找不到可重建的正式主攻池。'}",
+    )
 
 
 def _finalize_batch_signal_date_metadata(manifest: dict[str, Any]) -> None:
@@ -1392,6 +1497,7 @@ def _decision_first_report_contract(manifest: dict[str, Any], *, output_root: st
         "previous_formal_target_ticker": previous.get("previous_formal_target_ticker", ""),
         "previous_target_status": previous.get("previous_target_status", ""),
         "previous_target_source": previous.get("previous_target_source", ""),
+        "previous_target_signal_date": previous.get("previous_target_signal_date", ""),
         "previous_target_reason": previous.get("previous_target_reason", ""),
         "data_completeness_state": "complete" if report_ready else "blocked",
         "data_blocker_summary_zh": "；".join(str(item.get("reason_zh") or item.get("reason") or "") for item in blockers if item) if blockers else "",
@@ -1644,6 +1750,9 @@ def _previous_formal_target_contract(manifest: dict[str, Any], *, output_root: s
         except Exception:
             continue
     if not candidates:
+        fallback = _validated_previous_target_fallback(manifest)
+        if fallback:
+            return fallback
         return _missing_previous_target_contract(
             source="local_manifest_history_missing",
             reason=(
@@ -1658,7 +1767,31 @@ def _previous_formal_target_contract(manifest: dict[str, Any], *, output_root: s
         "previous_formal_target_ticker": str(latest.get("formal_target_ticker") or ""),
         "previous_target_status": "found",
         "previous_target_source": "local_manifest_history",
+        "previous_target_signal_date": str(latest.get("date") or ""),
         "previous_target_reason": "",
+    }
+
+
+def _validated_previous_target_fallback(manifest: dict[str, Any]) -> dict[str, str]:
+    fallback = manifest.get("previous_formal_target_fallback")
+    if not isinstance(fallback, dict):
+        return {}
+    if str(fallback.get("previous_target_status") or "") != "found":
+        return {}
+    ticker = str(fallback.get("previous_formal_target_ticker") or "").strip()
+    display = str(fallback.get("previous_formal_target_display") or "").strip()
+    signal_date = str(fallback.get("previous_target_signal_date") or fallback.get("previous_formal_target_date") or "").strip()
+    source = str(fallback.get("previous_target_source") or "").strip()
+    if not ticker or not display or not signal_date or not source:
+        return {}
+    return {
+        "previous_formal_target_date": signal_date,
+        "previous_formal_target_display": display,
+        "previous_formal_target_ticker": ticker,
+        "previous_target_status": "found",
+        "previous_target_source": source,
+        "previous_target_signal_date": signal_date,
+        "previous_target_reason": str(fallback.get("previous_target_reason") or ""),
     }
 
 
@@ -1669,6 +1802,7 @@ def _missing_previous_target_contract(*, source: str, reason: str) -> dict[str, 
         "previous_formal_target_ticker": "",
         "previous_target_status": "data_insufficient",
         "previous_target_source": source,
+        "previous_target_signal_date": "",
         "previous_target_reason": reason,
     }
 
@@ -1858,6 +1992,7 @@ def _formal_operation_conclusion(decision: dict[str, Any], manifest: dict[str, A
         "previous_formal_target_ticker": decision.get("previous_formal_target_ticker", ""),
         "previous_target_status": decision.get("previous_target_status", ""),
         "previous_target_source": decision.get("previous_target_source", ""),
+        "previous_target_signal_date": decision.get("previous_target_signal_date", ""),
         "previous_target_reason": decision.get("previous_target_reason", ""),
         "formal_target": decision.get("formal_target_display", ""),
         "formal_target_ticker": decision.get("formal_target_ticker", ""),
@@ -2409,6 +2544,7 @@ def write_formal_operation_decision_ledger(root: Path, manifest: dict[str, Any])
         "previous_formal_target_ticker": operation.get("previous_formal_target_ticker", ""),
         "previous_target_status": operation.get("previous_target_status", ""),
         "previous_target_source": operation.get("previous_target_source", ""),
+        "previous_target_signal_date": operation.get("previous_target_signal_date", ""),
         "previous_target_reason": operation.get("previous_target_reason", ""),
         "formal_target": operation.get("formal_target", ""),
         "formal_target_ticker": operation.get("formal_target_ticker", ""),
@@ -2543,7 +2679,7 @@ def _previous_target_report_text(
     include_date: bool = True,
 ) -> str:
     display = str(operation.get("previous_formal_target") or decision.get("previous_formal_target_display") or "").strip()
-    date_text = str(decision.get("previous_formal_target_date") or "").strip()
+    date_text = str(decision.get("previous_target_signal_date") or decision.get("previous_formal_target_date") or "").strip()
     if display:
         if include_date and date_text:
             return f"{display}（{date_text}）"

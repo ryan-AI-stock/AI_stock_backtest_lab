@@ -1332,6 +1332,57 @@ class StockPoolObservationTest(unittest.TestCase):
         self.assertIn("前一日正式目標：資料不足（找不到前一交易日正式目標紀錄）", report_text)
         self.assertNotIn("前一日正式目標：無", report_text)
 
+    def test_decision_first_contract_uses_formal_model_previous_target_fallback(self) -> None:
+        manifest = {
+            "signal_date": "2026-07-02",
+            "actual_signal_date": "2026-07-02",
+            "formal_report_ready": True,
+            "previous_formal_target_fallback": {
+                "previous_formal_target_date": "2026-07-01",
+                "previous_formal_target_display": "0050正二(00631L)",
+                "previous_formal_target_ticker": "00631L.TW",
+                "previous_target_status": "found",
+                "previous_target_source": "formal_model_previous_signal_replay",
+                "previous_target_signal_date": "2026-07-01",
+                "previous_target_reason": "由正式模型用前一個可用交易日 2026-07-01 重建取得。",
+            },
+            "generated": [
+                {
+                    "pool_id": "ai_theme_large_cap_v20260613",
+                    "pool_name": "AI主線池",
+                    "active_in_trade_decision": True,
+                    "top_candidates": [
+                        {
+                            "rank": 1,
+                            "ticker": "00631L.TW",
+                            "display": "0050正二(00631L)",
+                            "asset_type": "etf",
+                            "score": 2.8,
+                            "selection_label": "正式目標",
+                            "is_model_target": True,
+                        }
+                    ],
+                }
+            ],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            output_root = Path(tmp) / "stock_pool_observations"
+            output_root.mkdir()
+
+            decision = _decision_first_report_contract(manifest, output_root=output_root)
+            manifest["decision_first_report_contract"] = decision
+            manifest["formal_operation_conclusion"] = _formal_operation_conclusion(decision, manifest)
+            report_text = markdown_observation_batch_report(manifest, [])
+
+        self.assertEqual(decision["previous_formal_target_display"], "0050正二(00631L)")
+        self.assertEqual(decision["previous_formal_target_ticker"], "00631L.TW")
+        self.assertEqual(decision["previous_target_status"], "found")
+        self.assertEqual(decision["previous_target_source"], "formal_model_previous_signal_replay")
+        self.assertEqual(decision["previous_target_signal_date"], "2026-07-01")
+        self.assertNotEqual(decision["previous_target_status"], "data_insufficient")
+        self.assertIn("前一日正式目標：0050正二(00631L)（2026-07-01）", report_text)
+        self.assertNotIn("前一日正式目標：資料不足", report_text)
+
     def test_decision_first_contract_reports_score_margins_from_formal_candidates(self) -> None:
         manifest = _target_stability_manifest(score_a=2.8, score_b=2.1)
         manifest["generated"][0]["top_candidates"].append(
