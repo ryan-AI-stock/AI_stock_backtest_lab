@@ -150,7 +150,8 @@ def run_long_range_data_completion_continue(
             "active_in_trade_decision": False,
             "no_target_cash_all_applied_to_2014_2021": False,
             "proxy_used_as_formal": False,
-            "attempt_7_ticker_static_segment": attempt_7_ticker_static_segment,
+            "candidate_universe_fallback_separation_api_available": True,
+            "candidate_universe_fallback_separation_attempted": attempt_7_ticker_static_segment,
             "next_required_task": _next_task(full_pool1_ready, pool2_ready, combined_ready),
             "outputs": {
                 "dynamic_contract": "dynamic_universe_state_contract.csv",
@@ -239,6 +240,7 @@ def _attempt_pool1_segment_replays(
                     start_date=seven_start,
                     end_date=seven_end,
                     segment_id="dynamic_7_ticker_segment",
+                    separate_candidate_universe=True,
                 )
                 rows.append(seven_replay)
                 attempts.append(
@@ -400,6 +402,7 @@ def _run_pool1_static_subset_replay(
     start_date: pd.Timestamp,
     end_date: pd.Timestamp,
     segment_id: str,
+    separate_candidate_universe: bool,
 ) -> pd.DataFrame:
     group = config.group_by_id(FROZEN_BEST_GROUP_ID)
     group_assets = {asset.ticker: asset for asset in group.assets}
@@ -423,6 +426,7 @@ def _run_pool1_static_subset_replay(
         cost_model=config.cost_model,
         variant=variant,
         dividend_series_by_ticker=dividends,
+        candidate_universe_tickers=tuple(candidate_tickers) if separate_candidate_universe else None,
     )
     equity = result.equity_curve.reset_index().rename(columns={"date": "signal_date"})
     rows: list[dict[str, Any]] = []
@@ -449,6 +453,7 @@ def _run_pool1_static_subset_replay(
                 "candidate_tickers": "|".join(candidate_tickers),
                 "segment_id": segment_id,
                 "segment_source": "simulate_regime_mode_switch_static_subset",
+                "candidate_universe_fallback_separated": separate_candidate_universe,
                 "source_formal_ready": True,
                 "no_target_cash_all_applied": False,
             }

@@ -9,7 +9,12 @@ from unittest.mock import patch
 
 import test_paths  # noqa: F401
 
-from backtest_lab.twse_institutional_flow_refresh import _read_json_with_redirects, parse_twse_t86_payload, write_twse_institutional_flows
+from backtest_lab.twse_institutional_flow_refresh import (
+    _read_json_with_redirects,
+    parse_twse_t86_payload,
+    refresh_twse_institutional_flows,
+    write_twse_institutional_flows,
+)
 
 
 class TwseInstitutionalFlowRefreshTest(unittest.TestCase):
@@ -75,6 +80,29 @@ class TwseInstitutionalFlowRefreshTest(unittest.TestCase):
         self.assertEqual(mocked.call_count, 2)
         second_request = mocked.call_args_list[1].args[0]
         self.assertEqual(second_request.full_url, "https://example.test/redirected")
+
+    def test_no_rows_writes_header_only_status_and_does_not_fail_by_default(self) -> None:
+        empty = parse_twse_t86_payload(
+            {"stat": "很抱歉，沒有符合條件的資料!", "fields": [], "data": []},
+            signal_date="2026-07-02",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "institutional_flows.latest.csv"
+            status_json = Path(tmp) / "institutional_flows.status.json"
+            with patch("backtest_lab.twse_institutional_flow_refresh.fetch_twse_institutional_flows", return_value=empty):
+                status = refresh_twse_institutional_flows(
+                    signal_date="2026-07-02",
+                    output=output,
+                    status_json=status_json,
+                )
+
+            csv_text = output.read_text(encoding="utf-8-sig")
+            status_text = status_json.read_text(encoding="utf-8")
+
+        self.assertIn("foreign_net_buy_shares", csv_text)
+        self.assertEqual(status["flow_data_status"], "empty_no_rows")
+        self.assertEqual(status["row_count"], 0)
+        self.assertIn("optional_report_only_risk_factor_source", status_text)
 
 
 class _FakeResponse:

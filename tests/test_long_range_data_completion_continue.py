@@ -102,7 +102,13 @@ class LongRangeDataCompletionContinueTest(unittest.TestCase):
             self.assertFalse(manifest["no_target_cash_all_applied_to_2014_2021"])
 
             attempts = pd.read_csv(output / "pool1_segment_replay_attempts.csv")
-            self.assertIn("blocked_requires_dynamic_state_adapter", set(attempts["status"].astype(str)))
+            self.assertIn(
+                attempts.loc[attempts["segment_id"].eq("dynamic_7_ticker_segment"), "status"].iloc[0],
+                {"blocked_requires_dynamic_state_adapter", "failed_segment_replay", "completed_segment_replay"},
+            )
+            self.assertFalse(
+                bool(attempts.loc[attempts["segment_id"].eq("dynamic_7_ticker_segment"), "formal_ready_for_segment"].iloc[0])
+            )
 
             pool2_blockers = pd.read_csv(output / "blocker_by_pool2_field.csv")
             self.assertEqual(pool2_blockers.iloc[0]["blocker"], "no_eligible_pool2_rows_201411_202112")

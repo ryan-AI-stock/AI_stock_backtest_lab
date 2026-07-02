@@ -250,11 +250,14 @@ jobs:
           date_key="${date_key//-/}"
           output_dir="outputs/stock_pool_observations/${date_key}"
           output_path="${output_dir}/institutional_flows.latest.csv"
+          status_path="${output_dir}/institutional_flows.status.json"
           mkdir -p "$output_dir"
           python -m backtest_lab.twse_institutional_flow_refresh \
             --signal-date "${{ steps.observation-inputs.outputs.signal_date }}" \
-            --output "$output_path"
+            --output "$output_path" \
+            --status-json "$status_path"
           echo "institutional_flow_data=$output_path" >> "$GITHUB_OUTPUT"
+          echo "institutional_flow_status=$status_path" >> "$GITHUB_OUTPUT"
 
       - name: Generate stock-pool observations
         if: steps.schedule-gate.outputs.should_run == 'true'
