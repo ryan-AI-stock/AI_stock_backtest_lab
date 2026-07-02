@@ -6,7 +6,7 @@ from typing import Any
 
 FORMAL_MODEL_TARGET = "pool1_pool2_confirmation1_base"
 FORMAL_MODEL_ROUTE = "pool1_primary_pool2_confirmation"
-FORMAL_MODEL_EFFECTIVE_DATE = "2026-06-29"
+FORMAL_MODEL_EFFECTIVE_DATE = "2026-07-02"
 
 
 FORMAL_MODEL_CONTRACT: dict[str, Any] = {
@@ -17,6 +17,11 @@ FORMAL_MODEL_CONTRACT: dict[str, Any] = {
     "pool1_role": "primary_attack_selector",
     "pool2_role": "confirmation_and_risk_layer",
     "pool2_policy": "confirmation_1_signal_day_when_pool2_disagrees_with_pool1",
+    "formal_execution_risk_control": "no_target_cash_all",
+    "no_target_risk_off_active": True,
+    "no_target_risk_off_policy": "cash_all",
+    "no_target_execution_policy": "exit_to_cash",
+    "bug_cash_mapping_used_as_baseline": False,
     "pool3_role": "shadow_or_diagnostic_only",
     "pool3_shadow_used_as_formal": False,
     "leveraged_etf_max_weight_limit": None,
@@ -36,5 +41,5 @@ def get_formal_model_contract() -> dict[str, Any]:
 def formal_model_report_description() -> str:
     return (
         "目前正式版以主攻池提出觀察標的，確認池負責做風險確認；"
-        "這是正式報告採用的模型基準。"
+        "若模型未找到合格攻擊標的，正式啟用風險控管空手，直到下一個正式目標出現。"
     )

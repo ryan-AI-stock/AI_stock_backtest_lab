@@ -63,6 +63,9 @@ REPORT_TITLE = "AI股票池正式觀察總覽"
 REPORT_VERSION = "v20260612"
 REPORT_LATEST_FILENAME = f"{REPORT_NAME}_最新版_{REPORT_VERSION}.pdf"
 CURRENT_FORMAL_MODEL_VERSION_LABEL = "目前正式版：Pool1 主攻 + Pool2 確認/風控"
+RISK_CONTROL_CASH_TICKER = "CASH"
+RISK_CONTROL_CASH_DISPLAY = "風險控管空手 / 現金"
+RISK_CONTROL_CASH_REASON_ZH = "模型未找到合格攻擊標的，啟動風險控管空手。"
 TARGET_STABILITY_LOW_SCORE_GAP_THRESHOLD = 0.15
 FROZEN_BEST_GROUP_ID = "group_c_0050_00631l_plus_mega_caps"
 TW50_ATTACK_GATE_RULE_ID = "tw50_large_breadth_attack_gate_v1"
@@ -1153,6 +1156,7 @@ def run_stock_pool_observation_batch(
     _set_formal_report_readiness(manifest)
     manifest["decision_first_report_contract"] = _decision_first_report_contract(manifest, output_root=Path(output_root))
     manifest["formal_operation_conclusion"] = _formal_operation_conclusion(manifest["decision_first_report_contract"], manifest)
+    _attach_no_target_risk_off_formal_activation(manifest)
     manifest["model_layer_audit"] = default_stock_pool_model_layer_audit(
         signal_date=manifest.get("actual_signal_date") or signal_date,
         generated_pools=manifest["generated"],
@@ -1243,8 +1247,9 @@ def _set_formal_report_readiness(manifest: dict[str, Any]) -> None:
 
 def _report_wording_boundary() -> dict[str, Any]:
     return {
-        "formal_model_changed": False,
-        "trade_decision_changed": False,
+        "formal_model_changed": True,
+        "trade_decision_changed": True,
+        "active_in_trade_decision": True,
         "report_boundary": "pool1_pool2_formal_baseline_with_report_only_diagnostics",
         "formal_baseline": {
             "label": "正式模型基準",
@@ -1252,6 +1257,7 @@ def _report_wording_boundary() -> dict[str, Any]:
             "active_in_trade_decision": True,
             "formal_model_target": FORMAL_MODEL_TARGET,
             "formal_model_route": FORMAL_MODEL_ROUTE,
+            "no_target_risk_off_policy": "cash_all",
             "components": ["pool1_primary_selector", "pool2_tw50_pit_ready_confirmation_risk_layer", FORMAL_MODEL_TARGET],
         },
         "diagnostic_boundary": {
@@ -1261,9 +1267,10 @@ def _report_wording_boundary() -> dict[str, Any]:
             "components": ["three_pool_vote_diagnostic", "pool3_shadow_or_diagnostic", "final_decision_layer_report_only", "chip_factor_shadow_diagnostic"],
         },
         "execution_boundary": {
-            "label": "尚未成立",
-            "description": "正式換倉與出場規則尚未建立；目前模型訊號不等於完整持倉管理命令。",
-            "active_in_trade_decision": False,
+            "label": "正式啟用",
+            "description": "有正式目標時依正式目標操作；沒有正式目標時，啟動 no-target cash-all 風險控管空手。",
+            "active_in_trade_decision": True,
+            "no_target_risk_off_policy": "cash_all",
         },
         "plain_language_notes": [
             "正式模型基準：目前以主攻池提出觀察標的，確認池負責做風險確認。",
@@ -1271,6 +1278,18 @@ def _report_wording_boundary() -> dict[str, Any]:
             "執行邊界：目前沒有完整換倉與出場層；訊號變化不等於完整持倉管理命令。",
         ],
     }
+
+
+def _attach_no_target_risk_off_formal_activation(manifest: dict[str, Any]) -> None:
+    manifest["formal_model_changed"] = True
+    manifest["trade_decision_changed"] = True
+    manifest["active_in_trade_decision"] = True
+    manifest["formal_execution_layer_activated"] = True
+    manifest["formal_execution_risk_control"] = "no_target_cash_all"
+    manifest["no_target_risk_off_active"] = True
+    manifest["no_target_risk_off_policy"] = "cash_all"
+    manifest["no_target_execution_policy"] = "exit_to_cash"
+    manifest["bug_cash_mapping_used_as_baseline"] = False
 
 
 def _report_cost_model_boundary() -> dict[str, Any]:
@@ -1313,8 +1332,10 @@ def _decision_first_report_contract(manifest: dict[str, Any], *, output_root: st
         state = "formal_target_available"
         conclusion = f"正式觀察標的：{target_display}。"
     else:
-        state = "no_formal_target"
-        conclusion = "本次沒有形成正式觀察標的。"
+        state = "risk_control_cash"
+        conclusion = RISK_CONTROL_CASH_REASON_ZH
+        target_display = RISK_CONTROL_CASH_DISPLAY
+        target_ticker = RISK_CONTROL_CASH_TICKER
     previous = _previous_formal_target_contract(manifest, output_root=output_root)
     switch_state, switch_wording = _switch_signal_state(
         current_ticker=target_ticker,
@@ -1399,7 +1420,7 @@ def _decision_first_report_contract(manifest: dict[str, Any], *, output_root: st
         "pool2_confirmation_contract": confirmation.get("pool2_confirmation_contract", ""),
         "pool2_same_ticker_required": False,
         "pool2_state_zh": confirmation.get("pool2_confirmation_wording_zh", ""),
-        "active_in_trade_decision": False,
+        "active_in_trade_decision": True,
         "boundary": "report_contract",
     }
 
@@ -1651,8 +1672,14 @@ def _switch_signal_state(
     previous_ticker = str(previous.get("previous_formal_target_ticker") or "")
     previous_display = str(previous.get("previous_formal_target_display") or previous_ticker or "")
     previous_date = str(previous.get("previous_formal_target_date") or "")
+    if current_ticker == RISK_CONTROL_CASH_TICKER:
+        if previous_ticker == RISK_CONTROL_CASH_TICKER:
+            return "maintain_risk_control_cash", "正式目標仍是風險控管空手，維持現金觀察。"
+        if previous_ticker:
+            return "risk_control_cash", f"正式目標由 {previous_display}（{previous_date}）轉為風險控管空手。"
+        return "risk_control_cash", RISK_CONTROL_CASH_REASON_ZH
     if not current_ticker:
-        return "no_formal_target", "今日沒有形成正式標的，因此沒有換倉訊號。"
+        return "risk_control_cash", RISK_CONTROL_CASH_REASON_ZH
     if not previous_ticker:
         return "previous_target_missing", "找不到前一份已完成正式報告，因此只能顯示今日正式標的，不能比較是否換倉。"
     if current_ticker == previous_ticker:
@@ -1666,8 +1693,10 @@ def _switch_signal_state(
 def _operation_action_state(*, switch_state: str, report_ready: bool, formal_target_ticker: str) -> tuple[str, str]:
     if not report_ready:
         return "data_insufficient", "資料不足"
-    if not formal_target_ticker or switch_state == "no_formal_target":
-        return "no_new_formal_target", "無新正式目標"
+    if formal_target_ticker == RISK_CONTROL_CASH_TICKER or switch_state in {"risk_control_cash", "maintain_risk_control_cash"}:
+        return "risk_control_cash", "風險控管空手"
+    if not formal_target_ticker:
+        return "risk_control_cash", "風險控管空手"
     if switch_state == "maintain_formal_target":
         return "hold_watch", "續抱"
     if switch_state == "formal_target_changed":
@@ -1687,8 +1716,8 @@ def _next_action_date(signal_date: object) -> str:
 def _current_formal_holding_action(action_state: str, formal_target_display: str) -> str:
     if action_state == "data_insufficient":
         return "資料不足，今天不應把任何候選標的當成正式結論。"
-    if action_state == "no_new_formal_target":
-        return "今天沒有新的正式換倉目標；若已有前一正式持倉，模型不因 no formal target 自動清倉。"
+    if action_state == "risk_control_cash":
+        return "若目前有正式持倉，模型動作是轉為風險控管空手；若已空手，維持空手。"
     if not formal_target_display:
         return "目前沒有可對照的正式目標。"
     return f"若目前已持有 {formal_target_display}，動作是續抱觀察，不因候選池雜訊自行改判。"
@@ -1697,8 +1726,8 @@ def _current_formal_holding_action(action_state: str, formal_target_display: str
 def _non_formal_holding_action(action_state: str, formal_target_display: str) -> str:
     if action_state == "data_insufficient":
         return "資料不足，不應把任何非正式候選當成換倉依據。"
-    if action_state == "no_new_formal_target":
-        return "今天沒有新的正式換倉目標；非正式候選不能被解讀成正式交易動作。"
+    if action_state == "risk_control_cash":
+        return "模型正式狀態為風險控管空手；非正式候選不能被解讀成正式交易動作。"
     if not formal_target_display:
         return "沒有正式目標可對照。"
     return f"若目前持有的不是 {formal_target_display}，代表模型正式目標已不同，需對照自身持倉評估是否調整。"
@@ -1712,7 +1741,7 @@ def _current_position_reference_zh(
 ) -> str:
     if action_state == "data_insufficient":
         return "資料不足"
-    if action_state == "no_new_formal_target":
+    if action_state == "risk_control_cash":
         return previous_target_display or "前一正式持倉"
     if action_state == "switch_watch":
         return previous_target_display or "現金/空手"
@@ -1729,10 +1758,10 @@ def _model_action_zh(
 ) -> str:
     if action_state == "data_insufficient":
         return "資料不足，不產生正式模型動作。"
-    if action_state == "no_new_formal_target":
-        if previous_target_display:
-            return f"不新增換倉；沿用前一正式持倉 {previous_target_display}。"
-        return "不新增換倉；等待下一個正式目標。"
+    if action_state == "risk_control_cash":
+        if previous_target_display and previous_target_display != RISK_CONTROL_CASH_DISPLAY:
+            return f"賣出/離開 {previous_target_display}，暫時空手。"
+        return "維持空手。"
     if action_state == "switch_watch" and formal_target_display:
         if previous_target_display:
             return f"賣出/離開 {previous_target_display}，轉入 {formal_target_display}。"
@@ -1755,8 +1784,10 @@ def _pool_relation_reason_zh(
 ) -> str:
     if not report_ready:
         return "資料不足，今天不應把任何候選標的當成正式結論。"
+    if formal_target_ticker == RISK_CONTROL_CASH_TICKER:
+        return RISK_CONTROL_CASH_REASON_ZH
     if not formal_target_ticker:
-        return "今天沒有形成新的正式目標；這不是現金/空手交易指令，也不代表模型自動賣出既有持倉。"
+        return RISK_CONTROL_CASH_REASON_ZH
     candidate = pool1_candidate_display or pool1_candidate_ticker
     target = formal_target_display or formal_target_ticker
     if candidate and _normalize_ticker(pool1_candidate_ticker) != _normalize_ticker(formal_target_ticker):
@@ -1775,8 +1806,10 @@ def _operation_reason_zh(
 ) -> str:
     if not report_ready:
         return "資料不足，今天不應把任何候選標的當成正式結論。"
+    if formal_target_display == RISK_CONTROL_CASH_DISPLAY:
+        return RISK_CONTROL_CASH_REASON_ZH
     if not formal_target_display:
-        return "正式目標為現金/空手，沒有新的正式持股標的。"
+        return RISK_CONTROL_CASH_REASON_ZH
     if action_label == "續抱":
         return f"正式目標未變，模型沒有產生新的換倉結論。{pool_relation_reason}"
     return f"{switch_wording} {pool_relation_reason}".strip()
@@ -1797,8 +1830,10 @@ def _formal_operation_conclusion(decision: dict[str, Any], manifest: dict[str, A
         "model_action_zh": decision.get("model_action_zh", ""),
         "reason_zh": decision.get("operation_reason_zh", ""),
         "model_version_label": decision.get("model_version_label", CURRENT_FORMAL_MODEL_VERSION_LABEL),
-        "formal_model_changed": False,
-        "trade_decision_changed": False,
+        "formal_model_changed": True,
+        "trade_decision_changed": True,
+        "active_in_trade_decision": True,
+        "no_target_risk_off_policy": "cash_all",
     }
 
 
@@ -2347,8 +2382,10 @@ def write_formal_operation_decision_ledger(root: Path, manifest: dict[str, Any])
         "pool2_confirmation_label_zh": decision.get("pool2_confirmation_label_zh", ""),
         "pool2_representative_display": decision.get("pool2_representative_display", ""),
         "model_version_label": operation.get("model_version_label", CURRENT_FORMAL_MODEL_VERSION_LABEL),
-        "formal_model_changed": False,
-        "trade_decision_changed": False,
+        "formal_model_changed": True,
+        "trade_decision_changed": True,
+        "active_in_trade_decision": True,
+        "no_target_risk_off_policy": "cash_all",
     }
     pd.DataFrame([row]).to_csv(root / "formal_operation_decision_ledger.csv", index=False, encoding="utf-8-sig")
 

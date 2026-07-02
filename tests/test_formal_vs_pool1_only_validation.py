@@ -44,8 +44,10 @@ class FormalVsPool1OnlyValidationTest(unittest.TestCase):
 
             manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(manifest["pool1_only_model_id"], "new_pool1_only_no_overlay")
-            self.assertFalse(manifest["formal_model_changed"])
-            self.assertFalse(manifest["trade_decision_changed"])
+            self.assertTrue(manifest["formal_model_changed"])
+            self.assertTrue(manifest["trade_decision_changed"])
+            self.assertTrue(manifest["active_in_trade_decision"])
+            self.assertEqual(manifest["no_target_risk_off_policy"], "cash_all")
             self.assertTrue(manifest["same_execution_basis_compared_separately"])
 
             performance = pd.read_csv(output / "performance_comparison.csv")
@@ -55,7 +57,7 @@ class FormalVsPool1OnlyValidationTest(unittest.TestCase):
             self.assertIn("pool2_effect_state", effect.columns)
             self.assertTrue((output / "formal_vs_pool1_only_summary_zh.md").exists())
 
-    def test_no_formal_target_panel_holds_previous_formal_target(self) -> None:
+    def test_no_formal_target_panel_uses_formal_cash_all_risk_control(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             replay = root / "replay"
@@ -90,17 +92,18 @@ class FormalVsPool1OnlyValidationTest(unittest.TestCase):
                 & daily["execution_basis"].eq("next_day")
             ]
             no_target_row = formal_next_day[formal_next_day["date"].astype(str).eq("2026-06-09")].iloc[0]
-            self.assertEqual(no_target_row["top_holding"], "2454.TW")
-            self.assertEqual(json.loads(no_target_row["target_weights"]), {"2454.TW": 1.0})
+            self.assertEqual(str(no_target_row["top_holding"]).lower(), "cash")
+            self.assertEqual(json.loads(no_target_row["target_weights"]), {})
 
             trades = pd.read_csv(output / "trade_ledger_by_variant.csv")
-            false_sell = trades[
+            risk_control_sell = trades[
                 trades["variant_id"].eq("current_formal_pool1_pool2_remove_cap")
                 & trades["execution_basis"].eq("next_day")
                 & trades["signal_date"].astype(str).eq("2026-06-08")
                 & trades["action"].astype(str).eq("sell")
             ]
-            self.assertTrue(false_sell.empty)
+            self.assertFalse(risk_control_sell.empty)
+            self.assertEqual(set(risk_control_sell["ticker"]), {"2454.TW"})
 
 
 def _price_csv(path: Path, dates: pd.DatetimeIndex, prices: list[float]) -> None:

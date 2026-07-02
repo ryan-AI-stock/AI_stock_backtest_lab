@@ -33,7 +33,7 @@ VARIANTS = (
         "current_formal_pool1_pool2_remove_cap",
         "confirmation",
         confirmation_days=1,
-        no_formal_target_policy="hold_previous",
+        no_formal_target_policy="exit_to_cash",
     ),
     DecisionVariantSpec(
         "new_pool1_only_no_overlay",
@@ -92,10 +92,16 @@ def run_formal_vs_pool1_only_validation(
         blocked_frames: list[pd.DataFrame] = []
         for variant_id, target_panel in target_panels.items():
             frame = _target_panel_to_execution_frame(target_panel)
+            execution_policy = "exit_to_cash" if variant_id == "current_formal_pool1_pool2_remove_cap" else "hold_previous"
             daily, trades, _events, blocked = simulate_next_day_variant(
                 frame,
                 prices,
-                ExecutionVariantSpec(f"{variant_id}_next_day", 1, description="formal vs pool1-only next-day validation"),
+                ExecutionVariantSpec(
+                    f"{variant_id}_next_day",
+                    1,
+                    no_formal_target_policy=execution_policy,
+                    description="formal vs pool1-only next-day validation",
+                ),
                 initial_cash,
             )
             next_day_daily.append(_normalize_next_day_daily(daily, variant_id))
@@ -146,9 +152,13 @@ def run_formal_vs_pool1_only_validation(
             "same_cost_model_for_variants": True,
             "same_execution_basis_compared_separately": True,
             "same_day_result_not_used_as_next_day_proof": True,
-            "formal_model_changed": False,
-            "trade_decision_changed": False,
-            "active_in_trade_decision": False,
+            "formal_model_changed": True,
+            "trade_decision_changed": True,
+            "active_in_trade_decision": True,
+            "formal_execution_risk_control": "no_target_cash_all",
+            "no_target_risk_off_active": True,
+            "no_target_risk_off_policy": "cash_all",
+            "bug_cash_mapping_used_as_baseline": False,
             "pool3_shadow_used": False,
             "rr_partial_switch_used": False,
             "uses_forward_return_as_rule": False,
@@ -525,7 +535,18 @@ def _summary_markdown(performance: pd.DataFrame, worst: pd.DataFrame, costs: pd.
         lines.append(
             f"- {row['variant_id']} / {row['execution_basis']}: worst {row['worst_month']} {row['worst_month_return_pct']}%, monthly win rate {row['month_win_rate']}."
         )
-    lines.extend(["", "## Boundary", "", "- formal_model_changed=false", "- trade_decision_changed=false", "- uses_forward_return_as_rule=false"])
+    lines.extend(
+        [
+            "",
+            "## Boundary",
+            "",
+            "- formal_model_changed=true",
+            "- trade_decision_changed=true",
+            "- active_in_trade_decision=true",
+            "- no_target_risk_off_policy=cash_all",
+            "- uses_forward_return_as_rule=false",
+        ]
+    )
     return "\n".join(lines) + "\n"
 
 
