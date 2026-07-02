@@ -235,6 +235,7 @@ def _attempt_pool1_segment_replays(
     coverage["count"] = pd.to_numeric(coverage["available_universe_count"], errors="coerce").fillna(0).astype(int)
 
     dynamic_replay_attempted = False
+    dynamic_replay_completed_full = False
     dynamic = coverage[coverage["count"].ge(7)]
     if attempt_dynamic_universe_state_injection and not dynamic.empty:
         dynamic_attempt = dynamic.head(dynamic_injection_max_days).copy() if dynamic_injection_max_days else dynamic
@@ -253,6 +254,7 @@ def _attempt_pool1_segment_replays(
             )
             rows.append(dynamic_replay)
             dynamic_replay_attempted = True
+            dynamic_replay_completed_full = dynamic_deferred.empty
             if not dynamic_deferred.empty:
                 blocked_parts.append(
                     _block_rows(
@@ -353,7 +355,7 @@ def _attempt_pool1_segment_replays(
                 }
             )
 
-    if not dynamic_replay_attempted and not previous_pool1.empty:
+    if not dynamic_replay_completed_full and not previous_pool1.empty:
         prior = previous_pool1.copy()
         prior["segment_id"] = "dynamic_8_ticker_segment"
         prior["segment_source"] = DEFAULT_POOL1_PREVIOUS_DIR
@@ -389,7 +391,7 @@ def _attempt_pool1_segment_replays(
         replay_dates = set(replay["signal_date"].astype(str)) if not replay.empty else set()
         blocked = blocked[~blocked["signal_date"].astype(str).isin(replay_dates)].sort_values("signal_date").reset_index(drop=True)
 
-    if len(attempts) >= 2 and not dynamic_replay_attempted:
+    if len(attempts) >= 2 and not dynamic_replay_completed_full:
         attempts.append(
             {
                 "segment_id": "cross_segment_state_carryover",
@@ -399,7 +401,7 @@ def _attempt_pool1_segment_replays(
                 "status": "blocked_for_full_period_formal_ready",
                 "rows": 0,
                 "formal_ready_for_segment": False,
-                "blocker": "simulate_regime_mode_switch does not expose state injection/carryover API; 7-ticker and 8-ticker segments are valid segment replays but not one continuous formal state stream.",
+                "blocker": "bounded dynamic universe injection is available, but full-period formal-ready replay still needs checkpointable state export/import to connect all dynamic segments without an unobservable long run.",
             }
         )
     return replay, blocked, pd.DataFrame(attempts)
