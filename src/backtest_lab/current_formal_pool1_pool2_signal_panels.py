@@ -180,6 +180,7 @@ def _load_price_source(
         frame = load_price_csv(cache_path)
         frame["price_source_type"] = "base_cache"
         frame["price_source_adjusted_close_available"] = True
+        frame["_source_priority"] = 0
         frames.append(frame)
         meta["base_cache_used"] = True
         meta["source_types"].append("base_cache")
@@ -199,14 +200,19 @@ def _load_price_source(
             normalized = normalize_price_frame(normalized)
             normalized["price_source_type"] = str(row.get("source_type", "supplemental_price_source"))
             normalized["price_source_adjusted_close_available"] = adjusted
+            normalized["_source_priority"] = 1
             frames.append(normalized)
             meta["supplemental_used"] = True
             meta["adjusted_close_available"] = bool(meta["adjusted_close_available"] and adjusted)
             meta["source_types"].append(str(row.get("source_type", "supplemental_price_source")))
     if not frames:
         return None, meta
-    combined = pd.concat(frames).sort_index()
+    combined = pd.concat(frames)
+    combined["_date_index"] = combined.index
+    combined = combined.sort_values(["_date_index", "_source_priority"]).set_index("_date_index")
+    combined.index.name = "date"
     combined = combined[~combined.index.duplicated(keep="last")]
+    combined = combined.drop(columns=["_source_priority"], errors="ignore")
     return combined, meta
 
 
@@ -549,10 +555,10 @@ def _tw50_gate_details_by_ticker(
         ret60_margin = candidate.ret60 - benchmark_ret60
         benchmark_margin_passed = ret60_margin >= TW50_RET60_MARGIN
         momentum_quality_passed = candidate.ret20 >= TW50_RET20_MIN and candidate.ret60 >= TW50_RET60_MIN and candidate.ret60 > 0
-        persistence_days, persistence_total = 0, 0
-        persistence_passed = False
+        persistence_days, persistence_total = _tw50_persistence_days(candidate.ticker, ret60_by_ticker, signal_date)
+        persistence_passed = persistence_total >= TW50_PERSISTENCE_LOOKBACK and persistence_days >= TW50_PERSISTENCE_MIN_DAYS
         support_without_persistence = bool(candidate.passed and benchmark_margin_passed and momentum_quality_passed)
-        eligible = False
+        eligible = bool(support_without_persistence and persistence_passed)
         result[candidate.ticker] = _tw50_gate_result(
             candidate,
             eligible=eligible,

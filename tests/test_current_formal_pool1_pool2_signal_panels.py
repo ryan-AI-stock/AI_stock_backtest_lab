@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import unittest
+import tempfile
+from pathlib import Path
 
 import pandas as pd
+
+import test_paths  # noqa: F401
 
 from backtest_lab.current_formal_pool1_pool2_signal_panels import (
     _build_pool2_panel,
     _formal_policy_input_readiness,
+    _load_price_source,
     _manifest,
     FORMAL_CANDIDATE_EXCLUDED_TICKERS,
 )
@@ -68,6 +73,57 @@ class CurrentFormalPoolSignalPanelTests(unittest.TestCase):
         self.assertNotIn("0050.TW", set(panel["candidate_ticker"]))
         self.assertIn("0050.TW", FORMAL_CANDIDATE_EXCLUDED_TICKERS)
         self.assertEqual(daily["2020-08-31"]["pool2_vote"], "2330.TW")
+        row = panel.loc[panel["candidate_ticker"].eq("2330.TW")].iloc[0]
+        self.assertEqual(row["persistence_passed"], "true")
+        self.assertEqual(row["eligible_for_pool_selection"], "true")
+
+    def test_supplemental_price_source_overrides_same_date_base_cache(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache = root / "cache"
+            cache.mkdir()
+            pd.DataFrame(
+                [
+                    {
+                        "date": "2015-03-19",
+                        "open": 0.83,
+                        "high": 0.84,
+                        "low": 0.82,
+                        "close": 0.83,
+                        "adj_close": 0.83,
+                        "volume": 1,
+                    }
+                ]
+            ).to_csv(cache / "00631L_TW.csv", index=False)
+            supplemental = root / "00631L_supplemental.csv"
+            pd.DataFrame(
+                [
+                    {
+                        "date": "2015-03-19",
+                        "open": 23.30,
+                        "high": 23.60,
+                        "low": 23.30,
+                        "close": 23.57,
+                        "adj_close": 23.57,
+                        "volume": 1,
+                    }
+                ]
+            ).to_csv(supplemental, index=False)
+            registry = pd.DataFrame(
+                [
+                    {
+                        "ticker": "00631L.TW",
+                        "source_path": str(supplemental),
+                        "source_type": "twse_stock_day_backfill",
+                    }
+                ]
+            )
+
+            frame, meta = _load_price_source("00631L.TW", price_cache_dir=cache, registry=registry)
+
+        self.assertIsNotNone(frame)
+        self.assertEqual(float(frame.loc[pd.Timestamp("2015-03-19"), "open"]), 23.30)
+        self.assertTrue(meta["supplemental_used"])
 
     def test_manifest_keeps_report_only_flags_false(self) -> None:
         manifest = _manifest(
