@@ -72,6 +72,37 @@ class RegimeModeSwitchOverlayTest(unittest.TestCase):
         self.assertLess(float(result.equity_curve["current_exposure"].max()), 0.56)
         self.assertTrue(any("overlay_unit_test_cap" in trade.reason for trade in result.trades))
 
+    def test_dynamic_candidate_universe_excludes_not_yet_available_ticker(self) -> None:
+        prices = _synthetic_prices()
+        variant = _daily_variant()
+        candidate_universe_by_date = {
+            date.strftime("%Y-%m-%d"): ("2330.TW",)
+            for date in pd.bdate_range("2021-12-31", "2022-01-05")
+        }
+        candidate_universe_by_date.update(
+            {
+                date.strftime("%Y-%m-%d"): ("2330.TW", "2454.TW")
+                for date in pd.bdate_range("2022-01-06", "2022-01-12")
+            }
+        )
+
+        result = simulate_regime_mode_switch(
+            name="dynamic_universe",
+            prices_by_ticker=prices,
+            asset_types={ticker: "stock" for ticker in prices},
+            market_prices=prices["0050.TW"],
+            start_date="2022-01-03",
+            end_date="2022-01-12",
+            initial_cash=1_000_000,
+            cost_model=TaiwanCostModel(),
+            variant=variant,
+            candidate_universe_by_date=candidate_universe_by_date,
+        )
+
+        early = result.equity_curve.loc[result.equity_curve.index <= pd.Timestamp("2022-01-06")]
+        self.assertNotIn("2454.TW", set(early["current_ticker"]))
+        self.assertEqual(result.equity_curve.iloc[-1]["current_ticker"], "2454.TW")
+
 
 def _daily_variant() -> RegimeModeSwitchVariant:
     return RegimeModeSwitchVariant(

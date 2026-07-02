@@ -2729,8 +2729,21 @@ def simulate_regime_mode_switch(
     exposure_overlay: ExposureOverlay | None = None,
     target_selection_overlay: TargetSelectionOverlay | None = None,
     candidate_universe_tickers: tuple[str, ...] | None = None,
+    candidate_universe_by_date: dict[str, tuple[str, ...]] | None = None,
 ) -> BacktestResult:
-    trade_dates = _common_trade_dates(prices_by_ticker, start_date, end_date)
+    trade_dates = (
+        _dynamic_candidate_universe_trade_dates(
+            prices_by_ticker=prices_by_ticker,
+            market_prices=market_prices,
+            start_date=start_date,
+            end_date=end_date,
+            variant=variant,
+            candidate_universe_tickers=candidate_universe_tickers,
+            candidate_universe_by_date=candidate_universe_by_date,
+        )
+        if candidate_universe_by_date
+        else _common_trade_dates(prices_by_ticker, start_date, end_date)
+    )
     if not trade_dates:
         raise ValueError(f"No common trade dates between {start_date} and {end_date}")
     account = _Account(cash=float(initial_cash))
@@ -2750,6 +2763,7 @@ def simulate_regime_mode_switch(
         first_trade_date=trade_dates[0],
         variant=variant,
         candidate_universe_tickers=candidate_universe_tickers,
+        candidate_universe_by_date=candidate_universe_by_date,
     )
     attack_gate_active = variant.attack_gate_margin_over_fallback is None or (
         variant.attack_gate_initialize_active_from_history and prior_attack_activation
@@ -2789,12 +2803,36 @@ def simulate_regime_mode_switch(
                     )
                 )
 
-        signal_date = previous_available_date({**prices_by_ticker, "__market__": market_prices}, trade_date)
+        trade_universe_tickers = _candidate_universe_for_date(
+            trade_date,
+            candidate_universe_tickers=candidate_universe_tickers,
+            candidate_universe_by_date=candidate_universe_by_date,
+        )
+        active_prices_for_trade_date = _active_prices_for_candidate_universe(
+            prices_by_ticker=prices_by_ticker,
+            signal_date=trade_date,
+            variant=variant,
+            candidate_universe_tickers=trade_universe_tickers,
+            current_ticker=account.ticker,
+        )
+        signal_date = previous_available_date({**active_prices_for_trade_date, "__market__": market_prices}, trade_date)
+        signal_universe_tickers = _candidate_universe_for_date(
+            signal_date,
+            candidate_universe_tickers=trade_universe_tickers,
+            candidate_universe_by_date=candidate_universe_by_date,
+        )
+        active_prices = _active_prices_for_candidate_universe(
+            prices_by_ticker=prices_by_ticker,
+            signal_date=signal_date,
+            variant=variant,
+            candidate_universe_tickers=signal_universe_tickers,
+            current_ticker=account.ticker,
+        )
         state_evaluation_day = (
             variant.state_evaluation_weekday is None
             or signal_date.weekday() == variant.state_evaluation_weekday
         )
-        signal_prices = {ticker: _signal_close(prices, signal_date) for ticker, prices in prices_by_ticker.items()}
+        signal_prices = {ticker: _signal_close(prices, signal_date) for ticker, prices in active_prices.items()}
         if variant.portfolio_stop_drawdown_pct is not None and state_evaluation_day:
             signal_value = _market_value(account, signal_prices)
             peak_signal_value = max(peak_signal_value, signal_value)
@@ -2809,7 +2847,7 @@ def simulate_regime_mode_switch(
                     trade_date=trade_date,
                     target=None,
                     target_exposure=0.0,
-                    prices_by_ticker=prices_by_ticker,
+                    prices_by_ticker=active_prices_for_trade_date,
                     asset_types=asset_types,
                     cost_model=cost_model,
                     reason=f"regime_mode_switch_portfolio_stop_{variant.name}",
@@ -2828,7 +2866,7 @@ def simulate_regime_mode_switch(
                         attack_gate_stop_release_streak = 0
                     stop_triggered_today = True
 
-        regime = classify_market_regime(market_prices, signal_date, universe_prices=prices_by_ticker).regime
+        regime = classify_market_regime(market_prices, signal_date, universe_prices=active_prices).regime
         if regime == current_regime:
             regime_streak_days += 1
         else:
@@ -2844,7 +2882,7 @@ def simulate_regime_mode_switch(
                 signal_date,
                 regime,
                 variant.portfolio_stop_release_filter,
-                prices_by_ticker=prices_by_ticker,
+                prices_by_ticker=active_prices,
                 variant=variant,
             )
             stop_latch_active, stop_release_streak = _update_latch_release_state(
@@ -2866,11 +2904,12 @@ def simulate_regime_mode_switch(
                         attack_gate_ever_activated = False
                 elif not attack_gate_active and not stop_triggered_today:
                     raw_attack_gate = _attack_gate_passes(
-                        prices_by_ticker,
+                        active_prices,
                         signal_date,
                         variant,
                         use_reentry_rules=attack_gate_ever_activated,
-                        candidate_universe_tickers=candidate_universe_tickers,
+                        candidate_universe_tickers=signal_universe_tickers,
+                        candidate_universe_by_date=candidate_universe_by_date,
                     )
                     attack_gate_active, attack_gate_activation_streak = _update_attack_gate_state(
                         active=attack_gate_active,
@@ -2930,7 +2969,7 @@ def simulate_regime_mode_switch(
         if risk_off_active:
             mode = variant.market_risk_off_mode
             exposure = (
-                _market_risk_off_dynamic_exposure(prices_by_ticker, signal_date, regime, variant)
+                _market_risk_off_dynamic_exposure(active_prices, signal_date, regime, variant)
                 if variant.market_risk_off_exposure_selector
                 else variant.market_risk_off_exposure
                 if variant.market_risk_off_exposure is not None
@@ -2940,7 +2979,7 @@ def simulate_regime_mode_switch(
             defense_override_rule = variant.market_risk_off_defense_rule
             defense_override_ticker = variant.market_risk_off_defense_ticker
         if mode == MODE_DAILY and variant.daily_health_lookback_days is not None:
-            raw_daily_health = _daily_health_gate_passes(prices_by_ticker, signal_date, variant)
+            raw_daily_health = _daily_health_gate_passes(active_prices, signal_date, variant)
             daily_health_active, daily_health_recovery_streak = _update_health_gate_state(
                 active=daily_health_active,
                 recovery_streak=daily_health_recovery_streak,
@@ -2993,7 +3032,7 @@ def simulate_regime_mode_switch(
                 signal_date=signal_date,
                 current_ticker=account.ticker,
                 variant=variant,
-                candidate_universe_tickers=candidate_universe_tickers,
+                candidate_universe_tickers=signal_universe_tickers,
             )
         ):
             should_check = True
@@ -3024,7 +3063,7 @@ def simulate_regime_mode_switch(
         if should_check:
             if mode == MODE_0050_DEFENSE:
                 target, target_exposure = _defense_target_and_exposure(
-                    prices_by_ticker,
+                    active_prices,
                     signal_date,
                     regime,
                     exposure,
@@ -3035,11 +3074,11 @@ def simulate_regime_mode_switch(
             else:
                 target = _select_target(
                     mode,
-                    prices_by_ticker,
+                    active_prices,
                     signal_date,
                     regime,
                     variant,
-                    candidate_universe_tickers=candidate_universe_tickers,
+                    candidate_universe_tickers=signal_universe_tickers,
                 )
                 target_exposure = exposure if target else 0.0
             if target is None and mode == MODE_CASH and variant.fallback_ticker:
@@ -3079,7 +3118,7 @@ def simulate_regime_mode_switch(
                 trade_date=trade_date,
                 target=target,
                 target_exposure=target_exposure,
-                prices_by_ticker=prices_by_ticker,
+                prices_by_ticker=active_prices_for_trade_date,
                 asset_types=asset_types,
                 cost_model=cost_model,
                 reason=(
@@ -3088,7 +3127,11 @@ def simulate_regime_mode_switch(
                 ),
             )
 
-        close_prices = {ticker: float(prices.loc[trade_date, "close"]) for ticker, prices in prices_by_ticker.items()}
+        close_prices = {
+            ticker: float(prices.loc[trade_date, "close"])
+            for ticker, prices in active_prices_for_trade_date.items()
+            if trade_date in prices.index
+        }
         total_value = _market_value(account, close_prices)
         position_value = account.shares * close_prices[account.ticker] if account.ticker else 0.0
         equity_row = {
@@ -3160,6 +3203,7 @@ def _select_target(
             variant.candidate_trend_filter is None
             and min_margin is None
             and not variant.attack_selection_exclude_tickers
+            and candidate_universe_tickers is None
         ):
             return relative_strength_top1(prices_by_ticker, signal_date)
         scores = relative_strength_scores(prices_by_ticker, signal_date)
@@ -3581,6 +3625,120 @@ def _candidate_universe_allows(ticker: str, candidate_universe_tickers: tuple[st
     return candidate_universe_tickers is None or ticker in candidate_universe_tickers
 
 
+def _candidate_universe_for_date(
+    signal_date: pd.Timestamp,
+    *,
+    candidate_universe_tickers: tuple[str, ...] | None,
+    candidate_universe_by_date: dict[str, tuple[str, ...]] | None,
+) -> tuple[str, ...] | None:
+    if not candidate_universe_by_date:
+        return candidate_universe_tickers
+    return candidate_universe_by_date.get(_date_str(pd.Timestamp(signal_date)), candidate_universe_tickers)
+
+
+def _required_tickers_for_candidate_universe(
+    *,
+    variant: RegimeModeSwitchVariant,
+    candidate_universe_tickers: tuple[str, ...] | None,
+    current_ticker: str | None = None,
+) -> set[str]:
+    required = set(candidate_universe_tickers or ())
+    for ticker in (
+        variant.relative_score_fallback_ticker,
+        variant.attack_gate_fallback_ticker,
+        variant.defense_anchor_ticker,
+        variant.fallback_ticker,
+        current_ticker,
+    ):
+        if ticker:
+            required.add(ticker)
+    required.update(variant.attack_selection_exclude_tickers)
+    required.update(variant.attack_gate_exclude_tickers)
+    for mapping in (variant.defense_anchor_ticker_by_regime,):
+        if mapping:
+            required.update(ticker for ticker in mapping.values() if ticker)
+    if variant.market_risk_off_defense_ticker:
+        required.add(variant.market_risk_off_defense_ticker)
+    if variant.attack_gate_stop_latch_ticker:
+        required.add(variant.attack_gate_stop_latch_ticker)
+    return required
+
+
+def _active_prices_for_candidate_universe(
+    *,
+    prices_by_ticker: dict[str, pd.DataFrame],
+    signal_date: pd.Timestamp,
+    variant: RegimeModeSwitchVariant,
+    candidate_universe_tickers: tuple[str, ...] | None,
+    current_ticker: str | None = None,
+) -> dict[str, pd.DataFrame]:
+    if candidate_universe_tickers is None:
+        return prices_by_ticker
+    required = _required_tickers_for_candidate_universe(
+        variant=variant,
+        candidate_universe_tickers=candidate_universe_tickers,
+        current_ticker=current_ticker,
+    )
+    if not required:
+        return prices_by_ticker
+    return {
+        ticker: prices
+        for ticker, prices in prices_by_ticker.items()
+        if ticker in required and not prices.loc[prices.index <= signal_date].empty
+    }
+
+
+def _has_trade_price(prices: pd.DataFrame, trade_date: pd.Timestamp) -> bool:
+    if trade_date not in prices.index:
+        return False
+    row = prices.loc[trade_date]
+    for column in ("open", "close", "adj_close"):
+        if column in row and pd.to_numeric(row[column], errors="coerce") <= 0:
+            return False
+    return True
+
+
+def _dynamic_candidate_universe_trade_dates(
+    *,
+    prices_by_ticker: dict[str, pd.DataFrame],
+    market_prices: pd.DataFrame,
+    start_date: str,
+    end_date: str,
+    variant: RegimeModeSwitchVariant,
+    candidate_universe_tickers: tuple[str, ...] | None,
+    candidate_universe_by_date: dict[str, tuple[str, ...]] | None,
+) -> list[pd.Timestamp]:
+    start = pd.Timestamp(start_date)
+    end = pd.Timestamp(end_date)
+    market_dates = [
+        date
+        for date in market_prices.index
+        if start <= date <= end and _has_trade_price(market_prices, pd.Timestamp(date))
+    ]
+    trade_dates: list[pd.Timestamp] = []
+    for trade_date in market_dates:
+        universe = _candidate_universe_for_date(
+            pd.Timestamp(trade_date),
+            candidate_universe_tickers=candidate_universe_tickers,
+            candidate_universe_by_date=candidate_universe_by_date,
+        )
+        required = _required_tickers_for_candidate_universe(
+            variant=variant,
+            candidate_universe_tickers=universe,
+        )
+        if not required:
+            continue
+        available = True
+        for ticker in required:
+            prices = prices_by_ticker.get(ticker)
+            if prices is None or not _has_trade_price(prices, pd.Timestamp(trade_date)):
+                available = False
+                break
+        if available:
+            trade_dates.append(pd.Timestamp(trade_date))
+    return trade_dates
+
+
 def _attack_gate_passes(
     prices_by_ticker: dict[str, pd.DataFrame],
     signal_date: pd.Timestamp,
@@ -3588,6 +3746,7 @@ def _attack_gate_passes(
     *,
     use_reentry_rules: bool = False,
     candidate_universe_tickers: tuple[str, ...] | None = None,
+    candidate_universe_by_date: dict[str, tuple[str, ...]] | None = None,
 ) -> bool:
     margin = (
         variant.attack_gate_reentry_margin_over_fallback
@@ -3639,12 +3798,17 @@ def _attack_gate_passes(
         return False
     prior_top_days = 0
     for prior_date in prior_dates:
+        prior_universe_tickers = _candidate_universe_for_date(
+            prior_date,
+            candidate_universe_tickers=candidate_universe_tickers,
+            candidate_universe_by_date=candidate_universe_by_date,
+        )
         prior_scores = relative_strength_scores(prices_by_ticker, prior_date)
         prior_eligible_scores = {
             ticker: score
             for ticker, score in prior_scores.items()
             if (
-                _candidate_universe_allows(ticker, candidate_universe_tickers)
+                _candidate_universe_allows(ticker, prior_universe_tickers)
                 and ticker != fallback
                 and ticker not in variant.attack_gate_exclude_tickers
             )
@@ -3663,6 +3827,7 @@ def _had_prior_attack_gate_activation(
     first_trade_date: pd.Timestamp,
     variant: RegimeModeSwitchVariant,
     candidate_universe_tickers: tuple[str, ...] | None = None,
+    candidate_universe_by_date: dict[str, tuple[str, ...]] | None = None,
 ) -> bool:
     history_days = variant.attack_gate_initialize_history_days
     if history_days <= 0 or variant.attack_gate_margin_over_fallback is None:
@@ -3674,7 +3839,12 @@ def _had_prior_attack_gate_activation(
             prices_by_ticker,
             date,
             variant,
-            candidate_universe_tickers=candidate_universe_tickers,
+            candidate_universe_tickers=_candidate_universe_for_date(
+                date,
+                candidate_universe_tickers=candidate_universe_tickers,
+                candidate_universe_by_date=candidate_universe_by_date,
+            ),
+            candidate_universe_by_date=candidate_universe_by_date,
         )
         for date in prior_dates
     )

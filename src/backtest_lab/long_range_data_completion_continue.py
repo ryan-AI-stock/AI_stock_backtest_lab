@@ -44,6 +44,8 @@ def run_long_range_data_completion_continue(
     start_date: str = DEFAULT_START_DATE,
     end_date: str = DEFAULT_END_DATE,
     attempt_7_ticker_static_segment: bool = False,
+    attempt_dynamic_universe_state_injection: bool = False,
+    dynamic_injection_max_days: int | None = None,
 ) -> Path:
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
@@ -101,6 +103,8 @@ def run_long_range_data_completion_continue(
             start=start,
             end=end,
             attempt_7_ticker_static_segment=attempt_7_ticker_static_segment,
+            attempt_dynamic_universe_state_injection=attempt_dynamic_universe_state_injection,
+            dynamic_injection_max_days=dynamic_injection_max_days,
         )
         pool1_replay.to_csv(output / "pool1_full_state_replay_201411_202112.csv", index=False, encoding="utf-8-sig")
         pool1_blocked.to_csv(output / "remaining_blocked_rows.csv", index=False, encoding="utf-8-sig")
@@ -152,6 +156,8 @@ def run_long_range_data_completion_continue(
             "proxy_used_as_formal": False,
             "candidate_universe_fallback_separation_api_available": True,
             "candidate_universe_fallback_separation_attempted": attempt_7_ticker_static_segment,
+            "dynamic_universe_state_injection_attempted": attempt_dynamic_universe_state_injection,
+            "dynamic_injection_max_days": dynamic_injection_max_days,
             "next_required_task": _next_task(full_pool1_ready, pool2_ready, combined_ready),
             "outputs": {
                 "dynamic_contract": "dynamic_universe_state_contract.csv",
@@ -219,6 +225,8 @@ def _attempt_pool1_segment_replays(
     start: pd.Timestamp,
     end: pd.Timestamp,
     attempt_7_ticker_static_segment: bool,
+    attempt_dynamic_universe_state_injection: bool,
+    dynamic_injection_max_days: int | None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     rows: list[pd.DataFrame] = []
     blocked_parts: list[pd.DataFrame] = []
@@ -226,8 +234,64 @@ def _attempt_pool1_segment_replays(
     coverage = dynamic_coverage.copy()
     coverage["count"] = pd.to_numeric(coverage["available_universe_count"], errors="coerce").fillna(0).astype(int)
 
+    dynamic_replay_attempted = False
+    dynamic = coverage[coverage["count"].ge(7)]
+    if attempt_dynamic_universe_state_injection and not dynamic.empty:
+        dynamic_attempt = dynamic.head(dynamic_injection_max_days).copy() if dynamic_injection_max_days else dynamic
+        dynamic_deferred = dynamic.iloc[len(dynamic_attempt) :].copy()
+        dynamic_start = pd.Timestamp(str(dynamic_attempt["signal_date"].min())).normalize()
+        dynamic_end = pd.Timestamp(str(dynamic_attempt["signal_date"].max())).normalize()
+        universe_by_date = _candidate_universe_by_date_from_coverage(dynamic_attempt)
+        try:
+            dynamic_replay = _run_pool1_dynamic_universe_replay(
+                prices=prices,
+                config=config,
+                candidate_universe_by_date=universe_by_date,
+                start_date=dynamic_start,
+                end_date=dynamic_end,
+                segment_id="dynamic_universe_state_injection",
+            )
+            rows.append(dynamic_replay)
+            dynamic_replay_attempted = True
+            if not dynamic_deferred.empty:
+                blocked_parts.append(
+                    _block_rows(
+                        dynamic_deferred,
+                        "pool1_dynamic_universe_state_checkpoint_required",
+                        "Dynamic universe injection works for a bounded continuous segment, but full 2015-2021 replay must be split with explicit state export/import checkpoints before it can be declared formal-ready without an unobservable long run.",
+                    )
+                )
+            attempts.append(
+                {
+                    "segment_id": "dynamic_universe_state_injection",
+                    "start_date": dynamic_start.strftime("%Y-%m-%d"),
+                    "end_date": dynamic_end.strftime("%Y-%m-%d"),
+                    "candidate_tickers": "date_aware_dynamic",
+                    "status": "completed_bounded_dynamic_replay" if not dynamic_deferred.empty else "completed_continuous_dynamic_replay",
+                    "rows": len(dynamic_replay),
+                    "formal_ready_for_segment": bool(dynamic_deferred.empty),
+                    "blocker": ""
+                    if dynamic_deferred.empty
+                    else "remaining dynamic rows require checkpointable state export/import before full-period formal-ready replay",
+                }
+            )
+        except Exception as exc:  # pragma: no cover - exercised by real data if a source breaks
+            blocked_parts.append(_block_rows(dynamic, "pool1_dynamic_universe_state_injection_failed", str(exc)))
+            attempts.append(
+                {
+                    "segment_id": "dynamic_universe_state_injection",
+                    "start_date": dynamic_start.strftime("%Y-%m-%d"),
+                    "end_date": dynamic_end.strftime("%Y-%m-%d"),
+                    "candidate_tickers": "date_aware_dynamic",
+                    "status": "failed_continuous_dynamic_replay",
+                    "rows": 0,
+                    "formal_ready_for_segment": False,
+                    "blocker": str(exc),
+                }
+            )
+
     seven = coverage[coverage["count"].eq(7)]
-    if not seven.empty:
+    if not dynamic_replay_attempted and not seven.empty:
         seven_start = pd.Timestamp(str(seven["signal_date"].min())).normalize()
         seven_end = pd.Timestamp(str(seven["signal_date"].max())).normalize()
         seven_tickers = _candidate_tickers_from_row(seven.iloc[0])
@@ -289,7 +353,7 @@ def _attempt_pool1_segment_replays(
                 }
             )
 
-    if not previous_pool1.empty:
+    if not dynamic_replay_attempted and not previous_pool1.empty:
         prior = previous_pool1.copy()
         prior["segment_id"] = "dynamic_8_ticker_segment"
         prior["segment_source"] = DEFAULT_POOL1_PREVIOUS_DIR
@@ -325,7 +389,7 @@ def _attempt_pool1_segment_replays(
         replay_dates = set(replay["signal_date"].astype(str)) if not replay.empty else set()
         blocked = blocked[~blocked["signal_date"].astype(str).isin(replay_dates)].sort_values("signal_date").reset_index(drop=True)
 
-    if len(attempts) >= 2:
+    if len(attempts) >= 2 and not dynamic_replay_attempted:
         attempts.append(
             {
                 "segment_id": "cross_segment_state_carryover",
@@ -454,6 +518,86 @@ def _run_pool1_static_subset_replay(
                 "segment_id": segment_id,
                 "segment_source": "simulate_regime_mode_switch_static_subset",
                 "candidate_universe_fallback_separated": separate_candidate_universe,
+                "source_formal_ready": True,
+                "no_target_cash_all_applied": False,
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _candidate_universe_by_date_from_coverage(coverage: pd.DataFrame) -> dict[str, tuple[str, ...]]:
+    universe_by_date: dict[str, tuple[str, ...]] = {}
+    for item in coverage.to_dict(orient="records"):
+        signal_date = str(item.get("signal_date") or "")
+        if not signal_date:
+            continue
+        tickers = tuple(_candidate_tickers_from_row(pd.Series(item)))
+        if tickers:
+            universe_by_date[signal_date] = tickers
+    return universe_by_date
+
+
+def _run_pool1_dynamic_universe_replay(
+    *,
+    prices: dict[str, pd.DataFrame],
+    config: Any,
+    candidate_universe_by_date: dict[str, tuple[str, ...]],
+    start_date: pd.Timestamp,
+    end_date: pd.Timestamp,
+    segment_id: str,
+) -> pd.DataFrame:
+    group = config.group_by_id(FROZEN_BEST_GROUP_ID)
+    group_assets = {asset.ticker: asset for asset in group.assets}
+    candidate_union = sorted({ticker for tickers in candidate_universe_by_date.values() for ticker in tickers})
+    required = sorted(set(candidate_union) | {TW50_BENCHMARK})
+    labels = {ticker: group_assets[ticker].label for ticker in required if ticker in group_assets}
+    asset_types = {ticker: group_assets[ticker].asset_type for ticker in required if ticker in group_assets}
+    variant = frozen_cycle_proven_top1_v1_variant()
+    available_prices = {ticker: prices[ticker] for ticker in required if ticker in prices}
+    dividends = {
+        ticker: split_adjusted_dividends(available_prices[ticker], config.manual_splits.get(ticker, ()))
+        for ticker in available_prices
+    }
+    result = simulate_regime_mode_switch(
+        name=f"pool1_{segment_id}",
+        prices_by_ticker=available_prices,
+        asset_types=asset_types,
+        market_prices=prices[TW50_BENCHMARK],
+        start_date=start_date.strftime("%Y-%m-%d"),
+        end_date=end_date.strftime("%Y-%m-%d"),
+        initial_cash=config.initial_cash_twd,
+        cost_model=config.cost_model,
+        variant=variant,
+        dividend_series_by_ticker=dividends,
+        candidate_universe_by_date=candidate_universe_by_date,
+    )
+    equity = result.equity_curve.reset_index().rename(columns={"date": "signal_date"})
+    rows: list[dict[str, Any]] = []
+    for item in equity.to_dict(orient="records"):
+        signal_date = pd.Timestamp(item["signal_date"]).strftime("%Y-%m-%d")
+        target = str(item.get("current_ticker") or "")
+        exposure = _to_float(item.get("current_exposure")) or 0.0
+        actionable = bool(target and target.lower() != "cash" and exposure > 0)
+        day_universe = candidate_universe_by_date.get(signal_date, ())
+        rows.append(
+            {
+                "signal_date": signal_date,
+                "pool1_target": target if actionable else "",
+                "pool1_target_display": labels.get(target, target) if actionable else "",
+                "pool1_target_weights": json.dumps({target: 1.0} if target and actionable else {}, ensure_ascii=False),
+                "attack_gate_active": _bool_like(item.get("attack_gate_active")),
+                "attack_gate_ever_activated": _bool_like(item.get("attack_gate_ever_activated")),
+                "risk_off_active": _bool_like(item.get("risk_off_active")),
+                "target_is_actionable": actionable,
+                "model_target_status": "has_formal_pool1_target" if actionable else "no_actionable_pool1_target",
+                "mode": str(item.get("mode") or ""),
+                "regime": str(item.get("regime") or ""),
+                "current_exposure": round(exposure, 8),
+                "available_universe_count": len(day_universe),
+                "candidate_tickers": "|".join(day_universe),
+                "segment_id": segment_id,
+                "segment_source": "simulate_regime_mode_switch_dynamic_universe_by_date",
+                "candidate_universe_fallback_separated": True,
                 "source_formal_ready": True,
                 "no_target_cash_all_applied": False,
             }
@@ -737,6 +881,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--start-date", default=DEFAULT_START_DATE)
     parser.add_argument("--end-date", default=DEFAULT_END_DATE)
     parser.add_argument("--attempt-7-ticker-static-segment", action="store_true")
+    parser.add_argument("--attempt-dynamic-universe-state-injection", action="store_true")
+    parser.add_argument("--dynamic-injection-max-days", type=int, default=None)
     args = parser.parse_args(argv)
     output = run_long_range_data_completion_continue(
         dynamic_universe_dir=args.dynamic_universe_dir,
@@ -749,6 +895,8 @@ def main(argv: list[str] | None = None) -> int:
         start_date=args.start_date,
         end_date=args.end_date,
         attempt_7_ticker_static_segment=args.attempt_7_ticker_static_segment,
+        attempt_dynamic_universe_state_injection=args.attempt_dynamic_universe_state_injection,
+        dynamic_injection_max_days=args.dynamic_injection_max_days,
     )
     print(output)
     return 0
