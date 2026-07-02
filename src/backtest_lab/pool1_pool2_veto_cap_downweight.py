@@ -28,6 +28,7 @@ class VariantSpec:
     downweight_00631l: float | None = None
     fallback: str = "cash"
     confirmation_days: int = 0
+    no_formal_target_policy: str = "exit_to_cash"
 
 
 VARIANT_SPECS = [
@@ -154,15 +155,30 @@ def run_pool1_pool2_veto_cap_downweight(
 def _build_target_weights(decision: pd.DataFrame, spec: VariantSpec) -> pd.DataFrame:
     rows = []
     pool1_history: list[str] = []
+    accepted_target: dict[str, float] = {}
     for item in decision.to_dict(orient="records"):
         pool1 = _text(item.get("pool1_vote"))
         pool2 = _text(item.get("pool2_vote"))
         disagreement = bool(pool1 and pool2 and pool2 != pool1)
         confirmed = _confirmed(pool1_history, pool1, spec.confirmation_days)
         target_weights, reason = _target_weights(pool1, disagreement, confirmed, spec)
+        if not target_weights and spec.no_formal_target_policy == "hold_previous" and _is_no_formal_target_reason(reason):
+            if accepted_target:
+                target_weights = dict(accepted_target)
+                reason = f"{reason}_hold_previous"
+            else:
+                reason = f"{reason}_no_previous_target"
+        if target_weights:
+            accepted_target = dict(target_weights)
         rows.append({**item, "variant": spec.variant, "target_weights": json.dumps(target_weights, ensure_ascii=False), "pool2_disagreement": disagreement, "event_reason": reason, "pool3_shadow_used_as_formal": False})
         pool1_history.append(pool1)
     return pd.DataFrame(rows)
+
+
+def _is_no_formal_target_reason(reason: str) -> bool:
+    return reason == "pool1_no_target" or (
+        reason.startswith("pool2_disagrees_confirmation_") and reason.endswith("_not_met")
+    )
 
 
 def _target_weights(pool1: str, disagreement: bool, confirmed: bool, spec: VariantSpec) -> tuple[dict[str, float], str]:

@@ -25,6 +25,7 @@ class VariantSpec:
     fill_delay_days: int
     minimum_hold_rows: int | None = None
     cooldown_after_exit_rows: int | None = None
+    no_formal_target_policy: str = "hold_previous"
     description: str = ""
 
 
@@ -238,19 +239,7 @@ def _simulate_variant(
         should_schedule = (target_changed and not pending_same_target) or source_trade_signal
         if should_schedule:
             fill_index = index + variant.fill_delay_days
-            if fill_index >= len(frame):
-                blocked_rows.append(
-                    {
-                        "variant_id": variant.variant_id,
-                        "signal_date": date,
-                        "intended_fill_date": "",
-                        "target_weights": json.dumps(policy_weights, sort_keys=True),
-                        "blocked_reason": "missing_future_fill_row",
-                        "diagnostic_only": True,
-                        "active_in_trade_decision": False,
-                    }
-                )
-            elif policy_blocked_reason:
+            if policy_blocked_reason:
                 blocked_rows.append(
                     {
                         "variant_id": variant.variant_id,
@@ -258,6 +247,18 @@ def _simulate_variant(
                         "intended_fill_date": "",
                         "target_weights": json.dumps(signal_weights, sort_keys=True),
                         "blocked_reason": policy_blocked_reason,
+                        "diagnostic_only": True,
+                        "active_in_trade_decision": False,
+                    }
+                )
+            elif fill_index >= len(frame):
+                blocked_rows.append(
+                    {
+                        "variant_id": variant.variant_id,
+                        "signal_date": date,
+                        "intended_fill_date": "",
+                        "target_weights": json.dumps(policy_weights, sort_keys=True),
+                        "blocked_reason": "missing_future_fill_row",
                         "diagnostic_only": True,
                         "active_in_trade_decision": False,
                     }
@@ -333,7 +334,9 @@ def _policy_target_weights(
     exit_to_cash_index: int | None,
 ) -> tuple[dict[str, float], str]:
     if not signal_weights:
-        return {}, ""
+        if variant.no_formal_target_policy == "exit_to_cash":
+            return {}, "no_formal_target_exit_to_cash"
+        return dict(accepted_target), "no_formal_target_hold_previous"
     if variant.minimum_hold_rows is not None and signal_weights != accepted_target:
         if consecutive_signal_rows < variant.minimum_hold_rows:
             return accepted_target, f"minimum_hold_{variant.minimum_hold_rows}_waiting"

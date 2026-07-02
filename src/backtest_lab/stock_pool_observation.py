@@ -1372,7 +1372,7 @@ def _decision_first_report_contract(manifest: dict[str, Any], *, output_root: st
         "switch_signal_wording_zh": switch_wording,
         "action_state": action_state,
         "action_state_zh": action_label,
-        "post_action_holding": target_display if target_display else ("現金/空手" if action_state == "cash_watch" else ""),
+        "post_action_holding": target_display if target_display else str(previous.get("previous_formal_target_display") or ""),
         "current_position_reference_zh": current_position_reference,
         "model_action_zh": model_action,
         "current_formal_holding_action_zh": _current_formal_holding_action(action_state, target_display),
@@ -1667,7 +1667,7 @@ def _operation_action_state(*, switch_state: str, report_ready: bool, formal_tar
     if not report_ready:
         return "data_insufficient", "資料不足"
     if not formal_target_ticker or switch_state == "no_formal_target":
-        return "cash_watch", "現金/空手觀察"
+        return "no_new_formal_target", "無新正式目標"
     if switch_state == "maintain_formal_target":
         return "hold_watch", "續抱"
     if switch_state == "formal_target_changed":
@@ -1687,8 +1687,8 @@ def _next_action_date(signal_date: object) -> str:
 def _current_formal_holding_action(action_state: str, formal_target_display: str) -> str:
     if action_state == "data_insufficient":
         return "資料不足，今天不應把任何候選標的當成正式結論。"
-    if action_state == "cash_watch":
-        return "目前沒有正式持股目標；若已有持倉，需另外用風險與執行規則確認。"
+    if action_state == "no_new_formal_target":
+        return "今天沒有新的正式換倉目標；若已有前一正式持倉，模型不因 no formal target 自動清倉。"
     if not formal_target_display:
         return "目前沒有可對照的正式目標。"
     return f"若目前已持有 {formal_target_display}，動作是續抱觀察，不因候選池雜訊自行改判。"
@@ -1697,8 +1697,8 @@ def _current_formal_holding_action(action_state: str, formal_target_display: str
 def _non_formal_holding_action(action_state: str, formal_target_display: str) -> str:
     if action_state == "data_insufficient":
         return "資料不足，不應把任何非正式候選當成換倉依據。"
-    if action_state == "cash_watch":
-        return "正式目標為現金/空手；若目前持有個股，需用自身持倉風險另外檢查。"
+    if action_state == "no_new_formal_target":
+        return "今天沒有新的正式換倉目標；非正式候選不能被解讀成正式交易動作。"
     if not formal_target_display:
         return "沒有正式目標可對照。"
     return f"若目前持有的不是 {formal_target_display}，代表模型正式目標已不同，需對照自身持倉評估是否調整。"
@@ -1712,8 +1712,8 @@ def _current_position_reference_zh(
 ) -> str:
     if action_state == "data_insufficient":
         return "資料不足"
-    if action_state == "cash_watch":
-        return previous_target_display or "現金/空手"
+    if action_state == "no_new_formal_target":
+        return previous_target_display or "前一正式持倉"
     if action_state == "switch_watch":
         return previous_target_display or "現金/空手"
     if action_state == "hold_watch":
@@ -1729,8 +1729,10 @@ def _model_action_zh(
 ) -> str:
     if action_state == "data_insufficient":
         return "資料不足，不產生正式模型動作。"
-    if action_state == "cash_watch":
-        return "不新增正式持股目標 / 轉為現金觀察。"
+    if action_state == "no_new_formal_target":
+        if previous_target_display:
+            return f"不新增換倉；沿用前一正式持倉 {previous_target_display}。"
+        return "不新增換倉；等待下一個正式目標。"
     if action_state == "switch_watch" and formal_target_display:
         if previous_target_display:
             return f"賣出/離開 {previous_target_display}，轉入 {formal_target_display}。"
@@ -1739,7 +1741,7 @@ def _model_action_zh(
         return f"續抱 {formal_target_display}。"
     if formal_target_display:
         return f"轉入 {formal_target_display}。"
-    return "不新增正式持股目標 / 轉為現金觀察。"
+    return "不新增換倉；等待下一個正式目標。"
 
 
 def _pool_relation_reason_zh(
@@ -1754,7 +1756,7 @@ def _pool_relation_reason_zh(
     if not report_ready:
         return "資料不足，今天不應把任何候選標的當成正式結論。"
     if not formal_target_ticker:
-        return "正式目標為現金/空手，代表模型目前沒有正式持股目標。"
+        return "今天沒有形成新的正式目標；這不是現金/空手交易指令，也不代表模型自動賣出既有持倉。"
     candidate = pool1_candidate_display or pool1_candidate_ticker
     target = formal_target_display or formal_target_ticker
     if candidate and _normalize_ticker(pool1_candidate_ticker) != _normalize_ticker(formal_target_ticker):

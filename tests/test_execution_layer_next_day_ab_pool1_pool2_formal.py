@@ -9,7 +9,9 @@ import test_paths  # noqa: F401
 
 from backtest_lab.execution_layer_next_day_ab_pool1_pool2_formal import (
     FORMAL_MODEL_TARGET,
+    VariantSpec,
     run_execution_layer_next_day_ab_pool1_pool2_formal,
+    _simulate_variant,
 )
 
 
@@ -97,6 +99,41 @@ class ExecutionLayerNextDayABPool1Pool2FormalTest(unittest.TestCase):
             readiness = pd.read_csv(result / "execution_ab_readiness_report.csv").iloc[0]
             self.assertFalse(bool(readiness["formal_activation_ready"]))
             self.assertFalse(bool(readiness["active_in_trade_decision"]))
+
+    def test_no_formal_target_holds_previous_target_instead_of_selling_to_cash(self) -> None:
+        dates = pd.to_datetime(["2026-06-05", "2026-06-08", "2026-06-09", "2026-06-10"])
+        frame = pd.DataFrame(
+            [
+                _stream_row(dates[0], '{"2454.TW": 1.0}'),
+                _stream_row(dates[1], "{}"),
+                _stream_row(dates[2], '{"00631L.TW": 1.0}'),
+                _stream_row(dates[3], '{"00631L.TW": 1.0}'),
+            ]
+        )
+        frame.loc[0, "action"] = "switch"
+        frame.loc[0, "turnover"] = 1
+        frame.loc[1, "action"] = "switch"
+        frame.loc[1, "turnover"] = 1
+        frame.loc[2, "action"] = "switch"
+        frame.loc[2, "turnover"] = 1
+        prices = {
+            "2454.TW": pd.Series([100.0, 95.0, 90.0, 88.0], index=dates),
+            "00631L.TW": pd.Series([50.0, 52.0, 54.0, 56.0], index=dates),
+        }
+
+        daily, trades, _events, blocked = _simulate_variant(
+            frame,
+            prices,
+            VariantSpec("regression_next_day", 1),
+            1_000_000.0,
+        )
+
+        no_target_trades = trades[trades["signal_date"].astype(str).eq("2026-06-08")] if not trades.empty else pd.DataFrame()
+        self.assertTrue(no_target_trades.empty)
+        self.assertIn("no_formal_target_hold_previous", set(blocked["blocked_reason"]))
+        row = daily[daily["date"].astype(str).eq("2026-06-09")].iloc[0]
+        self.assertEqual(row["top_holding"], "2454.TW")
+        self.assertEqual(json.loads(row["accepted_target_weights"]), {"2454.TW": 1.0})
 
 
 def _stream_row(date: pd.Timestamp, target_weights: str) -> dict:

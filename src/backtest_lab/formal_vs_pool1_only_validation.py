@@ -33,10 +33,12 @@ VARIANTS = (
         "current_formal_pool1_pool2_remove_cap",
         "confirmation",
         confirmation_days=1,
+        no_formal_target_policy="hold_previous",
     ),
     DecisionVariantSpec(
         "new_pool1_only_no_overlay",
         "warning_only",
+        no_formal_target_policy="hold_previous",
     ),
 )
 
