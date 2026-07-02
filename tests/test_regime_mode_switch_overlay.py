@@ -102,6 +102,8 @@ class RegimeModeSwitchOverlayTest(unittest.TestCase):
         early = result.equity_curve.loc[result.equity_curve.index <= pd.Timestamp("2022-01-06")]
         self.assertNotIn("2454.TW", set(early["current_ticker"]))
         self.assertEqual(result.equity_curve.iloc[-1]["current_ticker"], "2454.TW")
+        self.assertTrue(hasattr(result, "regime_mode_switch_state"))
+        self.assertEqual(result.regime_mode_switch_state.account_ticker, "2454.TW")
 
 
 def _daily_variant() -> RegimeModeSwitchVariant:

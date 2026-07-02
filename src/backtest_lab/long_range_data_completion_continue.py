@@ -46,6 +46,7 @@ def run_long_range_data_completion_continue(
     attempt_7_ticker_static_segment: bool = False,
     attempt_dynamic_universe_state_injection: bool = False,
     dynamic_injection_max_days: int | None = None,
+    dynamic_injection_max_total_days: int | None = None,
 ) -> Path:
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
@@ -95,7 +96,7 @@ def run_long_range_data_completion_continue(
         contract.to_csv(output / "dynamic_universe_state_contract.csv", index=False, encoding="utf-8-sig")
 
         log("attempt_pool1_dynamic_segments", "started", "")
-        pool1_replay, pool1_blocked, segment_attempts = _attempt_pool1_segment_replays(
+        pool1_replay, pool1_blocked, segment_attempts, state_checkpoints = _attempt_pool1_segment_replays(
             dynamic_coverage=dynamic_coverage,
             previous_pool1=previous_pool1,
             prices=prices,
@@ -105,15 +106,19 @@ def run_long_range_data_completion_continue(
             attempt_7_ticker_static_segment=attempt_7_ticker_static_segment,
             attempt_dynamic_universe_state_injection=attempt_dynamic_universe_state_injection,
             dynamic_injection_max_days=dynamic_injection_max_days,
+            dynamic_injection_max_total_days=dynamic_injection_max_total_days,
         )
         pool1_replay.to_csv(output / "pool1_full_state_replay_201411_202112.csv", index=False, encoding="utf-8-sig")
         pool1_blocked.to_csv(output / "remaining_blocked_rows.csv", index=False, encoding="utf-8-sig")
         segment_attempts.to_csv(output / "pool1_segment_replay_attempts.csv", index=False, encoding="utf-8-sig")
+        state_checkpoints.to_csv(output / "pool1_dynamic_state_checkpoints.csv", index=False, encoding="utf-8-sig")
 
         log("reconstruct_pool2_persistence", "started", "")
         pool2_reconstruction, pool2_blockers = _pool2_persistence_reconstruction(pool2_panel)
         pool2_reconstruction.to_csv(output / "pool2_persistence_reconstruction.csv", index=False, encoding="utf-8-sig")
         pool2_blockers.to_csv(output / "blocker_by_pool2_field.csv", index=False, encoding="utf-8-sig")
+        pool2_gate_breakdown = _pool2_gate_breakdown(pool2_panel)
+        pool2_gate_breakdown.to_csv(output / "pool2_gate_breakdown.csv", index=False, encoding="utf-8-sig")
 
         log("build_combined_status", "started", "")
         combined, combined_blockers = _combined_stream_or_blocker(pool1_replay, pool1_blocked, pool2_reconstruction, pool2_blockers)
@@ -158,6 +163,7 @@ def run_long_range_data_completion_continue(
             "candidate_universe_fallback_separation_attempted": attempt_7_ticker_static_segment,
             "dynamic_universe_state_injection_attempted": attempt_dynamic_universe_state_injection,
             "dynamic_injection_max_days": dynamic_injection_max_days,
+            "dynamic_injection_max_total_days": dynamic_injection_max_total_days,
             "next_required_task": _next_task(full_pool1_ready, pool2_ready, combined_ready),
             "outputs": {
                 "dynamic_contract": "dynamic_universe_state_contract.csv",
@@ -165,8 +171,10 @@ def run_long_range_data_completion_continue(
                 "remaining_blocked": "remaining_blocked_rows.csv",
                 "pool2_reconstruction": "pool2_persistence_reconstruction.csv",
                 "pool2_blockers": "blocker_by_pool2_field.csv",
+                "pool2_gate_breakdown": "pool2_gate_breakdown.csv",
                 "combined_stream": "combined_formal_target_stream_201411_202112.csv",
                 "combined_blockers": "blocker_by_combined_field.csv",
+                "pool1_state_checkpoints": "pool1_dynamic_state_checkpoints.csv",
                 "source_decision": "proxy_or_formal_source_decision.csv",
                 "handoff": "next_step_handoff.md",
                 "summary": "final_summary_zh.md",
@@ -227,10 +235,12 @@ def _attempt_pool1_segment_replays(
     attempt_7_ticker_static_segment: bool,
     attempt_dynamic_universe_state_injection: bool,
     dynamic_injection_max_days: int | None,
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    dynamic_injection_max_total_days: int | None,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     rows: list[pd.DataFrame] = []
     blocked_parts: list[pd.DataFrame] = []
     attempts: list[dict[str, Any]] = []
+    checkpoint_parts: list[pd.DataFrame] = []
     coverage = dynamic_coverage.copy()
     coverage["count"] = pd.to_numeric(coverage["available_universe_count"], errors="coerce").fillna(0).astype(int)
 
@@ -238,21 +248,23 @@ def _attempt_pool1_segment_replays(
     dynamic_replay_completed_full = False
     dynamic = coverage[coverage["count"].ge(7)]
     if attempt_dynamic_universe_state_injection and not dynamic.empty:
-        dynamic_attempt = dynamic.head(dynamic_injection_max_days).copy() if dynamic_injection_max_days else dynamic
+        dynamic_attempt = dynamic.head(dynamic_injection_max_total_days).copy() if dynamic_injection_max_total_days else dynamic.copy()
         dynamic_deferred = dynamic.iloc[len(dynamic_attempt) :].copy()
         dynamic_start = pd.Timestamp(str(dynamic_attempt["signal_date"].min())).normalize()
         dynamic_end = pd.Timestamp(str(dynamic_attempt["signal_date"].max())).normalize()
         universe_by_date = _candidate_universe_by_date_from_coverage(dynamic_attempt)
         try:
-            dynamic_replay = _run_pool1_dynamic_universe_replay(
+            dynamic_replay, checkpoints = _run_pool1_dynamic_universe_replay(
                 prices=prices,
                 config=config,
                 candidate_universe_by_date=universe_by_date,
                 start_date=dynamic_start,
                 end_date=dynamic_end,
                 segment_id="dynamic_universe_state_injection",
+                chunk_days=dynamic_injection_max_days,
             )
             rows.append(dynamic_replay)
+            checkpoint_parts.append(checkpoints)
             dynamic_replay_attempted = True
             dynamic_replay_completed_full = dynamic_deferred.empty
             if not dynamic_deferred.empty:
@@ -260,7 +272,7 @@ def _attempt_pool1_segment_replays(
                     _block_rows(
                         dynamic_deferred,
                         "pool1_dynamic_universe_state_checkpoint_required",
-                        "Dynamic universe injection works for a bounded continuous segment, but full 2015-2021 replay must be split with explicit state export/import checkpoints before it can be declared formal-ready without an unobservable long run.",
+                        "Dynamic universe injection works for a bounded checkpointed segment, but remaining rows were intentionally deferred to keep the run observable. Resume from the exported checkpoint before declaring full-period formal-ready replay.",
                     )
                 )
             attempts.append(
@@ -404,7 +416,8 @@ def _attempt_pool1_segment_replays(
                 "blocker": "bounded dynamic universe injection is available, but full-period formal-ready replay still needs checkpointable state export/import to connect all dynamic segments without an unobservable long run.",
             }
         )
-    return replay, blocked, pd.DataFrame(attempts)
+    checkpoints = pd.concat(checkpoint_parts, ignore_index=True, sort=False) if checkpoint_parts else pd.DataFrame()
+    return replay, blocked, pd.DataFrame(attempts), checkpoints
 
 
 def _extend_benchmark_with_best_local_source(
@@ -547,7 +560,8 @@ def _run_pool1_dynamic_universe_replay(
     start_date: pd.Timestamp,
     end_date: pd.Timestamp,
     segment_id: str,
-) -> pd.DataFrame:
+    chunk_days: int | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     group = config.group_by_id(FROZEN_BEST_GROUP_ID)
     group_assets = {asset.ticker: asset for asset in group.assets}
     candidate_union = sorted({ticker for tickers in candidate_universe_by_date.values() for ticker in tickers})
@@ -560,20 +574,43 @@ def _run_pool1_dynamic_universe_replay(
         ticker: split_adjusted_dividends(available_prices[ticker], config.manual_splits.get(ticker, ()))
         for ticker in available_prices
     }
-    result = simulate_regime_mode_switch(
-        name=f"pool1_{segment_id}",
-        prices_by_ticker=available_prices,
-        asset_types=asset_types,
-        market_prices=prices[TW50_BENCHMARK],
-        start_date=start_date.strftime("%Y-%m-%d"),
-        end_date=end_date.strftime("%Y-%m-%d"),
-        initial_cash=config.initial_cash_twd,
-        cost_model=config.cost_model,
-        variant=variant,
-        dividend_series_by_ticker=dividends,
-        candidate_universe_by_date=candidate_universe_by_date,
-    )
-    equity = result.equity_curve.reset_index().rename(columns={"date": "signal_date"})
+
+    sorted_dates = sorted(pd.Timestamp(date) for date in candidate_universe_by_date)
+    sorted_dates = [date for date in sorted_dates if start_date <= date <= end_date]
+    if not sorted_dates:
+        return pd.DataFrame(), pd.DataFrame()
+    chunk_size = chunk_days if chunk_days and chunk_days > 0 else len(sorted_dates)
+    state: Any | None = None
+    equity_parts: list[pd.DataFrame] = []
+    checkpoint_rows: list[dict[str, Any]] = []
+    for chunk_index, start_offset in enumerate(range(0, len(sorted_dates), chunk_size), start=1):
+        chunk_dates = sorted_dates[start_offset : start_offset + chunk_size]
+        chunk_start = chunk_dates[0]
+        chunk_end = chunk_dates[-1]
+        chunk_universe = {
+            date.strftime("%Y-%m-%d"): candidate_universe_by_date[date.strftime("%Y-%m-%d")]
+            for date in chunk_dates
+        }
+        result = simulate_regime_mode_switch(
+            name=f"pool1_{segment_id}_chunk_{chunk_index:03d}",
+            prices_by_ticker=available_prices,
+            asset_types=asset_types,
+            market_prices=prices[TW50_BENCHMARK],
+            start_date=chunk_start.strftime("%Y-%m-%d"),
+            end_date=chunk_end.strftime("%Y-%m-%d"),
+            initial_cash=config.initial_cash_twd,
+            cost_model=config.cost_model,
+            variant=variant,
+            dividend_series_by_ticker=dividends,
+            candidate_universe_by_date=chunk_universe,
+            initial_state=state,
+        )
+        state = getattr(result, "regime_mode_switch_state", None)
+        equity = result.equity_curve.reset_index().rename(columns={"date": "signal_date"})
+        equity_parts.append(equity)
+        checkpoint_rows.append(_state_checkpoint_row(chunk_index, chunk_start, chunk_end, len(equity), state))
+
+    equity = pd.concat(equity_parts, ignore_index=True, sort=False) if equity_parts else pd.DataFrame()
     rows: list[dict[str, Any]] = []
     for item in equity.to_dict(orient="records"):
         signal_date = pd.Timestamp(item["signal_date"]).strftime("%Y-%m-%d")
@@ -604,7 +641,31 @@ def _run_pool1_dynamic_universe_replay(
                 "no_target_cash_all_applied": False,
             }
         )
-    return pd.DataFrame(rows)
+    return pd.DataFrame(rows), pd.DataFrame(checkpoint_rows)
+
+
+def _state_checkpoint_row(
+    chunk_index: int,
+    chunk_start: pd.Timestamp,
+    chunk_end: pd.Timestamp,
+    rows: int,
+    state: Any | None,
+) -> dict[str, Any]:
+    return {
+        "chunk_index": chunk_index,
+        "chunk_start": chunk_start.strftime("%Y-%m-%d"),
+        "chunk_end": chunk_end.strftime("%Y-%m-%d"),
+        "rows": rows,
+        "state_exported": state is not None,
+        "account_ticker": getattr(state, "account_ticker", "") if state is not None else "",
+        "account_cash": getattr(state, "account_cash", "") if state is not None else "",
+        "account_shares": getattr(state, "account_shares", "") if state is not None else "",
+        "attack_gate_active": getattr(state, "attack_gate_active", "") if state is not None else "",
+        "attack_gate_ever_activated": getattr(state, "attack_gate_ever_activated", "") if state is not None else "",
+        "risk_off_active": getattr(state, "risk_off_active", "") if state is not None else "",
+        "current_regime": getattr(state, "current_regime", "") if state is not None else "",
+        "regime_streak_days": getattr(state, "regime_streak_days", "") if state is not None else "",
+    }
 
 
 def _block_rows(frame: pd.DataFrame, blocker: str, reason: str) -> pd.DataFrame:
@@ -660,6 +721,58 @@ def _pool2_persistence_reconstruction(pool2_panel: pd.DataFrame) -> tuple[pd.Dat
             }
         )
     return pd.DataFrame(rows), pd.DataFrame(columns=["field_name", "blocker", "affected_period", "detail", "next_action", "formal_ready"])
+
+
+def _pool2_gate_breakdown(pool2_panel: pd.DataFrame) -> pd.DataFrame:
+    frame = pool2_panel.copy()
+    rows: list[dict[str, Any]] = []
+    for column in (
+        "base_pool_passed",
+        "benchmark_margin_passed",
+        "momentum_quality_passed",
+        "persistence_passed",
+        "candidate_support_without_persistence",
+        "eligible_for_pool_selection",
+    ):
+        if column not in frame.columns:
+            rows.append(
+                {
+                    "gate": column,
+                    "rows_true": 0,
+                    "rows_false": 0,
+                    "rows_missing": len(frame),
+                    "status": "missing_column",
+                    "blocker_class": "field_missing",
+                }
+            )
+            continue
+        truthy = frame[column].map(_bool_like)
+        true_count = int(truthy.sum())
+        false_count = int((~truthy).sum())
+        rows.append(
+            {
+                "gate": column,
+                "rows_true": true_count,
+                "rows_false": false_count,
+                "rows_missing": int(frame[column].isna().sum()),
+                "status": "has_true_rows" if true_count else "zero_true_rows",
+                "blocker_class": "gate_threshold_or_input" if not true_count else "",
+            }
+        )
+    if "confirmation_state" in frame.columns:
+        counts = frame["confirmation_state"].astype(str).value_counts(dropna=False)
+        for state, count in counts.items():
+            rows.append(
+                {
+                    "gate": f"confirmation_state={state}",
+                    "rows_true": int(count),
+                    "rows_false": "",
+                    "rows_missing": "",
+                    "status": "state_count",
+                    "blocker_class": "",
+                }
+            )
+    return pd.DataFrame(rows)
 
 
 def _combined_stream_or_blocker(
@@ -885,6 +998,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--attempt-7-ticker-static-segment", action="store_true")
     parser.add_argument("--attempt-dynamic-universe-state-injection", action="store_true")
     parser.add_argument("--dynamic-injection-max-days", type=int, default=None)
+    parser.add_argument("--dynamic-injection-max-total-days", type=int, default=None)
     args = parser.parse_args(argv)
     output = run_long_range_data_completion_continue(
         dynamic_universe_dir=args.dynamic_universe_dir,
@@ -899,6 +1013,7 @@ def main(argv: list[str] | None = None) -> int:
         attempt_7_ticker_static_segment=args.attempt_7_ticker_static_segment,
         attempt_dynamic_universe_state_injection=args.attempt_dynamic_universe_state_injection,
         dynamic_injection_max_days=args.dynamic_injection_max_days,
+        dynamic_injection_max_total_days=args.dynamic_injection_max_total_days,
     )
     print(output)
     return 0

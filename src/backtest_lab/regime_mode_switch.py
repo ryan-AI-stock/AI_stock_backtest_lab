@@ -136,6 +136,30 @@ TargetSelectionOverlay = Callable[
 ]
 
 
+@dataclass
+class RegimeModeSwitchState:
+    account_cash: float
+    account_ticker: str | None = None
+    account_shares: int = 0
+    last_week_key_year: int | None = None
+    last_week_key_week: int | None = None
+    peak_signal_value: float = 0.0
+    cooldown_until_date: str = ""
+    risk_off_active: bool = False
+    risk_off_clear_streak: int = 0
+    daily_health_active: bool = True
+    daily_health_recovery_streak: int = 0
+    stop_latch_active: bool = False
+    stop_release_streak: int = 0
+    attack_gate_active: bool = False
+    attack_gate_activation_streak: int = 0
+    attack_gate_ever_activated: bool = False
+    attack_gate_stop_latch_active: bool = False
+    attack_gate_stop_release_streak: int = 0
+    current_regime: str | None = None
+    regime_streak_days: int = 0
+
+
 def default_mode_switch_variants() -> tuple[RegimeModeSwitchVariant, ...]:
     return (
         RegimeModeSwitchVariant(
@@ -2730,6 +2754,7 @@ def simulate_regime_mode_switch(
     target_selection_overlay: TargetSelectionOverlay | None = None,
     candidate_universe_tickers: tuple[str, ...] | None = None,
     candidate_universe_by_date: dict[str, tuple[str, ...]] | None = None,
+    initial_state: RegimeModeSwitchState | None = None,
 ) -> BacktestResult:
     trade_dates = (
         _dynamic_candidate_universe_trade_dates(
@@ -2746,34 +2771,57 @@ def simulate_regime_mode_switch(
     )
     if not trade_dates:
         raise ValueError(f"No common trade dates between {start_date} and {end_date}")
-    account = _Account(cash=float(initial_cash))
+    account = (
+        _Account(
+            cash=float(initial_state.account_cash),
+            ticker=initial_state.account_ticker,
+            shares=int(initial_state.account_shares),
+        )
+        if initial_state is not None
+        else _Account(cash=float(initial_cash))
+    )
     trades: list[Trade] = []
     equity_rows: list[dict] = []
-    last_week_key: tuple[int, int] | None = None
-    peak_signal_value = float(initial_cash)
-    cooldown_until_index = -1
-    risk_off_active = False
-    risk_off_clear_streak = 0
-    daily_health_active = True
-    daily_health_recovery_streak = 0
-    stop_latch_active = False
-    stop_release_streak = 0
-    prior_attack_activation = _had_prior_attack_gate_activation(
-        prices_by_ticker=prices_by_ticker,
-        first_trade_date=trade_dates[0],
-        variant=variant,
-        candidate_universe_tickers=candidate_universe_tickers,
-        candidate_universe_by_date=candidate_universe_by_date,
+    last_week_key: tuple[int, int] | None = (
+        (initial_state.last_week_key_year, initial_state.last_week_key_week)
+        if initial_state is not None
+        and initial_state.last_week_key_year is not None
+        and initial_state.last_week_key_week is not None
+        else None
     )
-    attack_gate_active = variant.attack_gate_margin_over_fallback is None or (
-        variant.attack_gate_initialize_active_from_history and prior_attack_activation
-    )
-    attack_gate_activation_streak = 0
-    attack_gate_ever_activated = attack_gate_active or prior_attack_activation
-    attack_gate_stop_latch_active = False
-    attack_gate_stop_release_streak = 0
-    current_regime: str | None = None
-    regime_streak_days = 0
+    peak_signal_value = float(initial_state.peak_signal_value) if initial_state is not None else float(initial_cash)
+    cooldown_until_index = _cooldown_index_from_state(initial_state, trade_dates)
+    risk_off_active = bool(initial_state.risk_off_active) if initial_state is not None else False
+    risk_off_clear_streak = int(initial_state.risk_off_clear_streak) if initial_state is not None else 0
+    daily_health_active = bool(initial_state.daily_health_active) if initial_state is not None else True
+    daily_health_recovery_streak = int(initial_state.daily_health_recovery_streak) if initial_state is not None else 0
+    stop_latch_active = bool(initial_state.stop_latch_active) if initial_state is not None else False
+    stop_release_streak = int(initial_state.stop_release_streak) if initial_state is not None else 0
+    if initial_state is None:
+        prior_attack_activation = _had_prior_attack_gate_activation(
+            prices_by_ticker=prices_by_ticker,
+            first_trade_date=trade_dates[0],
+            variant=variant,
+            candidate_universe_tickers=candidate_universe_tickers,
+            candidate_universe_by_date=candidate_universe_by_date,
+        )
+        attack_gate_active = variant.attack_gate_margin_over_fallback is None or (
+            variant.attack_gate_initialize_active_from_history and prior_attack_activation
+        )
+        attack_gate_activation_streak = 0
+        attack_gate_ever_activated = attack_gate_active or prior_attack_activation
+        attack_gate_stop_latch_active = False
+        attack_gate_stop_release_streak = 0
+        current_regime: str | None = None
+        regime_streak_days = 0
+    else:
+        attack_gate_active = bool(initial_state.attack_gate_active)
+        attack_gate_activation_streak = int(initial_state.attack_gate_activation_streak)
+        attack_gate_ever_activated = bool(initial_state.attack_gate_ever_activated)
+        attack_gate_stop_latch_active = bool(initial_state.attack_gate_stop_latch_active)
+        attack_gate_stop_release_streak = int(initial_state.attack_gate_stop_release_streak)
+        current_regime = initial_state.current_regime
+        regime_streak_days = int(initial_state.regime_streak_days)
 
     for index, trade_date in enumerate(trade_dates):
         stop_triggered_today = False
@@ -3178,7 +3226,7 @@ def simulate_regime_mode_switch(
 
     equity_curve = pd.DataFrame(equity_rows).set_index("date")
     final_value = float(equity_curve["total_value"].iloc[-1])
-    return BacktestResult(
+    result = BacktestResult(
         name=name,
         final_value=final_value,
         total_return=final_value / initial_cash - 1,
@@ -3186,6 +3234,29 @@ def simulate_regime_mode_switch(
         trades=trades,
         equity_curve=equity_curve,
     )
+    result.regime_mode_switch_state = RegimeModeSwitchState(
+        account_cash=float(account.cash),
+        account_ticker=account.ticker,
+        account_shares=int(account.shares),
+        last_week_key_year=last_week_key[0] if last_week_key else None,
+        last_week_key_week=last_week_key[1] if last_week_key else None,
+        peak_signal_value=float(peak_signal_value),
+        cooldown_until_date=_cooldown_date_from_index(cooldown_until_index, trade_dates),
+        risk_off_active=bool(risk_off_active),
+        risk_off_clear_streak=int(risk_off_clear_streak),
+        daily_health_active=bool(daily_health_active),
+        daily_health_recovery_streak=int(daily_health_recovery_streak),
+        stop_latch_active=bool(stop_latch_active),
+        stop_release_streak=int(stop_release_streak),
+        attack_gate_active=bool(attack_gate_active),
+        attack_gate_activation_streak=int(attack_gate_activation_streak),
+        attack_gate_ever_activated=bool(attack_gate_ever_activated),
+        attack_gate_stop_latch_active=bool(attack_gate_stop_latch_active),
+        attack_gate_stop_release_streak=int(attack_gate_stop_release_streak),
+        current_regime=current_regime,
+        regime_streak_days=int(regime_streak_days),
+    )
+    return result
 
 
 def _select_target(
@@ -3737,6 +3808,21 @@ def _dynamic_candidate_universe_trade_dates(
         if available:
             trade_dates.append(pd.Timestamp(trade_date))
     return trade_dates
+
+
+def _cooldown_index_from_state(initial_state: RegimeModeSwitchState | None, trade_dates: list[pd.Timestamp]) -> int:
+    if initial_state is None or not initial_state.cooldown_until_date:
+        return -1
+    cooldown_until_date = pd.Timestamp(initial_state.cooldown_until_date)
+    matching = [index for index, trade_date in enumerate(trade_dates) if trade_date <= cooldown_until_date]
+    return max(matching) if matching else -1
+
+
+def _cooldown_date_from_index(cooldown_until_index: int, trade_dates: list[pd.Timestamp]) -> str:
+    if cooldown_until_index < 0 or not trade_dates:
+        return ""
+    index = min(cooldown_until_index, len(trade_dates) - 1)
+    return _date_str(trade_dates[index])
 
 
 def _attack_gate_passes(
