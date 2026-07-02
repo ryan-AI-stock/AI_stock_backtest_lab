@@ -1227,6 +1227,8 @@ class StockPoolObservationTest(unittest.TestCase):
 
             decision = manifest["decision_first_report_contract"]
             self.assertEqual(decision["previous_formal_target_ticker"], "2330.TW")
+            self.assertEqual(decision["previous_target_status"], "found")
+            self.assertEqual(decision["previous_target_source"], "local_manifest_history")
             self.assertEqual(decision["switch_signal_state"], "maintain_formal_target")
             self.assertEqual(decision["action_state_zh"], "續抱")
             self.assertEqual(decision["current_position_reference_zh"], "台積電(2330)")
@@ -1278,6 +1280,8 @@ class StockPoolObservationTest(unittest.TestCase):
 
             decision = manifest["decision_first_report_contract"]
             self.assertEqual(decision["previous_formal_target_ticker"], "2317.TW")
+            self.assertEqual(decision["previous_target_status"], "found")
+            self.assertEqual(decision["previous_target_source"], "local_manifest_history")
             self.assertEqual(decision["switch_signal_state"], "formal_target_changed")
             self.assertEqual(decision["action_state_zh"], "換倉")
             self.assertEqual(decision["current_position_reference_zh"], "鴻海(2317)")
@@ -1287,6 +1291,46 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertIn("前一日正式目標：鴻海(2317)（2025-07-31）", report_text)
             self.assertIn("如果目前現金或者持有：鴻海(2317)", report_text)
             self.assertIn("模型動作：賣出/離開 鴻海(2317)，轉入 台積電(2330)。", report_text)
+
+    def test_decision_first_contract_marks_missing_previous_manifest_as_data_insufficient(self) -> None:
+        manifest = {
+            "signal_date": "2026-07-02",
+            "actual_signal_date": "2026-07-02",
+            "formal_report_ready": True,
+            "generated": [
+                {
+                    "pool_id": "ai_theme_large_cap_v20260613",
+                    "pool_name": "AI主線池",
+                    "active_in_trade_decision": True,
+                    "top_candidates": [
+                        {
+                            "rank": 1,
+                            "ticker": "00631L.TW",
+                            "display": "0050正二(00631L)",
+                            "asset_type": "etf",
+                            "score": 2.8,
+                            "selection_label": "正式目標",
+                            "is_model_target": True,
+                        }
+                    ],
+                }
+            ],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            output_root = Path(tmp) / "stock_pool_observations"
+            output_root.mkdir()
+
+            decision = _decision_first_report_contract(manifest, output_root=output_root)
+            manifest["decision_first_report_contract"] = decision
+            manifest["formal_operation_conclusion"] = _formal_operation_conclusion(decision, manifest)
+            report_text = markdown_observation_batch_report(manifest, [])
+
+        self.assertEqual(decision["previous_formal_target_display"], "")
+        self.assertEqual(decision["previous_target_status"], "data_insufficient")
+        self.assertEqual(decision["previous_target_source"], "local_manifest_history_missing")
+        self.assertIn("找不到前一交易日正式目標紀錄", decision["previous_target_reason"])
+        self.assertIn("前一日正式目標：資料不足（找不到前一交易日正式目標紀錄）", report_text)
+        self.assertNotIn("前一日正式目標：無", report_text)
 
     def test_decision_first_contract_reports_score_margins_from_formal_candidates(self) -> None:
         manifest = _target_stability_manifest(score_a=2.8, score_b=2.1)

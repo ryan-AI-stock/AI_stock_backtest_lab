@@ -1155,6 +1155,9 @@ def run_stock_pool_observation_batch(
     _attach_chip_context_report_boundary(manifest)
     _set_formal_report_readiness(manifest)
     manifest["decision_first_report_contract"] = _decision_first_report_contract(manifest, output_root=Path(output_root))
+    manifest["previous_target_status"] = manifest["decision_first_report_contract"].get("previous_target_status", "")
+    manifest["previous_target_source"] = manifest["decision_first_report_contract"].get("previous_target_source", "")
+    manifest["previous_target_reason"] = manifest["decision_first_report_contract"].get("previous_target_reason", "")
     manifest["formal_operation_conclusion"] = _formal_operation_conclusion(manifest["decision_first_report_contract"], manifest)
     _attach_no_target_risk_off_formal_activation(manifest)
     manifest["model_layer_audit"] = default_stock_pool_model_layer_audit(
@@ -1387,6 +1390,9 @@ def _decision_first_report_contract(manifest: dict[str, Any], *, output_root: st
         "previous_formal_target_date": previous.get("previous_formal_target_date", ""),
         "previous_formal_target_display": previous.get("previous_formal_target_display", ""),
         "previous_formal_target_ticker": previous.get("previous_formal_target_ticker", ""),
+        "previous_target_status": previous.get("previous_target_status", ""),
+        "previous_target_source": previous.get("previous_target_source", ""),
+        "previous_target_reason": previous.get("previous_target_reason", ""),
         "data_completeness_state": "complete" if report_ready else "blocked",
         "data_blocker_summary_zh": "；".join(str(item.get("reason_zh") or item.get("reason") or "") for item in blockers if item) if blockers else "",
         "switch_signal_state": switch_state,
@@ -1609,10 +1615,16 @@ def _score_value(row: dict[str, Any]) -> float:
 def _previous_formal_target_contract(manifest: dict[str, Any], *, output_root: str | Path | None = None) -> dict[str, str]:
     current_date = str(manifest.get("actual_signal_date") or manifest.get("signal_date") or "")
     if not output_root:
-        return {}
+        return _missing_previous_target_contract(
+            source="not_requested",
+            reason="未提供前一交易日正式目標來源，不能判定前一日正式目標。",
+        )
     base = Path(output_root)
     if not base.exists():
-        return {}
+        return _missing_previous_target_contract(
+            source="output_root_missing",
+            reason="找不到正式報告輸出根目錄，不能讀取前一交易日正式目標紀錄。",
+        )
     candidates: list[tuple[pd.Timestamp, dict[str, Any]]] = []
     for path in base.glob("*/stock_pool_observation_manifest.json"):
         try:
@@ -1632,12 +1644,32 @@ def _previous_formal_target_contract(manifest: dict[str, Any], *, output_root: s
         except Exception:
             continue
     if not candidates:
-        return {}
+        return _missing_previous_target_contract(
+            source="local_manifest_history_missing",
+            reason=(
+                "找不到前一交易日正式目標紀錄；目前執行環境沒有前次正式報告 manifest，"
+                "不能判定昨日正式目標。"
+            ),
+        )
     _, latest = max(candidates, key=lambda item: item[0])
     return {
         "previous_formal_target_date": str(latest.get("date") or ""),
         "previous_formal_target_display": str(latest.get("formal_target_display") or ""),
         "previous_formal_target_ticker": str(latest.get("formal_target_ticker") or ""),
+        "previous_target_status": "found",
+        "previous_target_source": "local_manifest_history",
+        "previous_target_reason": "",
+    }
+
+
+def _missing_previous_target_contract(*, source: str, reason: str) -> dict[str, str]:
+    return {
+        "previous_formal_target_date": "",
+        "previous_formal_target_display": "",
+        "previous_formal_target_ticker": "",
+        "previous_target_status": "data_insufficient",
+        "previous_target_source": source,
+        "previous_target_reason": reason,
     }
 
 
@@ -1681,7 +1713,10 @@ def _switch_signal_state(
     if not current_ticker:
         return "risk_control_cash", RISK_CONTROL_CASH_REASON_ZH
     if not previous_ticker:
-        return "previous_target_missing", "找不到前一份已完成正式報告，因此只能顯示今日正式標的，不能比較是否換倉。"
+        reason = str(previous.get("previous_target_reason") or "")
+        if reason:
+            return "previous_target_missing", f"{reason} 因此只能顯示今日正式標的，不能比較是否換倉。"
+        return "previous_target_missing", "找不到前一交易日正式目標紀錄，因此只能顯示今日正式標的，不能比較是否換倉。"
     if current_ticker == previous_ticker:
         return "maintain_formal_target", f"今日正式標的仍是 {current_display or current_ticker}，相對前一份正式報告（{previous_date}）維持不變。"
     return (
@@ -1821,6 +1856,9 @@ def _formal_operation_conclusion(decision: dict[str, Any], manifest: dict[str, A
         "next_action_date": decision.get("next_action_date", ""),
         "previous_formal_target": decision.get("previous_formal_target_display", ""),
         "previous_formal_target_ticker": decision.get("previous_formal_target_ticker", ""),
+        "previous_target_status": decision.get("previous_target_status", ""),
+        "previous_target_source": decision.get("previous_target_source", ""),
+        "previous_target_reason": decision.get("previous_target_reason", ""),
         "formal_target": decision.get("formal_target_display", ""),
         "formal_target_ticker": decision.get("formal_target_ticker", ""),
         "action_state": decision.get("action_state", ""),
@@ -2369,6 +2407,9 @@ def write_formal_operation_decision_ledger(root: Path, manifest: dict[str, Any])
         "next_action_date": operation.get("next_action_date", ""),
         "previous_formal_target": operation.get("previous_formal_target", ""),
         "previous_formal_target_ticker": operation.get("previous_formal_target_ticker", ""),
+        "previous_target_status": operation.get("previous_target_status", ""),
+        "previous_target_source": operation.get("previous_target_source", ""),
+        "previous_target_reason": operation.get("previous_target_reason", ""),
         "formal_target": operation.get("formal_target", ""),
         "formal_target_ticker": operation.get("formal_target_ticker", ""),
         "action_state": operation.get("action_state", ""),
@@ -2495,6 +2536,24 @@ def _skipped_reason_summary(rows: list[dict[str, Any]], manifest: dict[str, Any]
     return summaries
 
 
+def _previous_target_report_text(
+    decision: dict[str, Any],
+    operation: dict[str, Any],
+    *,
+    include_date: bool = True,
+) -> str:
+    display = str(operation.get("previous_formal_target") or decision.get("previous_formal_target_display") or "").strip()
+    date_text = str(decision.get("previous_formal_target_date") or "").strip()
+    if display:
+        if include_date and date_text:
+            return f"{display}（{date_text}）"
+        return display
+    status = str(operation.get("previous_target_status") or decision.get("previous_target_status") or "").strip()
+    if status == "data_insufficient":
+        return "資料不足（找不到前一交易日正式目標紀錄）"
+    return "無"
+
+
 def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[str, Any]]) -> str:
     wording = manifest.get("report_wording_boundary") or _report_wording_boundary()
     formal_boundary = wording.get("formal_baseline") or {}
@@ -2527,8 +2586,7 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
         f"- 狀態：{operation.get('action_state_zh') or '-'}",
         f"- 如果目前現金或者持有：{operation.get('current_position_reference_zh') or '-'}",
         f"- 模型動作：{operation.get('model_action_zh') or '-'}",
-        f"- 前一日正式目標：{operation.get('previous_formal_target') or '無'}"
-        f"{'（' + str(decision_first.get('previous_formal_target_date')) + '）' if decision_first.get('previous_formal_target_date') else ''}",
+        f"- 前一日正式目標：{_previous_target_report_text(decision_first, operation)}",
         f"- 白話理由：{operation.get('reason_zh') or decision_first.get('operation_reason_zh', '')}",
         "",
         "## 正式 / 診斷分層",
@@ -2825,7 +2883,7 @@ def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[st
     )
 
     card_specs = [
-        ("前一日正式目標", operation.get("previous_formal_target") or "無", "#6b7780"),
+        ("前一日正式目標", _previous_target_report_text(decision, operation, include_date=False), "#6b7780"),
         ("Pool1 主攻候選", decision.get("pool1_candidate_display") or "無", "#13795b"),
         ("Pool2 確認/風控", f"{decision.get('pool2_confirmation_label_zh') or '未判定'}｜{decision.get('pool2_representative_display') or '無'}", "#2457a7"),
     ]
