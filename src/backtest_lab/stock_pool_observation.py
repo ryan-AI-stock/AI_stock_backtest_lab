@@ -3586,8 +3586,13 @@ def _load_observation_price_frames(
     incomplete = incomplete_tickers(prices, end_date)
     if incomplete:
         prices = fill_signal_date_from_twse(prices, end_date, incomplete)
-        write_price_cache(Path(cache_dir), prices, incomplete)
         still_incomplete = set(incomplete_tickers(prices, end_date))
+        signal_ts = pd.Timestamp(end_date).normalize()
+        for ticker in still_incomplete:
+            frame = prices.get(ticker)
+            if frame is not None and signal_ts in frame.index:
+                prices[ticker] = frame.drop(index=signal_ts)
+        write_price_cache(Path(cache_dir), prices, incomplete)
         missing = sorted(set(missing).union(still_incomplete))
     return prices, missing
 

@@ -393,6 +393,34 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertEqual(float(prices["0050.TW"].loc[dates[-1], "close"]), 151.0)
             self.assertTrue((cache_dir / "0050_TW.csv").exists())
 
+    def test_price_loader_drops_incomplete_zero_signal_price_rows(self) -> None:
+        dates = pd.bdate_range("2025-04-01", periods=320)
+        frame = _trend_frame(dates, start=80, step=0.2, volume=5_000_000)
+        signal_date = dates[-1]
+        for column in ("open", "high", "low", "close", "adj_close"):
+            frame.loc[signal_date, column] = 0.0
+
+        def fake_fill(prices, signal_date, tickers):
+            return prices
+
+        with tempfile.TemporaryDirectory() as tmp:
+            cache_dir = Path(tmp) / "cache"
+            with patch("backtest_lab.stock_pool_observation.download_yfinance_prices", return_value={"0050.TW": frame}), patch(
+                "backtest_lab.stock_pool_observation.fill_signal_date_from_twse",
+                side_effect=fake_fill,
+            ):
+                prices, missing = _load_observation_price_frames(
+                    tickers=["0050.TW"],
+                    start_date="2020-01-02",
+                    end_date=signal_date.strftime("%Y-%m-%d"),
+                    cache_dir=cache_dir,
+                )
+
+            self.assertEqual(missing, ["0050.TW"])
+            self.assertNotIn(signal_date, prices["0050.TW"].index)
+            cached = pd.read_csv(cache_dir / "0050_TW.csv", parse_dates=["date"])
+            self.assertNotIn(signal_date, set(cached["date"]))
+
     def test_price_loader_recovers_lagged_history_before_twse_fill(self) -> None:
         dates = pd.bdate_range("2025-04-01", periods=320)
         lagged = _trend_frame(dates[:-1], start=80, step=0.2, volume=5_000_000)
