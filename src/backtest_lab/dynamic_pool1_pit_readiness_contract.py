@@ -32,6 +32,7 @@ DEFAULT_TPEX_STATUS_OUTPUT = (
 DEFAULT_TPEX_TRANSITION_OUTPUT = ""
 DEFAULT_MONTHLY_REVENUE_OUTPUT = ""
 DEFAULT_QUARTERLY_FUNDAMENTALS_OUTPUT = ""
+DEFAULT_MARKET_CAP_OUTPUT = ""
 
 YEAR_BUCKETS = (
     ("2015-2021", "2015-01-01", "2021-12-31"),
@@ -63,6 +64,7 @@ def run_dynamic_pool1_pit_readiness_contract(
     tpex_transition_output: str | Path | None = None,
     monthly_revenue_output: str | Path | None = None,
     quarterly_fundamentals_output: str | Path | None = None,
+    market_cap_output: str | Path | None = None,
 ) -> Path:
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
@@ -88,6 +90,7 @@ def run_dynamic_pool1_pit_readiness_contract(
         tpex_transition = _load_tpex_transition_candidates(tpex_transition_output)
         monthly_revenue = _load_monthly_revenue_pit(monthly_revenue_output)
         quarterly_fundamentals = _load_quarterly_fundamentals_route_unlock(quarterly_fundamentals_output)
+        market_cap = _load_market_cap_pit(market_cap_output)
         source_inventory = _source_inventory(
             price_cache_dir=Path(price_cache_dir),
             price_source_registry=Path(price_source_registry),
@@ -100,15 +103,16 @@ def run_dynamic_pool1_pit_readiness_contract(
             tpex_transition=tpex_transition,
             monthly_revenue=monthly_revenue,
             quarterly_fundamentals=quarterly_fundamentals,
+            market_cap=market_cap,
         )
         price_coverage = _price_cache_coverage(Path(price_cache_dir), Path(price_source_registry))
 
         log("build_contract_tables", "started", "")
         tables = _build_contract_tables(
-            source_inventory, price_coverage, liquidity_sweep, monthly_revenue, quarterly_fundamentals
+            source_inventory, price_coverage, liquidity_sweep, monthly_revenue, quarterly_fundamentals, market_cap
         )
         readiness_by_date = _candidate_data_readiness_by_date(
-            source_inventory, price_coverage, liquidity_sweep, monthly_revenue, quarterly_fundamentals
+            source_inventory, price_coverage, liquidity_sweep, monthly_revenue, quarterly_fundamentals, market_cap
         )
         violation_audit = _future_data_violation_audit(source_inventory)
         source_manifest = _source_manifest(source_inventory, price_coverage)
@@ -123,6 +127,7 @@ def run_dynamic_pool1_pit_readiness_contract(
             tpex_transition,
             monthly_revenue,
             quarterly_fundamentals,
+            market_cap,
         )
         dataset_summary = _dataset_readiness_summary(readiness)
         blocker_delta = _blocker_delta_after_liquidity_full_sweep(liquidity_sweep)
@@ -133,6 +138,7 @@ def run_dynamic_pool1_pit_readiness_contract(
         tpex_transition_delta = _blocker_delta_after_tpex_transition_candidates(tpex_status, tpex_transition)
         monthly_revenue_delta = _blocker_delta_after_mops_monthly_revenue(monthly_revenue)
         quarterly_delta = _blocker_delta_after_quarterly_fundamentals_route_unlock(quarterly_fundamentals)
+        market_cap_delta = _blocker_delta_after_market_cap_partial(market_cap)
 
         log("write_outputs", "started", str(output))
         for table_name, frame in tables.items():
@@ -169,6 +175,11 @@ def run_dynamic_pool1_pit_readiness_contract(
         )
         quarterly_delta.to_csv(
             output / "blocker_delta_after_quarterly_fundamentals_full_sweep.csv",
+            index=False,
+            encoding="utf-8-sig",
+        )
+        market_cap_delta.to_csv(
+            output / "blocker_delta_after_market_cap_partial.csv",
             index=False,
             encoding="utf-8-sig",
         )
@@ -213,6 +224,7 @@ def _source_inventory(
     tpex_transition: dict[str, Any],
     monthly_revenue: dict[str, Any],
     quarterly_fundamentals: dict[str, Any],
+    market_cap: dict[str, Any],
 ) -> list[dict[str, Any]]:
     sources = [
         {
@@ -417,6 +429,28 @@ def _source_inventory(
                 "symbol_count": readiness.get("symbol_count", 0),
                 "formal_exact": False,
                 "filing_date_available": False,
+            }
+        )
+
+    if market_cap.get("exists"):
+        readiness = market_cap.get("readiness", {})
+        sources.append(
+            {
+                "data_area": "market_cap_pit",
+                "source_name": "radar_dynamic_pool1_market_cap_pit",
+                "path": market_cap.get("path", ""),
+                "source_family": "tpex_daily_quotes_shares_derived_market_cap_candidate",
+                "pit_acceptance": "tpex_partial_total_market_cap_source_candidate",
+                "diagnostic_only": True,
+                "blocked_reason": (
+                    "TPEx total market cap source candidate is sample-verified from official daily close and shares, "
+                    "but TWSE historical shares/direct market cap and free-float routes remain blocked"
+                ),
+                "accepted_rows": readiness.get("accepted_rows", 0),
+                "accepted_markets": ",".join(readiness.get("accepted_markets", []) or []),
+                "blocked_markets": ",".join(readiness.get("blocked_markets", []) or []),
+                "formal_exact": False,
+                "free_float_market_cap_ready": False,
             }
         )
 
@@ -661,6 +695,46 @@ def _load_quarterly_fundamentals_route_unlock(quarterly_output: str | Path | Non
     }
 
 
+def _load_market_cap_pit(market_cap_output: str | Path | None) -> dict[str, Any]:
+    if not market_cap_output:
+        return {"exists": False, "path": ""}
+    root = Path(market_cap_output)
+    if not root.exists():
+        return {"exists": False, "path": str(root), "missing_reason": "market cap output path does not exist"}
+    readiness = _load_json(root / "readiness_for_core.json")
+    manifest = _load_json(root / "manifest.json")
+    accepted_path = root / "accepted_market_cap_rows.csv"
+    proxy_path = root / "proxy_market_cap_rows.csv"
+    accepted_manifest_path = root / "accepted_market_cap_rows_manifest.csv"
+    coverage_market_path = root / "coverage_by_market.csv"
+    coverage_year_path = root / "coverage_by_year.csv"
+    attempts_path = root / "source_probe_attempts.csv"
+    blocked_path = root / "rejected_or_blocked_rows.csv"
+    future_audit_path = root / "future_data_violation_audit.csv"
+    return {
+        "exists": True,
+        "path": str(root),
+        "readiness": readiness,
+        "manifest": manifest,
+        "accepted_path": str(accepted_path),
+        "proxy_path": str(proxy_path),
+        "accepted_manifest_path": str(accepted_manifest_path),
+        "coverage_market_path": str(coverage_market_path),
+        "coverage_year_path": str(coverage_year_path),
+        "attempts_path": str(attempts_path),
+        "blocked_path": str(blocked_path),
+        "future_audit_path": str(future_audit_path),
+        "accepted_rows_file_count": int(len(_read_csv_if_exists(accepted_path))),
+        "proxy_rows_file_count": int(len(_read_csv_if_exists(proxy_path))),
+        "accepted_manifest_rows": int(len(_read_csv_if_exists(accepted_manifest_path))),
+        "coverage_market_rows": int(len(_read_csv_if_exists(coverage_market_path))),
+        "coverage_year_rows": int(len(_read_csv_if_exists(coverage_year_path))),
+        "attempt_rows": int(len(_read_csv_if_exists(attempts_path))),
+        "blocked_rows": int(len(_read_csv_if_exists(blocked_path))),
+        "future_audit_rows": int(len(_read_csv_if_exists(future_audit_path))),
+    }
+
+
 def _price_cache_coverage(price_cache_dir: Path, price_source_registry: Path) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     if price_cache_dir.exists():
@@ -716,6 +790,7 @@ def _build_contract_tables(
     liquidity_sweep: dict[str, Any],
     monthly_revenue: dict[str, Any],
     quarterly_fundamentals: dict[str, Any],
+    market_cap: dict[str, Any],
 ) -> dict[str, pd.DataFrame]:
     return {
         "all_listed_liquid_universe_pit_daily": _all_listed_liquid_contract(
@@ -725,12 +800,7 @@ def _build_contract_tables(
         ),
         "monthly_revenue_pit": _monthly_revenue_contract_table(monthly_revenue),
         "quarterly_fundamentals_pit": _quarterly_fundamentals_contract_table(quarterly_fundamentals),
-        "market_cap_pit": _source_contract_table(
-            "market_cap_pit",
-            source_inventory,
-            "partial",
-            "available sources are current/latest snapshots or date-filterable observation helpers, not a historical PIT panel",
-        ),
+        "market_cap_pit": _market_cap_contract_table(market_cap, source_inventory),
         "sector_membership_pit": _source_contract_table(
             "sector_membership_pit",
             source_inventory,
@@ -889,6 +959,36 @@ def _quarterly_fundamentals_contract_table(quarterly_fundamentals: dict[str, Any
     return pd.DataFrame([row], columns=_contract_columns())
 
 
+def _market_cap_contract_table(market_cap: dict[str, Any], source_inventory: list[dict[str, Any]]) -> pd.DataFrame:
+    summary = _market_cap_summary(market_cap)
+    if summary["tpex_partial_ready"]:
+        row = {
+            "record_type": "partial_source_candidate_status",
+            "data_area": "market_cap_pit",
+            "ticker": "",
+            "name": "",
+            "value": f"accepted_rows={summary['accepted_rows']}; accepted_markets={','.join(summary['accepted_markets'])}",
+            "source_date": "",
+            "release_date": "",
+            "effective_date": "",
+            "source": "radar_dynamic_pool1_market_cap_pit",
+            "source_path": summary["path"],
+            "source_type": summary["source_type"],
+            "row_count": summary["accepted_rows"],
+            "readiness_status": summary["status"],
+            "diagnostic_only": True,
+            "accepted_for_formal": False,
+            "blocked_reason": summary["remaining_blocker"],
+        }
+        return pd.DataFrame([row], columns=_contract_columns())
+    return _source_contract_table(
+        "market_cap_pit",
+        source_inventory,
+        "partial",
+        "available sources are current/latest snapshots or date-filterable observation helpers, not a historical PIT panel",
+    )
+
+
 def _blocked_contract_table(data_area: str, status: str, reason: str) -> pd.DataFrame:
     return pd.DataFrame([_generic_status_row(data_area, status, reason)], columns=_contract_columns())
 
@@ -953,13 +1053,20 @@ def _candidate_data_readiness_by_date(
     liquidity_sweep: dict[str, Any],
     monthly_revenue: dict[str, Any],
     quarterly_fundamentals: dict[str, Any],
+    market_cap: dict[str, Any],
 ) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     price_status = _price_readiness_status(price_coverage)
     for bucket, start, end in YEAR_BUCKETS:
         for table in TABLE_SPECS:
             status, reason = _readiness_for_table(
-                table, price_status, source_inventory, liquidity_sweep, monthly_revenue, quarterly_fundamentals
+                table,
+                price_status,
+                source_inventory,
+                liquidity_sweep,
+                monthly_revenue,
+                quarterly_fundamentals,
+                market_cap,
             )
             rows.append(
                 {
@@ -1030,15 +1137,28 @@ def _readiness_json(
     tpex_transition: dict[str, Any],
     monthly_revenue: dict[str, Any],
     quarterly_fundamentals: dict[str, Any],
+    market_cap: dict[str, Any],
 ) -> dict[str, Any]:
     price_status = _price_readiness_status(price_coverage)
     table_status = {
         table: {
             "status": _readiness_for_table(
-                table, price_status, source_inventory, liquidity_sweep, monthly_revenue, quarterly_fundamentals
+                table,
+                price_status,
+                source_inventory,
+                liquidity_sweep,
+                monthly_revenue,
+                quarterly_fundamentals,
+                market_cap,
             )[0],
             "reason": _readiness_for_table(
-                table, price_status, source_inventory, liquidity_sweep, monthly_revenue, quarterly_fundamentals
+                table,
+                price_status,
+                source_inventory,
+                liquidity_sweep,
+                monthly_revenue,
+                quarterly_fundamentals,
+                market_cap,
             )[1],
             "accepted_for_formal": False,
         }
@@ -1065,6 +1185,7 @@ def _readiness_json(
         "tpex_transition_candidates": _tpex_transition_candidate_summary(tpex_transition),
         "monthly_revenue": _monthly_revenue_summary(monthly_revenue),
         "quarterly_fundamentals": _quarterly_fundamentals_summary(quarterly_fundamentals),
+        "market_cap": _market_cap_summary(market_cap),
         "coverage_by_year": {
             bucket: {
                 row["data_table"]: {
@@ -1088,7 +1209,9 @@ def _readiness_json(
             "Core/Research policy decision on whether TPEx inferred transition candidates are sufficient for universe integrity, or broader announcement verification for official transition events",
             "quarterly fundamentals full 2015-latest sweep and coverage audit using unlocked MOPS route",
             "exact per-company quarterly filing_date crawler if formal_exact is required beyond conservative statutory deadline",
-            "historical market cap/free-float market cap PIT",
+            "TWSE historical issued shares/capital changes or direct official market cap route",
+            "TPEx market cap full 2015-latest sweep using sample-verified dailyQuotes route",
+            "free-float shares/free-float market cap route",
             "sector/mainline membership PIT and sector breadth daily panel",
             "exact per-company monthly revenue filing timestamp if formal_exact is required beyond conservative available_date",
         ],
@@ -1124,6 +1247,7 @@ def _manifest(readiness: dict[str, Any]) -> dict[str, Any]:
             "blocker_delta_after_mops_monthly_revenue": "blocker_delta_after_mops_monthly_revenue.csv",
             "blocker_delta_after_quarterly_fundamentals_route_unlock": "blocker_delta_after_quarterly_fundamentals_route_unlock.csv",
             "blocker_delta_after_quarterly_fundamentals_full_sweep": "blocker_delta_after_quarterly_fundamentals_full_sweep.csv",
+            "blocker_delta_after_market_cap_partial": "blocker_delta_after_market_cap_partial.csv",
             "future_data_violation_audit": "future_data_violation_audit.csv",
             "source_manifest": "source_manifest.json",
             "readiness": "readiness.json",
@@ -1151,6 +1275,7 @@ def _final_summary(readiness: dict[str, Any]) -> str:
     transition = readiness.get("tpex_transition_candidates", {})
     monthly = readiness.get("monthly_revenue", {})
     quarterly = readiness.get("quarterly_fundamentals", {})
+    market_cap = readiness.get("market_cap", {})
     liquidity_line = (
         f"- all-listed liquid universe：partial，Radar full sweep covered "
         f"{liquidity.get('covered_start', '')}～{liquidity.get('covered_end', '')}，"
@@ -1189,7 +1314,10 @@ def _final_summary(readiness: dict[str, Any]) -> str:
         f"accepted rows={quarterly.get('accepted_rows', 0)}，"
         f"tested periods={','.join(quarterly.get('tested_periods', [])) if isinstance(quarterly.get('tested_periods', []), list) else quarterly.get('tested_periods', '')}；"
         "t163sb04 損益表彙總已可作 source candidate；filing_date 仍不是逐公司 exact。\n"
-        "- market cap：partial/current snapshot only，不可回推 2015。\n"
+        f"- market cap：{market_cap.get('status', 'partial')}，"
+        f"accepted rows={market_cap.get('accepted_rows', 0)}，"
+        f"accepted markets={','.join(market_cap.get('accepted_markets', [])) if isinstance(market_cap.get('accepted_markets', []), list) else market_cap.get('accepted_markets', '')}；"
+        "TPEx total market cap 可作 source candidate，TWSE 與 free-float 仍 blocked。\n"
         "- sector membership / breadth：blocked，目前 current/generated map 不可回推 2015。\n"
         f"- future_data_violation_count={readiness['future_data_violation_count']}，因未把 current/proxy source 當正式歷史資料使用。\n\n"
         "formal_model_changed=false；trade_decision_changed=false；active_in_trade_decision=false。\n"
@@ -1203,6 +1331,7 @@ def _readiness_for_table(
     liquidity_sweep: dict[str, Any],
     monthly_revenue: dict[str, Any],
     quarterly_fundamentals: dict[str, Any],
+    market_cap: dict[str, Any],
 ) -> tuple[str, str]:
     if table == "all_listed_liquid_universe_pit_daily":
         readiness = liquidity_sweep.get("readiness", {})
@@ -1237,6 +1366,12 @@ def _readiness_for_table(
             )
         return "blocked", "no quarterly fundamentals PIT with source_date/release_date/effective_date"
     if table == "market_cap_pit":
+        summary = _market_cap_summary(market_cap)
+        if summary["tpex_partial_ready"]:
+            return (
+                "tpex_partial_total_market_cap_source_candidate",
+                "TPEx official daily close and shares can derive total market cap for bounded samples; TWSE historical shares/direct market cap and free-float routes remain blocked",
+            )
         exists = any(source["data_area"] == table and source["exists"] for source in source_inventory)
         return (
             "partial" if exists else "blocked",
@@ -1269,7 +1404,7 @@ def _dataset_readiness_summary(readiness: dict[str, Any]) -> pd.DataFrame:
             "readiness_status": "blocked",
             "accepted_for_formal": False,
             "active_in_trade_decision": False,
-            "reason": "monthly revenue and quarterly fundamentals source candidates are available, but market cap PIT, sector PIT, and universe-integrity policy remain incomplete",
+            "reason": "monthly revenue, quarterly fundamentals, and TPEx partial market cap source candidates are available, but TWSE/free-float market cap, sector PIT, and universe-integrity policy remain incomplete",
         }
     )
     return pd.DataFrame(rows)
@@ -1809,6 +1944,60 @@ def _blocker_delta_after_quarterly_fundamentals_route_unlock(quarterly_fundament
     )
 
 
+def _blocker_delta_after_market_cap_partial(market_cap: dict[str, Any]) -> pd.DataFrame:
+    summary = _market_cap_summary(market_cap)
+    return pd.DataFrame(
+        [
+            {
+                "blocker": "market_cap_pit",
+                "before_status": "partial_current_snapshot_only",
+                "after_status": summary["status"],
+                "delta": "tpex_total_market_cap_source_candidate_available_twse_free_float_blocked"
+                if summary["tpex_partial_ready"]
+                else "unchanged",
+                "accepted_rows": int(summary["accepted_rows"]),
+                "accepted_markets": ",".join(summary["accepted_markets"]),
+                "blocked_markets": ",".join(summary["blocked_markets"]),
+                "source_type": summary["source_type"],
+                "formal_exact": bool(summary["formal_exact"]),
+                "free_float_market_cap_ready": bool(summary["free_float_market_cap_ready"]),
+                "ready_for_strategy_replay": bool(summary["ready_for_strategy_replay"]),
+                "remaining_blocker": summary["remaining_blocker"],
+            },
+            {
+                "blocker": "dynamic_pool1_shadow_challenger",
+                "before_status": "blocked",
+                "after_status": "blocked",
+                "delta": "market_cap_partial_available_but_required_layers_missing"
+                if summary["tpex_partial_ready"]
+                else "unchanged",
+                "accepted_rows": int(summary["accepted_rows"]),
+                "accepted_markets": ",".join(summary["accepted_markets"]),
+                "blocked_markets": ",".join(summary["blocked_markets"]),
+                "source_type": summary["source_type"],
+                "formal_exact": bool(summary["formal_exact"]),
+                "free_float_market_cap_ready": bool(summary["free_float_market_cap_ready"]),
+                "ready_for_strategy_replay": False,
+                "remaining_blocker": "TWSE historical market cap, free-float market cap, sector/mainline PIT, and universe-integrity policy remain incomplete",
+            },
+            {
+                "blocker": "sector_membership_pit",
+                "before_status": "blocked",
+                "after_status": "blocked",
+                "delta": "unchanged_next_data_layer_after_market_cap",
+                "accepted_rows": 0,
+                "accepted_markets": "",
+                "blocked_markets": "",
+                "source_type": "",
+                "formal_exact": False,
+                "free_float_market_cap_ready": False,
+                "ready_for_strategy_replay": False,
+                "remaining_blocker": "date-aware sector/mainline membership PIT remains missing",
+            },
+        ]
+    )
+
+
 def _liquidity_sweep_summary(liquidity_sweep: dict[str, Any]) -> dict[str, Any]:
     readiness = liquidity_sweep.get("readiness", {})
     covered = readiness.get("covered_date_range", {})
@@ -2086,6 +2275,45 @@ def _quarterly_fundamentals_summary(quarterly_fundamentals: dict[str, Any]) -> d
     }
 
 
+def _market_cap_summary(market_cap: dict[str, Any]) -> dict[str, Any]:
+    readiness = market_cap.get("readiness", {})
+    exists = bool(market_cap.get("exists"))
+    accepted_markets = list(readiness.get("accepted_markets", []) or [])
+    blocked_markets = list(readiness.get("blocked_markets", []) or [])
+    partial_ready = bool(readiness.get("market_cap_pit_partial_ready", False))
+    full_ready = bool(readiness.get("market_cap_pit_ready", False))
+    return {
+        "exists": exists,
+        "path": market_cap.get("path", ""),
+        "status": "market_cap_pit_ready"
+        if full_ready
+        else "tpex_partial_total_market_cap_source_candidate"
+        if partial_ready
+        else "partial_current_snapshot_only"
+        if exists
+        else "blocked",
+        "market_cap_pit_ready": full_ready,
+        "market_cap_pit_partial_ready": partial_ready,
+        "tpex_partial_ready": bool(partial_ready and "TPEx" in accepted_markets),
+        "accepted_rows": int(readiness.get("accepted_rows", market_cap.get("accepted_rows_file_count", 0)) or 0),
+        "accepted_markets": accepted_markets,
+        "blocked_markets": blocked_markets,
+        "source_type": readiness.get("source_type", "shares_derived_official_daily_candidate"),
+        "formal_exact": bool(readiness.get("formal_exact", False)),
+        "free_float_market_cap_ready": bool(readiness.get("free_float_market_cap_ready", False)),
+        "future_data_violation_count": int(readiness.get("future_data_violation_count", 0) or 0),
+        "ready_for_core_rerun": bool(readiness.get("ready_for_core_rerun", False)),
+        "ready_for_strategy_replay": False,
+        "dynamic_pool1_shadow_challenger_ready": False,
+        "remaining_blocker": (
+            "TPEx total market cap source candidate is sample-verified from official daily close and shares; TWSE "
+            "historical issued shares/direct market cap route and free-float market cap remain blocked"
+            if partial_ready
+            else "historical market cap/free-float market cap PIT is missing or current snapshot only"
+        ),
+    }
+
+
 def _listing_metadata_status(listing_metadata: dict[str, Any]) -> dict[str, Any]:
     summary = _listing_metadata_summary(listing_metadata)
     if summary["partial_event_rows_available"]:
@@ -2332,6 +2560,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--tpex-transition-output", default=DEFAULT_TPEX_TRANSITION_OUTPUT)
     parser.add_argument("--monthly-revenue-output", default=DEFAULT_MONTHLY_REVENUE_OUTPUT)
     parser.add_argument("--quarterly-fundamentals-output", default=DEFAULT_QUARTERLY_FUNDAMENTALS_OUTPUT)
+    parser.add_argument("--market-cap-output", default=DEFAULT_MARKET_CAP_OUTPUT)
     args = parser.parse_args(argv)
     run_dynamic_pool1_pit_readiness_contract(
         output_dir=args.output_dir,
@@ -2346,6 +2575,7 @@ def main(argv: list[str] | None = None) -> int:
         tpex_transition_output=args.tpex_transition_output,
         monthly_revenue_output=args.monthly_revenue_output,
         quarterly_fundamentals_output=args.quarterly_fundamentals_output,
+        market_cap_output=args.market_cap_output,
     )
     return 0
 

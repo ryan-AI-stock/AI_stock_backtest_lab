@@ -1125,6 +1125,106 @@ class DynamicPool1PitReadinessContractTest(unittest.TestCase):
             self.assertFalse(bool(row["formal_exact"]))
             self.assertFalse(bool(row["ready_for_strategy_replay"]))
 
+    def test_market_cap_tpex_partial_is_not_full_or_free_float_ready(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache = root / "cache"
+            radar = root / "radar"
+            market_cap = root / "market_cap"
+            output = root / "out"
+            cache.mkdir()
+            radar.mkdir()
+            market_cap.mkdir()
+
+            pd.DataFrame(
+                {
+                    "date": ["2015-01-05"],
+                    "open": [100],
+                    "high": [101],
+                    "low": [99],
+                    "close": [100],
+                    "adj_close": [100],
+                    "volume": [1000],
+                }
+            ).to_csv(cache / "2330_TW.csv", index=False)
+            (market_cap / "readiness_for_core.json").write_text(
+                json.dumps(
+                    {
+                        "status": "completed_partial_tpex_total_market_cap_proxy_sample_twse_blocked",
+                        "market_cap_pit_ready": False,
+                        "market_cap_pit_partial_ready": True,
+                        "accepted_rows": 240,
+                        "accepted_markets": ["TPEx"],
+                        "blocked_markets": ["TWSE"],
+                        "source_type": "shares_derived_official_daily_candidate",
+                        "formal_exact": False,
+                        "free_float_market_cap_ready": False,
+                        "future_data_violation_count": 0,
+                        "ready_for_core_rerun": True,
+                        "ready_for_strategy_replay": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (market_cap / "manifest.json").write_text("{}", encoding="utf-8")
+            pd.DataFrame(
+                [
+                    {
+                        "ticker": "1259",
+                        "market": "TPEx",
+                        "date": "2015-01-05",
+                        "market_cap": 1000000000,
+                        "source_type": "shares_derived_official_daily_candidate",
+                        "formal_exact": False,
+                    }
+                ]
+            ).to_csv(market_cap / "accepted_market_cap_rows.csv", index=False)
+            pd.DataFrame([{"market": "TPEx", "rows": 240}]).to_csv(
+                market_cap / "accepted_market_cap_rows_manifest.csv",
+                index=False,
+            )
+            pd.DataFrame([{"market": "TPEx", "coverage": "sample"}]).to_csv(
+                market_cap / "coverage_by_market.csv",
+                index=False,
+            )
+
+            run_dynamic_pool1_pit_readiness_contract(
+                output_dir=output,
+                price_cache_dir=cache,
+                price_source_registry=root / "missing_registry.csv",
+                tw50_constituents_path=root / "missing_tw50.csv",
+                ai_theme_candidates_path=root / "missing_ai.csv",
+                radar_data_dir=radar,
+                liquidity_sweep_output=root / "missing_sweep",
+                listing_metadata_output=root / "missing_listing",
+                tpex_status_output=root / "missing_tpex",
+                tpex_transition_output=root / "missing_transition",
+                monthly_revenue_output=root / "missing_monthly",
+                quarterly_fundamentals_output=root / "missing_quarterly",
+                market_cap_output=market_cap,
+            )
+
+            readiness = json.loads((output / "readiness.json").read_text(encoding="utf-8"))
+            market_status = readiness["market_cap"]
+            self.assertEqual(
+                readiness["table_status"]["market_cap_pit"]["status"],
+                "tpex_partial_total_market_cap_source_candidate",
+            )
+            self.assertEqual(market_status["accepted_rows"], 240)
+            self.assertEqual(market_status["accepted_markets"], ["TPEx"])
+            self.assertEqual(market_status["blocked_markets"], ["TWSE"])
+            self.assertFalse(market_status["formal_exact"])
+            self.assertFalse(market_status["free_float_market_cap_ready"])
+            self.assertFalse(readiness["ready_for_strategy_replay"])
+            self.assertFalse(readiness["dynamic_pool1_shadow_challenger_ready"])
+
+            delta = pd.read_csv(output / "blocker_delta_after_market_cap_partial.csv")
+            row = delta[delta["blocker"].eq("market_cap_pit")].iloc[0]
+            self.assertEqual(row["after_status"], "tpex_partial_total_market_cap_source_candidate")
+            self.assertEqual(int(row["accepted_rows"]), 240)
+            self.assertFalse(bool(row["formal_exact"]))
+            self.assertFalse(bool(row["free_float_market_cap_ready"]))
+
 
 if __name__ == "__main__":
     unittest.main()
