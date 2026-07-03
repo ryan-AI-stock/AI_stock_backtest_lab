@@ -188,6 +188,11 @@ def run_dynamic_pool1_pit_readiness_contract(
             index=False,
             encoding="utf-8-sig",
         )
+        market_cap_delta.to_csv(
+            output / "blocker_delta_after_twse_capital_stock_route_partial.csv",
+            index=False,
+            encoding="utf-8-sig",
+        )
         violation_audit.to_csv(output / "future_data_violation_audit.csv", index=False, encoding="utf-8-sig")
         (output / "source_manifest.json").write_text(
             json.dumps(source_manifest, ensure_ascii=False, indent=2),
@@ -438,22 +443,20 @@ def _source_inventory(
         )
 
     if market_cap.get("exists"):
-        readiness = market_cap.get("readiness", {})
+        summary = _market_cap_summary(market_cap)
         sources.append(
             {
                 "data_area": "market_cap_pit",
                 "source_name": "radar_dynamic_pool1_market_cap_pit",
                 "path": market_cap.get("path", ""),
-                "source_family": "tpex_daily_quotes_shares_derived_market_cap_candidate",
-                "pit_acceptance": "tpex_partial_total_market_cap_source_candidate",
+                "source_family": summary["source_type"],
+                "pit_acceptance": summary["status"],
                 "diagnostic_only": True,
-                "blocked_reason": (
-                    "TPEx total market cap source candidate is sample-verified from official daily close and shares, "
-                    "but TWSE historical shares/direct market cap and free-float routes remain blocked"
-                ),
-                "accepted_rows": readiness.get("accepted_rows", 0),
-                "accepted_markets": ",".join(readiness.get("accepted_markets", []) or []),
-                "blocked_markets": ",".join(readiness.get("blocked_markets", []) or []),
+                "blocked_reason": summary["remaining_blocker"],
+                "accepted_rows": summary["accepted_rows"],
+                "accepted_markets": ",".join(summary["accepted_markets"]),
+                "blocked_markets": ",".join(summary["blocked_markets"]),
+                "twse_capital_stock_sample_rows": summary["twse_capital_stock_sample_rows"],
                 "formal_exact": False,
                 "free_float_market_cap_ready": False,
             }
@@ -711,10 +714,14 @@ def _load_market_cap_pit(market_cap_output: str | Path | None) -> dict[str, Any]
     accepted_path = root / "accepted_market_cap_rows.csv"
     proxy_path = root / "proxy_market_cap_rows.csv"
     accepted_manifest_path = root / "accepted_market_cap_rows_manifest.csv"
+    twse_capital_stock_path = root / "accepted_twse_issued_shares_sample_rows.csv"
+    twse_market_cap_path = root / "accepted_twse_market_cap_sample_rows.csv"
     coverage_market_path = root / "coverage_by_market.csv"
     coverage_year_path = root / "coverage_by_year.csv"
     attempts_path = root / "source_probe_attempts.csv"
+    route_attempts_path = root / "route_probe_attempts.csv"
     blocked_path = root / "rejected_or_blocked_rows.csv"
+    blocked_source_path = root / "blocked_source_rows.csv"
     future_audit_path = root / "future_data_violation_audit.csv"
     return {
         "exists": True,
@@ -724,18 +731,24 @@ def _load_market_cap_pit(market_cap_output: str | Path | None) -> dict[str, Any]
         "accepted_path": str(accepted_path),
         "proxy_path": str(proxy_path),
         "accepted_manifest_path": str(accepted_manifest_path),
+        "twse_capital_stock_path": str(twse_capital_stock_path),
+        "twse_market_cap_path": str(twse_market_cap_path),
         "coverage_market_path": str(coverage_market_path),
         "coverage_year_path": str(coverage_year_path),
         "attempts_path": str(attempts_path),
+        "route_attempts_path": str(route_attempts_path),
         "blocked_path": str(blocked_path),
+        "blocked_source_path": str(blocked_source_path),
         "future_audit_path": str(future_audit_path),
         "accepted_rows_file_count": int(len(_read_csv_if_exists(accepted_path))),
         "proxy_rows_file_count": int(len(_read_csv_if_exists(proxy_path))),
         "accepted_manifest_rows": int(len(_read_csv_if_exists(accepted_manifest_path))),
+        "twse_capital_stock_rows_file_count": int(len(_read_csv_if_exists(twse_capital_stock_path))),
+        "twse_market_cap_rows_file_count": int(len(_read_csv_if_exists(twse_market_cap_path))),
         "coverage_market_rows": int(len(_read_csv_if_exists(coverage_market_path))),
         "coverage_year_rows": int(len(_read_csv_if_exists(coverage_year_path))),
-        "attempt_rows": int(len(_read_csv_if_exists(attempts_path))),
-        "blocked_rows": int(len(_read_csv_if_exists(blocked_path))),
+        "attempt_rows": int(len(_read_csv_if_exists(attempts_path)) or len(_read_csv_if_exists(route_attempts_path))),
+        "blocked_rows": int(len(_read_csv_if_exists(blocked_path)) or len(_read_csv_if_exists(blocked_source_path))),
         "future_audit_rows": int(len(_read_csv_if_exists(future_audit_path))),
     }
 
@@ -966,13 +979,17 @@ def _quarterly_fundamentals_contract_table(quarterly_fundamentals: dict[str, Any
 
 def _market_cap_contract_table(market_cap: dict[str, Any], source_inventory: list[dict[str, Any]]) -> pd.DataFrame:
     summary = _market_cap_summary(market_cap)
-    if summary["tpex_partial_ready"]:
+    if summary["tpex_partial_ready"] or summary["twse_quarterly_capital_stock_route_partial"]:
         row = {
             "record_type": "partial_source_candidate_status",
             "data_area": "market_cap_pit",
             "ticker": "",
             "name": "",
-            "value": f"accepted_rows={summary['accepted_rows']}; accepted_markets={','.join(summary['accepted_markets'])}",
+            "value": (
+                f"accepted_rows={summary['accepted_rows']}; "
+                f"accepted_markets={','.join(summary['accepted_markets'])}; "
+                f"twse_capital_stock_sample_rows={summary['twse_capital_stock_sample_rows']}"
+            ),
             "source_date": "",
             "release_date": "",
             "effective_date": "",
@@ -1254,6 +1271,7 @@ def _manifest(readiness: dict[str, Any]) -> dict[str, Any]:
             "blocker_delta_after_quarterly_fundamentals_full_sweep": "blocker_delta_after_quarterly_fundamentals_full_sweep.csv",
             "blocker_delta_after_market_cap_partial": "blocker_delta_after_market_cap_partial.csv",
             "blocker_delta_after_tpex_market_cap_full_sweep": "blocker_delta_after_tpex_market_cap_full_sweep.csv",
+            "blocker_delta_after_twse_capital_stock_route_partial": "blocker_delta_after_twse_capital_stock_route_partial.csv",
             "future_data_violation_audit": "future_data_violation_audit.csv",
             "source_manifest": "source_manifest.json",
             "readiness": "readiness.json",
@@ -1377,6 +1395,11 @@ def _readiness_for_table(
             return (
                 summary["status"],
                 "TPEx official daily close and shares can derive total market cap source candidate; TWSE historical shares/direct market cap and free-float routes remain blocked",
+            )
+        if summary["twse_quarterly_capital_stock_route_partial"]:
+            return (
+                summary["status"],
+                "TWSE MOPS quarterly capital stock route is unlocked as diagnostic/proxy source candidate; it is not daily issued shares or direct daily market cap, and free-float remains blocked",
             )
         exists = any(source["data_area"] == table and source["exists"] for source in source_inventory)
         return (
@@ -1961,6 +1984,8 @@ def _blocker_delta_after_market_cap_partial(market_cap: dict[str, Any]) -> pd.Da
                 "delta": (
                     "tpex_full_total_market_cap_source_candidate_ready_twse_free_float_blocked"
                     if summary["tpex_full_sweep_completed"]
+                    else "twse_quarterly_capital_stock_route_partial_proxy_candidate_direct_market_cap_blocked"
+                    if summary["twse_quarterly_capital_stock_route_partial"]
                     else "tpex_total_market_cap_source_candidate_available_twse_free_float_blocked"
                     if summary["tpex_partial_ready"]
                     else "unchanged"
@@ -1972,6 +1997,11 @@ def _blocker_delta_after_market_cap_partial(market_cap: dict[str, Any]) -> pd.Da
                 "accepted_markets": ",".join(summary["accepted_markets"]),
                 "blocked_markets": ",".join(summary["blocked_markets"]),
                 "source_type": summary["source_type"],
+                "twse_capital_stock_sample_rows": int(summary["twse_capital_stock_sample_rows"]),
+                "twse_market_cap_sample_rows": int(summary["twse_market_cap_sample_rows"]),
+                "twse_quarterly_capital_stock_route_partial": bool(
+                    summary["twse_quarterly_capital_stock_route_partial"]
+                ),
                 "formal_exact": bool(summary["formal_exact"]),
                 "free_float_market_cap_ready": bool(summary["free_float_market_cap_ready"]),
                 "ready_for_strategy_replay": bool(summary["ready_for_strategy_replay"]),
@@ -1983,6 +2013,8 @@ def _blocker_delta_after_market_cap_partial(market_cap: dict[str, Any]) -> pd.Da
                 "after_status": "blocked",
                 "delta": "market_cap_partial_available_but_required_layers_missing"
                 if summary["tpex_partial_ready"] and not summary["tpex_full_sweep_completed"]
+                else "twse_capital_stock_proxy_candidate_available_but_daily_market_cap_free_float_sector_missing"
+                if summary["twse_quarterly_capital_stock_route_partial"]
                 else "tpex_market_cap_full_sweep_available_but_twse_free_float_sector_missing"
                 if summary["tpex_full_sweep_completed"]
                 else "unchanged",
@@ -1993,6 +2025,11 @@ def _blocker_delta_after_market_cap_partial(market_cap: dict[str, Any]) -> pd.Da
                 "accepted_markets": ",".join(summary["accepted_markets"]),
                 "blocked_markets": ",".join(summary["blocked_markets"]),
                 "source_type": summary["source_type"],
+                "twse_capital_stock_sample_rows": int(summary["twse_capital_stock_sample_rows"]),
+                "twse_market_cap_sample_rows": int(summary["twse_market_cap_sample_rows"]),
+                "twse_quarterly_capital_stock_route_partial": bool(
+                    summary["twse_quarterly_capital_stock_route_partial"]
+                ),
                 "formal_exact": bool(summary["formal_exact"]),
                 "free_float_market_cap_ready": bool(summary["free_float_market_cap_ready"]),
                 "ready_for_strategy_replay": False,
@@ -2010,6 +2047,9 @@ def _blocker_delta_after_market_cap_partial(market_cap: dict[str, Any]) -> pd.Da
                 "accepted_markets": "",
                 "blocked_markets": "",
                 "source_type": "",
+                "twse_capital_stock_sample_rows": 0,
+                "twse_market_cap_sample_rows": 0,
+                "twse_quarterly_capital_stock_route_partial": False,
                 "formal_exact": False,
                 "free_float_market_cap_ready": False,
                 "ready_for_strategy_replay": False,
@@ -2302,14 +2342,45 @@ def _market_cap_summary(market_cap: dict[str, Any]) -> dict[str, Any]:
     accepted_markets = list(readiness.get("accepted_markets", []) or [])
     blocked_markets = list(readiness.get("blocked_markets", []) or [])
     tpex_full_sweep_completed = bool(readiness.get("tpex_full_sweep_completed", False))
+    twse_capital_stock_partial = bool(
+        readiness.get("twse_quarterly_capital_stock_route_unlocked", False)
+        or readiness.get("twse_sample_ready", False)
+        or market_cap.get("twse_capital_stock_rows_file_count", 0)
+    )
     partial_ready = bool(readiness.get("market_cap_pit_partial_ready", False))
     full_ready = bool(readiness.get("market_cap_pit_ready", False))
     if tpex_full_sweep_completed and "TPEx" not in accepted_markets:
         accepted_markets = ["TPEx", *accepted_markets]
+    if twse_capital_stock_partial and "TWSE" not in accepted_markets:
+        accepted_markets = [*accepted_markets, "TWSE"]
     if tpex_full_sweep_completed and "TWSE" not in blocked_markets and not readiness.get("twse_route_unlocked", False):
         blocked_markets = [*blocked_markets, "TWSE"]
+    if twse_capital_stock_partial and "TWSE" not in blocked_markets and not readiness.get("twse_market_cap_route_unlocked", False):
+        blocked_markets = [*blocked_markets, "TWSE"]
+    twse_capital_stock_sample_rows = int(
+        readiness.get(
+            "accepted_twse_capital_stock_sample_rows",
+            market_cap.get("twse_capital_stock_rows_file_count", 0),
+        )
+        or 0
+    )
+    twse_market_cap_sample_rows = int(
+        readiness.get(
+            "accepted_twse_market_cap_sample_rows",
+            market_cap.get("twse_market_cap_rows_file_count", 0),
+        )
+        or 0
+    )
     accepted_rows = int(
-        readiness.get("accepted_rows", readiness.get("tpex_accepted_rows", market_cap.get("accepted_rows_file_count", 0)))
+        readiness.get(
+            "accepted_rows",
+            readiness.get(
+                "tpex_accepted_rows",
+                twse_capital_stock_sample_rows
+                or market_cap.get("accepted_rows_file_count", 0)
+                or market_cap.get("twse_capital_stock_rows_file_count", 0),
+            ),
+        )
         or 0
     )
     return {
@@ -2319,6 +2390,8 @@ def _market_cap_summary(market_cap: dict[str, Any]) -> dict[str, Any]:
         if full_ready
         else "tpex_full_total_market_cap_source_candidate"
         if tpex_full_sweep_completed
+        else "twse_quarterly_capital_stock_route_partial"
+        if twse_capital_stock_partial
         else "tpex_partial_total_market_cap_source_candidate"
         if partial_ready
         else "partial_current_snapshot_only"
@@ -2331,10 +2404,23 @@ def _market_cap_summary(market_cap: dict[str, Any]) -> dict[str, Any]:
         "tpex_completed_dates": int(readiness.get("tpex_completed_dates", 0) or 0),
         "tpex_expected_weekday_dates": int(readiness.get("tpex_expected_weekday_dates", 0) or 0),
         "tpex_missing_dates": int(readiness.get("tpex_missing_dates", 0) or 0),
+        "twse_quarterly_capital_stock_route_partial": twse_capital_stock_partial,
+        "twse_market_cap_route_unlocked": bool(readiness.get("twse_market_cap_route_unlocked", False)),
+        "twse_issued_shares_route_unlocked": bool(readiness.get("twse_issued_shares_route_unlocked", False)),
+        "twse_still_blocked": bool(readiness.get("twse_still_blocked", False) or twse_capital_stock_partial),
+        "twse_capital_stock_sample_rows": twse_capital_stock_sample_rows,
+        "twse_market_cap_sample_rows": twse_market_cap_sample_rows,
+        "accepted_periods": list(readiness.get("accepted_periods", []) or []),
+        "accepted_symbols": int(readiness.get("accepted_symbols", 0) or 0),
         "accepted_rows": accepted_rows,
         "accepted_markets": accepted_markets,
         "blocked_markets": blocked_markets,
-        "source_type": readiness.get("source_type", "shares_derived_official_daily_candidate"),
+        "source_type": readiness.get(
+            "source_type",
+            "quarterly_capital_stock_source_candidate_no_exact_filing_date"
+            if twse_capital_stock_partial
+            else "shares_derived_official_daily_candidate",
+        ),
         "formal_exact": bool(readiness.get("formal_exact", False)),
         "free_float_market_cap_ready": bool(readiness.get("free_float_market_cap_ready", False)),
         "future_data_violation_count": int(readiness.get("future_data_violation_count", 0) or 0),
@@ -2345,6 +2431,11 @@ def _market_cap_summary(market_cap: dict[str, Any]) -> dict[str, Any]:
             "TPEx total market cap full sweep is ready as source candidate from official daily close and shares; "
             "TWSE historical issued shares/direct market cap route and free-float market cap remain blocked"
             if tpex_full_sweep_completed
+            else
+            "TWSE quarterly capital stock route is unlocked as a diagnostic/proxy source candidate, but it is not "
+            "daily issued shares or direct daily market cap; full quarter sweep, daily close proxy contract, "
+            "capital-change effective-date handling, and free-float market cap remain blocked"
+            if twse_capital_stock_partial
             else
             "TPEx total market cap source candidate is sample-verified from official daily close and shares; TWSE "
             "historical issued shares/direct market cap route and free-float market cap remain blocked"
