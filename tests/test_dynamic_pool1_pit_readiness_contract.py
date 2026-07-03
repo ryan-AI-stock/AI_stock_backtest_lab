@@ -506,6 +506,110 @@ class DynamicPool1PitReadinessContractTest(unittest.TestCase):
             self.assertEqual(int(row["accepted_current_or_carried_tpex_rows"]), 236)
             self.assertFalse(bool(row["current_or_carried_rows_used_as_historical"]))
 
+    def test_tpex_static_reverse_partial_accepts_sample_rows_but_not_full_ready(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache = root / "cache"
+            radar = root / "radar"
+            tpex = root / "tpex_static_reverse"
+            output = root / "out"
+            cache.mkdir()
+            radar.mkdir()
+            tpex.mkdir()
+
+            pd.DataFrame(
+                {
+                    "date": ["2015-01-05"],
+                    "open": [100],
+                    "high": [101],
+                    "low": [99],
+                    "close": [100],
+                    "adj_close": [100],
+                    "volume": [1000],
+                }
+            ).to_csv(cache / "2330_TW.csv", index=False)
+            pd.DataFrame([{"ticker": "7402", "event_type": "listing", "event_date": "2015-12-29"}]).to_csv(
+                tpex / "accepted_listing_metadata_rows.csv",
+                index=False,
+            )
+            pd.DataFrame(
+                [
+                    {
+                        "ticker": "3066",
+                        "status_date": "2015-01-05",
+                        "is_altered_trading": True,
+                        "is_suspended": False,
+                    }
+                ]
+            ).to_csv(tpex / "accepted_status_snapshot_rows.csv", index=False)
+            pd.DataFrame(columns=["ticker", "event_type"]).to_csv(
+                tpex / "accepted_suspension_event_rows.csv",
+                index=False,
+            )
+            pd.DataFrame(
+                [
+                    {
+                        "source": "TPEx bulletin/sprc",
+                        "blocked_component": "suspension/resumption event history",
+                        "blocked_reason": "current_only_no_historical_date_parameter",
+                    }
+                ]
+            ).to_csv(tpex / "blocked_source_rows.csv", index=False)
+            pd.DataFrame([{"route": "company/latest", "status": "accepted_sample"}]).to_csv(
+                tpex / "route_probe_attempts.csv",
+                index=False,
+            )
+            (tpex / "readiness_for_core.json").write_text(
+                json.dumps(
+                    {
+                        "status": "completed_partial_with_accepted_historical_rows",
+                        "accepted_listing_metadata_rows": 150,
+                        "accepted_status_snapshot_rows": 107,
+                        "accepted_suspension_event_rows": 0,
+                        "route_probe_attempts": 32,
+                        "future_data_violation_count": 0,
+                        "tpex_static_reverse_contract_extracted": True,
+                        "tpex_sample_historical_listing_delisting_ready": True,
+                        "tpex_sample_historical_status_snapshot_ready": True,
+                        "tpex_full_2015_2025_master_ready": False,
+                        "listing_delisting_suspension_master_full_ready": False,
+                        "ready_for_core_rerun": True,
+                        "ready_for_strategy_replay": False,
+                        "dynamic_pool1_shadow_challenger_ready": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (tpex / "manifest.json").write_text("{}", encoding="utf-8")
+
+            run_dynamic_pool1_pit_readiness_contract(
+                output_dir=output,
+                price_cache_dir=cache,
+                price_source_registry=root / "missing_registry.csv",
+                tw50_constituents_path=root / "missing_tw50.csv",
+                ai_theme_candidates_path=root / "missing_ai.csv",
+                radar_data_dir=radar,
+                liquidity_sweep_output=root / "missing_sweep",
+                listing_metadata_output=root / "missing_listing",
+                tpex_status_output=tpex,
+            )
+
+            readiness = json.loads((output / "readiness.json").read_text(encoding="utf-8"))
+            self.assertEqual(
+                readiness["table_status"]["tpex_historical_listing_status"]["status"],
+                "partial_with_accepted_historical_rows",
+            )
+            self.assertEqual(readiness["tpex_historical_listing_status"]["accepted_historical_rows"], 257)
+            self.assertFalse(readiness["tpex_historical_listing_status"]["tpex_full_2015_2025_master_ready"])
+            self.assertFalse(readiness["ready_for_strategy_replay"])
+            self.assertFalse(readiness["dynamic_pool1_shadow_challenger_ready"])
+
+            delta = pd.read_csv(output / "blocker_delta_after_tpex_blocker_evidence.csv")
+            row = delta[delta["blocker"].eq("tpex_historical_listing_status")].iloc[0]
+            self.assertEqual(row["delta"], "partial_historical_rows_accepted")
+            self.assertEqual(int(row["accepted_historical_rows"]), 257)
+            self.assertFalse(bool(row["full_2015_2025_master_ready"]))
+
 
 if __name__ == "__main__":
     unittest.main()
