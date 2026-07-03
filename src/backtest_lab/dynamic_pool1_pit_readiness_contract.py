@@ -25,6 +25,10 @@ DEFAULT_LISTING_METADATA_OUTPUT = (
     "C:/Users/zergv/Documents/Codex/2026-05-23/ai-stock-rotation-radar-https-docs/outputs/"
     "radar_dynamic_pool1_listing_delisting_suspension_master_20260703"
 )
+DEFAULT_TPEX_STATUS_OUTPUT = (
+    "C:/Users/zergv/Documents/Codex/2026-05-23/ai-stock-rotation-radar-https-docs/outputs/"
+    "radar_dynamic_pool1_tpex_historical_listing_status_master_20260703"
+)
 
 YEAR_BUCKETS = (
     ("2015-2021", "2015-01-01", "2021-12-31"),
@@ -52,6 +56,7 @@ def run_dynamic_pool1_pit_readiness_contract(
     radar_data_dir: str | Path = DEFAULT_RADAR_DATA_DIR,
     liquidity_sweep_output: str | Path | None = None,
     listing_metadata_output: str | Path | None = None,
+    tpex_status_output: str | Path | None = None,
 ) -> Path:
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
@@ -73,6 +78,7 @@ def run_dynamic_pool1_pit_readiness_contract(
         log("inventory_sources", "started", "")
         liquidity_sweep = _load_liquidity_sweep(liquidity_sweep_output)
         listing_metadata = _load_listing_metadata(listing_metadata_output)
+        tpex_status = _load_tpex_status_blocker(tpex_status_output)
         source_inventory = _source_inventory(
             price_cache_dir=Path(price_cache_dir),
             price_source_registry=Path(price_source_registry),
@@ -81,6 +87,7 @@ def run_dynamic_pool1_pit_readiness_contract(
             radar_data_dir=Path(radar_data_dir),
             liquidity_sweep=liquidity_sweep,
             listing_metadata=listing_metadata,
+            tpex_status=tpex_status,
         )
         price_coverage = _price_cache_coverage(Path(price_cache_dir), Path(price_source_registry))
 
@@ -96,11 +103,13 @@ def run_dynamic_pool1_pit_readiness_contract(
             violation_audit,
             liquidity_sweep,
             listing_metadata,
+            tpex_status,
         )
         dataset_summary = _dataset_readiness_summary(readiness)
         blocker_delta = _blocker_delta_after_liquidity_full_sweep(liquidity_sweep)
         listing_delta = _blocker_delta_after_listing_metadata(listing_metadata)
         listing_completion_delta = _blocker_delta_after_listing_master_completion(listing_metadata)
+        tpex_delta = _blocker_delta_after_tpex_blocker_evidence(tpex_status)
 
         log("write_outputs", "started", str(output))
         for table_name, frame in tables.items():
@@ -114,6 +123,7 @@ def run_dynamic_pool1_pit_readiness_contract(
             index=False,
             encoding="utf-8-sig",
         )
+        tpex_delta.to_csv(output / "blocker_delta_after_tpex_blocker_evidence.csv", index=False, encoding="utf-8-sig")
         violation_audit.to_csv(output / "future_data_violation_audit.csv", index=False, encoding="utf-8-sig")
         (output / "source_manifest.json").write_text(
             json.dumps(source_manifest, ensure_ascii=False, indent=2),
@@ -151,6 +161,7 @@ def _source_inventory(
     radar_data_dir: Path,
     liquidity_sweep: dict[str, Any],
     listing_metadata: dict[str, Any],
+    tpex_status: dict[str, Any],
 ) -> list[dict[str, Any]]:
     sources = [
         {
@@ -273,6 +284,27 @@ def _source_inventory(
             }
         )
 
+    if tpex_status.get("exists"):
+        readiness = tpex_status.get("readiness", {})
+        sources.append(
+            {
+                "data_area": "tpex_historical_listing_status",
+                "source_name": "radar_dynamic_pool1_tpex_historical_listing_status_master",
+                "path": tpex_status.get("path", ""),
+                "source_family": "radar_blocker_evidence_package",
+                "pit_acceptance": "blocked_with_attempt_evidence",
+                "diagnostic_only": True,
+                "blocked_reason": (
+                    "TPEx 2015-2025 historical listing/status probe produced zero accepted historical rows; "
+                    "current/carried 2026 rows are not accepted as historical PIT"
+                ),
+                "accepted_historical_rows": readiness.get("accepted_historical_rows", 0),
+                "accepted_current_or_carried_tpex_rows": readiness.get("accepted_current_or_carried_tpex_rows", 0),
+                "source_probe_attempts": readiness.get("source_probe_attempts", 0),
+                "blocked_source_rows": readiness.get("blocked_source_rows", 0),
+            }
+        )
+
     inventory: list[dict[str, Any]] = []
     for source in sources:
         inventory.append(_source_row(source))
@@ -371,6 +403,34 @@ def _load_listing_metadata(listing_metadata_output: str | Path | None) -> dict[s
         "accepted_listing_rows": int(len(_read_csv_if_exists(accepted_listing_path))),
         "accepted_suspension_rows": int(len(_read_csv_if_exists(accepted_suspension_path))),
         "blocked_rows": int(len(_read_csv_if_exists(blocked_path))),
+        "future_audit_rows": int(len(_read_csv_if_exists(future_audit_path))),
+    }
+
+
+def _load_tpex_status_blocker(tpex_status_output: str | Path | None) -> dict[str, Any]:
+    if tpex_status_output is None:
+        return {"exists": False, "path": ""}
+    root = Path(tpex_status_output)
+    if not root.exists():
+        return {"exists": False, "path": str(root), "missing_reason": "TPEx status output path does not exist"}
+    readiness = _load_json(root / "readiness_for_core.json")
+    manifest = _load_json(root / "manifest.json")
+    current_path = root / "accepted_current_or_carried_tpex_rows.csv"
+    blocked_path = root / "blocked_source_rows.csv"
+    attempts_path = root / "source_probe_attempts.csv"
+    future_audit_path = root / "future_data_violation_audit.csv"
+    return {
+        "exists": True,
+        "path": str(root),
+        "readiness": readiness,
+        "manifest": manifest,
+        "current_or_carried_path": str(current_path),
+        "blocked_path": str(blocked_path),
+        "attempts_path": str(attempts_path),
+        "future_audit_path": str(future_audit_path),
+        "current_or_carried_rows": int(len(_read_csv_if_exists(current_path))),
+        "blocked_rows": int(len(_read_csv_if_exists(blocked_path))),
+        "attempt_rows": int(len(_read_csv_if_exists(attempts_path))),
         "future_audit_rows": int(len(_read_csv_if_exists(future_audit_path))),
     }
 
@@ -680,6 +740,7 @@ def _readiness_json(
     violation_audit: pd.DataFrame,
     liquidity_sweep: dict[str, Any],
     listing_metadata: dict[str, Any],
+    tpex_status: dict[str, Any],
 ) -> dict[str, Any]:
     price_status = _price_readiness_status(price_coverage)
     table_status = {
@@ -691,6 +752,7 @@ def _readiness_json(
         for table in TABLE_SPECS
     }
     table_status["listing_delisting_suspension_metadata"] = _listing_metadata_status(listing_metadata)
+    table_status["tpex_historical_listing_status"] = _tpex_status_blocker_status(tpex_status)
     future_data_violation_count = int(violation_audit["future_data_violation_count"].sum()) if not violation_audit.empty else 0
     return {
         "schema_version": 1,
@@ -706,6 +768,7 @@ def _readiness_json(
         "future_data_violation_count": future_data_violation_count,
         "liquidity_full_sweep": _liquidity_sweep_summary(liquidity_sweep),
         "listing_metadata": _listing_metadata_summary(listing_metadata),
+        "tpex_historical_listing_status": _tpex_status_blocker_summary(tpex_status),
         "coverage_by_year": {
             bucket: {
                 row["data_table"]: {
@@ -758,6 +821,7 @@ def _manifest(readiness: dict[str, Any]) -> dict[str, Any]:
             "blocker_delta_after_liquidity_full_sweep": "blocker_delta_after_liquidity_full_sweep.csv",
             "blocker_delta_after_listing_metadata": "blocker_delta_after_listing_metadata.csv",
             "blocker_delta_after_listing_master_completion": "blocker_delta_after_listing_master_completion.csv",
+            "blocker_delta_after_tpex_blocker_evidence": "blocker_delta_after_tpex_blocker_evidence.csv",
             "future_data_violation_audit": "future_data_violation_audit.csv",
             "source_manifest": "source_manifest.json",
             "readiness": "readiness.json",
@@ -781,6 +845,7 @@ def _next_step_handoff(readiness: dict[str, Any]) -> str:
 def _final_summary(readiness: dict[str, Any]) -> str:
     liquidity = readiness.get("liquidity_full_sweep", {})
     listing = readiness.get("listing_metadata", {})
+    tpex = readiness.get("tpex_historical_listing_status", {})
     liquidity_line = (
         f"- all-listed liquid universe：partial，Radar full sweep covered "
         f"{liquidity.get('covered_start', '')}～{liquidity.get('covered_end', '')}，"
@@ -801,6 +866,9 @@ def _final_summary(readiness: dict[str, Any]) -> str:
         "結論：目前只完成資料契約與來源盤點，尚不能交 Experiments 跑 dynamic Pool1 shadow challenger。\n\n"
         f"{liquidity_line}"
         f"{listing_line}"
+        f"- TPEx historical listing/status：{tpex.get('status', 'blocked')}，"
+        f"accepted historical rows={tpex.get('accepted_historical_rows', 0)}，"
+        f"attempts={tpex.get('source_probe_attempts', 0)}；current/carried 2026 rows 不回推歷史。\n"
         "- monthly revenue：blocked，缺帶 release_date 的月營收 PIT。\n"
         "- quarterly fundamentals：blocked，缺帶公告日的季財報 PIT。\n"
         "- market cap：partial/current snapshot only，不可回推 2015。\n"
@@ -1046,6 +1114,55 @@ def _blocker_delta_after_listing_master_completion(listing_metadata: dict[str, A
     )
 
 
+def _blocker_delta_after_tpex_blocker_evidence(tpex_status: dict[str, Any]) -> pd.DataFrame:
+    summary = _tpex_status_blocker_summary(tpex_status)
+    return pd.DataFrame(
+        [
+            {
+                "blocker": "tpex_historical_listing_status",
+                "before_status": "blocked",
+                "after_status": summary["status"],
+                "delta": "attempt_evidence_added_no_historical_rows_accepted"
+                if summary["exists"]
+                else "unchanged_missing_package",
+                "accepted_historical_rows": int(summary["accepted_historical_rows"]),
+                "accepted_current_or_carried_tpex_rows": int(summary["accepted_current_or_carried_tpex_rows"]),
+                "current_or_carried_rows_used_as_historical": False,
+                "source_probe_attempts": int(summary["source_probe_attempts"]),
+                "blocked_source_rows": int(summary["blocked_source_rows"]),
+                "ready_for_strategy_replay": bool(summary["ready_for_strategy_replay"]),
+                "remaining_blocker": summary["remaining_blocker"],
+            },
+            {
+                "blocker": "full_cross_market_listing_master",
+                "before_status": "blocked",
+                "after_status": "blocked",
+                "delta": "unchanged_due_to_tpex_historical_blocker",
+                "accepted_historical_rows": int(summary["accepted_historical_rows"]),
+                "accepted_current_or_carried_tpex_rows": int(summary["accepted_current_or_carried_tpex_rows"]),
+                "current_or_carried_rows_used_as_historical": False,
+                "source_probe_attempts": int(summary["source_probe_attempts"]),
+                "blocked_source_rows": int(summary["blocked_source_rows"]),
+                "ready_for_strategy_replay": False,
+                "remaining_blocker": "TPEx 2015-2025 historical listing/status rows remain 0 accepted",
+            },
+            {
+                "blocker": "monthly_revenue_pit",
+                "before_status": "blocked",
+                "after_status": "blocked",
+                "delta": "unchanged",
+                "accepted_historical_rows": 0,
+                "accepted_current_or_carried_tpex_rows": 0,
+                "current_or_carried_rows_used_as_historical": False,
+                "source_probe_attempts": 0,
+                "blocked_source_rows": 0,
+                "ready_for_strategy_replay": False,
+                "remaining_blocker": "MOPS monthly revenue full universe PIT with release_date is still missing",
+            },
+        ]
+    )
+
+
 def _liquidity_sweep_summary(liquidity_sweep: dict[str, Any]) -> dict[str, Any]:
     readiness = liquidity_sweep.get("readiness", {})
     covered = readiness.get("covered_date_range", {})
@@ -1065,6 +1182,58 @@ def _liquidity_sweep_summary(liquidity_sweep: dict[str, Any]) -> dict[str, Any]:
         "accepted_shard_count": int(readiness.get("accepted_shard_count", 0) or 0),
         "failed_attempts": int(readiness.get("failed_attempts", 0) or 0),
         "missing_attempts": int(readiness.get("missing_attempts", 0) or 0),
+    }
+
+
+def _tpex_status_blocker_status(tpex_status: dict[str, Any]) -> dict[str, Any]:
+    summary = _tpex_status_blocker_summary(tpex_status)
+    if summary["exists"]:
+        return {
+            "status": summary["status"],
+            "reason": (
+                "bounded TPEx probes completed with zero accepted 2015-2025 historical rows; "
+                "current/carried 2026 rows are excluded from historical PIT"
+            ),
+            "accepted_for_formal": False,
+        }
+    return {
+        "status": "blocked",
+        "reason": "TPEx historical listing/status blocker evidence package not available",
+        "accepted_for_formal": False,
+    }
+
+
+def _tpex_status_blocker_summary(tpex_status: dict[str, Any]) -> dict[str, Any]:
+    readiness = tpex_status.get("readiness", {})
+    accepted_historical = int(readiness.get("accepted_historical_rows", 0) or 0)
+    current_or_carried = int(
+        readiness.get("accepted_current_or_carried_tpex_rows", tpex_status.get("current_or_carried_rows", 0)) or 0
+    )
+    return {
+        "exists": bool(tpex_status.get("exists")),
+        "path": tpex_status.get("path", ""),
+        "status": readiness.get("status", "blocked_with_attempt_evidence" if tpex_status.get("exists") else "blocked"),
+        "accepted_historical_rows": accepted_historical,
+        "accepted_listing_metadata_rows": int(readiness.get("accepted_listing_metadata_rows", 0) or 0),
+        "accepted_suspension_event_rows": int(readiness.get("accepted_suspension_event_rows", 0) or 0),
+        "accepted_status_snapshot_rows": int(readiness.get("accepted_status_snapshot_rows", 0) or 0),
+        "accepted_current_or_carried_tpex_rows": current_or_carried,
+        "current_or_carried_rows_used_as_historical": False,
+        "source_probe_attempts": int(readiness.get("source_probe_attempts", tpex_status.get("attempt_rows", 0)) or 0),
+        "blocked_source_rows": int(readiness.get("blocked_source_rows", tpex_status.get("blocked_rows", 0)) or 0),
+        "future_data_violation_count": int(readiness.get("future_data_violation_count", 0) or 0),
+        "tpex_2015_2025_historical_listing_status_ready": bool(
+            readiness.get("tpex_2015_2025_historical_listing_status_ready", False)
+        ),
+        "full_cross_market_listing_master_ready": bool(readiness.get("full_cross_market_listing_master_ready", False)),
+        "ready_for_core_rerun": bool(readiness.get("ready_for_core_rerun", False)),
+        "ready_for_strategy_replay": bool(readiness.get("ready_for_strategy_replay", False)),
+        "dynamic_pool1_shadow_challenger_ready": bool(readiness.get("dynamic_pool1_shadow_challenger_ready", False)),
+        "readiness_decision": readiness.get("readiness_decision", ""),
+        "remaining_blocker": (
+            "TPEx 2015-2025 historical listing/status route remains unresolved; current/carried 2026 rows are not "
+            "historical PIT"
+        ),
     }
 
 
@@ -1310,6 +1479,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--radar-data-dir", default=DEFAULT_RADAR_DATA_DIR)
     parser.add_argument("--liquidity-sweep-output", default=DEFAULT_LIQUIDITY_SWEEP_OUTPUT)
     parser.add_argument("--listing-metadata-output", default=DEFAULT_LISTING_METADATA_OUTPUT)
+    parser.add_argument("--tpex-status-output", default=DEFAULT_TPEX_STATUS_OUTPUT)
     args = parser.parse_args(argv)
     run_dynamic_pool1_pit_readiness_contract(
         output_dir=args.output_dir,
@@ -1320,6 +1490,7 @@ def main(argv: list[str] | None = None) -> int:
         radar_data_dir=args.radar_data_dir,
         liquidity_sweep_output=args.liquidity_sweep_output,
         listing_metadata_output=args.listing_metadata_output,
+        tpex_status_output=args.tpex_status_output,
     )
     return 0
 
