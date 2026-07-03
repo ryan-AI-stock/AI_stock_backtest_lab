@@ -701,6 +701,126 @@ class DynamicPool1PitReadinessContractTest(unittest.TestCase):
             self.assertTrue(bool(row["daily_status_snapshot_asof_ready"]))
             self.assertFalse(bool(row["explicit_transition_event_ledger_ready"]))
 
+    def test_tpex_transition_candidates_remain_unverified_partial(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache = root / "cache"
+            radar = root / "radar"
+            tpex = root / "tpex_full_route"
+            transition = root / "tpex_transition"
+            output = root / "out"
+            cache.mkdir()
+            radar.mkdir()
+            tpex.mkdir()
+            transition.mkdir()
+
+            pd.DataFrame(
+                {
+                    "date": ["2015-01-05"],
+                    "open": [100],
+                    "high": [101],
+                    "low": [99],
+                    "close": [100],
+                    "adj_close": [100],
+                    "volume": [1000],
+                }
+            ).to_csv(cache / "2330_TW.csv", index=False)
+            (tpex / "readiness_for_core.json").write_text(
+                json.dumps(
+                    {
+                        "status": "completed_full_route_coverage_suspension_events_still_blocked",
+                        "covered_start": "2015-01-01",
+                        "covered_end": "2025-12-31",
+                        "route_request_attempts": 4040,
+                        "accepted_status_snapshot_rows": 90865,
+                        "accepted_historical_rows": 91263,
+                        "accepted_suspension_event_rows": 0,
+                        "full_tpex_2015_2025_route_coverage_ready": True,
+                        "ready_for_strategy_replay": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (tpex / "manifest.json").write_text("{}", encoding="utf-8")
+            pd.DataFrame([{"source": "TPEx bulletin/sprc", "blocked_component": "transition event ledger"}]).to_csv(
+                tpex / "blocked_source_rows.csv",
+                index=False,
+            )
+
+            (transition / "readiness_for_core.json").write_text(
+                json.dumps(
+                    {
+                        "status": "completed_transition_candidate_ledger_unverified",
+                        "transition_candidate_count": 2295,
+                        "announcement_verification_attempts": 160,
+                        "announcement_verified_event_count": 0,
+                        "unverified_transition_candidate_count": 2295,
+                        "future_data_violation_count": 0,
+                        "ready_for_core_rerun": True,
+                        "ready_for_strategy_replay": False,
+                        "dynamic_pool1_shadow_challenger_ready": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (transition / "manifest.json").write_text("{}", encoding="utf-8")
+            pd.DataFrame(
+                [
+                    {
+                        "event_id": "tpex_transition_000001",
+                        "ticker": "020003",
+                        "event_date": "2022-04-28",
+                        "source_type": "inferred_from_daily_status_snapshot",
+                        "verification_status": "unverified_candidate",
+                    }
+                ]
+            ).to_csv(transition / "transition_event_candidates.csv", index=False)
+            pd.DataFrame(
+                columns=[
+                    "event_id",
+                    "ticker",
+                    "event_date",
+                    "source_type",
+                    "verification_status",
+                ]
+            ).to_csv(transition / "announcement_verified_events.csv", index=False)
+            pd.DataFrame([{"event_id": "tpex_transition_000001"}]).to_csv(
+                transition / "unverified_transition_candidates.csv",
+                index=False,
+            )
+            pd.DataFrame([{"attempt": 1}]).to_csv(transition / "announcement_verification_attempts.csv", index=False)
+
+            run_dynamic_pool1_pit_readiness_contract(
+                output_dir=output,
+                price_cache_dir=cache,
+                price_source_registry=root / "missing_registry.csv",
+                tw50_constituents_path=root / "missing_tw50.csv",
+                ai_theme_candidates_path=root / "missing_ai.csv",
+                radar_data_dir=radar,
+                liquidity_sweep_output=root / "missing_sweep",
+                listing_metadata_output=root / "missing_listing",
+                tpex_status_output=tpex,
+                tpex_transition_output=transition,
+            )
+
+            readiness = json.loads((output / "readiness.json").read_text(encoding="utf-8"))
+            transition_status = readiness["tpex_transition_candidates"]
+            self.assertEqual(transition_status["status"], "partial_unverified_inferred_transition_candidates")
+            self.assertEqual(transition_status["transition_candidate_count"], 2295)
+            self.assertEqual(transition_status["announcement_verified_event_count"], 0)
+            self.assertFalse(transition_status["official_explicit_transition_event_ledger_ready"])
+            self.assertFalse(transition_status["inferred_candidates_used_as_official_events"])
+            self.assertFalse(readiness["ready_for_strategy_replay"])
+            self.assertFalse(readiness["dynamic_pool1_shadow_challenger_ready"])
+
+            delta = pd.read_csv(output / "blocker_delta_after_tpex_transition_candidates.csv")
+            row = delta[delta["blocker"].eq("tpex_explicit_transition_event_ledger")].iloc[0]
+            self.assertEqual(row["after_status"], "partial_unverified_inferred_transition_candidates")
+            self.assertEqual(int(row["transition_candidate_count"]), 2295)
+            self.assertEqual(int(row["announcement_verified_event_count"]), 0)
+            self.assertFalse(bool(row["inferred_candidates_used_as_official_events"]))
+            self.assertFalse(bool(row["official_explicit_transition_event_ledger_ready"]))
+
 
 if __name__ == "__main__":
     unittest.main()

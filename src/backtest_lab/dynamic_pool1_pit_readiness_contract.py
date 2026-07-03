@@ -29,6 +29,7 @@ DEFAULT_TPEX_STATUS_OUTPUT = (
     "C:/Users/zergv/Documents/Codex/2026-05-23/ai-stock-rotation-radar-https-docs/outputs/"
     "radar_dynamic_pool1_tpex_historical_listing_status_master_20260703"
 )
+DEFAULT_TPEX_TRANSITION_OUTPUT = ""
 
 YEAR_BUCKETS = (
     ("2015-2021", "2015-01-01", "2021-12-31"),
@@ -57,6 +58,7 @@ def run_dynamic_pool1_pit_readiness_contract(
     liquidity_sweep_output: str | Path | None = None,
     listing_metadata_output: str | Path | None = None,
     tpex_status_output: str | Path | None = None,
+    tpex_transition_output: str | Path | None = None,
 ) -> Path:
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
@@ -79,6 +81,7 @@ def run_dynamic_pool1_pit_readiness_contract(
         liquidity_sweep = _load_liquidity_sweep(liquidity_sweep_output)
         listing_metadata = _load_listing_metadata(listing_metadata_output)
         tpex_status = _load_tpex_status_blocker(tpex_status_output)
+        tpex_transition = _load_tpex_transition_candidates(tpex_transition_output)
         source_inventory = _source_inventory(
             price_cache_dir=Path(price_cache_dir),
             price_source_registry=Path(price_source_registry),
@@ -88,6 +91,7 @@ def run_dynamic_pool1_pit_readiness_contract(
             liquidity_sweep=liquidity_sweep,
             listing_metadata=listing_metadata,
             tpex_status=tpex_status,
+            tpex_transition=tpex_transition,
         )
         price_coverage = _price_cache_coverage(Path(price_cache_dir), Path(price_source_registry))
 
@@ -104,6 +108,7 @@ def run_dynamic_pool1_pit_readiness_contract(
             liquidity_sweep,
             listing_metadata,
             tpex_status,
+            tpex_transition,
         )
         dataset_summary = _dataset_readiness_summary(readiness)
         blocker_delta = _blocker_delta_after_liquidity_full_sweep(liquidity_sweep)
@@ -111,6 +116,7 @@ def run_dynamic_pool1_pit_readiness_contract(
         listing_completion_delta = _blocker_delta_after_listing_master_completion(listing_metadata)
         tpex_delta = _blocker_delta_after_tpex_blocker_evidence(tpex_status)
         tpex_full_route_delta = _blocker_delta_after_tpex_full_route_coverage(tpex_status)
+        tpex_transition_delta = _blocker_delta_after_tpex_transition_candidates(tpex_status, tpex_transition)
 
         log("write_outputs", "started", str(output))
         for table_name, frame in tables.items():
@@ -127,6 +133,11 @@ def run_dynamic_pool1_pit_readiness_contract(
         tpex_delta.to_csv(output / "blocker_delta_after_tpex_blocker_evidence.csv", index=False, encoding="utf-8-sig")
         tpex_full_route_delta.to_csv(
             output / "blocker_delta_after_tpex_full_route_coverage.csv",
+            index=False,
+            encoding="utf-8-sig",
+        )
+        tpex_transition_delta.to_csv(
+            output / "blocker_delta_after_tpex_transition_candidates.csv",
             index=False,
             encoding="utf-8-sig",
         )
@@ -168,6 +179,7 @@ def _source_inventory(
     liquidity_sweep: dict[str, Any],
     listing_metadata: dict[str, Any],
     tpex_status: dict[str, Any],
+    tpex_transition: dict[str, Any],
 ) -> list[dict[str, Any]]:
     sources = [
         {
@@ -311,6 +323,26 @@ def _source_inventory(
             }
         )
 
+    if tpex_transition.get("exists"):
+        readiness = tpex_transition.get("readiness", {})
+        sources.append(
+            {
+                "data_area": "tpex_transition_event_candidates",
+                "source_name": "radar_dynamic_pool1_tpex_suspension_transition_event_ledger",
+                "path": tpex_transition.get("path", ""),
+                "source_family": "radar_inferred_transition_candidates",
+                "pit_acceptance": "partial_unverified_candidate",
+                "diagnostic_only": True,
+                "blocked_reason": (
+                    "transition candidates are inferred from daily status snapshot diffs; announcement verified "
+                    "events remain 0, so this is not an official explicit transition event ledger"
+                ),
+                "transition_candidate_count": readiness.get("transition_candidate_count", 0),
+                "announcement_verified_event_count": readiness.get("announcement_verified_event_count", 0),
+                "unverified_transition_candidate_count": readiness.get("unverified_transition_candidate_count", 0),
+            }
+        )
+
     inventory: list[dict[str, Any]] = []
     for source in sources:
         inventory.append(_source_row(source))
@@ -437,6 +469,40 @@ def _load_tpex_status_blocker(tpex_status_output: str | Path | None) -> dict[str
         "current_or_carried_rows": int(len(_read_csv_if_exists(current_path))),
         "blocked_rows": int(len(_read_csv_if_exists(blocked_path))),
         "attempt_rows": int(len(_read_csv_if_exists(attempts_path))),
+        "future_audit_rows": int(len(_read_csv_if_exists(future_audit_path))),
+    }
+
+
+def _load_tpex_transition_candidates(tpex_transition_output: str | Path | None) -> dict[str, Any]:
+    if not tpex_transition_output:
+        return {"exists": False, "path": ""}
+    root = Path(tpex_transition_output)
+    if not root.exists():
+        return {"exists": False, "path": str(root), "missing_reason": "TPEx transition output path does not exist"}
+    readiness = _load_json(root / "readiness_for_core.json")
+    manifest = _load_json(root / "manifest.json")
+    candidates_path = root / "transition_event_candidates.csv"
+    verified_path = root / "announcement_verified_events.csv"
+    unverified_path = root / "unverified_transition_candidates.csv"
+    attempts_path = root / "announcement_verification_attempts.csv"
+    blocked_path = root / "blocked_source_rows.csv"
+    future_audit_path = root / "future_data_violation_audit.csv"
+    return {
+        "exists": True,
+        "path": str(root),
+        "readiness": readiness,
+        "manifest": manifest,
+        "candidates_path": str(candidates_path),
+        "verified_path": str(verified_path),
+        "unverified_path": str(unverified_path),
+        "attempts_path": str(attempts_path),
+        "blocked_path": str(blocked_path),
+        "future_audit_path": str(future_audit_path),
+        "candidate_rows": int(len(_read_csv_if_exists(candidates_path))),
+        "verified_rows": int(len(_read_csv_if_exists(verified_path))),
+        "unverified_rows": int(len(_read_csv_if_exists(unverified_path))),
+        "attempt_rows": int(len(_read_csv_if_exists(attempts_path))),
+        "blocked_rows": int(len(_read_csv_if_exists(blocked_path))),
         "future_audit_rows": int(len(_read_csv_if_exists(future_audit_path))),
     }
 
@@ -747,6 +813,7 @@ def _readiness_json(
     liquidity_sweep: dict[str, Any],
     listing_metadata: dict[str, Any],
     tpex_status: dict[str, Any],
+    tpex_transition: dict[str, Any],
 ) -> dict[str, Any]:
     price_status = _price_readiness_status(price_coverage)
     table_status = {
@@ -775,6 +842,7 @@ def _readiness_json(
         "liquidity_full_sweep": _liquidity_sweep_summary(liquidity_sweep),
         "listing_metadata": _listing_metadata_summary(listing_metadata),
         "tpex_historical_listing_status": _tpex_status_blocker_summary(tpex_status),
+        "tpex_transition_candidates": _tpex_transition_candidate_summary(tpex_transition),
         "coverage_by_year": {
             bucket: {
                 row["data_table"]: {
@@ -795,7 +863,7 @@ def _readiness_json(
             "diagnostic_or_blocked_source_count": len(source_inventory),
         },
         "next_blockers": [
-            "TPEx explicit suspension/resumption transition event ledger, or formal policy decision that daily status snapshots are sufficient for universe integrity",
+            "Core/Research policy decision on whether TPEx inferred transition candidates are sufficient for universe integrity, or broader announcement verification for official transition events",
             "monthly revenue PIT with announcement/release dates",
             "quarterly fundamentals PIT with announcement/release dates",
             "historical market cap/free-float market cap PIT",
@@ -829,6 +897,7 @@ def _manifest(readiness: dict[str, Any]) -> dict[str, Any]:
             "blocker_delta_after_listing_master_completion": "blocker_delta_after_listing_master_completion.csv",
             "blocker_delta_after_tpex_blocker_evidence": "blocker_delta_after_tpex_blocker_evidence.csv",
             "blocker_delta_after_tpex_full_route_coverage": "blocker_delta_after_tpex_full_route_coverage.csv",
+            "blocker_delta_after_tpex_transition_candidates": "blocker_delta_after_tpex_transition_candidates.csv",
             "future_data_violation_audit": "future_data_violation_audit.csv",
             "source_manifest": "source_manifest.json",
             "readiness": "readiness.json",
@@ -853,6 +922,7 @@ def _final_summary(readiness: dict[str, Any]) -> str:
     liquidity = readiness.get("liquidity_full_sweep", {})
     listing = readiness.get("listing_metadata", {})
     tpex = readiness.get("tpex_historical_listing_status", {})
+    transition = readiness.get("tpex_transition_candidates", {})
     liquidity_line = (
         f"- all-listed liquid universe：partial，Radar full sweep covered "
         f"{liquidity.get('covered_start', '')}～{liquidity.get('covered_end', '')}，"
@@ -877,6 +947,10 @@ def _final_summary(readiness: dict[str, Any]) -> str:
         f"accepted historical rows={tpex.get('accepted_historical_rows', 0)}，"
         f"route_attempts={tpex.get('route_probe_attempts') or tpex.get('source_probe_attempts', 0)}；"
         "daily status snapshot 可做 as-of 判斷，但不是 explicit transition event ledger。\n"
+        f"- TPEx transition candidates：{transition.get('status', 'missing')}，"
+        f"inferred candidates={transition.get('transition_candidate_count', 0)}，"
+        f"announcement verified events={transition.get('announcement_verified_event_count', 0)}；"
+        "可作 universe integrity 診斷證據，但未升級為 official explicit event ledger。\n"
         "- monthly revenue：blocked，缺帶 release_date 的月營收 PIT。\n"
         "- quarterly fundamentals：blocked，缺帶公告日的季財報 PIT。\n"
         "- market cap：partial/current snapshot only，不可回推 2015。\n"
@@ -1264,6 +1338,81 @@ def _blocker_delta_after_tpex_full_route_coverage(tpex_status: dict[str, Any]) -
     )
 
 
+def _blocker_delta_after_tpex_transition_candidates(
+    tpex_status: dict[str, Any], tpex_transition: dict[str, Any]
+) -> pd.DataFrame:
+    transition_summary = _tpex_transition_candidate_summary(tpex_transition)
+    has_candidates = transition_summary["transition_candidate_count"] > 0
+    has_verified = transition_summary["announcement_verified_event_count"] > 0
+    return pd.DataFrame(
+        [
+            {
+                "blocker": "tpex_explicit_transition_event_ledger",
+                "before_status": "blocked_after_daily_status_snapshot",
+                "after_status": transition_summary["status"],
+                "delta": (
+                    "inferred_transition_candidates_available_but_unverified"
+                    if has_candidates and not has_verified
+                    else "announcement_verified_transition_events_available"
+                    if has_verified
+                    else "unchanged_no_transition_candidates"
+                ),
+                "transition_candidate_count": int(transition_summary["transition_candidate_count"]),
+                "announcement_verification_attempts": int(transition_summary["announcement_verification_attempts"]),
+                "announcement_verified_event_count": int(transition_summary["announcement_verified_event_count"]),
+                "unverified_transition_candidate_count": int(
+                    transition_summary["unverified_transition_candidate_count"]
+                ),
+                "inferred_candidates_used_as_official_events": False,
+                "official_explicit_transition_event_ledger_ready": bool(
+                    transition_summary["official_explicit_transition_event_ledger_ready"]
+                ),
+                "ready_for_strategy_replay": bool(transition_summary["ready_for_strategy_replay"]),
+                "remaining_blocker": transition_summary["remaining_blocker"],
+            },
+            {
+                "blocker": "full_cross_market_listing_master",
+                "before_status": "blocked_by_transition_event_policy_or_event_ledger",
+                "after_status": "partial_candidate_evidence_not_formal_ready" if has_candidates else "blocked",
+                "delta": (
+                    "daily_snapshot_diff_candidates_reduce_uncertainty_but_require_policy_or_verification"
+                    if has_candidates
+                    else "unchanged"
+                ),
+                "transition_candidate_count": int(transition_summary["transition_candidate_count"]),
+                "announcement_verification_attempts": int(transition_summary["announcement_verification_attempts"]),
+                "announcement_verified_event_count": int(transition_summary["announcement_verified_event_count"]),
+                "unverified_transition_candidate_count": int(
+                    transition_summary["unverified_transition_candidate_count"]
+                ),
+                "inferred_candidates_used_as_official_events": False,
+                "official_explicit_transition_event_ledger_ready": False,
+                "ready_for_strategy_replay": False,
+                "remaining_blocker": (
+                    "Core/Research must decide whether daily status snapshot diff candidates are sufficient for "
+                    "universe integrity, or Radar/Data must broaden official announcement verification"
+                ),
+            },
+            {
+                "blocker": "monthly_revenue_pit",
+                "before_status": "blocked",
+                "after_status": "blocked",
+                "delta": "unchanged_highest_value_next_data_layer",
+                "transition_candidate_count": int(transition_summary["transition_candidate_count"]),
+                "announcement_verification_attempts": int(transition_summary["announcement_verification_attempts"]),
+                "announcement_verified_event_count": int(transition_summary["announcement_verified_event_count"]),
+                "unverified_transition_candidate_count": int(
+                    transition_summary["unverified_transition_candidate_count"]
+                ),
+                "inferred_candidates_used_as_official_events": False,
+                "official_explicit_transition_event_ledger_ready": False,
+                "ready_for_strategy_replay": False,
+                "remaining_blocker": "MOPS monthly revenue full universe PIT with release_date remains the highest-value next blocker",
+            },
+        ]
+    )
+
+
 def _liquidity_sweep_summary(liquidity_sweep: dict[str, Any]) -> dict[str, Any]:
     readiness = liquidity_sweep.get("readiness", {})
     covered = readiness.get("covered_date_range", {})
@@ -1386,6 +1535,58 @@ def _tpex_status_blocker_summary(tpex_status: dict[str, Any]) -> dict[str, Any]:
             if accepted_historical > 0
             else "TPEx 2015-2025 historical listing/status route remains unresolved; current/carried 2026 rows are not "
             "historical PIT"
+        ),
+    }
+
+
+def _tpex_transition_candidate_summary(tpex_transition: dict[str, Any]) -> dict[str, Any]:
+    readiness = tpex_transition.get("readiness", {})
+    candidate_count = int(
+        readiness.get("transition_candidate_count", tpex_transition.get("candidate_rows", 0)) or 0
+    )
+    verified_count = int(
+        readiness.get("announcement_verified_event_count", tpex_transition.get("verified_rows", 0)) or 0
+    )
+    unverified_count = int(
+        readiness.get("unverified_transition_candidate_count", tpex_transition.get("unverified_rows", 0)) or 0
+    )
+    verification_attempts = int(
+        readiness.get("announcement_verification_attempts", tpex_transition.get("attempt_rows", 0)) or 0
+    )
+    exists = bool(tpex_transition.get("exists"))
+    if verified_count > 0:
+        status = "partial_with_announcement_verified_transition_events"
+    elif candidate_count > 0:
+        status = "partial_unverified_inferred_transition_candidates"
+    elif exists:
+        status = "blocked_no_transition_candidates"
+    else:
+        status = "missing"
+    return {
+        "exists": exists,
+        "path": tpex_transition.get("path", ""),
+        "status": status,
+        "transition_candidate_count": candidate_count,
+        "announcement_verification_attempts": verification_attempts,
+        "announcement_verified_event_count": verified_count,
+        "unverified_transition_candidate_count": unverified_count,
+        "future_data_violation_count": int(readiness.get("future_data_violation_count", 0) or 0),
+        "ready_for_core_rerun": bool(readiness.get("ready_for_core_rerun", False)),
+        "ready_for_strategy_replay": False,
+        "dynamic_pool1_shadow_challenger_ready": False,
+        "inferred_candidates_used_as_official_events": False,
+        "official_explicit_transition_event_ledger_ready": bool(verified_count > 0),
+        "source_type_boundary": readiness.get(
+            "source_type_boundary",
+            "inferred candidates are not official explicit events unless source_type=announcement_verified",
+        ),
+        "remaining_blocker": (
+            "transition candidates are inferred from daily status snapshot diffs and remain unverified; "
+            "announcement verified events are 0"
+            if candidate_count > 0 and verified_count == 0
+            else "TPEx transition candidate package is missing or has zero accepted transition candidates"
+            if candidate_count == 0
+            else "official verification is partial; Core/Research must decide whether coverage is sufficient"
         ),
     }
 
@@ -1633,6 +1834,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--liquidity-sweep-output", default=DEFAULT_LIQUIDITY_SWEEP_OUTPUT)
     parser.add_argument("--listing-metadata-output", default=DEFAULT_LISTING_METADATA_OUTPUT)
     parser.add_argument("--tpex-status-output", default=DEFAULT_TPEX_STATUS_OUTPUT)
+    parser.add_argument("--tpex-transition-output", default=DEFAULT_TPEX_TRANSITION_OUTPUT)
     args = parser.parse_args(argv)
     run_dynamic_pool1_pit_readiness_contract(
         output_dir=args.output_dir,
@@ -1644,6 +1846,7 @@ def main(argv: list[str] | None = None) -> int:
         liquidity_sweep_output=args.liquidity_sweep_output,
         listing_metadata_output=args.listing_metadata_output,
         tpex_status_output=args.tpex_status_output,
+        tpex_transition_output=args.tpex_transition_output,
     )
     return 0
 
