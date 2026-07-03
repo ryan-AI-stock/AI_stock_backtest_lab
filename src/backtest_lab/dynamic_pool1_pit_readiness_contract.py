@@ -21,6 +21,10 @@ DEFAULT_LIQUIDITY_SWEEP_OUTPUT = (
     "C:/Users/zergv/Documents/Codex/2026-05-23/ai-stock-rotation-radar-https-docs/outputs/"
     "radar_dynamic_pool1_all_listed_liquid_universe_full_sweep_20260703"
 )
+DEFAULT_LISTING_METADATA_OUTPUT = (
+    "C:/Users/zergv/Documents/Codex/2026-05-23/ai-stock-rotation-radar-https-docs/outputs/"
+    "radar_dynamic_pool1_listing_delisting_suspension_master_20260703"
+)
 
 YEAR_BUCKETS = (
     ("2015-2021", "2015-01-01", "2021-12-31"),
@@ -47,6 +51,7 @@ def run_dynamic_pool1_pit_readiness_contract(
     ai_theme_candidates_path: str | Path = DEFAULT_AI_THEME_CANDIDATES,
     radar_data_dir: str | Path = DEFAULT_RADAR_DATA_DIR,
     liquidity_sweep_output: str | Path | None = None,
+    listing_metadata_output: str | Path | None = None,
 ) -> Path:
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
@@ -67,6 +72,7 @@ def run_dynamic_pool1_pit_readiness_contract(
     try:
         log("inventory_sources", "started", "")
         liquidity_sweep = _load_liquidity_sweep(liquidity_sweep_output)
+        listing_metadata = _load_listing_metadata(listing_metadata_output)
         source_inventory = _source_inventory(
             price_cache_dir=Path(price_cache_dir),
             price_source_registry=Path(price_source_registry),
@@ -74,6 +80,7 @@ def run_dynamic_pool1_pit_readiness_contract(
             ai_theme_candidates_path=Path(ai_theme_candidates_path),
             radar_data_dir=Path(radar_data_dir),
             liquidity_sweep=liquidity_sweep,
+            listing_metadata=listing_metadata,
         )
         price_coverage = _price_cache_coverage(Path(price_cache_dir), Path(price_source_registry))
 
@@ -82,9 +89,17 @@ def run_dynamic_pool1_pit_readiness_contract(
         readiness_by_date = _candidate_data_readiness_by_date(source_inventory, price_coverage, liquidity_sweep)
         violation_audit = _future_data_violation_audit(source_inventory)
         source_manifest = _source_manifest(source_inventory, price_coverage)
-        readiness = _readiness_json(source_inventory, price_coverage, readiness_by_date, violation_audit, liquidity_sweep)
+        readiness = _readiness_json(
+            source_inventory,
+            price_coverage,
+            readiness_by_date,
+            violation_audit,
+            liquidity_sweep,
+            listing_metadata,
+        )
         dataset_summary = _dataset_readiness_summary(readiness)
         blocker_delta = _blocker_delta_after_liquidity_full_sweep(liquidity_sweep)
+        listing_delta = _blocker_delta_after_listing_metadata(listing_metadata)
 
         log("write_outputs", "started", str(output))
         for table_name, frame in tables.items():
@@ -92,6 +107,7 @@ def run_dynamic_pool1_pit_readiness_contract(
         readiness_by_date.to_csv(output / "candidate_data_readiness_by_date.csv", index=False, encoding="utf-8-sig")
         dataset_summary.to_csv(output / "dataset_readiness_summary.csv", index=False, encoding="utf-8-sig")
         blocker_delta.to_csv(output / "blocker_delta_after_liquidity_full_sweep.csv", index=False, encoding="utf-8-sig")
+        listing_delta.to_csv(output / "blocker_delta_after_listing_metadata.csv", index=False, encoding="utf-8-sig")
         violation_audit.to_csv(output / "future_data_violation_audit.csv", index=False, encoding="utf-8-sig")
         (output / "source_manifest.json").write_text(
             json.dumps(source_manifest, ensure_ascii=False, indent=2),
@@ -128,6 +144,7 @@ def _source_inventory(
     ai_theme_candidates_path: Path,
     radar_data_dir: Path,
     liquidity_sweep: dict[str, Any],
+    listing_metadata: dict[str, Any],
 ) -> list[dict[str, Any]]:
     sources = [
         {
@@ -229,6 +246,27 @@ def _source_inventory(
             }
         )
 
+    if listing_metadata.get("exists"):
+        readiness = listing_metadata.get("readiness", {})
+        sources.append(
+            {
+                "data_area": "listing_delisting_suspension_metadata",
+                "source_name": "radar_dynamic_pool1_listing_delisting_suspension_master",
+                "path": listing_metadata.get("path", ""),
+                "source_family": "radar_official_partial_event_sources",
+                "pit_acceptance": "partial",
+                "diagnostic_only": False,
+                "blocked_reason": (
+                    "partial listing/delisting/suspension event rows are available, but complete historical master "
+                    "metadata is still not ready"
+                ),
+                "accepted_listing_metadata_rows": readiness.get("accepted_listing_metadata_rows", 0),
+                "accepted_suspension_event_rows": readiness.get("accepted_suspension_event_rows", 0),
+                "proxy_source_rows": readiness.get("proxy_source_rows", 0),
+                "blocked_source_rows": readiness.get("blocked_source_rows", 0),
+            }
+        )
+
     inventory: list[dict[str, Any]] = []
     for source in sources:
         inventory.append(_source_row(source))
@@ -300,6 +338,34 @@ def _load_liquidity_sweep(liquidity_sweep_output: str | Path | None) -> dict[str
         "coverage": coverage,
         "listing_inventory": listing_inventory,
         "future_audit": future_audit,
+    }
+
+
+def _load_listing_metadata(listing_metadata_output: str | Path | None) -> dict[str, Any]:
+    if listing_metadata_output is None:
+        return {"exists": False, "path": ""}
+    root = Path(listing_metadata_output)
+    if not root.exists():
+        return {"exists": False, "path": str(root), "missing_reason": "listing metadata output path does not exist"}
+    readiness = _load_json(root / "readiness_for_core.json")
+    manifest = _load_json(root / "manifest.json")
+    accepted_listing_path = root / "accepted_listing_metadata_rows.csv"
+    accepted_suspension_path = root / "accepted_suspension_event_rows.csv"
+    blocked_path = root / "blocked_source_rows.csv"
+    future_audit_path = root / "future_data_violation_audit.csv"
+    return {
+        "exists": True,
+        "path": str(root),
+        "readiness": readiness,
+        "manifest": manifest,
+        "accepted_listing_path": str(accepted_listing_path),
+        "accepted_suspension_path": str(accepted_suspension_path),
+        "blocked_path": str(blocked_path),
+        "future_audit_path": str(future_audit_path),
+        "accepted_listing_rows": int(len(_read_csv_if_exists(accepted_listing_path))),
+        "accepted_suspension_rows": int(len(_read_csv_if_exists(accepted_suspension_path))),
+        "blocked_rows": int(len(_read_csv_if_exists(blocked_path))),
+        "future_audit_rows": int(len(_read_csv_if_exists(future_audit_path))),
     }
 
 
@@ -607,6 +673,7 @@ def _readiness_json(
     readiness_by_date: pd.DataFrame,
     violation_audit: pd.DataFrame,
     liquidity_sweep: dict[str, Any],
+    listing_metadata: dict[str, Any],
 ) -> dict[str, Any]:
     price_status = _price_readiness_status(price_coverage)
     table_status = {
@@ -617,6 +684,7 @@ def _readiness_json(
         }
         for table in TABLE_SPECS
     }
+    table_status["listing_delisting_suspension_metadata"] = _listing_metadata_status(listing_metadata)
     future_data_violation_count = int(violation_audit["future_data_violation_count"].sum()) if not violation_audit.empty else 0
     return {
         "schema_version": 1,
@@ -631,6 +699,7 @@ def _readiness_json(
         "uses_forward_return": False,
         "future_data_violation_count": future_data_violation_count,
         "liquidity_full_sweep": _liquidity_sweep_summary(liquidity_sweep),
+        "listing_metadata": _listing_metadata_summary(listing_metadata),
         "coverage_by_year": {
             bucket: {
                 row["data_table"]: {
@@ -681,6 +750,7 @@ def _manifest(readiness: dict[str, Any]) -> dict[str, Any]:
             "candidate_data_readiness_by_date": "candidate_data_readiness_by_date.csv",
             "dataset_readiness_summary": "dataset_readiness_summary.csv",
             "blocker_delta_after_liquidity_full_sweep": "blocker_delta_after_liquidity_full_sweep.csv",
+            "blocker_delta_after_listing_metadata": "blocker_delta_after_listing_metadata.csv",
             "future_data_violation_audit": "future_data_violation_audit.csv",
             "source_manifest": "source_manifest.json",
             "readiness": "readiness.json",
@@ -703,6 +773,7 @@ def _next_step_handoff(readiness: dict[str, Any]) -> str:
 
 def _final_summary(readiness: dict[str, Any]) -> str:
     liquidity = readiness.get("liquidity_full_sweep", {})
+    listing = readiness.get("listing_metadata", {})
     liquidity_line = (
         f"- all-listed liquid universe：partial，Radar full sweep covered "
         f"{liquidity.get('covered_start', '')}～{liquidity.get('covered_end', '')}，"
@@ -711,10 +782,17 @@ def _final_summary(readiness: dict[str, Any]) -> str:
         if liquidity.get("full_range_ready")
         else "- all-listed liquid universe：blocked，缺上市/下市/停牌/流動性 PIT ledger。\n"
     )
+    listing_line = (
+        f"- listing/delisting/suspension metadata：partial，accepted event rows="
+        f"{listing.get('accepted_event_rows', 0)}；但 complete historical master 仍未 ready。\n"
+        if listing.get("partial_event_rows_available")
+        else "- listing/delisting/suspension metadata：blocked，缺完整歷史 master。\n"
+    )
     return (
         "# Dynamic Pool1 PIT readiness contract\n\n"
         "結論：目前只完成資料契約與來源盤點，尚不能交 Experiments 跑 dynamic Pool1 shadow challenger。\n\n"
         f"{liquidity_line}"
+        f"{listing_line}"
         "- monthly revenue：blocked，缺帶 release_date 的月營收 PIT。\n"
         "- quarterly fundamentals：blocked，缺帶公告日的季財報 PIT。\n"
         "- market cap：partial/current snapshot only，不可回推 2015。\n"
@@ -837,6 +915,63 @@ def _blocker_delta_after_liquidity_full_sweep(liquidity_sweep: dict[str, Any]) -
     )
 
 
+def _blocker_delta_after_listing_metadata(listing_metadata: dict[str, Any]) -> pd.DataFrame:
+    summary = _listing_metadata_summary(listing_metadata)
+    partial = bool(summary.get("partial_event_rows_available"))
+    return pd.DataFrame(
+        [
+            {
+                "blocker": "listing_delisting_suspension_metadata",
+                "before_status": "blocked",
+                "after_status": "partial" if partial else "blocked",
+                "delta": "downgraded_from_blocked_to_partial_event_sources" if partial else "unchanged_blocked",
+                "accepted_listing_metadata_rows": int(summary.get("accepted_listing_metadata_rows", 0)),
+                "accepted_suspension_event_rows": int(summary.get("accepted_suspension_event_rows", 0)),
+                "proxy_source_rows": int(summary.get("proxy_source_rows", 0)),
+                "blocked_source_rows": int(summary.get("blocked_source_rows", 0)),
+                "remaining_blocker": "complete historical listing/delisting/suspension/name-change/transfer master is missing",
+                "ready_for_strategy_replay": bool(summary.get("ready_for_strategy_replay", False)),
+            },
+            {
+                "blocker": "monthly_revenue_pit",
+                "before_status": "blocked",
+                "after_status": "blocked",
+                "delta": "unchanged",
+                "accepted_listing_metadata_rows": 0,
+                "accepted_suspension_event_rows": 0,
+                "proxy_source_rows": 0,
+                "blocked_source_rows": 0,
+                "remaining_blocker": "MOPS monthly revenue full universe PIT with release_date is still missing",
+                "ready_for_strategy_replay": False,
+            },
+            {
+                "blocker": "quarterly_fundamentals_pit",
+                "before_status": "blocked",
+                "after_status": "blocked",
+                "delta": "unchanged",
+                "accepted_listing_metadata_rows": 0,
+                "accepted_suspension_event_rows": 0,
+                "proxy_source_rows": 0,
+                "blocked_source_rows": 0,
+                "remaining_blocker": "quarterly fundamentals PIT with announcement/release dates is still missing",
+                "ready_for_strategy_replay": False,
+            },
+            {
+                "blocker": "market_cap_pit",
+                "before_status": "partial",
+                "after_status": "partial",
+                "delta": "unchanged",
+                "accepted_listing_metadata_rows": 0,
+                "accepted_suspension_event_rows": 0,
+                "proxy_source_rows": 0,
+                "blocked_source_rows": 0,
+                "remaining_blocker": "historical market cap/free-float market cap PIT is still missing",
+                "ready_for_strategy_replay": False,
+            },
+        ]
+    )
+
+
 def _liquidity_sweep_summary(liquidity_sweep: dict[str, Any]) -> dict[str, Any]:
     readiness = liquidity_sweep.get("readiness", {})
     covered = readiness.get("covered_date_range", {})
@@ -856,6 +991,48 @@ def _liquidity_sweep_summary(liquidity_sweep: dict[str, Any]) -> dict[str, Any]:
         "accepted_shard_count": int(readiness.get("accepted_shard_count", 0) or 0),
         "failed_attempts": int(readiness.get("failed_attempts", 0) or 0),
         "missing_attempts": int(readiness.get("missing_attempts", 0) or 0),
+    }
+
+
+def _listing_metadata_status(listing_metadata: dict[str, Any]) -> dict[str, Any]:
+    summary = _listing_metadata_summary(listing_metadata)
+    if summary["partial_event_rows_available"]:
+        return {
+            "status": "partial",
+            "reason": "partial official event rows are available, but complete historical master remains missing",
+            "accepted_for_formal": False,
+        }
+    return {
+        "status": "blocked",
+        "reason": "no accepted listing/delisting/suspension metadata package available",
+        "accepted_for_formal": False,
+    }
+
+
+def _listing_metadata_summary(listing_metadata: dict[str, Any]) -> dict[str, Any]:
+    readiness = listing_metadata.get("readiness", {})
+    accepted_listing = int(readiness.get("accepted_listing_metadata_rows", listing_metadata.get("accepted_listing_rows", 0)) or 0)
+    accepted_suspension = int(
+        readiness.get("accepted_suspension_event_rows", listing_metadata.get("accepted_suspension_rows", 0)) or 0
+    )
+    return {
+        "exists": bool(listing_metadata.get("exists")),
+        "path": listing_metadata.get("path", ""),
+        "status": readiness.get("status", ""),
+        "partial_event_rows_available": bool(accepted_listing or accepted_suspension),
+        "accepted_listing_metadata_rows": accepted_listing,
+        "accepted_suspension_event_rows": accepted_suspension,
+        "accepted_event_rows": accepted_listing + accepted_suspension,
+        "proxy_source_rows": int(readiness.get("proxy_source_rows", 0) or 0),
+        "blocked_source_rows": int(readiness.get("blocked_source_rows", listing_metadata.get("blocked_rows", 0)) or 0),
+        "listing_delisting_suspension_metadata_ready": bool(
+            readiness.get("listing_delisting_suspension_metadata_ready", False)
+        ),
+        "ready_for_core_rerun": bool(readiness.get("ready_for_core_rerun", False)),
+        "ready_for_strategy_replay": bool(readiness.get("ready_for_strategy_replay", False)),
+        "dynamic_pool1_shadow_challenger_ready": bool(readiness.get("dynamic_pool1_shadow_challenger_ready", False)),
+        "future_data_violation_count": int(readiness.get("future_data_violation_count", 0) or 0),
+        "readiness_decision": readiness.get("readiness_decision", ""),
     }
 
 
@@ -1013,6 +1190,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--ai-theme-candidates", default=DEFAULT_AI_THEME_CANDIDATES)
     parser.add_argument("--radar-data-dir", default=DEFAULT_RADAR_DATA_DIR)
     parser.add_argument("--liquidity-sweep-output", default=DEFAULT_LIQUIDITY_SWEEP_OUTPUT)
+    parser.add_argument("--listing-metadata-output", default=DEFAULT_LISTING_METADATA_OUTPUT)
     args = parser.parse_args(argv)
     run_dynamic_pool1_pit_readiness_contract(
         output_dir=args.output_dir,
@@ -1022,6 +1200,7 @@ def main(argv: list[str] | None = None) -> int:
         ai_theme_candidates_path=args.ai_theme_candidates,
         radar_data_dir=args.radar_data_dir,
         liquidity_sweep_output=args.liquidity_sweep_output,
+        listing_metadata_output=args.listing_metadata_output,
     )
     return 0
 

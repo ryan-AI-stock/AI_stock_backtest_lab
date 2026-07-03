@@ -146,10 +146,12 @@ class DynamicPool1PitReadinessContractTest(unittest.TestCase):
             cache = root / "cache"
             radar = root / "radar"
             sweep = root / "sweep"
+            listing = root / "listing"
             output = root / "out"
             cache.mkdir()
             radar.mkdir()
             sweep.mkdir()
+            listing.mkdir()
 
             pd.DataFrame(
                 {
@@ -218,6 +220,60 @@ class DynamicPool1PitReadinessContractTest(unittest.TestCase):
                 encoding="utf-8",
             )
             (sweep / "manifest.json").write_text("{}", encoding="utf-8")
+            pd.DataFrame(
+                [
+                    {
+                        "ticker": "7827",
+                        "name": "漢康-KY創",
+                        "market": "TWSE",
+                        "event_type": "listing",
+                        "event_date": "2026-05-29",
+                        "source_date": "2026-07-03",
+                        "formal_ready": False,
+                    }
+                ]
+            ).to_csv(listing / "accepted_listing_metadata_rows.csv", index=False)
+            pd.DataFrame(
+                [
+                    {
+                        "ticker": "1788",
+                        "name": "杏昌",
+                        "market": "TPEx",
+                        "event_type": "suspension",
+                        "event_date": "2026-06-18",
+                        "source_date": "2026-07-03",
+                        "formal_ready": False,
+                    }
+                ]
+            ).to_csv(listing / "accepted_suspension_event_rows.csv", index=False)
+            pd.DataFrame(
+                [
+                    {
+                        "dataset": "listing_delisting_suspension_master",
+                        "market": "TWSE",
+                        "blocked_requirement": "complete historical suspension/resumption master",
+                        "formal_ready": False,
+                    }
+                ]
+            ).to_csv(listing / "blocked_source_rows.csv", index=False)
+            (listing / "readiness_for_core.json").write_text(
+                json.dumps(
+                    {
+                        "status": "completed_partial_event_sources_but_master_ready_false",
+                        "accepted_listing_metadata_rows": 1,
+                        "accepted_suspension_event_rows": 1,
+                        "proxy_source_rows": 3,
+                        "blocked_source_rows": 1,
+                        "listing_delisting_suspension_metadata_ready": False,
+                        "ready_for_core_rerun": True,
+                        "ready_for_strategy_replay": False,
+                        "dynamic_pool1_shadow_challenger_ready": False,
+                        "future_data_violation_count": 0,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (listing / "manifest.json").write_text("{}", encoding="utf-8")
 
             run_dynamic_pool1_pit_readiness_contract(
                 output_dir=output,
@@ -227,6 +283,7 @@ class DynamicPool1PitReadinessContractTest(unittest.TestCase):
                 ai_theme_candidates_path=root / "missing_ai.csv",
                 radar_data_dir=radar,
                 liquidity_sweep_output=sweep,
+                listing_metadata_output=listing,
             )
 
             readiness = json.loads((output / "readiness.json").read_text(encoding="utf-8"))
@@ -234,6 +291,9 @@ class DynamicPool1PitReadinessContractTest(unittest.TestCase):
             self.assertFalse(readiness["ready_for_strategy_replay"])
             self.assertFalse(readiness["dynamic_pool1_shadow_challenger_ready"])
             self.assertFalse(readiness["liquidity_full_sweep"]["listing_delisting_suspension_metadata_ready"])
+            self.assertEqual(readiness["table_status"]["listing_delisting_suspension_metadata"]["status"], "partial")
+            self.assertFalse(readiness["listing_metadata"]["listing_delisting_suspension_metadata_ready"])
+            self.assertEqual(readiness["listing_metadata"]["accepted_event_rows"], 2)
 
             delta = pd.read_csv(output / "blocker_delta_after_liquidity_full_sweep.csv")
             universe_delta = delta[delta["blocker"].eq("all_listed_liquid_universe_pit_daily")].iloc[0]
@@ -243,6 +303,11 @@ class DynamicPool1PitReadinessContractTest(unittest.TestCase):
             summary = pd.read_csv(output / "dataset_readiness_summary.csv")
             universe_summary = summary[summary["dataset"].eq("all_listed_liquid_universe_pit_daily")].iloc[0]
             self.assertEqual(universe_summary["readiness_status"], "partial")
+
+            listing_delta = pd.read_csv(output / "blocker_delta_after_listing_metadata.csv")
+            listing_row = listing_delta[listing_delta["blocker"].eq("listing_delisting_suspension_metadata")].iloc[0]
+            self.assertEqual(listing_row["after_status"], "partial")
+            self.assertFalse(bool(listing_row["ready_for_strategy_replay"]))
 
 
 if __name__ == "__main__":
