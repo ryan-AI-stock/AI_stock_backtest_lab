@@ -17,6 +17,10 @@ DEFAULT_AI_THEME_CANDIDATES = "data/ai_theme_candidates.csv"
 DEFAULT_RADAR_DATA_DIR = (
     "C:/Users/zergv/Documents/Codex/2026-05-23/ai-stock-rotation-radar-https-docs/data"
 )
+DEFAULT_LIQUIDITY_SWEEP_OUTPUT = (
+    "C:/Users/zergv/Documents/Codex/2026-05-23/ai-stock-rotation-radar-https-docs/outputs/"
+    "radar_dynamic_pool1_all_listed_liquid_universe_full_sweep_20260703"
+)
 
 YEAR_BUCKETS = (
     ("2015-2021", "2015-01-01", "2021-12-31"),
@@ -42,6 +46,7 @@ def run_dynamic_pool1_pit_readiness_contract(
     tw50_constituents_path: str | Path = DEFAULT_TW50_CONSTITUENTS,
     ai_theme_candidates_path: str | Path = DEFAULT_AI_THEME_CANDIDATES,
     radar_data_dir: str | Path = DEFAULT_RADAR_DATA_DIR,
+    liquidity_sweep_output: str | Path | None = None,
 ) -> Path:
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
@@ -61,26 +66,32 @@ def run_dynamic_pool1_pit_readiness_contract(
 
     try:
         log("inventory_sources", "started", "")
+        liquidity_sweep = _load_liquidity_sweep(liquidity_sweep_output)
         source_inventory = _source_inventory(
             price_cache_dir=Path(price_cache_dir),
             price_source_registry=Path(price_source_registry),
             tw50_constituents_path=Path(tw50_constituents_path),
             ai_theme_candidates_path=Path(ai_theme_candidates_path),
             radar_data_dir=Path(radar_data_dir),
+            liquidity_sweep=liquidity_sweep,
         )
         price_coverage = _price_cache_coverage(Path(price_cache_dir), Path(price_source_registry))
 
         log("build_contract_tables", "started", "")
-        tables = _build_contract_tables(source_inventory, price_coverage)
-        readiness_by_date = _candidate_data_readiness_by_date(source_inventory, price_coverage)
+        tables = _build_contract_tables(source_inventory, price_coverage, liquidity_sweep)
+        readiness_by_date = _candidate_data_readiness_by_date(source_inventory, price_coverage, liquidity_sweep)
         violation_audit = _future_data_violation_audit(source_inventory)
         source_manifest = _source_manifest(source_inventory, price_coverage)
-        readiness = _readiness_json(source_inventory, price_coverage, readiness_by_date, violation_audit)
+        readiness = _readiness_json(source_inventory, price_coverage, readiness_by_date, violation_audit, liquidity_sweep)
+        dataset_summary = _dataset_readiness_summary(readiness)
+        blocker_delta = _blocker_delta_after_liquidity_full_sweep(liquidity_sweep)
 
         log("write_outputs", "started", str(output))
         for table_name, frame in tables.items():
             frame.to_csv(output / f"{table_name}.csv", index=False, encoding="utf-8-sig")
         readiness_by_date.to_csv(output / "candidate_data_readiness_by_date.csv", index=False, encoding="utf-8-sig")
+        dataset_summary.to_csv(output / "dataset_readiness_summary.csv", index=False, encoding="utf-8-sig")
+        blocker_delta.to_csv(output / "blocker_delta_after_liquidity_full_sweep.csv", index=False, encoding="utf-8-sig")
         violation_audit.to_csv(output / "future_data_violation_audit.csv", index=False, encoding="utf-8-sig")
         (output / "source_manifest.json").write_text(
             json.dumps(source_manifest, ensure_ascii=False, indent=2),
@@ -116,6 +127,7 @@ def _source_inventory(
     tw50_constituents_path: Path,
     ai_theme_candidates_path: Path,
     radar_data_dir: Path,
+    liquidity_sweep: dict[str, Any],
 ) -> list[dict[str, Any]]:
     sources = [
         {
@@ -196,6 +208,27 @@ def _source_inventory(
                 }
             )
 
+    if liquidity_sweep.get("exists"):
+        readiness = liquidity_sweep.get("readiness", {})
+        sources.append(
+            {
+                "data_area": "all_listed_liquid_universe_pit_daily",
+                "source_name": "radar_dynamic_pool1_all_listed_liquid_universe_full_sweep",
+                "path": liquidity_sweep.get("path", ""),
+                "source_family": "radar_official_daily_liquidity_sweep",
+                "pit_acceptance": "partial",
+                "diagnostic_only": False,
+                "blocked_reason": (
+                    "accepted for daily liquidity/trading-table presence; listing/delisting/suspension metadata "
+                    "is still not ready"
+                ),
+                "sweep_start": readiness.get("covered_date_range", {}).get("start", ""),
+                "sweep_end": readiness.get("covered_date_range", {}).get("end", ""),
+                "accepted_liquidity_rows": readiness.get("accepted_liquidity_rows", 0),
+                "accepted_shard_count": readiness.get("accepted_shard_count", 0),
+            }
+        )
+
     inventory: list[dict[str, Any]] = []
     for source in sources:
         inventory.append(_source_row(source))
@@ -231,6 +264,42 @@ def _source_row(source: dict[str, Any]) -> dict[str, Any]:
         "has_effective_date": has_effective_date,
         "accepted_for_formal": False,
         "future_data_violation_count": 0,
+    }
+
+
+def _load_liquidity_sweep(liquidity_sweep_output: str | Path | None) -> dict[str, Any]:
+    if liquidity_sweep_output is None:
+        return {"exists": False, "path": ""}
+    root = Path(liquidity_sweep_output)
+    if not root.exists():
+        return {"exists": False, "path": str(root), "missing_reason": "liquidity sweep output path does not exist"}
+    readiness = _load_json(root / "readiness_for_core.json")
+    manifest = _load_json(root / "manifest.json")
+    shard_manifest_path = root / "accepted_liquidity_shard_manifest.csv"
+    coverage_path = root / "coverage_by_year_market.csv"
+    listing_inventory_path = root / "listing_status_source_inventory.csv"
+    future_audit_path = root / "future_data_violation_audit.csv"
+    shard_manifest = _read_csv_if_exists(shard_manifest_path)
+    coverage = _read_csv_if_exists(coverage_path)
+    listing_inventory = _read_csv_if_exists(listing_inventory_path)
+    future_audit = _read_csv_if_exists(future_audit_path)
+    return {
+        "exists": True,
+        "path": str(root),
+        "readiness": readiness,
+        "manifest": manifest,
+        "shard_manifest_path": str(shard_manifest_path),
+        "coverage_path": str(coverage_path),
+        "listing_inventory_path": str(listing_inventory_path),
+        "future_audit_path": str(future_audit_path),
+        "shard_manifest_rows": int(len(shard_manifest)),
+        "coverage_rows": int(len(coverage)),
+        "listing_inventory_rows": int(len(listing_inventory)),
+        "future_audit_rows": int(len(future_audit)),
+        "shard_manifest": shard_manifest,
+        "coverage": coverage,
+        "listing_inventory": listing_inventory,
+        "future_audit": future_audit,
     }
 
 
@@ -283,9 +352,17 @@ def _price_cache_coverage(price_cache_dir: Path, price_source_registry: Path) ->
     return frame[_price_columns()]
 
 
-def _build_contract_tables(source_inventory: list[dict[str, Any]], price_coverage: pd.DataFrame) -> dict[str, pd.DataFrame]:
+def _build_contract_tables(
+    source_inventory: list[dict[str, Any]],
+    price_coverage: pd.DataFrame,
+    liquidity_sweep: dict[str, Any],
+) -> dict[str, pd.DataFrame]:
     return {
-        "all_listed_liquid_universe_pit_daily": _all_listed_liquid_contract(source_inventory, price_coverage),
+        "all_listed_liquid_universe_pit_daily": _all_listed_liquid_contract(
+            source_inventory,
+            price_coverage,
+            liquidity_sweep,
+        ),
         "monthly_revenue_pit": _blocked_contract_table(
             "monthly_revenue_pit",
             "blocked",
@@ -317,8 +394,40 @@ def _build_contract_tables(source_inventory: list[dict[str, Any]], price_coverag
     }
 
 
-def _all_listed_liquid_contract(source_inventory: list[dict[str, Any]], price_coverage: pd.DataFrame) -> pd.DataFrame:
+def _all_listed_liquid_contract(
+    source_inventory: list[dict[str, Any]],
+    price_coverage: pd.DataFrame,
+    liquidity_sweep: dict[str, Any],
+) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
+    readiness = liquidity_sweep.get("readiness", {})
+    if liquidity_sweep.get("exists") and readiness.get("all_listed_liquid_universe_pit_daily_full_range_ready"):
+        rows.append(
+            {
+                "record_type": "full_sweep_contract_status",
+                "date": "",
+                "ticker": "",
+                "name": "",
+                "listing_status": "daily_presence_ready_master_metadata_missing",
+                "delisting_or_suspension_status": "metadata_not_ready",
+                "liquidity_20d_twd": "source_rows_available_in_local_shards",
+                "liquidity_60d_twd": "source_rows_available_in_local_shards",
+                "market_cap_twd": "",
+                "is_liquid": "available_in_shards",
+                "source_date": readiness.get("covered_date_range", {}).get("end", ""),
+                "release_date": "",
+                "effective_date": readiness.get("covered_date_range", {}).get("start", ""),
+                "source": "radar_dynamic_pool1_all_listed_liquid_universe_full_sweep",
+                "source_type": "official_daily_liquidity_presence_sweep",
+                "readiness_status": "partial_daily_liquidity_pit_ready",
+                "diagnostic_only": False,
+                "accepted_for_formal": False,
+                "blocked_reason": (
+                    "daily liquidity/trading-table presence ready; listing/delisting/suspension master metadata "
+                    "still blocks strategy replay"
+                ),
+            }
+        )
     if not price_coverage.empty:
         for item in price_coverage.sort_values(["ticker", "source"]).to_dict(orient="records"):
             rows.append(
@@ -425,12 +534,16 @@ def _generic_status_row(data_area: str, status: str, reason: str) -> dict[str, A
     }
 
 
-def _candidate_data_readiness_by_date(source_inventory: list[dict[str, Any]], price_coverage: pd.DataFrame) -> pd.DataFrame:
+def _candidate_data_readiness_by_date(
+    source_inventory: list[dict[str, Any]],
+    price_coverage: pd.DataFrame,
+    liquidity_sweep: dict[str, Any],
+) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     price_status = _price_readiness_status(price_coverage)
     for bucket, start, end in YEAR_BUCKETS:
         for table in TABLE_SPECS:
-            status, reason = _readiness_for_table(table, price_status, source_inventory)
+            status, reason = _readiness_for_table(table, price_status, source_inventory, liquidity_sweep)
             rows.append(
                 {
                     "year_bucket": bucket,
@@ -493,11 +606,13 @@ def _readiness_json(
     price_coverage: pd.DataFrame,
     readiness_by_date: pd.DataFrame,
     violation_audit: pd.DataFrame,
+    liquidity_sweep: dict[str, Any],
 ) -> dict[str, Any]:
+    price_status = _price_readiness_status(price_coverage)
     table_status = {
         table: {
-            "status": _readiness_for_table(table, _price_readiness_status(price_coverage), source_inventory)[0],
-            "reason": _readiness_for_table(table, _price_readiness_status(price_coverage), source_inventory)[1],
+            "status": _readiness_for_table(table, price_status, source_inventory, liquidity_sweep)[0],
+            "reason": _readiness_for_table(table, price_status, source_inventory, liquidity_sweep)[1],
             "accepted_for_formal": False,
         }
         for table in TABLE_SPECS
@@ -515,6 +630,7 @@ def _readiness_json(
         "active_in_trade_decision": False,
         "uses_forward_return": False,
         "future_data_violation_count": future_data_violation_count,
+        "liquidity_full_sweep": _liquidity_sweep_summary(liquidity_sweep),
         "coverage_by_year": {
             bucket: {
                 row["data_table"]: {
@@ -535,7 +651,7 @@ def _readiness_json(
             "diagnostic_or_blocked_source_count": len(source_inventory),
         },
         "next_blockers": [
-            "all-listed listing/delisting/suspension PIT universe with liquidity history",
+            "listing/delisting/suspension master metadata for all-listed universe",
             "monthly revenue PIT with announcement/release dates",
             "quarterly fundamentals PIT with announcement/release dates",
             "historical market cap/free-float market cap PIT",
@@ -563,6 +679,8 @@ def _manifest(readiness: dict[str, Any]) -> dict[str, Any]:
             "sector_membership_pit": "sector_membership_pit.csv",
             "sector_breadth_pit_daily": "sector_breadth_pit_daily.csv",
             "candidate_data_readiness_by_date": "candidate_data_readiness_by_date.csv",
+            "dataset_readiness_summary": "dataset_readiness_summary.csv",
+            "blocker_delta_after_liquidity_full_sweep": "blocker_delta_after_liquidity_full_sweep.csv",
             "future_data_violation_audit": "future_data_violation_audit.csv",
             "source_manifest": "source_manifest.json",
             "readiness": "readiness.json",
@@ -584,10 +702,19 @@ def _next_step_handoff(readiness: dict[str, Any]) -> str:
 
 
 def _final_summary(readiness: dict[str, Any]) -> str:
+    liquidity = readiness.get("liquidity_full_sweep", {})
+    liquidity_line = (
+        f"- all-listed liquid universe：partial，Radar full sweep covered "
+        f"{liquidity.get('covered_start', '')}～{liquidity.get('covered_end', '')}，"
+        f"accepted_liquidity_rows={liquidity.get('accepted_liquidity_rows', 0)}；"
+        "但 listing/delisting/suspension master 仍未 ready。\n"
+        if liquidity.get("full_range_ready")
+        else "- all-listed liquid universe：blocked，缺上市/下市/停牌/流動性 PIT ledger。\n"
+    )
     return (
         "# Dynamic Pool1 PIT readiness contract\n\n"
         "結論：目前只完成資料契約與來源盤點，尚不能交 Experiments 跑 dynamic Pool1 shadow challenger。\n\n"
-        "- all-listed liquid universe：blocked，缺上市/下市/停牌/流動性 PIT ledger。\n"
+        f"{liquidity_line}"
         "- monthly revenue：blocked，缺帶 release_date 的月營收 PIT。\n"
         "- quarterly fundamentals：blocked，缺帶公告日的季財報 PIT。\n"
         "- market cap：partial/current snapshot only，不可回推 2015。\n"
@@ -601,8 +728,15 @@ def _readiness_for_table(
     table: str,
     price_status: tuple[str, str],
     source_inventory: list[dict[str, Any]],
+    liquidity_sweep: dict[str, Any],
 ) -> tuple[str, str]:
     if table == "all_listed_liquid_universe_pit_daily":
+        readiness = liquidity_sweep.get("readiness", {})
+        if readiness.get("all_listed_liquid_universe_pit_daily_full_range_ready"):
+            return (
+                "partial",
+                "daily liquidity/trading-table presence full sweep is ready, but listing/delisting/suspension master metadata is missing",
+            )
         return (
             "blocked",
             "local price coverage exists but no all-listed listing/liquidity/suspension PIT universe is accepted",
@@ -626,6 +760,105 @@ def _readiness_for_table(
     return price_status
 
 
+def _dataset_readiness_summary(readiness: dict[str, Any]) -> pd.DataFrame:
+    rows = []
+    for table, status in readiness["table_status"].items():
+        rows.append(
+            {
+                "dataset": table,
+                "readiness_status": status["status"],
+                "accepted_for_formal": bool(status["accepted_for_formal"]),
+                "active_in_trade_decision": False,
+                "reason": status["reason"],
+            }
+        )
+    rows.append(
+        {
+            "dataset": "dynamic_pool1_shadow_challenger",
+            "readiness_status": "blocked",
+            "accepted_for_formal": False,
+            "active_in_trade_decision": False,
+            "reason": "monthly revenue, quarterly fundamentals, market cap PIT, sector PIT, and listing master remain incomplete",
+        }
+    )
+    return pd.DataFrame(rows)
+
+
+def _blocker_delta_after_liquidity_full_sweep(liquidity_sweep: dict[str, Any]) -> pd.DataFrame:
+    readiness = liquidity_sweep.get("readiness", {})
+    full_ready = bool(readiness.get("all_listed_liquid_universe_pit_daily_full_range_ready"))
+    return pd.DataFrame(
+        [
+            {
+                "blocker": "all_listed_liquid_universe_pit_daily",
+                "before_status": "blocked",
+                "after_status": "partial" if full_ready else "blocked",
+                "delta": "downgraded_from_blocked_to_partial_daily_liquidity_presence"
+                if full_ready
+                else "unchanged_blocked",
+                "remaining_blocker": "listing_delisting_suspension_metadata_ready=false"
+                if full_ready
+                else "full liquidity sweep not available",
+                "ready_for_strategy_replay": bool(readiness.get("ready_for_strategy_replay", False)),
+            },
+            {
+                "blocker": "monthly_revenue_pit",
+                "before_status": "blocked",
+                "after_status": "blocked",
+                "delta": "unchanged",
+                "remaining_blocker": "MOPS monthly revenue full universe PIT with release_date is still missing",
+                "ready_for_strategy_replay": False,
+            },
+            {
+                "blocker": "quarterly_fundamentals_pit",
+                "before_status": "blocked",
+                "after_status": "blocked",
+                "delta": "unchanged",
+                "remaining_blocker": "quarterly fundamentals PIT with announcement/release dates is still missing",
+                "ready_for_strategy_replay": False,
+            },
+            {
+                "blocker": "market_cap_pit",
+                "before_status": "partial",
+                "after_status": "partial",
+                "delta": "unchanged",
+                "remaining_blocker": "historical market cap/free-float market cap PIT is still missing",
+                "ready_for_strategy_replay": False,
+            },
+            {
+                "blocker": "sector_membership_pit",
+                "before_status": "blocked",
+                "after_status": "blocked",
+                "delta": "unchanged",
+                "remaining_blocker": "date-aware sector/mainline membership PIT is still missing",
+                "ready_for_strategy_replay": False,
+            },
+        ]
+    )
+
+
+def _liquidity_sweep_summary(liquidity_sweep: dict[str, Any]) -> dict[str, Any]:
+    readiness = liquidity_sweep.get("readiness", {})
+    covered = readiness.get("covered_date_range", {})
+    return {
+        "exists": bool(liquidity_sweep.get("exists")),
+        "path": liquidity_sweep.get("path", ""),
+        "full_range_ready": bool(readiness.get("all_listed_liquid_universe_pit_daily_full_range_ready", False)),
+        "listing_delisting_suspension_metadata_ready": bool(
+            readiness.get("listing_delisting_suspension_metadata_ready", False)
+        ),
+        "ready_for_core_rerun": bool(readiness.get("ready_for_core_rerun", False)),
+        "ready_for_strategy_replay": bool(readiness.get("ready_for_strategy_replay", False)),
+        "dynamic_pool1_shadow_challenger_ready": bool(readiness.get("dynamic_pool1_shadow_challenger_ready", False)),
+        "covered_start": covered.get("start", ""),
+        "covered_end": covered.get("end", ""),
+        "accepted_liquidity_rows": int(readiness.get("accepted_liquidity_rows", 0) or 0),
+        "accepted_shard_count": int(readiness.get("accepted_shard_count", 0) or 0),
+        "failed_attempts": int(readiness.get("failed_attempts", 0) or 0),
+        "missing_attempts": int(readiness.get("missing_attempts", 0) or 0),
+    }
+
+
 def _price_readiness_status(price_coverage: pd.DataFrame) -> tuple[str, str]:
     if price_coverage.empty:
         return "blocked", "no price coverage found"
@@ -640,6 +873,24 @@ def _csv_columns(path: Path) -> list[str]:
         return list(pd.read_csv(path, nrows=0).columns)
     except Exception:
         return []
+
+
+def _load_json(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _read_csv_if_exists(path: Path) -> pd.DataFrame:
+    if not path.exists():
+        return pd.DataFrame()
+    try:
+        return pd.read_csv(path).fillna("")
+    except Exception:
+        return pd.DataFrame()
 
 
 def _count_csv_rows(path: Path) -> int:
@@ -761,6 +1012,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--tw50-constituents", default=DEFAULT_TW50_CONSTITUENTS)
     parser.add_argument("--ai-theme-candidates", default=DEFAULT_AI_THEME_CANDIDATES)
     parser.add_argument("--radar-data-dir", default=DEFAULT_RADAR_DATA_DIR)
+    parser.add_argument("--liquidity-sweep-output", default=DEFAULT_LIQUIDITY_SWEEP_OUTPUT)
     args = parser.parse_args(argv)
     run_dynamic_pool1_pit_readiness_contract(
         output_dir=args.output_dir,
@@ -769,6 +1021,7 @@ def main(argv: list[str] | None = None) -> int:
         tw50_constituents_path=args.tw50_constituents,
         ai_theme_candidates_path=args.ai_theme_candidates,
         radar_data_dir=args.radar_data_dir,
+        liquidity_sweep_output=args.liquidity_sweep_output,
     )
     return 0
 

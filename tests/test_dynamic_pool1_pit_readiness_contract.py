@@ -140,6 +140,110 @@ class DynamicPool1PitReadinessContractTest(unittest.TestCase):
             self.assertIn("release_date", pd.read_csv(output / "monthly_revenue_pit.csv").columns)
             self.assertIn("effective_date", pd.read_csv(output / "quarterly_fundamentals_pit.csv").columns)
 
+    def test_liquidity_full_sweep_downgrades_universe_blocker_to_partial_only(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache = root / "cache"
+            radar = root / "radar"
+            sweep = root / "sweep"
+            output = root / "out"
+            cache.mkdir()
+            radar.mkdir()
+            sweep.mkdir()
+
+            pd.DataFrame(
+                {
+                    "date": ["2015-01-05"],
+                    "open": [100],
+                    "high": [101],
+                    "low": [99],
+                    "close": [100],
+                    "adj_close": [100],
+                    "volume": [1000],
+                }
+            ).to_csv(cache / "2330_TW.csv", index=False)
+            pd.DataFrame(
+                [
+                    {
+                        "shard_file": str(sweep / "shards" / "accepted_liquidity_rows_2015_01.csv"),
+                        "row_count": 100,
+                        "first_date": "2015-01-05",
+                        "last_date": "2015-01-30",
+                        "markets": "TWSE;TPEx",
+                        "ticker_count": 10,
+                        "git_tracked": False,
+                    }
+                ]
+            ).to_csv(sweep / "accepted_liquidity_shard_manifest.csv", index=False)
+            pd.DataFrame(
+                [
+                    {
+                        "year": 2015,
+                        "market": "TWSE",
+                        "expected_weekday_attempts": 1,
+                        "attempted": 1,
+                        "rows_found_attempts": 1,
+                        "no_rows_attempts": 0,
+                        "failed_attempts": 0,
+                        "missing_attempts": 0,
+                        "accepted_liquidity_rows": 100,
+                        "coverage_status": "complete",
+                    }
+                ]
+            ).to_csv(sweep / "coverage_by_year_market.csv", index=False)
+            pd.DataFrame(
+                [
+                    {
+                        "source_id": "twse_mi_index_daily_presence",
+                        "official_proxy_manual": "official",
+                        "status": "accepted_for_daily_presence_and_liquidity_only",
+                        "notes": "not a listing master",
+                    }
+                ]
+            ).to_csv(sweep / "listing_status_source_inventory.csv", index=False)
+            (sweep / "readiness_for_core.json").write_text(
+                json.dumps(
+                    {
+                        "covered_date_range": {"start": "2015-01-05", "end": "2026-07-02"},
+                        "accepted_liquidity_rows": 100,
+                        "accepted_shard_count": 1,
+                        "all_listed_liquid_universe_pit_daily_full_range_ready": True,
+                        "listing_delisting_suspension_metadata_ready": False,
+                        "ready_for_core_rerun": True,
+                        "ready_for_strategy_replay": False,
+                        "dynamic_pool1_shadow_challenger_ready": False,
+                        "future_data_violation_count": 0,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (sweep / "manifest.json").write_text("{}", encoding="utf-8")
+
+            run_dynamic_pool1_pit_readiness_contract(
+                output_dir=output,
+                price_cache_dir=cache,
+                price_source_registry=root / "missing_registry.csv",
+                tw50_constituents_path=root / "missing_tw50.csv",
+                ai_theme_candidates_path=root / "missing_ai.csv",
+                radar_data_dir=radar,
+                liquidity_sweep_output=sweep,
+            )
+
+            readiness = json.loads((output / "readiness.json").read_text(encoding="utf-8"))
+            self.assertEqual(readiness["table_status"]["all_listed_liquid_universe_pit_daily"]["status"], "partial")
+            self.assertFalse(readiness["ready_for_strategy_replay"])
+            self.assertFalse(readiness["dynamic_pool1_shadow_challenger_ready"])
+            self.assertFalse(readiness["liquidity_full_sweep"]["listing_delisting_suspension_metadata_ready"])
+
+            delta = pd.read_csv(output / "blocker_delta_after_liquidity_full_sweep.csv")
+            universe_delta = delta[delta["blocker"].eq("all_listed_liquid_universe_pit_daily")].iloc[0]
+            self.assertEqual(universe_delta["before_status"], "blocked")
+            self.assertEqual(universe_delta["after_status"], "partial")
+
+            summary = pd.read_csv(output / "dataset_readiness_summary.csv")
+            universe_summary = summary[summary["dataset"].eq("all_listed_liquid_universe_pit_daily")].iloc[0]
+            self.assertEqual(universe_summary["readiness_status"], "partial")
+
 
 if __name__ == "__main__":
     unittest.main()
