@@ -23,11 +23,13 @@ from backtest_lab.stock_pool_observation import (
     _formal_operation_conclusion,
     _live_risk_regime_warning_boundary,
     _load_observation_price_frames,
+    _rapid_rotation_warning_boundary,
     _resolve_dynamic_observation_pool,
     _sanitize_visible_report_reason,
     _set_formal_report_readiness,
     _top_candidate_rows,
     _target_stability_warning_boundary,
+    _attach_rapid_rotation_warning_boundary,
     _user_facing_candidate_reason,
     _wrap_text_lines,
     build_dispatched_stock_pool_observation,
@@ -109,6 +111,71 @@ class StockPoolObservationTest(unittest.TestCase):
             "report-only",
         ):
             self.assertNotIn(forbidden, markdown)
+
+    def test_rapid_rotation_warning_high_is_report_only(self) -> None:
+        manifest: dict[str, object] = {
+            "rapid_rotation_metrics": {
+                "current_formal_target": "00631L.TW",
+                "previous_formal_target": "2454.TW",
+                "current_target_age_trading_days": 3,
+                "rolling_avg_target_lifetime_30d": 8.5,
+                "target_change_rate_30d": 0.11,
+                "target_change_rate_60d": 0.10,
+                "target_change_rate_90d": 0.1111,
+                "no_target_cash_day_rate_30d": 0.25,
+                "new_target_pre20d_return": 0.08,
+                "new_target_confirmation_age_days": 2,
+                "score_gap_or_rank_margin": 0.4,
+                "0050_ma20_state": "above",
+                "0050_ma60_state": "above",
+                "00631L_ma20_state": "above",
+                "00631L_ma60_state": "above",
+            }
+        }
+        _attach_rapid_rotation_warning_boundary(manifest)
+
+        self.assertEqual(manifest["rapid_rotation_warning_state"], "rapid_rotation_high")
+        self.assertIn("輪動偏快", str(manifest["rapid_rotation_warning_reason"]))
+        self.assertFalse(manifest["rapid_rotation_active_in_trade_decision"])
+        self.assertEqual(manifest["rapid_rotation_warning_boundary"], "report_only")
+        self.assertFalse(manifest["formal_model_changed"])
+        self.assertFalse(manifest["trade_decision_changed"])
+
+    def test_rapid_rotation_warning_missing_fields_fail_closed(self) -> None:
+        warning = _rapid_rotation_warning_boundary({"rapid_rotation_metrics": {"target_change_rate_30d": 0.12}})
+
+        self.assertEqual(warning["rapid_rotation_warning_state"], "data_not_ready")
+        self.assertFalse(warning["rapid_rotation_active_in_trade_decision"])
+        self.assertEqual(warning["rapid_rotation_warning_boundary"], "report_only")
+        self.assertIn("尚未補齊", warning["rapid_rotation_warning_reason"])
+
+    def test_rapid_rotation_warning_appears_in_markdown_without_trade_instruction(self) -> None:
+        manifest = _target_stability_manifest(score_a=2.8, score_b=2.1)
+        manifest["rapid_rotation_metrics"] = {
+            "current_formal_target": "6669.TW",
+            "previous_formal_target": "00631L.TW",
+            "current_target_age_trading_days": 1,
+            "rolling_avg_target_lifetime_30d": 11,
+            "target_change_rate_30d": 0.09,
+            "target_change_rate_60d": 0.08,
+            "target_change_rate_90d": 0.07,
+            "no_target_cash_day_rate_30d": 0.1,
+            "new_target_pre20d_return": 0.05,
+            "new_target_confirmation_age_days": 2,
+            "score_gap_or_rank_margin": 0.7,
+            "0050_ma20_state": "above",
+            "0050_ma60_state": "above",
+            "00631L_ma20_state": "above",
+            "00631L_ma60_state": "above",
+        }
+        _attach_rapid_rotation_warning_boundary(manifest)
+        markdown = markdown_observation_batch_report(manifest, [])
+
+        self.assertIn("快速輪動提醒", markdown)
+        self.assertIn("快速輪動偏高", markdown)
+        self.assertNotIn("建議暫停買進", markdown)
+        self.assertNotIn("應該賣出", markdown)
+        self.assertNotIn("模型判定不能進場", markdown)
 
     def test_target_stability_warning_boundary_is_report_only(self) -> None:
         manifest = _target_stability_manifest(score_a=1.00, score_b=0.94)

@@ -1153,6 +1153,7 @@ def run_stock_pool_observation_batch(
     _attach_target_stability_warning_boundary(manifest)
     _attach_live_risk_regime_warning_boundary(manifest)
     _attach_chip_context_report_boundary(manifest)
+    _attach_rapid_rotation_warning_boundary(manifest)
     _set_formal_report_readiness(manifest)
     manifest["previous_formal_target_fallback"] = _previous_formal_target_model_fallback(
         pools=pools,
@@ -1183,6 +1184,7 @@ def run_stock_pool_observation_batch(
         encoding="utf-8",
     )
     write_model_layer_audit(root / "model_layer_audit.json", manifest["model_layer_audit"])
+    write_rapid_rotation_warning_panel(root, manifest)
     write_stock_pool_observation_batch_summary(root, manifest)
     write_consensus_outputs(root, manifest)
     write_candidate_reviews(root, manifest)
@@ -2316,6 +2318,156 @@ def _attach_chip_context_report_boundary(manifest: dict[str, Any]) -> None:
     manifest["active_in_trade_decision"] = False
 
 
+def _rapid_rotation_warning_boundary(manifest: dict[str, Any]) -> dict[str, Any]:
+    explicit = manifest.get("rapid_rotation_warning")
+    if isinstance(explicit, dict):
+        return explicit
+    metrics = manifest.get("rapid_rotation_metrics")
+    if not isinstance(metrics, dict):
+        metrics = manifest
+    fields = _rapid_rotation_metric_fields(metrics)
+    core_required = (
+        "current_target_age_trading_days",
+        "rolling_avg_target_lifetime_30d",
+        "target_change_rate_30d",
+        "target_change_rate_60d",
+        "target_change_rate_90d",
+        "no_target_cash_day_rate_30d",
+        "new_target_pre20d_return",
+        "new_target_confirmation_age_days",
+    )
+    missing = [key for key in core_required if fields.get(key) is None]
+    score_gap_status = "ready" if fields.get("score_gap_or_rank_margin") is not None else "data_not_ready"
+    if missing:
+        state = "data_not_ready"
+        reason = "快速輪動診斷欄位尚未補齊，本日不硬判斷標的壽命風險。"
+    else:
+        change30 = _ratio_like(fields["target_change_rate_30d"])
+        cash_rate30 = _ratio_like(fields["no_target_cash_day_rate_30d"])
+        avg_lifetime = float(fields["rolling_avg_target_lifetime_30d"])
+        pre20 = _ratio_like(fields["new_target_pre20d_return"])
+        confirmation_age = float(fields["new_target_confirmation_age_days"])
+        ma20_0050_below = _ma_state_below(fields.get("0050_ma20_state"))
+        ma20_00631l_below = _ma_state_below(fields.get("00631L_ma20_state"))
+        ma60_0050_below = _ma_state_below(fields.get("0050_ma60_state"))
+        ma60_00631l_below = _ma_state_below(fields.get("00631L_ma60_state"))
+        if change30 >= 0.10 and avg_lifetime < 10:
+            state = "rapid_rotation_high"
+            reason = "近期 target 輪動偏快，平均壽命偏短；這是報告提醒，不改正式交易結論。"
+            if cash_rate30 >= 0.20:
+                reason = "近期 target 輪動偏快，且風險控管空手日比率上升；這是報告提醒，不改正式交易結論。"
+        elif ma20_0050_below and ma20_00631l_below:
+            state = "market_support_weakening"
+            if ma60_0050_below or ma60_00631l_below:
+                reason = "0050 與 0050正二皆低於月線，且有標的低於季線；權值市場支撐轉弱，只作觀察提醒。"
+            else:
+                reason = "0050 與 0050正二皆低於月線，權值市場支撐轉弱，只作觀察提醒。"
+        elif pre20 >= 0.15 and confirmation_age <= 1:
+            state = "late_entry_caution"
+            reason = "新目標出現前短線已明顯上漲，需觀察強勢是否延續；這不是買賣指令。"
+        elif change30 >= 0.08 and avg_lifetime < 12:
+            state = "rapid_rotation_elevated"
+            reason = "近期 target 輪動速度偏快，模型訊號仍可觀察，但不宜只看單日變化。"
+        else:
+            state = "rapid_rotation_normal"
+            reason = "近期 target 穩定度未見快速輪動警示。"
+    result = {
+        **fields,
+        "score_gap_or_rank_margin_status": score_gap_status,
+        "rapid_rotation_warning_state": state,
+        "rapid_rotation_warning_reason": reason,
+        "rapid_rotation_active_in_trade_decision": False,
+        "rapid_rotation_warning_boundary": "report_only",
+        "rapid_rotation_uses_forward_return_as_rule": False,
+        "rapid_rotation_policy_note": (
+            "快速輪動提醒只作 AI 輔助市場觀察；不改選股邏輯、不改正式目標、不改交易動作。"
+        ),
+    }
+    return result
+
+
+def _rapid_rotation_metric_fields(source: dict[str, Any]) -> dict[str, Any]:
+    keys = (
+        "current_formal_target",
+        "previous_formal_target",
+        "current_target_age_trading_days",
+        "rolling_avg_target_lifetime_30d",
+        "target_change_rate_30d",
+        "target_change_rate_60d",
+        "target_change_rate_90d",
+        "no_target_cash_day_rate_30d",
+        "new_target_pre20d_return",
+        "new_target_confirmation_age_days",
+        "score_gap_or_rank_margin",
+        "0050_ma20_state",
+        "0050_ma60_state",
+        "00631L_ma20_state",
+        "00631L_ma60_state",
+    )
+    return {key: _metric_value_or_none(source.get(key)) for key in keys}
+
+
+def _metric_value_or_none(value: object) -> object | None:
+    if value is None:
+        return None
+    if isinstance(value, str) and not value.strip():
+        return None
+    return value
+
+
+def _ratio_like(value: object) -> float:
+    number = _number_like(value)
+    if abs(number) > 1:
+        return number / 100.0
+    return number
+
+
+def _ma_state_below(value: object) -> bool:
+    text = str(value or "").strip().lower()
+    return text in {"below", "below_ma", "below_ma20", "below_ma60", "跌破", "低於", "低於均線", "below_average"}
+
+
+def _attach_rapid_rotation_warning_boundary(manifest: dict[str, Any]) -> None:
+    warning = _rapid_rotation_warning_boundary(manifest)
+    manifest["rapid_rotation_warning"] = warning
+    for key in (
+        "current_target_age_trading_days",
+        "rolling_avg_target_lifetime_30d",
+        "target_change_rate_30d",
+        "target_change_rate_60d",
+        "target_change_rate_90d",
+        "no_target_cash_day_rate_30d",
+        "new_target_pre20d_return",
+        "new_target_confirmation_age_days",
+        "score_gap_or_rank_margin",
+        "score_gap_or_rank_margin_status",
+        "0050_ma20_state",
+        "0050_ma60_state",
+        "00631L_ma20_state",
+        "00631L_ma60_state",
+        "rapid_rotation_warning_state",
+        "rapid_rotation_warning_reason",
+        "rapid_rotation_active_in_trade_decision",
+        "rapid_rotation_warning_boundary",
+    ):
+        manifest[key] = warning.get(key)
+    manifest["formal_model_changed"] = False
+    manifest["trade_decision_changed"] = False
+    manifest["active_in_trade_decision"] = False
+
+
+def _rapid_rotation_state_label(value: object) -> str:
+    mapping = {
+        "rapid_rotation_normal": "近期輪動正常",
+        "rapid_rotation_elevated": "快速輪動偏高",
+        "rapid_rotation_high": "快速輪動風險高",
+        "late_entry_caution": "新標的追高風險觀察",
+        "market_support_weakening": "權值市場支撐轉弱",
+        "data_not_ready": "資料不足",
+    }
+    return mapping.get(str(value or ""), str(value or "資料不足"))
+
+
 def _live_risk_regime_state_label(value: object) -> str:
     mapping = {
         "risk_on": "市場環境偏強",
@@ -2567,6 +2719,36 @@ def write_formal_operation_decision_ledger(root: Path, manifest: dict[str, Any])
     pd.DataFrame([row]).to_csv(root / "formal_operation_decision_ledger.csv", index=False, encoding="utf-8-sig")
 
 
+def write_rapid_rotation_warning_panel(root: Path, manifest: dict[str, Any]) -> None:
+    warning = manifest.get("rapid_rotation_warning") or _rapid_rotation_warning_boundary(manifest)
+    row = {
+        "signal_date": manifest.get("actual_signal_date") or manifest.get("signal_date") or "",
+        "current_formal_target": warning.get("current_formal_target"),
+        "previous_formal_target": warning.get("previous_formal_target"),
+        "current_target_age_trading_days": warning.get("current_target_age_trading_days"),
+        "rolling_avg_target_lifetime_30d": warning.get("rolling_avg_target_lifetime_30d"),
+        "target_change_rate_30d": warning.get("target_change_rate_30d"),
+        "target_change_rate_60d": warning.get("target_change_rate_60d"),
+        "target_change_rate_90d": warning.get("target_change_rate_90d"),
+        "no_target_cash_day_rate_30d": warning.get("no_target_cash_day_rate_30d"),
+        "new_target_pre20d_return": warning.get("new_target_pre20d_return"),
+        "new_target_confirmation_age_days": warning.get("new_target_confirmation_age_days"),
+        "score_gap_or_rank_margin": warning.get("score_gap_or_rank_margin"),
+        "score_gap_or_rank_margin_status": warning.get("score_gap_or_rank_margin_status"),
+        "0050_ma20_state": warning.get("0050_ma20_state"),
+        "0050_ma60_state": warning.get("0050_ma60_state"),
+        "00631L_ma20_state": warning.get("00631L_ma20_state"),
+        "00631L_ma60_state": warning.get("00631L_ma60_state"),
+        "rapid_rotation_warning_state": warning.get("rapid_rotation_warning_state"),
+        "rapid_rotation_warning_reason": warning.get("rapid_rotation_warning_reason"),
+        "rapid_rotation_active_in_trade_decision": False,
+        "rapid_rotation_warning_boundary": "report_only",
+        "formal_model_changed": False,
+        "trade_decision_changed": False,
+    }
+    pd.DataFrame([row]).to_csv(root / "rapid_rotation_warning_panel.csv", index=False, encoding="utf-8-sig")
+
+
 def _manifest_pool_candidate_tickers(manifest: dict[str, Any], pool_id: str) -> set[str]:
     result: set[str] = set()
     for item in manifest.get("generated", []):
@@ -2694,6 +2876,7 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
     wording = manifest.get("report_wording_boundary") or _report_wording_boundary()
     formal_boundary = wording.get("formal_baseline") or {}
     stability = manifest.get("target_stability_warning") or _target_stability_warning_boundary(manifest)
+    rapid_rotation = manifest.get("rapid_rotation_warning") or _rapid_rotation_warning_boundary(manifest)
     live_risk = manifest.get("live_risk_regime_warning") or _live_risk_regime_warning_boundary(manifest)
     chip_context = manifest.get("chip_context") or _chip_context_report_boundary(manifest)
     decision_first = manifest.get("decision_first_report_contract") or _decision_first_report_contract(manifest)
@@ -2730,7 +2913,7 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
         f"- 第一層：正式操作/觀察結論，只看 current formal 結果：{operation.get('formal_target') or '無'}，狀態 {operation.get('action_state_zh') or '-'}。",
         f"- 第二層：Pool1 主攻候選：{decision_first.get('pool1_candidate_display') or '無'}。候選，不等於正式最終目標。",
         f"- 第三層：Pool2 確認/風控：{decision_first.get('pool2_confirmation_label_zh') or '未判定'}；代表標的 {decision_first.get('pool2_representative_display') or '無'}。",
-        "- 第四層：標的穩定度、籌碼、市場環境等診斷提醒只作輔助觀察，不改交易結論。",
+        "- 第四層：快速輪動、標的穩定度、籌碼、市場環境等診斷提醒只作輔助觀察，不改交易結論。",
         "",
         "## 正式模型細節",
         "",
@@ -2751,6 +2934,15 @@ def markdown_observation_batch_report(manifest: dict[str, Any], rows: list[dict[
         f"- 原因：{stability.get('target_stability_warning_reason', '')}",
         f"- 診斷來源邊界：{stability.get('target_stability_proxy_contract', '')}",
         f"- 邊界：僅供報告提醒，不改正式模型、不改正式標的、不代表換倉指令。",
+        "",
+        "## 快速輪動提醒（僅供診斷）",
+        "",
+        f"- 狀態：{_rapid_rotation_state_label(rapid_rotation.get('rapid_rotation_warning_state'))}",
+        f"- 原因：{rapid_rotation.get('rapid_rotation_warning_reason', '')}",
+        f"- 目前正式標的持續天數：{rapid_rotation.get('current_target_age_trading_days') if rapid_rotation.get('current_target_age_trading_days') is not None else '資料不足'} 個交易日",
+        f"- 30日平均標的壽命：{rapid_rotation.get('rolling_avg_target_lifetime_30d') if rapid_rotation.get('rolling_avg_target_lifetime_30d') is not None else '資料不足'}",
+        f"- 30/60/90日換標率：{rapid_rotation.get('target_change_rate_30d') if rapid_rotation.get('target_change_rate_30d') is not None else '資料不足'} / {rapid_rotation.get('target_change_rate_60d') if rapid_rotation.get('target_change_rate_60d') is not None else '資料不足'} / {rapid_rotation.get('target_change_rate_90d') if rapid_rotation.get('target_change_rate_90d') is not None else '資料不足'}",
+        f"- 邊界：{rapid_rotation.get('rapid_rotation_policy_note', '僅供報告提醒，不改正式模型、不改正式標的、不代表交易指令。')}",
         "",
         "## 市場風險環境提醒（僅供診斷）",
         "",
@@ -3080,9 +3272,11 @@ def _draw_formal_baseline_panel(ax, manifest: dict[str, Any], rows: list[dict[st
         transform=ax.transAxes,
     )
     stability = manifest.get("target_stability_warning") or _target_stability_warning_boundary(manifest)
+    rapid_rotation = manifest.get("rapid_rotation_warning") or _rapid_rotation_warning_boundary(manifest)
     live_risk = manifest.get("live_risk_regime_warning") or _live_risk_regime_warning_boundary(manifest)
     diagnostic_text = (
         f"診斷提醒：標的穩定度 {_target_stability_state_label(stability.get('target_stability_warning_state'))}；"
+        f"快速輪動 {_rapid_rotation_state_label(rapid_rotation.get('rapid_rotation_warning_state'))}；"
         f"市場環境 {_live_risk_regime_state_label(live_risk.get('live_risk_regime_state'))}。"
     )
     _draw_wrapped_text(
