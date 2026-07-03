@@ -31,6 +31,7 @@ DEFAULT_TPEX_STATUS_OUTPUT = (
 )
 DEFAULT_TPEX_TRANSITION_OUTPUT = ""
 DEFAULT_MONTHLY_REVENUE_OUTPUT = ""
+DEFAULT_QUARTERLY_FUNDAMENTALS_OUTPUT = ""
 
 YEAR_BUCKETS = (
     ("2015-2021", "2015-01-01", "2021-12-31"),
@@ -61,6 +62,7 @@ def run_dynamic_pool1_pit_readiness_contract(
     tpex_status_output: str | Path | None = None,
     tpex_transition_output: str | Path | None = None,
     monthly_revenue_output: str | Path | None = None,
+    quarterly_fundamentals_output: str | Path | None = None,
 ) -> Path:
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
@@ -85,6 +87,7 @@ def run_dynamic_pool1_pit_readiness_contract(
         tpex_status = _load_tpex_status_blocker(tpex_status_output)
         tpex_transition = _load_tpex_transition_candidates(tpex_transition_output)
         monthly_revenue = _load_monthly_revenue_pit(monthly_revenue_output)
+        quarterly_fundamentals = _load_quarterly_fundamentals_route_unlock(quarterly_fundamentals_output)
         source_inventory = _source_inventory(
             price_cache_dir=Path(price_cache_dir),
             price_source_registry=Path(price_source_registry),
@@ -96,13 +99,16 @@ def run_dynamic_pool1_pit_readiness_contract(
             tpex_status=tpex_status,
             tpex_transition=tpex_transition,
             monthly_revenue=monthly_revenue,
+            quarterly_fundamentals=quarterly_fundamentals,
         )
         price_coverage = _price_cache_coverage(Path(price_cache_dir), Path(price_source_registry))
 
         log("build_contract_tables", "started", "")
-        tables = _build_contract_tables(source_inventory, price_coverage, liquidity_sweep, monthly_revenue)
+        tables = _build_contract_tables(
+            source_inventory, price_coverage, liquidity_sweep, monthly_revenue, quarterly_fundamentals
+        )
         readiness_by_date = _candidate_data_readiness_by_date(
-            source_inventory, price_coverage, liquidity_sweep, monthly_revenue
+            source_inventory, price_coverage, liquidity_sweep, monthly_revenue, quarterly_fundamentals
         )
         violation_audit = _future_data_violation_audit(source_inventory)
         source_manifest = _source_manifest(source_inventory, price_coverage)
@@ -116,6 +122,7 @@ def run_dynamic_pool1_pit_readiness_contract(
             tpex_status,
             tpex_transition,
             monthly_revenue,
+            quarterly_fundamentals,
         )
         dataset_summary = _dataset_readiness_summary(readiness)
         blocker_delta = _blocker_delta_after_liquidity_full_sweep(liquidity_sweep)
@@ -125,6 +132,7 @@ def run_dynamic_pool1_pit_readiness_contract(
         tpex_full_route_delta = _blocker_delta_after_tpex_full_route_coverage(tpex_status)
         tpex_transition_delta = _blocker_delta_after_tpex_transition_candidates(tpex_status, tpex_transition)
         monthly_revenue_delta = _blocker_delta_after_mops_monthly_revenue(monthly_revenue)
+        quarterly_delta = _blocker_delta_after_quarterly_fundamentals_route_unlock(quarterly_fundamentals)
 
         log("write_outputs", "started", str(output))
         for table_name, frame in tables.items():
@@ -151,6 +159,11 @@ def run_dynamic_pool1_pit_readiness_contract(
         )
         monthly_revenue_delta.to_csv(
             output / "blocker_delta_after_mops_monthly_revenue.csv",
+            index=False,
+            encoding="utf-8-sig",
+        )
+        quarterly_delta.to_csv(
+            output / "blocker_delta_after_quarterly_fundamentals_route_unlock.csv",
             index=False,
             encoding="utf-8-sig",
         )
@@ -194,6 +207,7 @@ def _source_inventory(
     tpex_status: dict[str, Any],
     tpex_transition: dict[str, Any],
     monthly_revenue: dict[str, Any],
+    quarterly_fundamentals: dict[str, Any],
 ) -> list[dict[str, Any]]:
     sources = [
         {
@@ -376,6 +390,26 @@ def _source_inventory(
                 "period_start": readiness.get("period_start", ""),
                 "period_end": readiness.get("period_end", ""),
                 "formal_exact": False,
+            }
+        )
+
+    if quarterly_fundamentals.get("exists"):
+        readiness = quarterly_fundamentals.get("readiness", {})
+        sources.append(
+            {
+                "data_area": "quarterly_fundamentals_pit",
+                "source_name": "radar_dynamic_pool1_quarterly_fundamentals_route_unlock",
+                "path": quarterly_fundamentals.get("path", ""),
+                "source_family": "mops_t163sb04_route_unlocked_sample",
+                "pit_acceptance": "source_candidate_partial",
+                "diagnostic_only": True,
+                "blocked_reason": (
+                    "MOPS quarterly fundamentals route is unlocked with sample rows, but full 2015-latest sweep "
+                    "and exact per-company filing_date are not ready"
+                ),
+                "sample_rows": readiness.get("sample_rows", 0),
+                "formal_exact": False,
+                "filing_date_available": False,
             }
         )
 
@@ -577,6 +611,37 @@ def _load_monthly_revenue_pit(monthly_revenue_output: str | Path | None) -> dict
     }
 
 
+def _load_quarterly_fundamentals_route_unlock(quarterly_output: str | Path | None) -> dict[str, Any]:
+    if not quarterly_output:
+        return {"exists": False, "path": ""}
+    root = Path(quarterly_output)
+    if not root.exists():
+        return {"exists": False, "path": str(root), "missing_reason": "quarterly fundamentals output path does not exist"}
+    readiness = _load_json(root / "readiness_for_core.json")
+    manifest = _load_json(root / "manifest.json")
+    sample_path = root / "accepted_quarterly_fundamentals_sample_rows.csv"
+    attempts_path = root / "route_probe_attempts.csv"
+    blocked_path = root / "blocked_source_rows.csv"
+    future_audit_path = root / "future_data_violation_audit.csv"
+    raw_manifest_path = root / "raw_source_archive_manifest.csv"
+    return {
+        "exists": True,
+        "path": str(root),
+        "readiness": readiness,
+        "manifest": manifest,
+        "sample_path": str(sample_path),
+        "attempts_path": str(attempts_path),
+        "blocked_path": str(blocked_path),
+        "future_audit_path": str(future_audit_path),
+        "raw_manifest_path": str(raw_manifest_path),
+        "sample_rows": int(len(_read_csv_if_exists(sample_path))),
+        "attempt_rows": int(len(_read_csv_if_exists(attempts_path))),
+        "blocked_rows": int(len(_read_csv_if_exists(blocked_path))),
+        "future_audit_rows": int(len(_read_csv_if_exists(future_audit_path))),
+        "raw_manifest_rows": int(len(_read_csv_if_exists(raw_manifest_path))),
+    }
+
+
 def _price_cache_coverage(price_cache_dir: Path, price_source_registry: Path) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     if price_cache_dir.exists():
@@ -631,6 +696,7 @@ def _build_contract_tables(
     price_coverage: pd.DataFrame,
     liquidity_sweep: dict[str, Any],
     monthly_revenue: dict[str, Any],
+    quarterly_fundamentals: dict[str, Any],
 ) -> dict[str, pd.DataFrame]:
     return {
         "all_listed_liquid_universe_pit_daily": _all_listed_liquid_contract(
@@ -639,11 +705,7 @@ def _build_contract_tables(
             liquidity_sweep,
         ),
         "monthly_revenue_pit": _monthly_revenue_contract_table(monthly_revenue),
-        "quarterly_fundamentals_pit": _blocked_contract_table(
-            "quarterly_fundamentals_pit",
-            "blocked",
-            "no accepted quarterly fundamentals PIT source with announcement/release dates in repo",
-        ),
+        "quarterly_fundamentals_pit": _quarterly_fundamentals_contract_table(quarterly_fundamentals),
         "market_cap_pit": _source_contract_table(
             "market_cap_pit",
             source_inventory,
@@ -776,6 +838,35 @@ def _monthly_revenue_contract_table(monthly_revenue: dict[str, Any]) -> pd.DataF
     return pd.DataFrame([row], columns=_contract_columns())
 
 
+def _quarterly_fundamentals_contract_table(quarterly_fundamentals: dict[str, Any]) -> pd.DataFrame:
+    summary = _quarterly_fundamentals_summary(quarterly_fundamentals)
+    if not summary["exists"]:
+        return _blocked_contract_table(
+            "quarterly_fundamentals_pit",
+            "blocked",
+            "no accepted quarterly fundamentals PIT source with announcement/release dates in repo",
+        )
+    row = {
+        "record_type": "route_unlock_status",
+        "data_area": "quarterly_fundamentals_pit",
+        "ticker": "",
+        "name": "",
+        "value": f"sample_rows={summary['sample_rows']}; tested_periods={summary['tested_periods']}",
+        "source_date": "",
+        "release_date": summary["available_date_policy"],
+        "effective_date": ",".join(summary["tested_periods"]) if isinstance(summary["tested_periods"], list) else "",
+        "source": "radar_dynamic_pool1_quarterly_fundamentals_route_unlock",
+        "source_path": summary["path"],
+        "source_type": summary["source_type"],
+        "row_count": summary["sample_rows"],
+        "readiness_status": summary["status"],
+        "diagnostic_only": True,
+        "accepted_for_formal": False,
+        "blocked_reason": summary["remaining_blocker"],
+    }
+    return pd.DataFrame([row], columns=_contract_columns())
+
+
 def _blocked_contract_table(data_area: str, status: str, reason: str) -> pd.DataFrame:
     return pd.DataFrame([_generic_status_row(data_area, status, reason)], columns=_contract_columns())
 
@@ -839,12 +930,15 @@ def _candidate_data_readiness_by_date(
     price_coverage: pd.DataFrame,
     liquidity_sweep: dict[str, Any],
     monthly_revenue: dict[str, Any],
+    quarterly_fundamentals: dict[str, Any],
 ) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     price_status = _price_readiness_status(price_coverage)
     for bucket, start, end in YEAR_BUCKETS:
         for table in TABLE_SPECS:
-            status, reason = _readiness_for_table(table, price_status, source_inventory, liquidity_sweep, monthly_revenue)
+            status, reason = _readiness_for_table(
+                table, price_status, source_inventory, liquidity_sweep, monthly_revenue, quarterly_fundamentals
+            )
             rows.append(
                 {
                     "year_bucket": bucket,
@@ -913,12 +1007,17 @@ def _readiness_json(
     tpex_status: dict[str, Any],
     tpex_transition: dict[str, Any],
     monthly_revenue: dict[str, Any],
+    quarterly_fundamentals: dict[str, Any],
 ) -> dict[str, Any]:
     price_status = _price_readiness_status(price_coverage)
     table_status = {
         table: {
-            "status": _readiness_for_table(table, price_status, source_inventory, liquidity_sweep, monthly_revenue)[0],
-            "reason": _readiness_for_table(table, price_status, source_inventory, liquidity_sweep, monthly_revenue)[1],
+            "status": _readiness_for_table(
+                table, price_status, source_inventory, liquidity_sweep, monthly_revenue, quarterly_fundamentals
+            )[0],
+            "reason": _readiness_for_table(
+                table, price_status, source_inventory, liquidity_sweep, monthly_revenue, quarterly_fundamentals
+            )[1],
             "accepted_for_formal": False,
         }
         for table in TABLE_SPECS
@@ -943,6 +1042,7 @@ def _readiness_json(
         "tpex_historical_listing_status": _tpex_status_blocker_summary(tpex_status),
         "tpex_transition_candidates": _tpex_transition_candidate_summary(tpex_transition),
         "monthly_revenue": _monthly_revenue_summary(monthly_revenue),
+        "quarterly_fundamentals": _quarterly_fundamentals_summary(quarterly_fundamentals),
         "coverage_by_year": {
             bucket: {
                 row["data_table"]: {
@@ -964,7 +1064,8 @@ def _readiness_json(
         },
         "next_blockers": [
             "Core/Research policy decision on whether TPEx inferred transition candidates are sufficient for universe integrity, or broader announcement verification for official transition events",
-            "quarterly fundamentals PIT with announcement/release dates",
+            "quarterly fundamentals full 2015-latest sweep and coverage audit using unlocked MOPS route",
+            "exact per-company quarterly filing_date crawler if formal_exact is required beyond conservative statutory deadline",
             "historical market cap/free-float market cap PIT",
             "sector/mainline membership PIT and sector breadth daily panel",
             "exact per-company monthly revenue filing timestamp if formal_exact is required beyond conservative available_date",
@@ -999,6 +1100,7 @@ def _manifest(readiness: dict[str, Any]) -> dict[str, Any]:
             "blocker_delta_after_tpex_full_route_coverage": "blocker_delta_after_tpex_full_route_coverage.csv",
             "blocker_delta_after_tpex_transition_candidates": "blocker_delta_after_tpex_transition_candidates.csv",
             "blocker_delta_after_mops_monthly_revenue": "blocker_delta_after_mops_monthly_revenue.csv",
+            "blocker_delta_after_quarterly_fundamentals_route_unlock": "blocker_delta_after_quarterly_fundamentals_route_unlock.csv",
             "future_data_violation_audit": "future_data_violation_audit.csv",
             "source_manifest": "source_manifest.json",
             "readiness": "readiness.json",
@@ -1025,6 +1127,7 @@ def _final_summary(readiness: dict[str, Any]) -> str:
     tpex = readiness.get("tpex_historical_listing_status", {})
     transition = readiness.get("tpex_transition_candidates", {})
     monthly = readiness.get("monthly_revenue", {})
+    quarterly = readiness.get("quarterly_fundamentals", {})
     liquidity_line = (
         f"- all-listed liquid universe：partial，Radar full sweep covered "
         f"{liquidity.get('covered_start', '')}～{liquidity.get('covered_end', '')}，"
@@ -1058,7 +1161,10 @@ def _final_summary(readiness: dict[str, Any]) -> str:
         f"symbols={monthly.get('symbol_count', 0)}，"
         f"period={monthly.get('period_start', '')}～{monthly.get('period_end', '')}；"
         "available_date 採保守次月 10 日規則，formal_exact=false。\n"
-        "- quarterly fundamentals：blocked，缺帶公告日的季財報 PIT。\n"
+        f"- quarterly fundamentals：{quarterly.get('status', 'blocked')}，"
+        f"sample rows={quarterly.get('sample_rows', 0)}，"
+        f"tested periods={','.join(quarterly.get('tested_periods', [])) if isinstance(quarterly.get('tested_periods', []), list) else quarterly.get('tested_periods', '')}；"
+        "route 已解鎖，但尚未 full sweep，filing_date 也不是逐公司 exact。\n"
         "- market cap：partial/current snapshot only，不可回推 2015。\n"
         "- sector membership / breadth：blocked，目前 current/generated map 不可回推 2015。\n"
         f"- future_data_violation_count={readiness['future_data_violation_count']}，因未把 current/proxy source 當正式歷史資料使用。\n\n"
@@ -1072,6 +1178,7 @@ def _readiness_for_table(
     source_inventory: list[dict[str, Any]],
     liquidity_sweep: dict[str, Any],
     monthly_revenue: dict[str, Any],
+    quarterly_fundamentals: dict[str, Any],
 ) -> tuple[str, str]:
     if table == "all_listed_liquid_universe_pit_daily":
         readiness = liquidity_sweep.get("readiness", {})
@@ -1093,6 +1200,12 @@ def _readiness_for_table(
             )
         return "blocked", "no monthly revenue PIT with source_date/release_date/effective_date"
     if table == "quarterly_fundamentals_pit":
+        summary = _quarterly_fundamentals_summary(quarterly_fundamentals)
+        if summary["route_unlocked"]:
+            return (
+                "route_unlocked_source_candidate_partial",
+                "MOPS quarterly fundamentals route is unlocked with sample rows; full 2015-latest sweep and exact per-company filing_date are not ready",
+            )
         return "blocked", "no quarterly fundamentals PIT with source_date/release_date/effective_date"
     if table == "market_cap_pit":
         exists = any(source["data_area"] == table and source["exists"] for source in source_inventory)
@@ -1127,7 +1240,7 @@ def _dataset_readiness_summary(readiness: dict[str, Any]) -> pd.DataFrame:
             "readiness_status": "blocked",
             "accepted_for_formal": False,
             "active_in_trade_decision": False,
-            "reason": "monthly revenue source candidate is available, but quarterly fundamentals, market cap PIT, sector PIT, and universe-integrity policy remain incomplete",
+            "reason": "monthly revenue source candidate and quarterly fundamentals route unlock are available, but quarterly full sweep, market cap PIT, sector PIT, and universe-integrity policy remain incomplete",
         }
     )
     return pd.DataFrame(rows)
@@ -1595,6 +1708,57 @@ def _blocker_delta_after_mops_monthly_revenue(monthly_revenue: dict[str, Any]) -
     )
 
 
+def _blocker_delta_after_quarterly_fundamentals_route_unlock(quarterly_fundamentals: dict[str, Any]) -> pd.DataFrame:
+    summary = _quarterly_fundamentals_summary(quarterly_fundamentals)
+    return pd.DataFrame(
+        [
+            {
+                "blocker": "quarterly_fundamentals_pit",
+                "before_status": "blocked",
+                "after_status": summary["status"],
+                "delta": "route_unlocked_sample_rows_available_full_sweep_still_missing"
+                if summary["route_unlocked"]
+                else "unchanged_blocked",
+                "sample_rows": int(summary["sample_rows"]),
+                "tested_periods": ",".join(summary["tested_periods"]),
+                "tested_markets": ",".join(summary["tested_markets"]),
+                "formal_exact": bool(summary["formal_exact"]),
+                "filing_date_available": bool(summary["filing_date_available"]),
+                "ready_for_strategy_replay": bool(summary["ready_for_strategy_replay"]),
+                "remaining_blocker": summary["remaining_blocker"],
+            },
+            {
+                "blocker": "dynamic_pool1_shadow_challenger",
+                "before_status": "blocked",
+                "after_status": "blocked",
+                "delta": "quarterly_route_unlocked_but_full_sweep_and_other_layers_missing"
+                if summary["route_unlocked"]
+                else "unchanged",
+                "sample_rows": int(summary["sample_rows"]),
+                "tested_periods": ",".join(summary["tested_periods"]),
+                "tested_markets": ",".join(summary["tested_markets"]),
+                "formal_exact": bool(summary["formal_exact"]),
+                "filing_date_available": bool(summary["filing_date_available"]),
+                "ready_for_strategy_replay": False,
+                "remaining_blocker": "quarterly fundamentals full sweep, market cap PIT, sector/mainline PIT, and universe-integrity policy remain incomplete",
+            },
+            {
+                "blocker": "market_cap_pit",
+                "before_status": "partial",
+                "after_status": "partial",
+                "delta": "unchanged_next_data_layer_after_quarterly_full_sweep",
+                "sample_rows": 0,
+                "tested_periods": "",
+                "tested_markets": "",
+                "formal_exact": False,
+                "filing_date_available": False,
+                "ready_for_strategy_replay": False,
+                "remaining_blocker": "historical market cap/free-float market cap PIT remains missing",
+            },
+        ]
+    )
+
+
 def _liquidity_sweep_summary(liquidity_sweep: dict[str, Any]) -> dict[str, Any]:
     readiness = liquidity_sweep.get("readiness", {})
     covered = readiness.get("covered_date_range", {})
@@ -1809,6 +1973,44 @@ def _monthly_revenue_summary(monthly_revenue: dict[str, Any]) -> dict[str, Any]:
             "conservative available_date; exact per-company filing timestamp remains non-exact"
             if source_candidate_ready
             else "MOPS monthly revenue full-universe PIT with source/release/available dates is missing"
+        ),
+    }
+
+
+def _quarterly_fundamentals_summary(quarterly_fundamentals: dict[str, Any]) -> dict[str, Any]:
+    readiness = quarterly_fundamentals.get("readiness", {})
+    exists = bool(quarterly_fundamentals.get("exists"))
+    tested_periods = list(readiness.get("tested_periods", []) or [])
+    tested_markets = list(readiness.get("tested_markets", []) or [])
+    route_unlocked = bool(readiness.get("quarterly_fundamentals_route_unlocked", False))
+    full_ready = bool(readiness.get("quarterly_fundamentals_pit_full_universe_ready", False))
+    sample_rows = int(readiness.get("sample_rows", quarterly_fundamentals.get("sample_rows", 0)) or 0)
+    return {
+        "exists": exists,
+        "path": quarterly_fundamentals.get("path", ""),
+        "status": "route_unlocked_source_candidate_partial" if route_unlocked else "blocked",
+        "route_unlocked": route_unlocked,
+        "quarterly_fundamentals_pit_full_universe_ready": full_ready,
+        "sample_rows": sample_rows,
+        "full_source_rows_observed": int(readiness.get("full_source_rows_observed", sample_rows) or 0),
+        "tested_periods": tested_periods,
+        "tested_markets": tested_markets,
+        "source_type": readiness.get("source_type", "source_candidate_no_exact_filing_date"),
+        "formal_exact": bool(readiness.get("formal_exact", False)),
+        "filing_date_available": bool(readiness.get("filing_date_available", False)),
+        "available_date_policy": readiness.get(
+            "available_date_policy",
+            "conservative statutory deadline, not exact filing timestamp",
+        ),
+        "future_data_violation_count": int(readiness.get("future_data_violation_count", 0) or 0),
+        "ready_for_core_rerun": bool(readiness.get("ready_for_core_rerun", False)),
+        "ready_for_strategy_replay": False,
+        "dynamic_pool1_shadow_challenger_ready": False,
+        "remaining_blocker": (
+            "quarterly fundamentals route is unlocked with sample rows, but full 2015-latest sweep and exact "
+            "per-company filing_date are not ready"
+            if route_unlocked
+            else "quarterly fundamentals route/source candidate is missing"
         ),
     }
 
@@ -2058,6 +2260,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--tpex-status-output", default=DEFAULT_TPEX_STATUS_OUTPUT)
     parser.add_argument("--tpex-transition-output", default=DEFAULT_TPEX_TRANSITION_OUTPUT)
     parser.add_argument("--monthly-revenue-output", default=DEFAULT_MONTHLY_REVENUE_OUTPUT)
+    parser.add_argument("--quarterly-fundamentals-output", default=DEFAULT_QUARTERLY_FUNDAMENTALS_OUTPUT)
     args = parser.parse_args(argv)
     run_dynamic_pool1_pit_readiness_contract(
         output_dir=args.output_dir,
@@ -2071,6 +2274,7 @@ def main(argv: list[str] | None = None) -> int:
         tpex_status_output=args.tpex_status_output,
         tpex_transition_output=args.tpex_transition_output,
         monthly_revenue_output=args.monthly_revenue_output,
+        quarterly_fundamentals_output=args.quarterly_fundamentals_output,
     )
     return 0
 

@@ -928,6 +928,102 @@ class DynamicPool1PitReadinessContractTest(unittest.TestCase):
             self.assertFalse(bool(row["formal_exact"]))
             self.assertFalse(bool(row["ready_for_strategy_replay"]))
 
+    def test_quarterly_fundamentals_route_unlock_is_partial_not_full_ready(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache = root / "cache"
+            radar = root / "radar"
+            quarterly = root / "quarterly"
+            output = root / "out"
+            cache.mkdir()
+            radar.mkdir()
+            quarterly.mkdir()
+
+            pd.DataFrame(
+                {
+                    "date": ["2015-01-05"],
+                    "open": [100],
+                    "high": [101],
+                    "low": [99],
+                    "close": [100],
+                    "adj_close": [100],
+                    "volume": [1000],
+                }
+            ).to_csv(cache / "2330_TW.csv", index=False)
+            (quarterly / "readiness_for_core.json").write_text(
+                json.dumps(
+                    {
+                        "status": "completed_route_unlocked_sample_rows",
+                        "quarterly_fundamentals_route_unlocked": True,
+                        "quarterly_fundamentals_pit_full_universe_ready": False,
+                        "sample_rows": 320,
+                        "full_source_rows_observed": 320,
+                        "tested_periods": ["2015Q4", "2024Q4"],
+                        "tested_markets": ["otc", "sii"],
+                        "source_type": "source_candidate_no_exact_filing_date",
+                        "formal_exact": False,
+                        "filing_date_available": False,
+                        "available_date_policy": "conservative statutory deadline, not exact filing timestamp",
+                        "future_data_violation_count": 0,
+                        "ready_for_core_rerun": True,
+                        "ready_for_strategy_replay": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (quarterly / "manifest.json").write_text("{}", encoding="utf-8")
+            pd.DataFrame(
+                [
+                    {
+                        "ticker": "2330",
+                        "period": "2015Q4",
+                        "market": "sii",
+                        "source_type": "source_candidate_no_exact_filing_date",
+                        "formal_exact": False,
+                    }
+                ]
+            ).to_csv(quarterly / "accepted_quarterly_fundamentals_sample_rows.csv", index=False)
+            pd.DataFrame([{"api": "ajax_t163sb04", "status": "ok"}]).to_csv(
+                quarterly / "route_probe_attempts.csv",
+                index=False,
+            )
+
+            run_dynamic_pool1_pit_readiness_contract(
+                output_dir=output,
+                price_cache_dir=cache,
+                price_source_registry=root / "missing_registry.csv",
+                tw50_constituents_path=root / "missing_tw50.csv",
+                ai_theme_candidates_path=root / "missing_ai.csv",
+                radar_data_dir=radar,
+                liquidity_sweep_output=root / "missing_sweep",
+                listing_metadata_output=root / "missing_listing",
+                tpex_status_output=root / "missing_tpex",
+                tpex_transition_output=root / "missing_transition",
+                monthly_revenue_output=root / "missing_monthly",
+                quarterly_fundamentals_output=quarterly,
+            )
+
+            readiness = json.loads((output / "readiness.json").read_text(encoding="utf-8"))
+            quarterly_status = readiness["quarterly_fundamentals"]
+            self.assertEqual(
+                readiness["table_status"]["quarterly_fundamentals_pit"]["status"],
+                "route_unlocked_source_candidate_partial",
+            )
+            self.assertEqual(quarterly_status["sample_rows"], 320)
+            self.assertFalse(quarterly_status["quarterly_fundamentals_pit_full_universe_ready"])
+            self.assertFalse(quarterly_status["formal_exact"])
+            self.assertFalse(quarterly_status["filing_date_available"])
+            self.assertFalse(readiness["ready_for_strategy_replay"])
+            self.assertFalse(readiness["dynamic_pool1_shadow_challenger_ready"])
+
+            delta = pd.read_csv(output / "blocker_delta_after_quarterly_fundamentals_route_unlock.csv")
+            row = delta[delta["blocker"].eq("quarterly_fundamentals_pit")].iloc[0]
+            self.assertEqual(row["after_status"], "route_unlocked_source_candidate_partial")
+            self.assertEqual(int(row["sample_rows"]), 320)
+            self.assertFalse(bool(row["formal_exact"]))
+            self.assertFalse(bool(row["filing_date_available"]))
+            self.assertFalse(bool(row["ready_for_strategy_replay"]))
+
 
 if __name__ == "__main__":
     unittest.main()
