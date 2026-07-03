@@ -30,6 +30,7 @@ DEFAULT_TPEX_STATUS_OUTPUT = (
     "radar_dynamic_pool1_tpex_historical_listing_status_master_20260703"
 )
 DEFAULT_TPEX_TRANSITION_OUTPUT = ""
+DEFAULT_MONTHLY_REVENUE_OUTPUT = ""
 
 YEAR_BUCKETS = (
     ("2015-2021", "2015-01-01", "2021-12-31"),
@@ -59,6 +60,7 @@ def run_dynamic_pool1_pit_readiness_contract(
     listing_metadata_output: str | Path | None = None,
     tpex_status_output: str | Path | None = None,
     tpex_transition_output: str | Path | None = None,
+    monthly_revenue_output: str | Path | None = None,
 ) -> Path:
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
@@ -82,6 +84,7 @@ def run_dynamic_pool1_pit_readiness_contract(
         listing_metadata = _load_listing_metadata(listing_metadata_output)
         tpex_status = _load_tpex_status_blocker(tpex_status_output)
         tpex_transition = _load_tpex_transition_candidates(tpex_transition_output)
+        monthly_revenue = _load_monthly_revenue_pit(monthly_revenue_output)
         source_inventory = _source_inventory(
             price_cache_dir=Path(price_cache_dir),
             price_source_registry=Path(price_source_registry),
@@ -92,12 +95,15 @@ def run_dynamic_pool1_pit_readiness_contract(
             listing_metadata=listing_metadata,
             tpex_status=tpex_status,
             tpex_transition=tpex_transition,
+            monthly_revenue=monthly_revenue,
         )
         price_coverage = _price_cache_coverage(Path(price_cache_dir), Path(price_source_registry))
 
         log("build_contract_tables", "started", "")
-        tables = _build_contract_tables(source_inventory, price_coverage, liquidity_sweep)
-        readiness_by_date = _candidate_data_readiness_by_date(source_inventory, price_coverage, liquidity_sweep)
+        tables = _build_contract_tables(source_inventory, price_coverage, liquidity_sweep, monthly_revenue)
+        readiness_by_date = _candidate_data_readiness_by_date(
+            source_inventory, price_coverage, liquidity_sweep, monthly_revenue
+        )
         violation_audit = _future_data_violation_audit(source_inventory)
         source_manifest = _source_manifest(source_inventory, price_coverage)
         readiness = _readiness_json(
@@ -109,6 +115,7 @@ def run_dynamic_pool1_pit_readiness_contract(
             listing_metadata,
             tpex_status,
             tpex_transition,
+            monthly_revenue,
         )
         dataset_summary = _dataset_readiness_summary(readiness)
         blocker_delta = _blocker_delta_after_liquidity_full_sweep(liquidity_sweep)
@@ -117,6 +124,7 @@ def run_dynamic_pool1_pit_readiness_contract(
         tpex_delta = _blocker_delta_after_tpex_blocker_evidence(tpex_status)
         tpex_full_route_delta = _blocker_delta_after_tpex_full_route_coverage(tpex_status)
         tpex_transition_delta = _blocker_delta_after_tpex_transition_candidates(tpex_status, tpex_transition)
+        monthly_revenue_delta = _blocker_delta_after_mops_monthly_revenue(monthly_revenue)
 
         log("write_outputs", "started", str(output))
         for table_name, frame in tables.items():
@@ -138,6 +146,11 @@ def run_dynamic_pool1_pit_readiness_contract(
         )
         tpex_transition_delta.to_csv(
             output / "blocker_delta_after_tpex_transition_candidates.csv",
+            index=False,
+            encoding="utf-8-sig",
+        )
+        monthly_revenue_delta.to_csv(
+            output / "blocker_delta_after_mops_monthly_revenue.csv",
             index=False,
             encoding="utf-8-sig",
         )
@@ -180,6 +193,7 @@ def _source_inventory(
     listing_metadata: dict[str, Any],
     tpex_status: dict[str, Any],
     tpex_transition: dict[str, Any],
+    monthly_revenue: dict[str, Any],
 ) -> list[dict[str, Any]]:
     sources = [
         {
@@ -340,6 +354,28 @@ def _source_inventory(
                 "transition_candidate_count": readiness.get("transition_candidate_count", 0),
                 "announcement_verified_event_count": readiness.get("announcement_verified_event_count", 0),
                 "unverified_transition_candidate_count": readiness.get("unverified_transition_candidate_count", 0),
+            }
+        )
+
+    if monthly_revenue.get("exists"):
+        readiness = monthly_revenue.get("readiness", {})
+        sources.append(
+            {
+                "data_area": "monthly_revenue_pit",
+                "source_name": "radar_dynamic_pool1_mops_monthly_revenue_full_universe_pit",
+                "path": monthly_revenue.get("path", ""),
+                "source_family": "mops_static_monthly_revenue_conservative_available_date",
+                "pit_acceptance": "source_candidate_ready",
+                "diagnostic_only": False,
+                "blocked_reason": (
+                    "full-universe monthly revenue PIT source candidate is available with conservative "
+                    "available_date, but formal_exact=false because per-company filing timestamps are not exact"
+                ),
+                "accepted_rows": readiness.get("accepted_rows", 0),
+                "symbol_count": readiness.get("symbol_count", 0),
+                "period_start": readiness.get("period_start", ""),
+                "period_end": readiness.get("period_end", ""),
+                "formal_exact": False,
             }
         )
 
@@ -507,6 +543,40 @@ def _load_tpex_transition_candidates(tpex_transition_output: str | Path | None) 
     }
 
 
+def _load_monthly_revenue_pit(monthly_revenue_output: str | Path | None) -> dict[str, Any]:
+    if not monthly_revenue_output:
+        return {"exists": False, "path": ""}
+    root = Path(monthly_revenue_output)
+    if not root.exists():
+        return {"exists": False, "path": str(root), "missing_reason": "monthly revenue output path does not exist"}
+    readiness = _load_json(root / "readiness_for_core.json")
+    manifest = _load_json(root / "manifest.json")
+    shard_manifest_path = root / "accepted_monthly_revenue_rows_manifest.csv"
+    sample_path = root / "accepted_monthly_revenue_rows_sample.csv"
+    index_path = root / "accepted_monthly_revenue_rows.csv"
+    coverage_market_path = root / "coverage_by_market.csv"
+    coverage_month_path = root / "coverage_by_year_month.csv"
+    future_audit_path = root / "future_data_violation_audit.csv"
+    return {
+        "exists": True,
+        "path": str(root),
+        "readiness": readiness,
+        "manifest": manifest,
+        "shard_manifest_path": str(shard_manifest_path),
+        "sample_path": str(sample_path),
+        "index_path": str(index_path),
+        "coverage_market_path": str(coverage_market_path),
+        "coverage_month_path": str(coverage_month_path),
+        "future_audit_path": str(future_audit_path),
+        "shard_manifest_rows": int(len(_read_csv_if_exists(shard_manifest_path))),
+        "sample_rows": int(len(_read_csv_if_exists(sample_path))),
+        "index_rows": int(len(_read_csv_if_exists(index_path))),
+        "coverage_market_rows": int(len(_read_csv_if_exists(coverage_market_path))),
+        "coverage_month_rows": int(len(_read_csv_if_exists(coverage_month_path))),
+        "future_audit_rows": int(len(_read_csv_if_exists(future_audit_path))),
+    }
+
+
 def _price_cache_coverage(price_cache_dir: Path, price_source_registry: Path) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     if price_cache_dir.exists():
@@ -560,6 +630,7 @@ def _build_contract_tables(
     source_inventory: list[dict[str, Any]],
     price_coverage: pd.DataFrame,
     liquidity_sweep: dict[str, Any],
+    monthly_revenue: dict[str, Any],
 ) -> dict[str, pd.DataFrame]:
     return {
         "all_listed_liquid_universe_pit_daily": _all_listed_liquid_contract(
@@ -567,11 +638,7 @@ def _build_contract_tables(
             price_coverage,
             liquidity_sweep,
         ),
-        "monthly_revenue_pit": _blocked_contract_table(
-            "monthly_revenue_pit",
-            "blocked",
-            "no accepted monthly revenue PIT source with release_date in repo",
-        ),
+        "monthly_revenue_pit": _monthly_revenue_contract_table(monthly_revenue),
         "quarterly_fundamentals_pit": _blocked_contract_table(
             "quarterly_fundamentals_pit",
             "blocked",
@@ -680,6 +747,35 @@ def _source_contract_table(
     return pd.DataFrame(rows, columns=_contract_columns())
 
 
+def _monthly_revenue_contract_table(monthly_revenue: dict[str, Any]) -> pd.DataFrame:
+    summary = _monthly_revenue_summary(monthly_revenue)
+    if not summary["exists"]:
+        return _blocked_contract_table(
+            "monthly_revenue_pit",
+            "blocked",
+            "no accepted monthly revenue PIT source with release_date in repo",
+        )
+    row = {
+        "record_type": "source_candidate_status",
+        "data_area": "monthly_revenue_pit",
+        "ticker": "",
+        "name": "",
+        "value": f"accepted_rows={summary['accepted_rows']}; symbol_count={summary['symbol_count']}",
+        "source_date": summary["period_end"],
+        "release_date": "conservative_next_month_day_10_weekday_adjusted",
+        "effective_date": summary["period_start"],
+        "source": "radar_dynamic_pool1_mops_monthly_revenue_full_universe_pit",
+        "source_path": summary["path"],
+        "source_type": "mops_static_t21sc03_conservative_available_date",
+        "row_count": summary["accepted_rows"],
+        "readiness_status": summary["status"],
+        "diagnostic_only": False,
+        "accepted_for_formal": False,
+        "blocked_reason": summary["remaining_blocker"],
+    }
+    return pd.DataFrame([row], columns=_contract_columns())
+
+
 def _blocked_contract_table(data_area: str, status: str, reason: str) -> pd.DataFrame:
     return pd.DataFrame([_generic_status_row(data_area, status, reason)], columns=_contract_columns())
 
@@ -742,12 +838,13 @@ def _candidate_data_readiness_by_date(
     source_inventory: list[dict[str, Any]],
     price_coverage: pd.DataFrame,
     liquidity_sweep: dict[str, Any],
+    monthly_revenue: dict[str, Any],
 ) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     price_status = _price_readiness_status(price_coverage)
     for bucket, start, end in YEAR_BUCKETS:
         for table in TABLE_SPECS:
-            status, reason = _readiness_for_table(table, price_status, source_inventory, liquidity_sweep)
+            status, reason = _readiness_for_table(table, price_status, source_inventory, liquidity_sweep, monthly_revenue)
             rows.append(
                 {
                     "year_bucket": bucket,
@@ -756,7 +853,8 @@ def _candidate_data_readiness_by_date(
                     "data_table": table,
                     "readiness_status": status,
                     "accepted_for_formal": False,
-                    "diagnostic_only": status in {"diagnostic_only", "partial"} and table != "monthly_revenue_pit",
+                    "diagnostic_only": status in {"diagnostic_only", "partial", "source_candidate_ready"}
+                    and table != "monthly_revenue_pit",
                     "future_data_violation_count": 0,
                     "blocked_reason": reason,
                 }
@@ -814,12 +912,13 @@ def _readiness_json(
     listing_metadata: dict[str, Any],
     tpex_status: dict[str, Any],
     tpex_transition: dict[str, Any],
+    monthly_revenue: dict[str, Any],
 ) -> dict[str, Any]:
     price_status = _price_readiness_status(price_coverage)
     table_status = {
         table: {
-            "status": _readiness_for_table(table, price_status, source_inventory, liquidity_sweep)[0],
-            "reason": _readiness_for_table(table, price_status, source_inventory, liquidity_sweep)[1],
+            "status": _readiness_for_table(table, price_status, source_inventory, liquidity_sweep, monthly_revenue)[0],
+            "reason": _readiness_for_table(table, price_status, source_inventory, liquidity_sweep, monthly_revenue)[1],
             "accepted_for_formal": False,
         }
         for table in TABLE_SPECS
@@ -843,6 +942,7 @@ def _readiness_json(
         "listing_metadata": _listing_metadata_summary(listing_metadata),
         "tpex_historical_listing_status": _tpex_status_blocker_summary(tpex_status),
         "tpex_transition_candidates": _tpex_transition_candidate_summary(tpex_transition),
+        "monthly_revenue": _monthly_revenue_summary(monthly_revenue),
         "coverage_by_year": {
             bucket: {
                 row["data_table"]: {
@@ -864,10 +964,10 @@ def _readiness_json(
         },
         "next_blockers": [
             "Core/Research policy decision on whether TPEx inferred transition candidates are sufficient for universe integrity, or broader announcement verification for official transition events",
-            "monthly revenue PIT with announcement/release dates",
             "quarterly fundamentals PIT with announcement/release dates",
             "historical market cap/free-float market cap PIT",
             "sector/mainline membership PIT and sector breadth daily panel",
+            "exact per-company monthly revenue filing timestamp if formal_exact is required beyond conservative available_date",
         ],
     }
 
@@ -898,6 +998,7 @@ def _manifest(readiness: dict[str, Any]) -> dict[str, Any]:
             "blocker_delta_after_tpex_blocker_evidence": "blocker_delta_after_tpex_blocker_evidence.csv",
             "blocker_delta_after_tpex_full_route_coverage": "blocker_delta_after_tpex_full_route_coverage.csv",
             "blocker_delta_after_tpex_transition_candidates": "blocker_delta_after_tpex_transition_candidates.csv",
+            "blocker_delta_after_mops_monthly_revenue": "blocker_delta_after_mops_monthly_revenue.csv",
             "future_data_violation_audit": "future_data_violation_audit.csv",
             "source_manifest": "source_manifest.json",
             "readiness": "readiness.json",
@@ -923,6 +1024,7 @@ def _final_summary(readiness: dict[str, Any]) -> str:
     listing = readiness.get("listing_metadata", {})
     tpex = readiness.get("tpex_historical_listing_status", {})
     transition = readiness.get("tpex_transition_candidates", {})
+    monthly = readiness.get("monthly_revenue", {})
     liquidity_line = (
         f"- all-listed liquid universe：partial，Radar full sweep covered "
         f"{liquidity.get('covered_start', '')}～{liquidity.get('covered_end', '')}，"
@@ -951,7 +1053,11 @@ def _final_summary(readiness: dict[str, Any]) -> str:
         f"inferred candidates={transition.get('transition_candidate_count', 0)}，"
         f"announcement verified events={transition.get('announcement_verified_event_count', 0)}；"
         "可作 universe integrity 診斷證據，但未升級為 official explicit event ledger。\n"
-        "- monthly revenue：blocked，缺帶 release_date 的月營收 PIT。\n"
+        f"- monthly revenue：{monthly.get('status', 'blocked')}，"
+        f"accepted rows={monthly.get('accepted_rows', 0)}，"
+        f"symbols={monthly.get('symbol_count', 0)}，"
+        f"period={monthly.get('period_start', '')}～{monthly.get('period_end', '')}；"
+        "available_date 採保守次月 10 日規則，formal_exact=false。\n"
         "- quarterly fundamentals：blocked，缺帶公告日的季財報 PIT。\n"
         "- market cap：partial/current snapshot only，不可回推 2015。\n"
         "- sector membership / breadth：blocked，目前 current/generated map 不可回推 2015。\n"
@@ -965,6 +1071,7 @@ def _readiness_for_table(
     price_status: tuple[str, str],
     source_inventory: list[dict[str, Any]],
     liquidity_sweep: dict[str, Any],
+    monthly_revenue: dict[str, Any],
 ) -> tuple[str, str]:
     if table == "all_listed_liquid_universe_pit_daily":
         readiness = liquidity_sweep.get("readiness", {})
@@ -978,6 +1085,12 @@ def _readiness_for_table(
             "local price coverage exists but no all-listed listing/liquidity/suspension PIT universe is accepted",
         )
     if table == "monthly_revenue_pit":
+        summary = _monthly_revenue_summary(monthly_revenue)
+        if summary["source_candidate_ready"]:
+            return (
+                "source_candidate_ready",
+                "MOPS monthly revenue full-universe PIT has source_date/release_date/available_date; formal_exact=false because available_date is conservative, not per-company exact filing timestamp",
+            )
         return "blocked", "no monthly revenue PIT with source_date/release_date/effective_date"
     if table == "quarterly_fundamentals_pit":
         return "blocked", "no quarterly fundamentals PIT with source_date/release_date/effective_date"
@@ -1014,7 +1127,7 @@ def _dataset_readiness_summary(readiness: dict[str, Any]) -> pd.DataFrame:
             "readiness_status": "blocked",
             "accepted_for_formal": False,
             "active_in_trade_decision": False,
-            "reason": "monthly revenue, quarterly fundamentals, market cap PIT, sector PIT, and listing master remain incomplete",
+            "reason": "monthly revenue source candidate is available, but quarterly fundamentals, market cap PIT, sector PIT, and universe-integrity policy remain incomplete",
         }
     )
     return pd.DataFrame(rows)
@@ -1413,6 +1526,75 @@ def _blocker_delta_after_tpex_transition_candidates(
     )
 
 
+def _blocker_delta_after_mops_monthly_revenue(monthly_revenue: dict[str, Any]) -> pd.DataFrame:
+    summary = _monthly_revenue_summary(monthly_revenue)
+    return pd.DataFrame(
+        [
+            {
+                "blocker": "monthly_revenue_pit",
+                "before_status": "blocked",
+                "after_status": summary["status"],
+                "delta": "full_universe_source_candidate_ready_formal_exact_false"
+                if summary["source_candidate_ready"]
+                else "unchanged_blocked",
+                "period_start": summary["period_start"],
+                "period_end": summary["period_end"],
+                "route_request_attempts": int(summary["route_request_attempts"]),
+                "failed_attempts": int(summary["failed_attempts"]),
+                "accepted_rows": int(summary["accepted_rows"]),
+                "symbol_count": int(summary["symbol_count"]),
+                "accepted_month_market": int(summary["accepted_month_market"]),
+                "expected_month_market": int(summary["expected_month_market"]),
+                "coverage_ratio_month_market": summary["coverage_ratio_month_market"],
+                "formal_exact": bool(summary["formal_exact"]),
+                "available_date_policy": summary["available_date_policy"],
+                "ready_for_strategy_replay": bool(summary["ready_for_strategy_replay"]),
+                "remaining_blocker": summary["remaining_blocker"],
+            },
+            {
+                "blocker": "dynamic_pool1_shadow_challenger",
+                "before_status": "blocked",
+                "after_status": "blocked",
+                "delta": "monthly_revenue_blocker_cleared_but_other_layers_missing"
+                if summary["source_candidate_ready"]
+                else "unchanged",
+                "period_start": summary["period_start"],
+                "period_end": summary["period_end"],
+                "route_request_attempts": int(summary["route_request_attempts"]),
+                "failed_attempts": int(summary["failed_attempts"]),
+                "accepted_rows": int(summary["accepted_rows"]),
+                "symbol_count": int(summary["symbol_count"]),
+                "accepted_month_market": int(summary["accepted_month_market"]),
+                "expected_month_market": int(summary["expected_month_market"]),
+                "coverage_ratio_month_market": summary["coverage_ratio_month_market"],
+                "formal_exact": bool(summary["formal_exact"]),
+                "available_date_policy": summary["available_date_policy"],
+                "ready_for_strategy_replay": False,
+                "remaining_blocker": "quarterly fundamentals PIT, market cap PIT, sector/mainline PIT, and universe-integrity policy remain incomplete",
+            },
+            {
+                "blocker": "quarterly_fundamentals_pit",
+                "before_status": "blocked",
+                "after_status": "blocked",
+                "delta": "unchanged_highest_value_next_data_layer",
+                "period_start": "",
+                "period_end": "",
+                "route_request_attempts": 0,
+                "failed_attempts": 0,
+                "accepted_rows": 0,
+                "symbol_count": 0,
+                "accepted_month_market": 0,
+                "expected_month_market": 0,
+                "coverage_ratio_month_market": "",
+                "formal_exact": False,
+                "available_date_policy": "",
+                "ready_for_strategy_replay": False,
+                "remaining_blocker": "quarterly fundamentals PIT with announcement/release dates is the next highest-value data blocker",
+            },
+        ]
+    )
+
+
 def _liquidity_sweep_summary(liquidity_sweep: dict[str, Any]) -> dict[str, Any]:
     readiness = liquidity_sweep.get("readiness", {})
     covered = readiness.get("covered_date_range", {})
@@ -1587,6 +1769,46 @@ def _tpex_transition_candidate_summary(tpex_transition: dict[str, Any]) -> dict[
             else "TPEx transition candidate package is missing or has zero accepted transition candidates"
             if candidate_count == 0
             else "official verification is partial; Core/Research must decide whether coverage is sufficient"
+        ),
+    }
+
+
+def _monthly_revenue_summary(monthly_revenue: dict[str, Any]) -> dict[str, Any]:
+    readiness = monthly_revenue.get("readiness", {})
+    exists = bool(monthly_revenue.get("exists"))
+    source_candidate_ready = bool(readiness.get("monthly_revenue_pit_full_universe_ready", False))
+    return {
+        "exists": exists,
+        "path": monthly_revenue.get("path", ""),
+        "status": "source_candidate_ready" if source_candidate_ready else "blocked",
+        "source_candidate_ready": source_candidate_ready,
+        "monthly_revenue_pit_partial_ready": bool(readiness.get("monthly_revenue_pit_partial_ready", False)),
+        "period_start": readiness.get("period_start", ""),
+        "period_end": readiness.get("period_end", ""),
+        "route_request_attempts": int(readiness.get("route_request_attempts", 0) or 0),
+        "failed_attempts": int(readiness.get("failed_attempts", 0) or 0),
+        "accepted_rows": int(readiness.get("accepted_rows", monthly_revenue.get("sample_rows", 0)) or 0),
+        "symbol_count": int(readiness.get("symbol_count", 0) or 0),
+        "accepted_month_market": int(readiness.get("accepted_month_market", 0) or 0),
+        "expected_month_market": int(readiness.get("expected_month_market", 0) or 0),
+        "coverage_ratio_month_market": readiness.get("coverage_ratio_month_market", ""),
+        "future_data_violation_count": int(readiness.get("future_data_violation_count", 0) or 0),
+        "ready_for_core_rerun": bool(readiness.get("ready_for_core_rerun", False)),
+        "ready_for_strategy_replay": False,
+        "dynamic_pool1_shadow_challenger_ready": False,
+        "formal_exact": False,
+        "available_date_policy": "conservative_next_month_day_10_weekday_adjusted",
+        "source_type_boundary": readiness.get(
+            "source_type_boundary",
+            "release/source dates are conservative available dates, not per-company actual filing timestamps; formal_exact=false",
+        ),
+        "shard_manifest_rows": int(monthly_revenue.get("shard_manifest_rows", 0) or 0),
+        "sample_rows": int(monthly_revenue.get("sample_rows", 0) or 0),
+        "remaining_blocker": (
+            "monthly revenue PIT source candidate is ready for Dynamic Pool1 diagnostics/basic fundamentals using "
+            "conservative available_date; exact per-company filing timestamp remains non-exact"
+            if source_candidate_ready
+            else "MOPS monthly revenue full-universe PIT with source/release/available dates is missing"
         ),
     }
 
@@ -1835,6 +2057,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--listing-metadata-output", default=DEFAULT_LISTING_METADATA_OUTPUT)
     parser.add_argument("--tpex-status-output", default=DEFAULT_TPEX_STATUS_OUTPUT)
     parser.add_argument("--tpex-transition-output", default=DEFAULT_TPEX_TRANSITION_OUTPUT)
+    parser.add_argument("--monthly-revenue-output", default=DEFAULT_MONTHLY_REVENUE_OUTPUT)
     args = parser.parse_args(argv)
     run_dynamic_pool1_pit_readiness_contract(
         output_dir=args.output_dir,
@@ -1847,6 +2070,7 @@ def main(argv: list[str] | None = None) -> int:
         listing_metadata_output=args.listing_metadata_output,
         tpex_status_output=args.tpex_status_output,
         tpex_transition_output=args.tpex_transition_output,
+        monthly_revenue_output=args.monthly_revenue_output,
     )
     return 0
 

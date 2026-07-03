@@ -821,6 +821,113 @@ class DynamicPool1PitReadinessContractTest(unittest.TestCase):
             self.assertFalse(bool(row["inferred_candidates_used_as_official_events"]))
             self.assertFalse(bool(row["official_explicit_transition_event_ledger_ready"]))
 
+    def test_monthly_revenue_full_universe_is_source_candidate_not_strategy_ready(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache = root / "cache"
+            radar = root / "radar"
+            monthly = root / "monthly_revenue"
+            output = root / "out"
+            cache.mkdir()
+            radar.mkdir()
+            monthly.mkdir()
+
+            pd.DataFrame(
+                {
+                    "date": ["2015-01-05"],
+                    "open": [100],
+                    "high": [101],
+                    "low": [99],
+                    "close": [100],
+                    "adj_close": [100],
+                    "volume": [1000],
+                }
+            ).to_csv(cache / "2330_TW.csv", index=False)
+            (monthly / "readiness_for_core.json").write_text(
+                json.dumps(
+                    {
+                        "status": "completed_full_universe_candidate",
+                        "monthly_revenue_pit_full_universe_ready": True,
+                        "monthly_revenue_pit_partial_ready": True,
+                        "period_start": "2015-01",
+                        "period_end": "2026-05",
+                        "route_request_attempts": 548,
+                        "failed_attempts": 0,
+                        "accepted_rows": 244620,
+                        "symbol_count": 1971,
+                        "accepted_month_market": 274,
+                        "expected_month_market": 274,
+                        "coverage_ratio_month_market": 1,
+                        "future_data_violation_count": 0,
+                        "ready_for_core_rerun": True,
+                        "ready_for_strategy_replay": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (monthly / "manifest.json").write_text("{}", encoding="utf-8")
+            pd.DataFrame(
+                [
+                    {
+                        "shard_file": "accepted_monthly_revenue_rows_shards/accepted_monthly_revenue_rows_2015.csv",
+                        "year": 2015,
+                        "rows": 19045,
+                        "symbol_count": 1612,
+                        "period_start": "2015-01",
+                        "period_end": "2015-12",
+                    }
+                ]
+            ).to_csv(monthly / "accepted_monthly_revenue_rows_manifest.csv", index=False)
+            pd.DataFrame(
+                [
+                    {
+                        "ticker": "1259",
+                        "name": "安心",
+                        "market": "TPEx",
+                        "revenue_year_month": "2015-01",
+                        "revenue_value": 341286000,
+                        "source_date": "2015-02-10",
+                        "release_date": "2015-02-10",
+                        "available_date": "2015-02-10",
+                        "formal_exact": False,
+                        "pit_usable": True,
+                    }
+                ]
+            ).to_csv(monthly / "accepted_monthly_revenue_rows_sample.csv", index=False)
+            pd.DataFrame([{"year": 2015, "rows": 19045}]).to_csv(
+                monthly / "accepted_monthly_revenue_rows.csv",
+                index=False,
+            )
+
+            run_dynamic_pool1_pit_readiness_contract(
+                output_dir=output,
+                price_cache_dir=cache,
+                price_source_registry=root / "missing_registry.csv",
+                tw50_constituents_path=root / "missing_tw50.csv",
+                ai_theme_candidates_path=root / "missing_ai.csv",
+                radar_data_dir=radar,
+                liquidity_sweep_output=root / "missing_sweep",
+                listing_metadata_output=root / "missing_listing",
+                tpex_status_output=root / "missing_tpex",
+                tpex_transition_output=root / "missing_transition",
+                monthly_revenue_output=monthly,
+            )
+
+            readiness = json.loads((output / "readiness.json").read_text(encoding="utf-8"))
+            monthly_status = readiness["monthly_revenue"]
+            self.assertEqual(readiness["table_status"]["monthly_revenue_pit"]["status"], "source_candidate_ready")
+            self.assertEqual(monthly_status["accepted_rows"], 244620)
+            self.assertFalse(monthly_status["formal_exact"])
+            self.assertFalse(readiness["ready_for_strategy_replay"])
+            self.assertFalse(readiness["dynamic_pool1_shadow_challenger_ready"])
+
+            delta = pd.read_csv(output / "blocker_delta_after_mops_monthly_revenue.csv")
+            row = delta[delta["blocker"].eq("monthly_revenue_pit")].iloc[0]
+            self.assertEqual(row["after_status"], "source_candidate_ready")
+            self.assertEqual(int(row["accepted_rows"]), 244620)
+            self.assertFalse(bool(row["formal_exact"]))
+            self.assertFalse(bool(row["ready_for_strategy_replay"]))
+
 
 if __name__ == "__main__":
     unittest.main()
