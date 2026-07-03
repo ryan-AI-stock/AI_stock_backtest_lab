@@ -1024,6 +1024,107 @@ class DynamicPool1PitReadinessContractTest(unittest.TestCase):
             self.assertFalse(bool(row["filing_date_available"]))
             self.assertFalse(bool(row["ready_for_strategy_replay"]))
 
+    def test_quarterly_fundamentals_full_sweep_is_source_candidate_not_exact(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache = root / "cache"
+            radar = root / "radar"
+            quarterly = root / "quarterly_full"
+            output = root / "out"
+            cache.mkdir()
+            radar.mkdir()
+            quarterly.mkdir()
+
+            pd.DataFrame(
+                {
+                    "date": ["2015-01-05"],
+                    "open": [100],
+                    "high": [101],
+                    "low": [99],
+                    "close": [100],
+                    "adj_close": [100],
+                    "volume": [1000],
+                }
+            ).to_csv(cache / "2330_TW.csv", index=False)
+            (quarterly / "readiness_for_core.json").write_text(
+                json.dumps(
+                    {
+                        "status": "completed_full_sweep_source_candidate",
+                        "quarterly_fundamentals_full_sweep_ready": True,
+                        "covered_start": "2015Q1",
+                        "covered_end": "2026Q1",
+                        "accepted_rows": 79046,
+                        "symbol_count": 1970,
+                        "failed_or_missing_period_markets": 0,
+                        "route_request_attempts": 180,
+                        "source_type": "source_candidate_no_exact_filing_date",
+                        "formal_exact": False,
+                        "filing_date_available": False,
+                        "future_data_violation_count": 0,
+                        "ready_for_core_rerun": True,
+                        "ready_for_strategy_replay": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (quarterly / "manifest.json").write_text("{}", encoding="utf-8")
+            pd.DataFrame(
+                [
+                    {
+                        "shard_path": "shards/accepted_quarterly_fundamentals_rows_2015.csv",
+                        "fiscal_year": 2015,
+                        "rows": 6204,
+                    }
+                ]
+            ).to_csv(quarterly / "accepted_quarterly_fundamentals_rows_manifest.csv", index=False)
+            pd.DataFrame([{"market": "sii", "rows": 43705, "symbol_count": 1079}]).to_csv(
+                quarterly / "coverage_by_market.csv",
+                index=False,
+            )
+            pd.DataFrame([{"period": "2015Q1", "rows": 1000}]).to_csv(
+                quarterly / "coverage_by_year_quarter.csv",
+                index=False,
+            )
+            pd.DataFrame(columns=["period", "market", "reason"]).to_csv(
+                quarterly / "missing_or_failed_periods.csv",
+                index=False,
+            )
+
+            run_dynamic_pool1_pit_readiness_contract(
+                output_dir=output,
+                price_cache_dir=cache,
+                price_source_registry=root / "missing_registry.csv",
+                tw50_constituents_path=root / "missing_tw50.csv",
+                ai_theme_candidates_path=root / "missing_ai.csv",
+                radar_data_dir=radar,
+                liquidity_sweep_output=root / "missing_sweep",
+                listing_metadata_output=root / "missing_listing",
+                tpex_status_output=root / "missing_tpex",
+                tpex_transition_output=root / "missing_transition",
+                monthly_revenue_output=root / "missing_monthly",
+                quarterly_fundamentals_output=quarterly,
+            )
+
+            readiness = json.loads((output / "readiness.json").read_text(encoding="utf-8"))
+            quarterly_status = readiness["quarterly_fundamentals"]
+            self.assertEqual(
+                readiness["table_status"]["quarterly_fundamentals_pit"]["status"],
+                "full_sweep_source_candidate_ready",
+            )
+            self.assertEqual(quarterly_status["accepted_rows"], 79046)
+            self.assertEqual(quarterly_status["symbol_count"], 1970)
+            self.assertFalse(quarterly_status["formal_exact"])
+            self.assertFalse(quarterly_status["filing_date_available"])
+            self.assertFalse(readiness["ready_for_strategy_replay"])
+            self.assertFalse(readiness["dynamic_pool1_shadow_challenger_ready"])
+
+            delta = pd.read_csv(output / "blocker_delta_after_quarterly_fundamentals_route_unlock.csv")
+            row = delta[delta["blocker"].eq("quarterly_fundamentals_pit")].iloc[0]
+            self.assertEqual(row["after_status"], "full_sweep_source_candidate_ready")
+            self.assertEqual(int(row["accepted_rows"]), 79046)
+            self.assertFalse(bool(row["formal_exact"]))
+            self.assertFalse(bool(row["ready_for_strategy_replay"]))
+
 
 if __name__ == "__main__":
     unittest.main()

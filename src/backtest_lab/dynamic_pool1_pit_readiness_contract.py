@@ -167,6 +167,11 @@ def run_dynamic_pool1_pit_readiness_contract(
             index=False,
             encoding="utf-8-sig",
         )
+        quarterly_delta.to_csv(
+            output / "blocker_delta_after_quarterly_fundamentals_full_sweep.csv",
+            index=False,
+            encoding="utf-8-sig",
+        )
         violation_audit.to_csv(output / "future_data_violation_audit.csv", index=False, encoding="utf-8-sig")
         (output / "source_manifest.json").write_text(
             json.dumps(source_manifest, ensure_ascii=False, indent=2),
@@ -400,14 +405,16 @@ def _source_inventory(
                 "data_area": "quarterly_fundamentals_pit",
                 "source_name": "radar_dynamic_pool1_quarterly_fundamentals_route_unlock",
                 "path": quarterly_fundamentals.get("path", ""),
-                "source_family": "mops_t163sb04_route_unlocked_sample",
+                "source_family": "mops_t163sb04_quarterly_fundamentals_source_candidate",
                 "pit_acceptance": "source_candidate_partial",
                 "diagnostic_only": True,
                 "blocked_reason": (
-                    "MOPS quarterly fundamentals route is unlocked with sample rows, but full 2015-latest sweep "
-                    "and exact per-company filing_date are not ready"
+                    "MOPS quarterly fundamentals source candidate is available, but formal_exact=false and "
+                    "exact per-company filing_date is not ready"
                 ),
                 "sample_rows": readiness.get("sample_rows", 0),
+                "accepted_rows": readiness.get("accepted_rows", 0),
+                "symbol_count": readiness.get("symbol_count", 0),
                 "formal_exact": False,
                 "filing_date_available": False,
             }
@@ -620,7 +627,11 @@ def _load_quarterly_fundamentals_route_unlock(quarterly_output: str | Path | Non
     readiness = _load_json(root / "readiness_for_core.json")
     manifest = _load_json(root / "manifest.json")
     sample_path = root / "accepted_quarterly_fundamentals_sample_rows.csv"
+    shard_manifest_path = root / "accepted_quarterly_fundamentals_rows_manifest.csv"
     attempts_path = root / "route_probe_attempts.csv"
+    coverage_market_path = root / "coverage_by_market.csv"
+    coverage_quarter_path = root / "coverage_by_year_quarter.csv"
+    missing_path = root / "missing_or_failed_periods.csv"
     blocked_path = root / "blocked_source_rows.csv"
     future_audit_path = root / "future_data_violation_audit.csv"
     raw_manifest_path = root / "raw_source_archive_manifest.csv"
@@ -630,12 +641,20 @@ def _load_quarterly_fundamentals_route_unlock(quarterly_output: str | Path | Non
         "readiness": readiness,
         "manifest": manifest,
         "sample_path": str(sample_path),
+        "shard_manifest_path": str(shard_manifest_path),
         "attempts_path": str(attempts_path),
+        "coverage_market_path": str(coverage_market_path),
+        "coverage_quarter_path": str(coverage_quarter_path),
+        "missing_path": str(missing_path),
         "blocked_path": str(blocked_path),
         "future_audit_path": str(future_audit_path),
         "raw_manifest_path": str(raw_manifest_path),
         "sample_rows": int(len(_read_csv_if_exists(sample_path))),
+        "shard_manifest_rows": int(len(_read_csv_if_exists(shard_manifest_path))),
         "attempt_rows": int(len(_read_csv_if_exists(attempts_path))),
+        "coverage_market_rows": int(len(_read_csv_if_exists(coverage_market_path))),
+        "coverage_quarter_rows": int(len(_read_csv_if_exists(coverage_quarter_path))),
+        "missing_rows": int(len(_read_csv_if_exists(missing_path))),
         "blocked_rows": int(len(_read_csv_if_exists(blocked_path))),
         "future_audit_rows": int(len(_read_csv_if_exists(future_audit_path))),
         "raw_manifest_rows": int(len(_read_csv_if_exists(raw_manifest_path))),
@@ -851,14 +870,17 @@ def _quarterly_fundamentals_contract_table(quarterly_fundamentals: dict[str, Any
         "data_area": "quarterly_fundamentals_pit",
         "ticker": "",
         "name": "",
-        "value": f"sample_rows={summary['sample_rows']}; tested_periods={summary['tested_periods']}",
+        "value": (
+            f"accepted_rows={summary['accepted_rows']}; symbol_count={summary['symbol_count']}; "
+            f"sample_rows={summary['sample_rows']}"
+        ),
         "source_date": "",
         "release_date": summary["available_date_policy"],
         "effective_date": ",".join(summary["tested_periods"]) if isinstance(summary["tested_periods"], list) else "",
         "source": "radar_dynamic_pool1_quarterly_fundamentals_route_unlock",
         "source_path": summary["path"],
         "source_type": summary["source_type"],
-        "row_count": summary["sample_rows"],
+        "row_count": summary["accepted_rows"] or summary["sample_rows"],
         "readiness_status": summary["status"],
         "diagnostic_only": True,
         "accepted_for_formal": False,
@@ -1101,6 +1123,7 @@ def _manifest(readiness: dict[str, Any]) -> dict[str, Any]:
             "blocker_delta_after_tpex_transition_candidates": "blocker_delta_after_tpex_transition_candidates.csv",
             "blocker_delta_after_mops_monthly_revenue": "blocker_delta_after_mops_monthly_revenue.csv",
             "blocker_delta_after_quarterly_fundamentals_route_unlock": "blocker_delta_after_quarterly_fundamentals_route_unlock.csv",
+            "blocker_delta_after_quarterly_fundamentals_full_sweep": "blocker_delta_after_quarterly_fundamentals_full_sweep.csv",
             "future_data_violation_audit": "future_data_violation_audit.csv",
             "source_manifest": "source_manifest.json",
             "readiness": "readiness.json",
@@ -1163,8 +1186,9 @@ def _final_summary(readiness: dict[str, Any]) -> str:
         "available_date 採保守次月 10 日規則，formal_exact=false。\n"
         f"- quarterly fundamentals：{quarterly.get('status', 'blocked')}，"
         f"sample rows={quarterly.get('sample_rows', 0)}，"
+        f"accepted rows={quarterly.get('accepted_rows', 0)}，"
         f"tested periods={','.join(quarterly.get('tested_periods', [])) if isinstance(quarterly.get('tested_periods', []), list) else quarterly.get('tested_periods', '')}；"
-        "route 已解鎖，但尚未 full sweep，filing_date 也不是逐公司 exact。\n"
+        "t163sb04 損益表彙總已可作 source candidate；filing_date 仍不是逐公司 exact。\n"
         "- market cap：partial/current snapshot only，不可回推 2015。\n"
         "- sector membership / breadth：blocked，目前 current/generated map 不可回推 2015。\n"
         f"- future_data_violation_count={readiness['future_data_violation_count']}，因未把 current/proxy source 當正式歷史資料使用。\n\n"
@@ -1201,6 +1225,11 @@ def _readiness_for_table(
         return "blocked", "no monthly revenue PIT with source_date/release_date/effective_date"
     if table == "quarterly_fundamentals_pit":
         summary = _quarterly_fundamentals_summary(quarterly_fundamentals)
+        if summary["full_sweep_ready"]:
+            return (
+                "full_sweep_source_candidate_ready",
+                "MOPS t163sb04 quarterly income-statement summary full sweep is ready as source candidate; formal_exact=false because per-company filing_date is not exact and balance sheet/cash flow expansions are separate",
+            )
         if summary["route_unlocked"]:
             return (
                 "route_unlocked_source_candidate_partial",
@@ -1240,7 +1269,7 @@ def _dataset_readiness_summary(readiness: dict[str, Any]) -> pd.DataFrame:
             "readiness_status": "blocked",
             "accepted_for_formal": False,
             "active_in_trade_decision": False,
-            "reason": "monthly revenue source candidate and quarterly fundamentals route unlock are available, but quarterly full sweep, market cap PIT, sector PIT, and universe-integrity policy remain incomplete",
+            "reason": "monthly revenue and quarterly fundamentals source candidates are available, but market cap PIT, sector PIT, and universe-integrity policy remain incomplete",
         }
     )
     return pd.DataFrame(rows)
@@ -1716,10 +1745,19 @@ def _blocker_delta_after_quarterly_fundamentals_route_unlock(quarterly_fundament
                 "blocker": "quarterly_fundamentals_pit",
                 "before_status": "blocked",
                 "after_status": summary["status"],
-                "delta": "route_unlocked_sample_rows_available_full_sweep_still_missing"
-                if summary["route_unlocked"]
-                else "unchanged_blocked",
+                "delta": (
+                    "full_sweep_source_candidate_ready_formal_exact_false"
+                    if summary["full_sweep_ready"]
+                    else "route_unlocked_sample_rows_available_full_sweep_still_missing"
+                    if summary["route_unlocked"]
+                    else "unchanged_blocked"
+                ),
                 "sample_rows": int(summary["sample_rows"]),
+                "accepted_rows": int(summary["accepted_rows"]),
+                "symbol_count": int(summary["symbol_count"]),
+                "covered_start": summary["covered_start"],
+                "covered_end": summary["covered_end"],
+                "failed_or_missing_period_markets": int(summary["failed_or_missing_period_markets"]),
                 "tested_periods": ",".join(summary["tested_periods"]),
                 "tested_markets": ",".join(summary["tested_markets"]),
                 "formal_exact": bool(summary["formal_exact"]),
@@ -1732,9 +1770,16 @@ def _blocker_delta_after_quarterly_fundamentals_route_unlock(quarterly_fundament
                 "before_status": "blocked",
                 "after_status": "blocked",
                 "delta": "quarterly_route_unlocked_but_full_sweep_and_other_layers_missing"
-                if summary["route_unlocked"]
+                if summary["route_unlocked"] and not summary["full_sweep_ready"]
+                else "quarterly_full_sweep_ready_but_other_layers_missing"
+                if summary["full_sweep_ready"]
                 else "unchanged",
                 "sample_rows": int(summary["sample_rows"]),
+                "accepted_rows": int(summary["accepted_rows"]),
+                "symbol_count": int(summary["symbol_count"]),
+                "covered_start": summary["covered_start"],
+                "covered_end": summary["covered_end"],
+                "failed_or_missing_period_markets": int(summary["failed_or_missing_period_markets"]),
                 "tested_periods": ",".join(summary["tested_periods"]),
                 "tested_markets": ",".join(summary["tested_markets"]),
                 "formal_exact": bool(summary["formal_exact"]),
@@ -1748,6 +1793,11 @@ def _blocker_delta_after_quarterly_fundamentals_route_unlock(quarterly_fundament
                 "after_status": "partial",
                 "delta": "unchanged_next_data_layer_after_quarterly_full_sweep",
                 "sample_rows": 0,
+                "accepted_rows": 0,
+                "symbol_count": 0,
+                "covered_start": "",
+                "covered_end": "",
+                "failed_or_missing_period_markets": 0,
                 "tested_periods": "",
                 "tested_markets": "",
                 "formal_exact": False,
@@ -1983,16 +2033,33 @@ def _quarterly_fundamentals_summary(quarterly_fundamentals: dict[str, Any]) -> d
     tested_periods = list(readiness.get("tested_periods", []) or [])
     tested_markets = list(readiness.get("tested_markets", []) or [])
     route_unlocked = bool(readiness.get("quarterly_fundamentals_route_unlocked", False))
-    full_ready = bool(readiness.get("quarterly_fundamentals_pit_full_universe_ready", False))
+    full_ready = bool(
+        readiness.get("quarterly_fundamentals_pit_full_universe_ready", False)
+        or readiness.get("quarterly_fundamentals_full_sweep_ready", False)
+    )
     sample_rows = int(readiness.get("sample_rows", quarterly_fundamentals.get("sample_rows", 0)) or 0)
+    accepted_rows = int(readiness.get("accepted_rows", sample_rows) or 0)
+    if full_ready and not route_unlocked:
+        route_unlocked = True
     return {
         "exists": exists,
         "path": quarterly_fundamentals.get("path", ""),
-        "status": "route_unlocked_source_candidate_partial" if route_unlocked else "blocked",
+        "status": "full_sweep_source_candidate_ready"
+        if full_ready
+        else "route_unlocked_source_candidate_partial"
+        if route_unlocked
+        else "blocked",
         "route_unlocked": route_unlocked,
+        "full_sweep_ready": full_ready,
         "quarterly_fundamentals_pit_full_universe_ready": full_ready,
         "sample_rows": sample_rows,
-        "full_source_rows_observed": int(readiness.get("full_source_rows_observed", sample_rows) or 0),
+        "accepted_rows": accepted_rows,
+        "symbol_count": int(readiness.get("symbol_count", 0) or 0),
+        "covered_start": readiness.get("covered_start", ""),
+        "covered_end": readiness.get("covered_end", ""),
+        "failed_or_missing_period_markets": int(readiness.get("failed_or_missing_period_markets", 0) or 0),
+        "route_request_attempts": int(readiness.get("route_request_attempts", 0) or 0),
+        "full_source_rows_observed": int(readiness.get("full_source_rows_observed", accepted_rows) or 0),
         "tested_periods": tested_periods,
         "tested_markets": tested_markets,
         "source_type": readiness.get("source_type", "source_candidate_no_exact_filing_date"),
@@ -2007,6 +2074,10 @@ def _quarterly_fundamentals_summary(quarterly_fundamentals: dict[str, Any]) -> d
         "ready_for_strategy_replay": False,
         "dynamic_pool1_shadow_challenger_ready": False,
         "remaining_blocker": (
+            "quarterly fundamentals t163sb04 income-statement summary full sweep is ready as source candidate; "
+            "per-company exact filing_date and balance sheet/cash flow/ratio expansion remain separate blockers"
+            if full_ready
+            else
             "quarterly fundamentals route is unlocked with sample rows, but full 2015-latest sweep and exact "
             "per-company filing_date are not ready"
             if route_unlocked
