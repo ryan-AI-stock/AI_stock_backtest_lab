@@ -610,6 +610,97 @@ class DynamicPool1PitReadinessContractTest(unittest.TestCase):
             self.assertEqual(int(row["accepted_historical_rows"]), 257)
             self.assertFalse(bool(row["full_2015_2025_master_ready"]))
 
+    def test_tpex_full_route_coverage_remains_partial_without_transition_events(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache = root / "cache"
+            radar = root / "radar"
+            tpex = root / "tpex_full_route"
+            output = root / "out"
+            cache.mkdir()
+            radar.mkdir()
+            tpex.mkdir()
+
+            pd.DataFrame(
+                {
+                    "date": ["2015-01-05"],
+                    "open": [100],
+                    "high": [101],
+                    "low": [99],
+                    "close": [100],
+                    "adj_close": [100],
+                    "volume": [1000],
+                }
+            ).to_csv(cache / "2330_TW.csv", index=False)
+            (tpex / "readiness_for_core.json").write_text(
+                json.dumps(
+                    {
+                        "status": "completed_full_route_coverage_suspension_events_still_blocked",
+                        "covered_start": "2015-01-01",
+                        "covered_end": "2025-12-31",
+                        "route_request_attempts": 4040,
+                        "failed_attempts": 0,
+                        "accepted_listing_metadata_rows": 294,
+                        "accepted_delisting_metadata_rows": 104,
+                        "accepted_status_snapshot_rows": 90865,
+                        "accepted_suspension_event_rows": 0,
+                        "accepted_historical_rows": 91263,
+                        "future_data_violation_count": 0,
+                        "full_tpex_2015_2025_route_coverage_ready": True,
+                        "full_tpex_2015_2025_master_ready": False,
+                        "listing_delisting_suspension_master_full_ready": False,
+                        "ready_for_core_rerun": True,
+                        "ready_for_strategy_replay": False,
+                        "dynamic_pool1_shadow_challenger_ready": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            pd.DataFrame([{"source": "TPEx bulletin/sprc", "blocked_component": "transition event ledger"}]).to_csv(
+                tpex / "blocked_source_rows.csv",
+                index=False,
+            )
+            pd.DataFrame([{"year": 2015, "coverage_status": "complete_route_coverage"}]).to_csv(
+                tpex / "coverage_by_year.csv",
+                index=False,
+            )
+            pd.DataFrame([{"dataset": "status_snapshot", "accepted_rows": 90865}]).to_csv(
+                tpex / "accepted_rows_summary.csv",
+                index=False,
+            )
+            (tpex / "manifest.json").write_text("{}", encoding="utf-8")
+
+            run_dynamic_pool1_pit_readiness_contract(
+                output_dir=output,
+                price_cache_dir=cache,
+                price_source_registry=root / "missing_registry.csv",
+                tw50_constituents_path=root / "missing_tw50.csv",
+                ai_theme_candidates_path=root / "missing_ai.csv",
+                radar_data_dir=radar,
+                liquidity_sweep_output=root / "missing_sweep",
+                listing_metadata_output=root / "missing_listing",
+                tpex_status_output=tpex,
+            )
+
+            readiness = json.loads((output / "readiness.json").read_text(encoding="utf-8"))
+            tpex_status = readiness["tpex_historical_listing_status"]
+            self.assertEqual(
+                readiness["table_status"]["tpex_historical_listing_status"]["status"],
+                "route_coverage_ready_status_snapshot_partial",
+            )
+            self.assertEqual(tpex_status["accepted_historical_rows"], 91263)
+            self.assertTrue(tpex_status["daily_status_snapshot_asof_ready"])
+            self.assertFalse(tpex_status["explicit_transition_event_ledger_ready"])
+            self.assertFalse(tpex_status["ready_for_strategy_replay"])
+            self.assertFalse(readiness["dynamic_pool1_shadow_challenger_ready"])
+
+            delta = pd.read_csv(output / "blocker_delta_after_tpex_full_route_coverage.csv")
+            row = delta[delta["blocker"].eq("tpex_historical_listing_status")].iloc[0]
+            self.assertEqual(row["after_status"], "route_coverage_ready_status_snapshot_partial")
+            self.assertEqual(int(row["accepted_historical_rows"]), 91263)
+            self.assertTrue(bool(row["daily_status_snapshot_asof_ready"]))
+            self.assertFalse(bool(row["explicit_transition_event_ledger_ready"]))
+
 
 if __name__ == "__main__":
     unittest.main()

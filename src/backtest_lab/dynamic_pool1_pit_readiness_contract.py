@@ -110,6 +110,7 @@ def run_dynamic_pool1_pit_readiness_contract(
         listing_delta = _blocker_delta_after_listing_metadata(listing_metadata)
         listing_completion_delta = _blocker_delta_after_listing_master_completion(listing_metadata)
         tpex_delta = _blocker_delta_after_tpex_blocker_evidence(tpex_status)
+        tpex_full_route_delta = _blocker_delta_after_tpex_full_route_coverage(tpex_status)
 
         log("write_outputs", "started", str(output))
         for table_name, frame in tables.items():
@@ -124,6 +125,11 @@ def run_dynamic_pool1_pit_readiness_contract(
             encoding="utf-8-sig",
         )
         tpex_delta.to_csv(output / "blocker_delta_after_tpex_blocker_evidence.csv", index=False, encoding="utf-8-sig")
+        tpex_full_route_delta.to_csv(
+            output / "blocker_delta_after_tpex_full_route_coverage.csv",
+            index=False,
+            encoding="utf-8-sig",
+        )
         violation_audit.to_csv(output / "future_data_violation_audit.csv", index=False, encoding="utf-8-sig")
         (output / "source_manifest.json").write_text(
             json.dumps(source_manifest, ensure_ascii=False, indent=2),
@@ -789,7 +795,7 @@ def _readiness_json(
             "diagnostic_or_blocked_source_count": len(source_inventory),
         },
         "next_blockers": [
-            "TPEx 2015-2025 historical status/listing metadata and full cross-market listing master",
+            "TPEx explicit suspension/resumption transition event ledger, or formal policy decision that daily status snapshots are sufficient for universe integrity",
             "monthly revenue PIT with announcement/release dates",
             "quarterly fundamentals PIT with announcement/release dates",
             "historical market cap/free-float market cap PIT",
@@ -822,6 +828,7 @@ def _manifest(readiness: dict[str, Any]) -> dict[str, Any]:
             "blocker_delta_after_listing_metadata": "blocker_delta_after_listing_metadata.csv",
             "blocker_delta_after_listing_master_completion": "blocker_delta_after_listing_master_completion.csv",
             "blocker_delta_after_tpex_blocker_evidence": "blocker_delta_after_tpex_blocker_evidence.csv",
+            "blocker_delta_after_tpex_full_route_coverage": "blocker_delta_after_tpex_full_route_coverage.csv",
             "future_data_violation_audit": "future_data_violation_audit.csv",
             "source_manifest": "source_manifest.json",
             "readiness": "readiness.json",
@@ -869,7 +876,7 @@ def _final_summary(readiness: dict[str, Any]) -> str:
         f"- TPEx historical listing/status：{tpex.get('status', 'blocked')}，"
         f"accepted historical rows={tpex.get('accepted_historical_rows', 0)}，"
         f"route_attempts={tpex.get('route_probe_attempts') or tpex.get('source_probe_attempts', 0)}；"
-        "full 2015-2025 sweep 尚未完成。\n"
+        "daily status snapshot 可做 as-of 判斷，但不是 explicit transition event ledger。\n"
         "- monthly revenue：blocked，缺帶 release_date 的月營收 PIT。\n"
         "- quarterly fundamentals：blocked，缺帶公告日的季財報 PIT。\n"
         "- market cap：partial/current snapshot only，不可回推 2015。\n"
@@ -1190,6 +1197,73 @@ def _blocker_delta_after_tpex_blocker_evidence(tpex_status: dict[str, Any]) -> p
     )
 
 
+def _blocker_delta_after_tpex_full_route_coverage(tpex_status: dict[str, Any]) -> pd.DataFrame:
+    summary = _tpex_status_blocker_summary(tpex_status)
+    return pd.DataFrame(
+        [
+            {
+                "blocker": "tpex_historical_listing_status",
+                "before_status": "partial_with_accepted_historical_rows",
+                "after_status": summary["status"],
+                "delta": "full_route_coverage_ready_but_transition_events_blocked"
+                if summary["full_tpex_2015_2025_route_coverage_ready"]
+                else "full_route_coverage_not_ready",
+                "covered_start": summary["covered_start"],
+                "covered_end": summary["covered_end"],
+                "route_request_attempts": int(summary["route_probe_attempts"]),
+                "failed_attempts": int(summary["failed_attempts"]),
+                "accepted_historical_rows": int(summary["accepted_historical_rows"]),
+                "accepted_listing_metadata_rows": int(summary["accepted_listing_metadata_rows"]),
+                "accepted_delisting_metadata_rows": int(summary["accepted_delisting_metadata_rows"]),
+                "accepted_status_snapshot_rows": int(summary["accepted_status_snapshot_rows"]),
+                "accepted_suspension_event_rows": int(summary["accepted_suspension_event_rows"]),
+                "daily_status_snapshot_asof_ready": bool(summary["daily_status_snapshot_asof_ready"]),
+                "explicit_transition_event_ledger_ready": bool(summary["explicit_transition_event_ledger_ready"]),
+                "ready_for_strategy_replay": bool(summary["ready_for_strategy_replay"]),
+                "remaining_blocker": summary["remaining_blocker"],
+            },
+            {
+                "blocker": "full_cross_market_listing_master",
+                "before_status": "blocked",
+                "after_status": "blocked",
+                "delta": "still_blocked_by_transition_event_policy_or_event_ledger",
+                "covered_start": summary["covered_start"],
+                "covered_end": summary["covered_end"],
+                "route_request_attempts": int(summary["route_probe_attempts"]),
+                "failed_attempts": int(summary["failed_attempts"]),
+                "accepted_historical_rows": int(summary["accepted_historical_rows"]),
+                "accepted_listing_metadata_rows": int(summary["accepted_listing_metadata_rows"]),
+                "accepted_delisting_metadata_rows": int(summary["accepted_delisting_metadata_rows"]),
+                "accepted_status_snapshot_rows": int(summary["accepted_status_snapshot_rows"]),
+                "accepted_suspension_event_rows": int(summary["accepted_suspension_event_rows"]),
+                "daily_status_snapshot_asof_ready": bool(summary["daily_status_snapshot_asof_ready"]),
+                "explicit_transition_event_ledger_ready": bool(summary["explicit_transition_event_ledger_ready"]),
+                "ready_for_strategy_replay": False,
+                "remaining_blocker": "Core/Research must decide whether daily as-of status snapshots are sufficient or require explicit suspension/resumption transition events",
+            },
+            {
+                "blocker": "monthly_revenue_pit",
+                "before_status": "blocked",
+                "after_status": "blocked",
+                "delta": "unchanged",
+                "covered_start": "",
+                "covered_end": "",
+                "route_request_attempts": 0,
+                "failed_attempts": 0,
+                "accepted_historical_rows": 0,
+                "accepted_listing_metadata_rows": 0,
+                "accepted_delisting_metadata_rows": 0,
+                "accepted_status_snapshot_rows": 0,
+                "accepted_suspension_event_rows": 0,
+                "daily_status_snapshot_asof_ready": False,
+                "explicit_transition_event_ledger_ready": False,
+                "ready_for_strategy_replay": False,
+                "remaining_blocker": "MOPS monthly revenue full universe PIT with release_date is still missing",
+            },
+        ]
+    )
+
+
 def _liquidity_sweep_summary(liquidity_sweep: dict[str, Any]) -> dict[str, Any]:
     readiness = liquidity_sweep.get("readiness", {})
     covered = readiness.get("covered_date_range", {})
@@ -1216,12 +1290,19 @@ def _tpex_status_blocker_status(tpex_status: dict[str, Any]) -> dict[str, Any]:
     summary = _tpex_status_blocker_summary(tpex_status)
     if summary["exists"]:
         if summary["accepted_historical_rows"] > 0:
-            return {
-                "status": summary["status"],
-                "reason": (
+            if summary["full_tpex_2015_2025_route_coverage_ready"]:
+                reason = (
+                    "TPEx 2015-2025 full route coverage is available for listing/delisting and daily as-of "
+                    "status snapshots, but explicit suspension/resumption transition events remain unavailable"
+                )
+            else:
+                reason = (
                     "TPEx official historical route contract produced bounded accepted sample rows, but full "
                     "2015-2025 sweep and suspension/resumption event history are not complete"
-                ),
+                )
+            return {
+                "status": summary["status"],
+                "reason": reason,
                 "accepted_for_formal": False,
             }
         return {
@@ -1250,10 +1331,14 @@ def _tpex_status_blocker_summary(tpex_status: dict[str, Any]) -> dict[str, Any]:
     current_or_carried = int(
         readiness.get("accepted_current_or_carried_tpex_rows", tpex_status.get("current_or_carried_rows", 0)) or 0
     )
-    route_probe_attempts = int(readiness.get("route_probe_attempts", 0) or 0)
+    route_probe_attempts = int(
+        readiness.get("route_probe_attempts", readiness.get("route_request_attempts", 0)) or 0
+    )
     source_probe_attempts = int(readiness.get("source_probe_attempts", tpex_status.get("attempt_rows", 0)) or 0)
     status = readiness.get("status", "blocked_with_attempt_evidence" if tpex_status.get("exists") else "blocked")
-    if accepted_historical > 0:
+    if accepted_historical > 0 and readiness.get("full_tpex_2015_2025_route_coverage_ready", False):
+        status = "route_coverage_ready_status_snapshot_partial"
+    elif accepted_historical > 0:
         status = "partial_with_accepted_historical_rows"
     return {
         "exists": bool(tpex_status.get("exists")),
@@ -1267,22 +1352,36 @@ def _tpex_status_blocker_summary(tpex_status: dict[str, Any]) -> dict[str, Any]:
         "current_or_carried_rows_used_as_historical": False,
         "source_probe_attempts": source_probe_attempts,
         "route_probe_attempts": route_probe_attempts,
+        "failed_attempts": int(readiness.get("failed_attempts", 0) or 0),
         "blocked_source_rows": int(readiness.get("blocked_source_rows", tpex_status.get("blocked_rows", 0)) or 0),
         "future_data_violation_count": int(readiness.get("future_data_violation_count", 0) or 0),
+        "covered_start": readiness.get("covered_start", ""),
+        "covered_end": readiness.get("covered_end", ""),
         "tpex_2015_2025_historical_listing_status_ready": bool(
             readiness.get("tpex_2015_2025_historical_listing_status_ready", False)
+        ),
+        "full_tpex_2015_2025_route_coverage_ready": bool(
+            readiness.get("full_tpex_2015_2025_route_coverage_ready", False)
         ),
         "tpex_full_2015_2025_master_ready": bool(
             readiness.get("tpex_full_2015_2025_master_ready", False)
             or readiness.get("full_2015_2025_master_ready", False)
         ),
+        "accepted_delisting_metadata_rows": int(readiness.get("accepted_delisting_metadata_rows", 0) or 0),
+        "daily_status_snapshot_asof_ready": bool(
+            readiness.get("full_tpex_2015_2025_route_coverage_ready", False) and accepted_status_snapshot > 0
+        ),
+        "explicit_transition_event_ledger_ready": bool(accepted_suspension > 0),
         "full_cross_market_listing_master_ready": bool(readiness.get("full_cross_market_listing_master_ready", False)),
         "ready_for_core_rerun": bool(readiness.get("ready_for_core_rerun", False)),
         "ready_for_strategy_replay": bool(readiness.get("ready_for_strategy_replay", False)),
         "dynamic_pool1_shadow_challenger_ready": bool(readiness.get("dynamic_pool1_shadow_challenger_ready", False)),
         "readiness_decision": readiness.get("readiness_decision", ""),
         "remaining_blocker": (
-            "TPEx historical route contract has sample accepted rows, but full 2015-2025 sweep and suspension/"
+            "TPEx full route coverage is ready for listing/delisting and daily as-of status snapshots, but explicit "
+            "suspension/resumption transition event ledger remains 0 accepted rows"
+            if readiness.get("full_tpex_2015_2025_route_coverage_ready", False)
+            else "TPEx historical route contract has sample accepted rows, but full 2015-2025 sweep and suspension/"
             "resumption event history are not complete"
             if accepted_historical > 0
             else "TPEx 2015-2025 historical listing/status route remains unresolved; current/carried 2026 rows are not "
