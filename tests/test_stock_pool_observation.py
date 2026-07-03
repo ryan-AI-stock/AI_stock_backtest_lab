@@ -125,8 +125,6 @@ class StockPoolObservationTest(unittest.TestCase):
                 "no_target_cash_day_rate_30d": 0.25,
                 "new_target_pre20d_return": 0.08,
                 "new_target_confirmation_age_days": 2,
-                "rapid_flip_rate_le_3d_recent": 0.73,
-                "rapid_flip_rate_le_5d_recent": 0.82,
                 "score_gap_or_rank_margin": 0.4,
                 "0050_ma20_state": "above",
                 "0050_ma60_state": "above",
@@ -136,10 +134,8 @@ class StockPoolObservationTest(unittest.TestCase):
         }
         _attach_rapid_rotation_warning_boundary(manifest)
 
-        self.assertEqual(manifest["rapid_rotation_warning_state"], "elevated")
-        self.assertIn("標的切換偏快", str(manifest["rapid_rotation_warning_reason"]))
-        self.assertIn("正式目標不變", str(manifest["warning_reason_zh"]))
-        self.assertIn("近30/60/90日換標率", str(manifest["target_change_rate_context"]))
+        self.assertEqual(manifest["rapid_rotation_warning_state"], "rapid_rotation_high")
+        self.assertIn("輪動偏快", str(manifest["rapid_rotation_warning_reason"]))
         self.assertFalse(manifest["rapid_rotation_active_in_trade_decision"])
         self.assertEqual(manifest["rapid_rotation_warning_boundary"], "report_only")
         self.assertFalse(manifest["formal_model_changed"])
@@ -166,8 +162,6 @@ class StockPoolObservationTest(unittest.TestCase):
             "no_target_cash_day_rate_30d": 0.1,
             "new_target_pre20d_return": 0.05,
             "new_target_confirmation_age_days": 2,
-            "rapid_flip_rate_le_3d_recent": 0.4,
-            "rapid_flip_rate_le_5d_recent": 0.5,
             "score_gap_or_rank_margin": 0.7,
             "0050_ma20_state": "above",
             "0050_ma60_state": "above",
@@ -177,50 +171,11 @@ class StockPoolObservationTest(unittest.TestCase):
         _attach_rapid_rotation_warning_boundary(manifest)
         markdown = markdown_observation_batch_report(manifest, [])
 
-        self.assertIn("快速輪動提醒（輔助觀察）", markdown)
-        self.assertIn("留意輪動加快", markdown)
-        self.assertIn("這項提醒不改正式目標", markdown)
-        self.assertNotIn("rapid_rotation_elevated", markdown)
-        self.assertNotIn("diagnostic", markdown)
-        self.assertNotIn("no formal target", markdown)
+        self.assertIn("快速輪動提醒", markdown)
+        self.assertIn("快速輪動偏高", markdown)
         self.assertNotIn("建議暫停買進", markdown)
         self.assertNotIn("應該賣出", markdown)
         self.assertNotIn("模型判定不能進場", markdown)
-
-    def test_rapid_rotation_warning_can_fallback_to_formal_target_stream(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            target_stream = Path(tmp) / "formal_target_stream.csv"
-            rows = []
-            dates = pd.bdate_range("2026-01-02", periods=35)
-            targets = ["00631L.TW"] * 10 + ["2454.TW"] * 2 + ["00631L.TW"] * 3 + ["CASH"] * 2 + ["2308.TW"] * 18
-            for date, target in zip(dates, targets):
-                rows.append(
-                    {
-                        "signal_date": date.strftime("%Y-%m-%d"),
-                        "execution_date": (date + pd.offsets.BDay(1)).strftime("%Y-%m-%d"),
-                        "formal_target": target,
-                        "formal_target_display": target,
-                        "target_weights": "{}" if target == "CASH" else json.dumps({target: 1.0}),
-                        "risk_off_state": "no_target_cash_all" if target == "CASH" else "formal_target_active",
-                        "execution_action_basis": "next_day",
-                        "next_day_tradable_flag": True,
-                        "readiness_state": "formal_ready",
-                    }
-                )
-            pd.DataFrame(rows).to_csv(target_stream, index=False)
-
-            manifest: dict[str, object] = {
-                "signal_date": dates[-1].strftime("%Y-%m-%d"),
-                "rapid_rotation_target_stream_path": str(target_stream),
-            }
-            _attach_rapid_rotation_warning_boundary(manifest)
-
-            self.assertEqual(manifest["rapid_rotation_metrics_status"], "ready")
-            self.assertEqual(manifest["rapid_rotation_metrics_as_of_date"], dates[-1].strftime("%Y-%m-%d"))
-            self.assertEqual(manifest["rapid_rotation_warning_state"], "elevated")
-            self.assertFalse(manifest["rapid_rotation_active_in_trade_decision"])
-            self.assertFalse(manifest["formal_model_changed"])
-            self.assertFalse(manifest["trade_decision_changed"])
 
     def test_target_stability_warning_boundary_is_report_only(self) -> None:
         manifest = _target_stability_manifest(score_a=1.00, score_b=0.94)
@@ -1281,7 +1236,7 @@ class StockPoolObservationTest(unittest.TestCase):
             self.assertIn("隔日可操作日", report_text)
             self.assertIn("如果目前現金或者持有：現金/空手", report_text)
             self.assertIn("模型動作：轉入 台積電(2330)。", report_text)
-            self.assertIn("## 正式 / 輔助分層", report_text)
+            self.assertIn("## 正式 / 診斷分層", report_text)
             self.assertIn("候選，不等於正式最終目標", report_text)
             self.assertIn("不改交易結論", report_text)
             self.assertIn("成本口徑", report_text)
