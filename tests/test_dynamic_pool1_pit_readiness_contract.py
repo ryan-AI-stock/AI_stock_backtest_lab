@@ -1468,6 +1468,124 @@ class DynamicPool1PitReadinessContractTest(unittest.TestCase):
             self.assertFalse(bool(row["formal_exact"]))
             self.assertFalse(bool(row["free_float_market_cap_ready"]))
 
+    def test_twse_capital_stock_full_sweep_proxy_contract_is_not_formal_exact(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache = root / "cache"
+            radar = root / "radar"
+            market_cap = root / "market_cap"
+            output = root / "out"
+            cache.mkdir()
+            radar.mkdir()
+            market_cap.mkdir()
+
+            pd.DataFrame(
+                {
+                    "date": ["2015-01-05"],
+                    "open": [100],
+                    "high": [101],
+                    "low": [99],
+                    "close": [100],
+                    "adj_close": [100],
+                    "volume": [1000],
+                }
+            ).to_csv(cache / "2330_TW.csv", index=False)
+            (market_cap / "readiness_for_core.json").write_text(
+                json.dumps(
+                    {
+                        "status": "completed_twse_capital_stock_full_sweep_proxy_contract_ready",
+                        "twse_capital_stock_full_sweep_ready": True,
+                        "proxy_contract_ready": True,
+                        "market_cap_pit_partial_ready": True,
+                        "accepted_twse_capital_stock_rows": 43705,
+                        "covered_periods": 45,
+                        "expected_periods": 45,
+                        "missing_or_failed_periods": 0,
+                        "symbols": 1079,
+                        "formal_exact": False,
+                        "free_float_market_cap_ready": False,
+                        "future_data_violation_count": 0,
+                        "ready_for_core_rerun": True,
+                        "ready_for_strategy_replay": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (market_cap / "manifest.json").write_text("{}", encoding="utf-8")
+            pd.DataFrame(
+                [
+                    {
+                        "ticker": "2330",
+                        "market": "TWSE",
+                        "date_or_period": "2015Q1",
+                        "capital_stock": 259303805,
+                        "source_type": "quarterly_capital_stock_source_candidate_no_exact_filing_date",
+                        "formal_exact": False,
+                    }
+                ]
+            ).to_csv(market_cap / "accepted_twse_capital_stock_rows.csv", index=False)
+            pd.DataFrame([{"year_quarter": "2015Q1", "rows": 1000}]).to_csv(
+                market_cap / "accepted_twse_capital_stock_rows_manifest.csv",
+                index=False,
+            )
+            pd.DataFrame([{"contract_item": "quarterly_capital_stock_forward_asof_daily_close_proxy"}]).to_csv(
+                market_cap / "proxy_market_cap_contract.csv",
+                index=False,
+            )
+            pd.DataFrame([{"ticker": "2330", "date": "2015-04-01", "proxy_market_cap": 1000000000}]).to_csv(
+                market_cap / "sample_proxy_market_cap_rows.csv",
+                index=False,
+            )
+
+            run_dynamic_pool1_pit_readiness_contract(
+                output_dir=output,
+                price_cache_dir=cache,
+                price_source_registry=root / "missing_registry.csv",
+                tw50_constituents_path=root / "missing_tw50.csv",
+                ai_theme_candidates_path=root / "missing_ai.csv",
+                radar_data_dir=radar,
+                liquidity_sweep_output=root / "missing_sweep",
+                listing_metadata_output=root / "missing_listing",
+                tpex_status_output=root / "missing_tpex",
+                tpex_transition_output=root / "missing_transition",
+                monthly_revenue_output=root / "missing_monthly",
+                quarterly_fundamentals_output=root / "missing_quarterly",
+                market_cap_output=market_cap,
+            )
+
+            readiness = json.loads((output / "readiness.json").read_text(encoding="utf-8"))
+            market_status = readiness["market_cap"]
+            self.assertEqual(
+                readiness["table_status"]["market_cap_pit"]["status"],
+                "twse_capital_stock_full_sweep_proxy_contract_ready",
+            )
+            self.assertEqual(market_status["accepted_rows"], 43705)
+            self.assertEqual(market_status["accepted_markets"], ["TWSE"])
+            self.assertEqual(market_status["blocked_markets"], ["TWSE"])
+            self.assertTrue(market_status["twse_capital_stock_full_sweep_ready"])
+            self.assertTrue(market_status["proxy_contract_ready"])
+            self.assertEqual(market_status["covered_periods"], 45)
+            self.assertEqual(market_status["expected_periods"], 45)
+            self.assertEqual(market_status["missing_or_failed_periods"], 0)
+            self.assertEqual(market_status["symbols"], 1079)
+            self.assertFalse(market_status["formal_exact"])
+            self.assertFalse(market_status["free_float_market_cap_ready"])
+            self.assertFalse(readiness["ready_for_strategy_replay"])
+            self.assertFalse(readiness["dynamic_pool1_shadow_challenger_ready"])
+
+            delta = pd.read_csv(output / "blocker_delta_after_twse_capital_stock_full_sweep_proxy_contract.csv")
+            row = delta[delta["blocker"].eq("market_cap_pit")].iloc[0]
+            self.assertEqual(row["after_status"], "twse_capital_stock_full_sweep_proxy_contract_ready")
+            self.assertEqual(
+                row["delta"],
+                "twse_capital_stock_full_sweep_proxy_contract_ready_direct_daily_market_cap_blocked",
+            )
+            self.assertEqual(int(row["accepted_rows"]), 43705)
+            self.assertEqual(int(row["covered_periods"]), 45)
+            self.assertEqual(int(row["missing_or_failed_periods"]), 0)
+            self.assertFalse(bool(row["formal_exact"]))
+            self.assertFalse(bool(row["free_float_market_cap_ready"]))
+
 
 if __name__ == "__main__":
     unittest.main()
