@@ -100,6 +100,7 @@ def run_dynamic_pool1_pit_readiness_contract(
         dataset_summary = _dataset_readiness_summary(readiness)
         blocker_delta = _blocker_delta_after_liquidity_full_sweep(liquidity_sweep)
         listing_delta = _blocker_delta_after_listing_metadata(listing_metadata)
+        listing_completion_delta = _blocker_delta_after_listing_master_completion(listing_metadata)
 
         log("write_outputs", "started", str(output))
         for table_name, frame in tables.items():
@@ -108,6 +109,11 @@ def run_dynamic_pool1_pit_readiness_contract(
         dataset_summary.to_csv(output / "dataset_readiness_summary.csv", index=False, encoding="utf-8-sig")
         blocker_delta.to_csv(output / "blocker_delta_after_liquidity_full_sweep.csv", index=False, encoding="utf-8-sig")
         listing_delta.to_csv(output / "blocker_delta_after_listing_metadata.csv", index=False, encoding="utf-8-sig")
+        listing_completion_delta.to_csv(
+            output / "blocker_delta_after_listing_master_completion.csv",
+            index=False,
+            encoding="utf-8-sig",
+        )
         violation_audit.to_csv(output / "future_data_violation_audit.csv", index=False, encoding="utf-8-sig")
         (output / "source_manifest.json").write_text(
             json.dumps(source_manifest, ensure_ascii=False, indent=2),
@@ -720,7 +726,7 @@ def _readiness_json(
             "diagnostic_or_blocked_source_count": len(source_inventory),
         },
         "next_blockers": [
-            "listing/delisting/suspension master metadata for all-listed universe",
+            "TPEx 2015-2025 historical status/listing metadata and full cross-market listing master",
             "monthly revenue PIT with announcement/release dates",
             "quarterly fundamentals PIT with announcement/release dates",
             "historical market cap/free-float market cap PIT",
@@ -751,6 +757,7 @@ def _manifest(readiness: dict[str, Any]) -> dict[str, Any]:
             "dataset_readiness_summary": "dataset_readiness_summary.csv",
             "blocker_delta_after_liquidity_full_sweep": "blocker_delta_after_liquidity_full_sweep.csv",
             "blocker_delta_after_listing_metadata": "blocker_delta_after_listing_metadata.csv",
+            "blocker_delta_after_listing_master_completion": "blocker_delta_after_listing_master_completion.csv",
             "future_data_violation_audit": "future_data_violation_audit.csv",
             "source_manifest": "source_manifest.json",
             "readiness": "readiness.json",
@@ -783,8 +790,9 @@ def _final_summary(readiness: dict[str, Any]) -> str:
         else "- all-listed liquid universe：blocked，缺上市/下市/停牌/流動性 PIT ledger。\n"
     )
     listing_line = (
-        f"- listing/delisting/suspension metadata：partial，accepted event rows="
-        f"{listing.get('accepted_event_rows', 0)}；但 complete historical master 仍未 ready。\n"
+        f"- listing/delisting/suspension metadata：{listing.get('readiness_level', 'partial')}，"
+        f"accepted event rows={listing.get('accepted_event_rows', 0)}"
+        f"（delta={listing.get('delta_vs_previous', 0)}）；但 complete cross-market master 仍未 ready。\n"
         if listing.get("partial_event_rows_available")
         else "- listing/delisting/suspension metadata：blocked，缺完整歷史 master。\n"
     )
@@ -972,6 +980,72 @@ def _blocker_delta_after_listing_metadata(listing_metadata: dict[str, Any]) -> p
     )
 
 
+def _blocker_delta_after_listing_master_completion(listing_metadata: dict[str, Any]) -> pd.DataFrame:
+    summary = _listing_metadata_summary(listing_metadata)
+    stronger = summary.get("readiness_level") == "stronger_partial"
+    return pd.DataFrame(
+        [
+            {
+                "blocker": "listing_delisting_suspension_metadata",
+                "before_status": "partial",
+                "after_status": "stronger_partial" if stronger else summary.get("readiness_level", "partial"),
+                "delta": "accepted_event_rows_increased" if summary.get("delta_vs_previous", 0) else "unchanged_or_unknown_delta",
+                "previous_accepted_event_rows": int(summary.get("previous_accepted_event_rows", 0)),
+                "accepted_event_rows_total": int(summary.get("accepted_event_rows", 0)),
+                "delta_vs_previous": int(summary.get("delta_vs_previous", 0)),
+                "accepted_listing_metadata_rows": int(summary.get("accepted_listing_metadata_rows", 0)),
+                "accepted_suspension_event_rows": int(summary.get("accepted_suspension_event_rows", 0)),
+                "accepted_code_name_change_rows": int(summary.get("accepted_code_name_change_rows", 0)),
+                "accepted_transfer_listing_rows": int(summary.get("accepted_transfer_listing_rows", 0)),
+                "twse_improved_partial_status_coverage": bool(summary.get("twse_improved_partial_status_coverage", False)),
+                "tpex_2015_2025_blocked": bool(summary.get("tpex_2015_2025_blocked", True)),
+                "cross_market_strategy_replay_ready": bool(summary.get("ready_for_strategy_replay", False)),
+                "twse_only_diagnostic_possible": bool(summary.get("twse_only_diagnostic_possible", False)),
+                "twse_only_diagnostic_recommendation": summary.get("twse_only_diagnostic_recommendation", ""),
+                "remaining_blocker": summary.get("remaining_blocker", ""),
+            },
+            {
+                "blocker": "monthly_revenue_pit",
+                "before_status": "blocked",
+                "after_status": "blocked",
+                "delta": "unchanged",
+                "previous_accepted_event_rows": 0,
+                "accepted_event_rows_total": 0,
+                "delta_vs_previous": 0,
+                "accepted_listing_metadata_rows": 0,
+                "accepted_suspension_event_rows": 0,
+                "accepted_code_name_change_rows": 0,
+                "accepted_transfer_listing_rows": 0,
+                "twse_improved_partial_status_coverage": False,
+                "tpex_2015_2025_blocked": False,
+                "cross_market_strategy_replay_ready": False,
+                "twse_only_diagnostic_possible": False,
+                "twse_only_diagnostic_recommendation": "",
+                "remaining_blocker": "MOPS monthly revenue full universe PIT with release_date is still missing",
+            },
+            {
+                "blocker": "quarterly_fundamentals_pit",
+                "before_status": "blocked",
+                "after_status": "blocked",
+                "delta": "unchanged",
+                "previous_accepted_event_rows": 0,
+                "accepted_event_rows_total": 0,
+                "delta_vs_previous": 0,
+                "accepted_listing_metadata_rows": 0,
+                "accepted_suspension_event_rows": 0,
+                "accepted_code_name_change_rows": 0,
+                "accepted_transfer_listing_rows": 0,
+                "twse_improved_partial_status_coverage": False,
+                "tpex_2015_2025_blocked": False,
+                "cross_market_strategy_replay_ready": False,
+                "twse_only_diagnostic_possible": False,
+                "twse_only_diagnostic_recommendation": "",
+                "remaining_blocker": "quarterly fundamentals PIT with announcement/release dates is still missing",
+            },
+        ]
+    )
+
+
 def _liquidity_sweep_summary(liquidity_sweep: dict[str, Any]) -> dict[str, Any]:
     readiness = liquidity_sweep.get("readiness", {})
     covered = readiness.get("covered_date_range", {})
@@ -998,8 +1072,13 @@ def _listing_metadata_status(listing_metadata: dict[str, Any]) -> dict[str, Any]
     summary = _listing_metadata_summary(listing_metadata)
     if summary["partial_event_rows_available"]:
         return {
-            "status": "partial",
-            "reason": "partial official event rows are available, but complete historical master remains missing",
+            "status": summary["readiness_level"],
+            "reason": (
+                "improved TWSE status coverage and partial official event rows are available, but complete "
+                "cross-market historical master remains missing"
+                if summary["readiness_level"] == "stronger_partial"
+                else "partial official event rows are available, but complete historical master remains missing"
+            ),
             "accepted_for_formal": False,
         }
     return {
@@ -1015,16 +1094,43 @@ def _listing_metadata_summary(listing_metadata: dict[str, Any]) -> dict[str, Any
     accepted_suspension = int(
         readiness.get("accepted_suspension_event_rows", listing_metadata.get("accepted_suspension_rows", 0)) or 0
     )
+    accepted_code_name_change = int(readiness.get("accepted_code_name_change_rows", 0) or 0)
+    accepted_transfer = int(readiness.get("accepted_transfer_listing_rows", 0) or 0)
+    accepted_total = int(
+        readiness.get(
+            "accepted_event_rows_total",
+            accepted_listing + accepted_suspension + accepted_code_name_change + accepted_transfer,
+        )
+        or 0
+    )
+    previous_total = int(readiness.get("previous_accepted_event_rows", 0) or 0)
+    delta_vs_previous = int(readiness.get("new_or_carried_forward_event_rows_delta_vs_previous", 0) or 0)
+    twse_improved = bool(
+        readiness.get("twse_suspension_resumption_range_sweep_candidate")
+        or readiness.get("twse_altered_trading_monthly_anchor_candidate")
+    )
+    tpex_blocked = not bool(
+        readiness.get("tpex_historical_listing_delisting_master_ready")
+        and readiness.get("tpex_historical_suspension_resumption_master_ready")
+    )
+    stronger_partial = bool(accepted_total >= 1000 and twse_improved and tpex_blocked)
     return {
         "exists": bool(listing_metadata.get("exists")),
         "path": listing_metadata.get("path", ""),
         "status": readiness.get("status", ""),
+        "readiness_level": "stronger_partial" if stronger_partial else ("partial" if accepted_total else "blocked"),
         "partial_event_rows_available": bool(accepted_listing or accepted_suspension),
         "accepted_listing_metadata_rows": accepted_listing,
         "accepted_suspension_event_rows": accepted_suspension,
-        "accepted_event_rows": accepted_listing + accepted_suspension,
+        "accepted_code_name_change_rows": accepted_code_name_change,
+        "accepted_transfer_listing_rows": accepted_transfer,
+        "accepted_event_rows": accepted_total,
+        "previous_accepted_event_rows": previous_total,
+        "delta_vs_previous": delta_vs_previous,
         "proxy_source_rows": int(readiness.get("proxy_source_rows", 0) or 0),
         "blocked_source_rows": int(readiness.get("blocked_source_rows", listing_metadata.get("blocked_rows", 0)) or 0),
+        "twse_improved_partial_status_coverage": twse_improved,
+        "tpex_2015_2025_blocked": tpex_blocked,
         "listing_delisting_suspension_metadata_ready": bool(
             readiness.get("listing_delisting_suspension_metadata_ready", False)
         ),
@@ -1033,6 +1139,19 @@ def _listing_metadata_summary(listing_metadata: dict[str, Any]) -> dict[str, Any
         "dynamic_pool1_shadow_challenger_ready": bool(readiness.get("dynamic_pool1_shadow_challenger_ready", False)),
         "future_data_violation_count": int(readiness.get("future_data_violation_count", 0) or 0),
         "readiness_decision": readiness.get("readiness_decision", ""),
+        "twse_only_diagnostic_possible": stronger_partial,
+        "twse_only_diagnostic_recommendation": (
+            "possible only as TWSE-only diagnostic/sensitivity; not recommended as formal cross-market challenger "
+            "because TPEx 2015-2025 and full master metadata remain blocked"
+            if stronger_partial
+            else "not enough listing metadata coverage for even TWSE-only diagnostic"
+        ),
+        "remaining_blocker": (
+            "TPEx 2015-2025 historical listing/status routes, MOPS material-information date-range crawler, "
+            "and full daily TWSE altered-trading status panel"
+            if stronger_partial
+            else "complete historical listing/delisting/suspension master is missing"
+        ),
     }
 
 

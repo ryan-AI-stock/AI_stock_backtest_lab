@@ -309,6 +309,108 @@ class DynamicPool1PitReadinessContractTest(unittest.TestCase):
             self.assertEqual(listing_row["after_status"], "partial")
             self.assertFalse(bool(listing_row["ready_for_strategy_replay"]))
 
+    def test_listing_master_completion_is_stronger_partial_not_strategy_ready(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache = root / "cache"
+            radar = root / "radar"
+            listing = root / "listing_completion"
+            output = root / "out"
+            cache.mkdir()
+            radar.mkdir()
+            listing.mkdir()
+
+            pd.DataFrame(
+                {
+                    "date": ["2015-01-05"],
+                    "open": [100],
+                    "high": [101],
+                    "low": [99],
+                    "close": [100],
+                    "adj_close": [100],
+                    "volume": [1000],
+                }
+            ).to_csv(cache / "2330_TW.csv", index=False)
+            pd.DataFrame([{"ticker": "2330", "event_type": "listing"}]).to_csv(
+                listing / "accepted_listing_metadata_rows.csv",
+                index=False,
+            )
+            pd.DataFrame([{"ticker": "2330", "event_type": "suspension"}]).to_csv(
+                listing / "accepted_suspension_event_rows.csv",
+                index=False,
+            )
+            pd.DataFrame([{"ticker": "2330", "event_type": "code_name_change_candidate"}]).to_csv(
+                listing / "accepted_code_name_change_rows.csv",
+                index=False,
+            )
+            pd.DataFrame(columns=["ticker", "event_type"]).to_csv(
+                listing / "accepted_transfer_listing_rows.csv",
+                index=False,
+            )
+            pd.DataFrame(
+                [
+                    {
+                        "dataset": "listing_delisting_suspension_master",
+                        "market": "TPEx",
+                        "blocked_requirement": "2015-2025 historical status",
+                        "formal_ready": False,
+                    }
+                ]
+            ).to_csv(listing / "blocked_source_rows.csv", index=False)
+            (listing / "readiness_for_core.json").write_text(
+                json.dumps(
+                    {
+                        "status": "completed_partial_improved_twse_status_coverage_but_master_ready_false",
+                        "previous_accepted_event_rows": 557,
+                        "accepted_listing_metadata_rows": 379,
+                        "accepted_suspension_event_rows": 5582,
+                        "accepted_code_name_change_rows": 33,
+                        "accepted_transfer_listing_rows": 0,
+                        "accepted_event_rows_total": 5994,
+                        "new_or_carried_forward_event_rows_delta_vs_previous": 5437,
+                        "proxy_source_rows": 2153,
+                        "blocked_source_rows": 4,
+                        "twse_suspension_resumption_range_sweep_candidate": True,
+                        "twse_altered_trading_monthly_anchor_candidate": True,
+                        "tpex_historical_listing_delisting_master_ready": False,
+                        "tpex_historical_suspension_resumption_master_ready": False,
+                        "listing_delisting_suspension_metadata_ready": False,
+                        "ready_for_core_rerun": True,
+                        "ready_for_strategy_replay": False,
+                        "dynamic_pool1_shadow_challenger_ready": False,
+                        "future_data_violation_count": 0,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (listing / "manifest.json").write_text("{}", encoding="utf-8")
+
+            run_dynamic_pool1_pit_readiness_contract(
+                output_dir=output,
+                price_cache_dir=cache,
+                price_source_registry=root / "missing_registry.csv",
+                tw50_constituents_path=root / "missing_tw50.csv",
+                ai_theme_candidates_path=root / "missing_ai.csv",
+                radar_data_dir=radar,
+                liquidity_sweep_output=root / "missing_sweep",
+                listing_metadata_output=listing,
+            )
+
+            readiness = json.loads((output / "readiness.json").read_text(encoding="utf-8"))
+            self.assertEqual(readiness["table_status"]["listing_delisting_suspension_metadata"]["status"], "stronger_partial")
+            self.assertEqual(readiness["listing_metadata"]["accepted_event_rows"], 5994)
+            self.assertEqual(readiness["listing_metadata"]["delta_vs_previous"], 5437)
+            self.assertTrue(readiness["listing_metadata"]["twse_only_diagnostic_possible"])
+            self.assertFalse(readiness["ready_for_strategy_replay"])
+            self.assertFalse(readiness["dynamic_pool1_shadow_challenger_ready"])
+
+            completion_delta = pd.read_csv(output / "blocker_delta_after_listing_master_completion.csv")
+            row = completion_delta[completion_delta["blocker"].eq("listing_delisting_suspension_metadata")].iloc[0]
+            self.assertEqual(row["after_status"], "stronger_partial")
+            self.assertEqual(int(row["accepted_event_rows_total"]), 5994)
+            self.assertTrue(bool(row["twse_only_diagnostic_possible"]))
+            self.assertFalse(bool(row["cross_market_strategy_replay_ready"]))
+
 
 if __name__ == "__main__":
     unittest.main()
