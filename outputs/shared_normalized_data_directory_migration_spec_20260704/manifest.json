@@ -1,0 +1,13 @@
+{
+  "task_id": "TASK-BACKTEST-DATA-SHARED-NORMALIZED-DIRECTORY-MIGRATION-SPEC-20260704",
+  "status": "completed_spec_only_no_move",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\shared_normalized_data_directory_migration_spec_20260704",
+  "proposed_shared_root": "C:\\Users\\zergv\\Documents\\Codex\\shared_stock_data",
+  "delete_executed": false,
+  "move_executed": false,
+  "compress_executed": false,
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "requires_radar_followup": true
+}

@@ -1,0 +1,25 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-STORAGE-CHECKSUM-APPROVAL-PACKAGE-20260704",
+  "status": "completed_approval_package_no_delete",
+  "generated_at": "2026-07-04T05:14:22.747930+00:00",
+  "source_audit": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\data_governance_storage_audit_20260704",
+  "candidate_rows": 266,
+  "checksum_rows": 4152,
+  "candidate_size_mb_from_audit": 444.913,
+  "hashed_size_mb": 444.908181,
+  "protected_keyword_review_rows": 15,
+  "delete_executed": false,
+  "archive_executed": false,
+  "move_executed": false,
+  "compress_executed": false,
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "user_approval_required_for_delete": true,
+  "protected_boundaries": [
+    "2014/11+ backtest-required data",
+    "0050/TW50 PIT and 00631L related data",
+    "TWSE/TPEx price and liquidity cache",
+    "formal next-day ledgers and current formal outputs"
+  ]
+}

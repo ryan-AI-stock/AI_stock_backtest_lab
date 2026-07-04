@@ -1,0 +1,16 @@
+﻿path,size_mb,reason,cleanup_allowed_without_review
+backtest_cache/ad_hoc_20260612_daily_targets,1.553,path contains protected keyword; requires manual review before any cleanup,False
+backtest_cache/ad_hoc_20260612_daily_targets_filled,1.551,path contains protected keyword; requires manual review before any cleanup,False
+outputs/stock_pool_observations_remove_00631l_cap_smoke_20260629,0.571,path contains protected keyword; requires manual review before any cleanup,False
+backtest_cache/ad_hoc_2023_2024_yfinance,0.466,path contains protected keyword; requires manual review before any cleanup,False
+backtest_cache/ad_hoc_2021_2022_yfinance,0.333,path contains protected keyword; requires manual review before any cleanup,False
+backtest_cache/ad_hoc_20260529_signal,0.287,path contains protected keyword; requires manual review before any cleanup,False
+backtest_cache/ad_hoc_00631l_full_history,0.182,path contains protected keyword; requires manual review before any cleanup,False
+outputs/tw50_constituent_coverage_20260620_full,0.059,path contains protected keyword; requires manual review before any cleanup,False
+outputs/core_data_backfill_tw50_201411_202312_phase2_runner_20260629,0.054,path contains protected keyword; requires manual review before any cleanup,False
+outputs/core_data_backfill_price_and_target_gaps_phase3_20260629,0.035,path contains protected keyword; requires manual review before any cleanup,False
+outputs/stock_pool_historical_replay_20260620_smoke_tw50,0.026,path contains protected keyword; requires manual review before any cleanup,False
+outputs/core_data_backfill_tw50_201411_202312_audit_20260629,0.014,path contains protected keyword; requires manual review before any cleanup,False
+outputs/tw50_constituent_coverage_20260620,0.007,path contains protected keyword; requires manual review before any cleanup,False
+outputs/core_ai_megacap_price_refresh_for_ma_similarity_20260629,0.006,path contains protected keyword; requires manual review before any cleanup,False
+outputs/current_formal_pool1_pool2_signal_panels_pool2_persistence_smoke_20260702,0.0,path contains protected keyword; requires manual review before any cleanup,False
