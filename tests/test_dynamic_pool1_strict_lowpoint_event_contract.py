@@ -81,6 +81,12 @@ class DynamicPool1StrictLowpointEventContractTest(unittest.TestCase):
             self.assertFalse(ref.empty)
             self.assertTrue((ref["event_variant_role"] == "reference_only").all())
             self.assertFalse(contract["uses_forward_return_as_rule"].any())
+            case_trace = pd.read_csv(root / "out" / "case_trace_6669_2308_2317.csv")
+            self.assertIn("2317.TW", set(case_trace["ticker"].astype(str)))
+            foxconn = case_trace[case_trace["ticker"].astype(str).eq("2317.TW")].iloc[0]
+            self.assertFalse(bool(foxconn["event_found"]))
+            self.assertEqual(foxconn["case_trace_blocked_reason"], "no_strict_lowpoint_event_for_case_ticker")
+            self.assertTrue(manifest["case_trace_contains_2317"])
 
 
 if __name__ == "__main__":

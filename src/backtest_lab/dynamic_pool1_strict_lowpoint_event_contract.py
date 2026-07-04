@@ -20,6 +20,11 @@ DEFAULT_LIQUIDITY_DIR = Path(
     r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs"
     r"\radar_dynamic_pool1_all_listed_liquid_universe_full_sweep_20260703"
 )
+CASE_TRACE_TICKERS = {
+    "6669.TW": "緯穎",
+    "2308.TW": "台達電",
+    "2317.TW": "鴻海",
+}
 
 PRIMARY_VARIANTS = {
     "lowpoint_0_2d_rebound_5_12pct": "strict_lowpoint_0_2d_rebound_5_12pct",
@@ -44,7 +49,7 @@ def run_dynamic_pool1_strict_lowpoint_event_contract(
     calendar = _load_calendar(Path(liquidity_dir))
     contract, blocked = _build_contract(event_panel, calendar)
     summary = _variant_summary(contract)
-    case_trace = contract[contract["ticker"].isin(["6669.TW", "2308.TW", "2317.TW"])].copy()
+    case_trace = _build_case_trace(contract)
     negative = _load_negative_control(source)
     future_audit = _future_data_audit(contract)
 
@@ -65,6 +70,13 @@ def run_dynamic_pool1_strict_lowpoint_event_contract(
         "blocked_rows": int(len(blocked)),
         "future_data_violation_count": int(future_audit["future_data_violation"].sum()),
         "case_trace_refresh_rows": int(contract["case_trace_refresh_only"].sum()),
+        "case_trace_rows": int(len(case_trace)),
+        "case_trace_expected_tickers": list(CASE_TRACE_TICKERS),
+        "case_trace_found_tickers": sorted(case_trace.loc[case_trace["event_found"], "ticker"].astype(str).unique().tolist()),
+        "case_trace_missing_event_tickers": sorted(
+            case_trace.loc[~case_trace["event_found"], "ticker"].astype(str).unique().tolist()
+        ),
+        "case_trace_contains_2317": bool(case_trace["ticker"].astype(str).eq("2317.TW").any()),
         "uses_forward_return_as_rule": False,
         "portfolio_replay_executed": False,
         "formal_model_changed": False,
@@ -87,6 +99,40 @@ def run_dynamic_pool1_strict_lowpoint_event_contract(
         ]
     ).to_csv(output / "run_log.csv", index=False, encoding="utf-8-sig")
     return manifest
+
+
+def _build_case_trace(contract: pd.DataFrame) -> pd.DataFrame:
+    case_trace = contract[contract["ticker"].isin(CASE_TRACE_TICKERS)].copy()
+    case_trace["event_found"] = True
+    case_trace["case_trace_blocked_reason"] = ""
+    found = set(case_trace["ticker"].astype(str).unique())
+    missing_rows = []
+    for ticker, name in CASE_TRACE_TICKERS.items():
+        if ticker in found:
+            continue
+        row = {column: "" for column in case_trace.columns}
+        row.update(
+            {
+                "ticker": ticker,
+                "candidate_name": name,
+                "candidate_source": "case_trace_hygiene_placeholder",
+                "price_ready": False,
+                "liquidity_ready": False,
+                "event_found": False,
+                "case_trace_blocked_reason": "no_strict_lowpoint_event_for_case_ticker",
+                "blocked_reason": "no_strict_lowpoint_event_for_case_ticker",
+                "uses_forward_return_as_rule": False,
+                "formal_model_changed": False,
+                "trade_decision_changed": False,
+                "active_in_trade_decision": False,
+                "report_changed": False,
+                "portfolio_replay_executed": False,
+            }
+        )
+        missing_rows.append(row)
+    if missing_rows:
+        case_trace = pd.concat([case_trace, pd.DataFrame(missing_rows)], ignore_index=True, sort=False)
+    return case_trace
 
 
 def _build_contract(event_panel: pd.DataFrame, calendar: list[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -218,6 +264,8 @@ def _summary(manifest: dict, variant_summary: pd.DataFrame) -> str:
             f"- blocked rows：{manifest['blocked_rows']}",
             f"- future data violation count：{manifest['future_data_violation_count']}",
             f"- case trace refresh rows：{manifest['case_trace_refresh_rows']}",
+            f"- case trace rows：{manifest['case_trace_rows']}",
+            f"- case trace missing event tickers：{manifest['case_trace_missing_event_tickers']}",
             "- `strict_lowpoint_3_5d_rebound_5_12pct_reference_only` 只作 reference，不是主線。",
             "",
             "## Variant summary",
