@@ -1,0 +1,17 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-STORAGE-CLEANUP-EXECUTION-20260704",
+  "status": "completed_cleanup_execution_core_rebuildable_only",
+  "generated_at": "2026-07-04T06:57:50.159034+00:00",
+  "source_approval_package": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\storage_checksum_approval_package_20260704",
+  "input_rows": 266,
+  "deleted_rows": 224,
+  "skipped_rows": 15,
+  "missing_rows": 27,
+  "deleted_size_mb": 420.600508,
+  "scope": "Core disposable/rebuildable candidates only",
+  "radar_raw_sources_deleted": false,
+  "protected_data_deleted": false,
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false
+}
