@@ -33,6 +33,7 @@ DEFAULT_TPEX_TRANSITION_OUTPUT = ""
 DEFAULT_MONTHLY_REVENUE_OUTPUT = ""
 DEFAULT_QUARTERLY_FUNDAMENTALS_OUTPUT = ""
 DEFAULT_MARKET_CAP_OUTPUT = ""
+DEFAULT_SECTOR_OUTPUT = ""
 
 YEAR_BUCKETS = (
     ("2015-2021", "2015-01-01", "2021-12-31"),
@@ -65,6 +66,7 @@ def run_dynamic_pool1_pit_readiness_contract(
     monthly_revenue_output: str | Path | None = None,
     quarterly_fundamentals_output: str | Path | None = None,
     market_cap_output: str | Path | None = None,
+    sector_output: str | Path | None = None,
 ) -> Path:
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
@@ -91,6 +93,7 @@ def run_dynamic_pool1_pit_readiness_contract(
         monthly_revenue = _load_monthly_revenue_pit(monthly_revenue_output)
         quarterly_fundamentals = _load_quarterly_fundamentals_route_unlock(quarterly_fundamentals_output)
         market_cap = _load_market_cap_pit(market_cap_output)
+        sector = _load_sector_mainline_pit(sector_output)
         source_inventory = _source_inventory(
             price_cache_dir=Path(price_cache_dir),
             price_source_registry=Path(price_source_registry),
@@ -104,15 +107,16 @@ def run_dynamic_pool1_pit_readiness_contract(
             monthly_revenue=monthly_revenue,
             quarterly_fundamentals=quarterly_fundamentals,
             market_cap=market_cap,
+            sector=sector,
         )
         price_coverage = _price_cache_coverage(Path(price_cache_dir), Path(price_source_registry))
 
         log("build_contract_tables", "started", "")
         tables = _build_contract_tables(
-            source_inventory, price_coverage, liquidity_sweep, monthly_revenue, quarterly_fundamentals, market_cap
+            source_inventory, price_coverage, liquidity_sweep, monthly_revenue, quarterly_fundamentals, market_cap, sector
         )
         readiness_by_date = _candidate_data_readiness_by_date(
-            source_inventory, price_coverage, liquidity_sweep, monthly_revenue, quarterly_fundamentals, market_cap
+            source_inventory, price_coverage, liquidity_sweep, monthly_revenue, quarterly_fundamentals, market_cap, sector
         )
         violation_audit = _future_data_violation_audit(source_inventory)
         source_manifest = _source_manifest(source_inventory, price_coverage)
@@ -128,6 +132,7 @@ def run_dynamic_pool1_pit_readiness_contract(
             monthly_revenue,
             quarterly_fundamentals,
             market_cap,
+            sector,
         )
         dataset_summary = _dataset_readiness_summary(readiness)
         blocker_delta = _blocker_delta_after_liquidity_full_sweep(liquidity_sweep)
@@ -139,6 +144,7 @@ def run_dynamic_pool1_pit_readiness_contract(
         monthly_revenue_delta = _blocker_delta_after_mops_monthly_revenue(monthly_revenue)
         quarterly_delta = _blocker_delta_after_quarterly_fundamentals_route_unlock(quarterly_fundamentals)
         market_cap_delta = _blocker_delta_after_market_cap_partial(market_cap)
+        sector_delta = _blocker_delta_after_twse_sector_monthly_anchor(sector)
 
         log("write_outputs", "started", str(output))
         for table_name, frame in tables.items():
@@ -198,6 +204,11 @@ def run_dynamic_pool1_pit_readiness_contract(
             index=False,
             encoding="utf-8-sig",
         )
+        sector_delta.to_csv(
+            output / "blocker_delta_after_twse_sector_monthly_anchor.csv",
+            index=False,
+            encoding="utf-8-sig",
+        )
         violation_audit.to_csv(output / "future_data_violation_audit.csv", index=False, encoding="utf-8-sig")
         (output / "source_manifest.json").write_text(
             json.dumps(source_manifest, ensure_ascii=False, indent=2),
@@ -240,6 +251,7 @@ def _source_inventory(
     monthly_revenue: dict[str, Any],
     quarterly_fundamentals: dict[str, Any],
     market_cap: dict[str, Any],
+    sector: dict[str, Any],
 ) -> list[dict[str, Any]]:
     sources = [
         {
@@ -464,6 +476,41 @@ def _source_inventory(
                 "twse_capital_stock_sample_rows": summary["twse_capital_stock_sample_rows"],
                 "formal_exact": False,
                 "free_float_market_cap_ready": False,
+            }
+        )
+
+    if sector.get("exists"):
+        summary = _sector_summary(sector)
+        sources.append(
+            {
+                "data_area": "sector_membership_pit",
+                "source_name": "radar_dynamic_pool1_sector_mainline_pit_full_sweep_and_tpex_reverse",
+                "path": sector.get("path", ""),
+                "source_family": summary["source_type"],
+                "pit_acceptance": summary["sector_membership_status"],
+                "diagnostic_only": True,
+                "blocked_reason": summary["remaining_blocker"],
+                "twse_sector_membership_rows": summary["twse_sector_membership_rows"],
+                "twse_only": summary["twse_only"],
+                "tpex_included": summary["tpex_included"],
+                "mainline_theme_ready": summary["mainline_theme_ready"],
+                "formal_exact": False,
+            }
+        )
+        sources.append(
+            {
+                "data_area": "sector_breadth_pit_daily",
+                "source_name": "radar_dynamic_pool1_twse_sector_breadth_pit_daily",
+                "path": sector.get("path", ""),
+                "source_family": "twse_monthly_anchor_sector_breadth_candidate",
+                "pit_acceptance": summary["sector_breadth_status"],
+                "diagnostic_only": True,
+                "blocked_reason": (
+                    "TWSE monthly-anchor membership can support TWSE-only breadth diagnostic, but full cross-market "
+                    "daily sector breadth remains blocked by TPEx/mainline/theme gaps"
+                ),
+                "sector_breadth_rows": summary["sector_breadth_rows"],
+                "formal_exact": False,
             }
         )
 
@@ -772,6 +819,43 @@ def _load_market_cap_pit(market_cap_output: str | Path | None) -> dict[str, Any]
     }
 
 
+def _load_sector_mainline_pit(sector_output: str | Path | None) -> dict[str, Any]:
+    if not sector_output:
+        return {"exists": False, "path": ""}
+    root = Path(sector_output)
+    if not root.exists():
+        return {"exists": False, "path": str(root), "missing_reason": "sector output path does not exist"}
+    readiness = _load_json(root / "readiness_for_core.json")
+    manifest = _load_json(root / "manifest.json")
+    membership_manifest_path = root / "twse_sector_membership_rows_manifest.csv"
+    accepted_manifest_path = root / "accepted_sector_membership_rows_manifest.csv"
+    coverage_year_path = root / "twse_sector_membership_coverage_by_year.csv"
+    breadth_path = root / "twse_sector_breadth_pit_daily.csv"
+    breadth_summary_path = root / "twse_sector_breadth_summary.csv"
+    blocked_path = root / "blocked_source_rows.csv"
+    future_audit_path = root / "future_data_violation_audit.csv"
+    return {
+        "exists": True,
+        "path": str(root),
+        "readiness": readiness,
+        "manifest": manifest,
+        "membership_manifest_path": str(membership_manifest_path),
+        "accepted_manifest_path": str(accepted_manifest_path),
+        "coverage_year_path": str(coverage_year_path),
+        "breadth_path": str(breadth_path),
+        "breadth_summary_path": str(breadth_summary_path),
+        "blocked_path": str(blocked_path),
+        "future_audit_path": str(future_audit_path),
+        "membership_manifest_rows": int(len(_read_csv_if_exists(membership_manifest_path))),
+        "accepted_manifest_rows": int(len(_read_csv_if_exists(accepted_manifest_path))),
+        "coverage_year_rows": int(len(_read_csv_if_exists(coverage_year_path))),
+        "sector_breadth_rows": int(len(_read_csv_if_exists(breadth_path))),
+        "sector_breadth_summary_rows": int(len(_read_csv_if_exists(breadth_summary_path))),
+        "blocked_rows": int(len(_read_csv_if_exists(blocked_path))),
+        "future_audit_rows": int(len(_read_csv_if_exists(future_audit_path))),
+    }
+
+
 def _price_cache_coverage(price_cache_dir: Path, price_source_registry: Path) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     if price_cache_dir.exists():
@@ -828,6 +912,7 @@ def _build_contract_tables(
     monthly_revenue: dict[str, Any],
     quarterly_fundamentals: dict[str, Any],
     market_cap: dict[str, Any],
+    sector: dict[str, Any],
 ) -> dict[str, pd.DataFrame]:
     return {
         "all_listed_liquid_universe_pit_daily": _all_listed_liquid_contract(
@@ -838,18 +923,8 @@ def _build_contract_tables(
         "monthly_revenue_pit": _monthly_revenue_contract_table(monthly_revenue),
         "quarterly_fundamentals_pit": _quarterly_fundamentals_contract_table(quarterly_fundamentals),
         "market_cap_pit": _market_cap_contract_table(market_cap, source_inventory),
-        "sector_membership_pit": _source_contract_table(
-            "sector_membership_pit",
-            source_inventory,
-            "blocked",
-            "sector maps are current/generated; cannot be used as 2015 PIT membership",
-        ),
-        "sector_breadth_pit_daily": _source_contract_table(
-            "sector_breadth_pit_daily",
-            source_inventory,
-            "blocked",
-            "sector metrics are current/generated and lack accepted date-aware membership",
-        ),
+        "sector_membership_pit": _sector_membership_contract_table(sector, source_inventory),
+        "sector_breadth_pit_daily": _sector_breadth_contract_table(sector, source_inventory),
     }
 
 
@@ -1030,6 +1105,76 @@ def _market_cap_contract_table(market_cap: dict[str, Any], source_inventory: lis
     )
 
 
+def _sector_membership_contract_table(sector: dict[str, Any], source_inventory: list[dict[str, Any]]) -> pd.DataFrame:
+    summary = _sector_summary(sector)
+    if summary["sector_membership_partial_ready"]:
+        row = {
+            "record_type": "partial_source_candidate_status",
+            "data_area": "sector_membership_pit",
+            "ticker": "",
+            "name": "",
+            "value": (
+                f"twse_sector_membership_rows={summary['twse_sector_membership_rows']}; "
+                f"monthly_anchor_coverage={summary['monthly_anchor_coverage']}; "
+                f"twse_only={summary['twse_only']}; tpex_included={summary['tpex_included']}"
+            ),
+            "source_date": "",
+            "release_date": "monthly_anchor",
+            "effective_date": summary["covered_period"],
+            "source": "radar_dynamic_pool1_sector_mainline_pit_full_sweep_and_tpex_reverse",
+            "source_path": summary["path"],
+            "source_type": summary["source_type"],
+            "row_count": summary["twse_sector_membership_rows"],
+            "readiness_status": summary["sector_membership_status"],
+            "diagnostic_only": True,
+            "accepted_for_formal": False,
+            "blocked_reason": summary["remaining_blocker"],
+        }
+        return pd.DataFrame([row], columns=_contract_columns())
+    return _source_contract_table(
+        "sector_membership_pit",
+        source_inventory,
+        "blocked",
+        "sector maps are current/generated; cannot be used as 2015 PIT membership",
+    )
+
+
+def _sector_breadth_contract_table(sector: dict[str, Any], source_inventory: list[dict[str, Any]]) -> pd.DataFrame:
+    summary = _sector_summary(sector)
+    if summary["sector_membership_partial_ready"]:
+        row = {
+            "record_type": "diagnostic_source_candidate_status",
+            "data_area": "sector_breadth_pit_daily",
+            "ticker": "",
+            "name": "",
+            "value": (
+                f"sector_breadth_rows={summary['sector_breadth_rows']}; "
+                f"daily_breadth_ready={summary['sector_breadth_pit_daily_ready']}"
+            ),
+            "source_date": "",
+            "release_date": "derived_from_monthly_anchor_membership",
+            "effective_date": summary["covered_period"],
+            "source": "radar_dynamic_pool1_sector_mainline_pit_full_sweep_and_tpex_reverse",
+            "source_path": summary["path"],
+            "source_type": "twse_monthly_anchor_sector_breadth_candidate",
+            "row_count": summary["sector_breadth_rows"],
+            "readiness_status": summary["sector_breadth_status"],
+            "diagnostic_only": True,
+            "accepted_for_formal": False,
+            "blocked_reason": (
+                "TWSE-only monthly-anchor sector breadth can support diagnostic context, but full cross-market daily "
+                "breadth is blocked until TPEx sector membership and mainline/theme PIT are ready"
+            ),
+        }
+        return pd.DataFrame([row], columns=_contract_columns())
+    return _source_contract_table(
+        "sector_breadth_pit_daily",
+        source_inventory,
+        "blocked",
+        "sector metrics are current/generated and lack accepted date-aware membership",
+    )
+
+
 def _blocked_contract_table(data_area: str, status: str, reason: str) -> pd.DataFrame:
     return pd.DataFrame([_generic_status_row(data_area, status, reason)], columns=_contract_columns())
 
@@ -1095,6 +1240,7 @@ def _candidate_data_readiness_by_date(
     monthly_revenue: dict[str, Any],
     quarterly_fundamentals: dict[str, Any],
     market_cap: dict[str, Any],
+    sector: dict[str, Any],
 ) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     price_status = _price_readiness_status(price_coverage)
@@ -1108,6 +1254,7 @@ def _candidate_data_readiness_by_date(
                 monthly_revenue,
                 quarterly_fundamentals,
                 market_cap,
+                sector,
             )
             rows.append(
                 {
@@ -1117,8 +1264,14 @@ def _candidate_data_readiness_by_date(
                     "data_table": table,
                     "readiness_status": status,
                     "accepted_for_formal": False,
-                    "diagnostic_only": status in {"diagnostic_only", "partial", "source_candidate_ready"}
-                    and table != "monthly_revenue_pit",
+                    "diagnostic_only": status
+                    in {
+                        "diagnostic_only",
+                        "partial",
+                        "source_candidate_ready",
+                        "twse_monthly_anchor_source_candidate",
+                        "twse_monthly_anchor_breadth_diagnostic",
+                    },
                     "future_data_violation_count": 0,
                     "blocked_reason": reason,
                 }
@@ -1179,6 +1332,7 @@ def _readiness_json(
     monthly_revenue: dict[str, Any],
     quarterly_fundamentals: dict[str, Any],
     market_cap: dict[str, Any],
+    sector: dict[str, Any],
 ) -> dict[str, Any]:
     price_status = _price_readiness_status(price_coverage)
     table_status = {
@@ -1191,6 +1345,7 @@ def _readiness_json(
                 monthly_revenue,
                 quarterly_fundamentals,
                 market_cap,
+                sector,
             )[0],
             "reason": _readiness_for_table(
                 table,
@@ -1200,6 +1355,7 @@ def _readiness_json(
                 monthly_revenue,
                 quarterly_fundamentals,
                 market_cap,
+                sector,
             )[1],
             "accepted_for_formal": False,
         }
@@ -1227,6 +1383,8 @@ def _readiness_json(
         "monthly_revenue": _monthly_revenue_summary(monthly_revenue),
         "quarterly_fundamentals": _quarterly_fundamentals_summary(quarterly_fundamentals),
         "market_cap": _market_cap_summary(market_cap),
+        "sector": _sector_summary(sector),
+        "twse_only_dynamic_pool1_diagnostic_ready": _sector_summary(sector)["twse_only_dynamic_pool1_diagnostic_ready"],
         "coverage_by_year": {
             bucket: {
                 row["data_table"]: {
@@ -1254,6 +1412,7 @@ def _readiness_json(
             "TPEx market cap full 2015-latest sweep using sample-verified dailyQuotes route",
             "free-float shares/free-float market cap route",
             "sector/mainline membership PIT and sector breadth daily panel",
+            "TWSE-only sector proxy diagnostic panel can proceed only as diagnostic/shadow, not formal full-market replay",
             "exact per-company monthly revenue filing timestamp if formal_exact is required beyond conservative available_date",
         ],
     }
@@ -1292,6 +1451,7 @@ def _manifest(readiness: dict[str, Any]) -> dict[str, Any]:
             "blocker_delta_after_tpex_market_cap_full_sweep": "blocker_delta_after_tpex_market_cap_full_sweep.csv",
             "blocker_delta_after_twse_capital_stock_route_partial": "blocker_delta_after_twse_capital_stock_route_partial.csv",
             "blocker_delta_after_twse_capital_stock_full_sweep_proxy_contract": "blocker_delta_after_twse_capital_stock_full_sweep_proxy_contract.csv",
+            "blocker_delta_after_twse_sector_monthly_anchor": "blocker_delta_after_twse_sector_monthly_anchor.csv",
             "future_data_violation_audit": "future_data_violation_audit.csv",
             "source_manifest": "source_manifest.json",
             "readiness": "readiness.json",
@@ -1320,6 +1480,7 @@ def _final_summary(readiness: dict[str, Any]) -> str:
     monthly = readiness.get("monthly_revenue", {})
     quarterly = readiness.get("quarterly_fundamentals", {})
     market_cap = readiness.get("market_cap", {})
+    sector = readiness.get("sector", {})
     liquidity_line = (
         f"- all-listed liquid universe：partial，Radar full sweep covered "
         f"{liquidity.get('covered_start', '')}～{liquidity.get('covered_end', '')}，"
@@ -1362,7 +1523,11 @@ def _final_summary(readiness: dict[str, Any]) -> str:
         f"accepted rows={market_cap.get('accepted_rows', 0)}，"
         f"accepted markets={','.join(market_cap.get('accepted_markets', [])) if isinstance(market_cap.get('accepted_markets', []), list) else market_cap.get('accepted_markets', '')}；"
         "TPEx total market cap 可作 source candidate，TWSE 與 free-float 仍 blocked。\n"
-        "- sector membership / breadth：blocked，目前 current/generated map 不可回推 2015。\n"
+        f"- sector membership / breadth：{sector.get('sector_membership_status', 'blocked')}，"
+        f"twse_sector_membership_rows={sector.get('twse_sector_membership_rows', 0)}，"
+        f"twse_only={sector.get('twse_only', False)}，tpex_included={sector.get('tpex_included', False)}，"
+        f"mainline_theme_ready={sector.get('mainline_theme_ready', False)}；"
+        "僅可作 TWSE-only diagnostic，不是 full-market / daily-exact / AI mainline。\n"
         f"- future_data_violation_count={readiness['future_data_violation_count']}，因未把 current/proxy source 當正式歷史資料使用。\n\n"
         "formal_model_changed=false；trade_decision_changed=false；active_in_trade_decision=false。\n"
     )
@@ -1376,6 +1541,7 @@ def _readiness_for_table(
     monthly_revenue: dict[str, Any],
     quarterly_fundamentals: dict[str, Any],
     market_cap: dict[str, Any],
+    sector: dict[str, Any],
 ) -> tuple[str, str]:
     if table == "all_listed_liquid_universe_pit_daily":
         readiness = liquidity_sweep.get("readiness", {})
@@ -1429,8 +1595,20 @@ def _readiness_for_table(
             else "no market cap source candidates found",
         )
     if table == "sector_membership_pit":
+        summary = _sector_summary(sector)
+        if summary["sector_membership_partial_ready"]:
+            return (
+                summary["sector_membership_status"],
+                "TWSE official industry monthly-anchor membership can support TWSE-only diagnostic context; TPEx, mainline/theme, and daily-exact membership remain blocked",
+            )
         return "blocked", "sector maps are current/generated and not accepted as historical PIT membership"
     if table == "sector_breadth_pit_daily":
+        summary = _sector_summary(sector)
+        if summary["sector_membership_partial_ready"]:
+            return (
+                summary["sector_breadth_status"],
+                "TWSE monthly-anchor sector breadth is diagnostic-only; full daily cross-market breadth remains blocked",
+            )
         return "blocked", "sector breadth requires accepted PIT sector membership; current metrics are diagnostic only"
     return price_status
 
@@ -2101,6 +2279,71 @@ def _blocker_delta_after_market_cap_partial(market_cap: dict[str, Any]) -> pd.Da
     )
 
 
+def _blocker_delta_after_twse_sector_monthly_anchor(sector: dict[str, Any]) -> pd.DataFrame:
+    summary = _sector_summary(sector)
+    return pd.DataFrame(
+        [
+            {
+                "blocker": "sector_membership_pit",
+                "before_status": "blocked_current_or_generated_sector_map",
+                "after_status": summary["sector_membership_status"],
+                "delta": (
+                    "twse_monthly_anchor_source_candidate_ready_tpex_mainline_daily_exact_blocked"
+                    if summary["sector_membership_partial_ready"]
+                    else "unchanged_blocked"
+                ),
+                "twse_sector_membership_rows": int(summary["twse_sector_membership_rows"]),
+                "twse_only": bool(summary["twse_only"]),
+                "tpex_included": bool(summary["tpex_included"]),
+                "mainline_theme_ready": bool(summary["mainline_theme_ready"]),
+                "daily_exact": bool(summary["daily_exact"]),
+                "diagnostic_only": True,
+                "ready_for_strategy_replay": False,
+                "twse_only_dynamic_pool1_diagnostic_ready": bool(summary["twse_only_dynamic_pool1_diagnostic_ready"]),
+                "remaining_blocker": summary["remaining_blocker"],
+            },
+            {
+                "blocker": "sector_breadth_pit_daily",
+                "before_status": "blocked",
+                "after_status": summary["sector_breadth_status"],
+                "delta": (
+                    "twse_monthly_anchor_breadth_diagnostic_available_full_daily_breadth_blocked"
+                    if summary["sector_membership_partial_ready"]
+                    else "unchanged_blocked"
+                ),
+                "twse_sector_membership_rows": int(summary["twse_sector_membership_rows"]),
+                "twse_only": bool(summary["twse_only"]),
+                "tpex_included": bool(summary["tpex_included"]),
+                "mainline_theme_ready": bool(summary["mainline_theme_ready"]),
+                "daily_exact": bool(summary["daily_exact"]),
+                "diagnostic_only": True,
+                "ready_for_strategy_replay": False,
+                "twse_only_dynamic_pool1_diagnostic_ready": bool(summary["twse_only_dynamic_pool1_diagnostic_ready"]),
+                "remaining_blocker": "full cross-market daily sector breadth is blocked until TPEx sector membership and mainline/theme PIT are ready",
+            },
+            {
+                "blocker": "dynamic_pool1_shadow_challenger",
+                "before_status": "blocked",
+                "after_status": "twse_only_diagnostic_possible" if summary["twse_only_dynamic_pool1_diagnostic_ready"] else "blocked",
+                "delta": (
+                    "twse_only_sector_proxy_diagnostic_can_be_handed_to_experiments_not_formal"
+                    if summary["twse_only_dynamic_pool1_diagnostic_ready"]
+                    else "sector_layer_still_blocked"
+                ),
+                "twse_sector_membership_rows": int(summary["twse_sector_membership_rows"]),
+                "twse_only": bool(summary["twse_only"]),
+                "tpex_included": bool(summary["tpex_included"]),
+                "mainline_theme_ready": bool(summary["mainline_theme_ready"]),
+                "daily_exact": bool(summary["daily_exact"]),
+                "diagnostic_only": True,
+                "ready_for_strategy_replay": False,
+                "twse_only_dynamic_pool1_diagnostic_ready": bool(summary["twse_only_dynamic_pool1_diagnostic_ready"]),
+                "remaining_blocker": "TWSE-only diagnostic may proceed if scoped explicitly; full-market formal replay remains blocked by TPEx/mainline/daily-exact gaps",
+            },
+        ]
+    )
+
+
 def _liquidity_sweep_summary(liquidity_sweep: dict[str, Any]) -> dict[str, Any]:
     readiness = liquidity_sweep.get("readiness", {})
     covered = readiness.get("covered_date_range", {})
@@ -2520,6 +2763,70 @@ def _market_cap_summary(market_cap: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _sector_summary(sector: dict[str, Any]) -> dict[str, Any]:
+    readiness = sector.get("readiness", {})
+    exists = bool(sector.get("exists"))
+    sector_membership_partial_ready = bool(readiness.get("sector_membership_pit_partial_ready", False))
+    twse_monthly_anchor_ready = bool(readiness.get("twse_sector_monthly_anchor_ready", False))
+    twse_only = bool(readiness.get("twse_only", False))
+    tpex_included = bool(readiness.get("tpex_included", False))
+    mainline_theme_ready = bool(readiness.get("mainline_theme_ready", False))
+    daily_exact = bool(readiness.get("twse_sector_full_sweep_ready", False))
+    twse_membership_rows = int(readiness.get("twse_sector_membership_rows", 0) or 0)
+    sector_breadth_rows = int(sector.get("sector_breadth_rows", 0) or 0)
+    diagnostic_ready = bool(
+        exists
+        and sector_membership_partial_ready
+        and twse_monthly_anchor_ready
+        and twse_only
+        and not tpex_included
+        and twse_membership_rows > 0
+    )
+    years = readiness.get("twse_sector_years", []) or []
+    covered_period = "2015-01~2026-07" if twse_monthly_anchor_ready else ""
+    return {
+        "exists": exists,
+        "path": sector.get("path", ""),
+        "status": readiness.get("status", "missing" if not exists else "partial"),
+        "sector_membership_status": (
+            "twse_monthly_anchor_source_candidate"
+            if sector_membership_partial_ready and twse_monthly_anchor_ready
+            else "blocked"
+        ),
+        "sector_breadth_status": (
+            "twse_monthly_anchor_breadth_diagnostic"
+            if sector_membership_partial_ready and twse_monthly_anchor_ready
+            else "blocked"
+        ),
+        "sector_breadth_pit_daily_ready": bool(readiness.get("sector_breadth_pit_daily_ready", False)),
+        "sector_membership_partial_ready": sector_membership_partial_ready,
+        "twse_sector_monthly_anchor_ready": twse_monthly_anchor_ready,
+        "twse_sector_full_sweep_ready": daily_exact,
+        "twse_only": twse_only,
+        "tpex_included": tpex_included,
+        "mainline_theme_ready": mainline_theme_ready,
+        "daily_exact": daily_exact,
+        "twse_sector_membership_rows": twse_membership_rows,
+        "sector_breadth_rows": sector_breadth_rows,
+        "twse_sector_years": years,
+        "monthly_anchor_coverage": "2015-2025 12/12; 2026 7/7" if twse_monthly_anchor_ready else "",
+        "covered_period": covered_period,
+        "source_type": "twse_official_industry_monthly_anchor_source_candidate",
+        "formal_exact": False,
+        "future_data_violation_count": int(readiness.get("future_data_violation_count", 0) or 0),
+        "ready_for_core_rerun": bool(readiness.get("ready_for_core_rerun", False)),
+        "ready_for_strategy_replay": False,
+        "twse_only_dynamic_pool1_diagnostic_ready": diagnostic_ready,
+        "dynamic_pool1_shadow_challenger_ready": False,
+        "remaining_blocker": (
+            "TWSE official industry monthly-anchor membership can support TWSE-only sector proxy diagnostic; "
+            "TPEx sector membership, AI/mainline/theme taxonomy, daily exact membership, and full daily breadth remain blocked"
+            if diagnostic_ready
+            else "sector/mainline PIT remains blocked or missing"
+        ),
+    }
+
+
 def _listing_metadata_status(listing_metadata: dict[str, Any]) -> dict[str, Any]:
     summary = _listing_metadata_summary(listing_metadata)
     if summary["partial_event_rows_available"]:
@@ -2767,6 +3074,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--monthly-revenue-output", default=DEFAULT_MONTHLY_REVENUE_OUTPUT)
     parser.add_argument("--quarterly-fundamentals-output", default=DEFAULT_QUARTERLY_FUNDAMENTALS_OUTPUT)
     parser.add_argument("--market-cap-output", default=DEFAULT_MARKET_CAP_OUTPUT)
+    parser.add_argument("--sector-output", default=DEFAULT_SECTOR_OUTPUT)
     args = parser.parse_args(argv)
     run_dynamic_pool1_pit_readiness_contract(
         output_dir=args.output_dir,
@@ -2782,6 +3090,7 @@ def main(argv: list[str] | None = None) -> int:
         monthly_revenue_output=args.monthly_revenue_output,
         quarterly_fundamentals_output=args.quarterly_fundamentals_output,
         market_cap_output=args.market_cap_output,
+        sector_output=args.sector_output,
     )
     return 0
 
