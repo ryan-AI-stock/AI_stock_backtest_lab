@@ -1,2 +1,2 @@
-task_id,status
-TASK-BACKTEST-CORE-STORAGE-CHECKSUM-APPROVAL-PACKAGE-20260704,completed
+﻿step,status,output_dir
+TASK-BACKTEST-CORE-STORAGE-CHECKSUM-APPROVAL-PACKAGE-20260704,completed_checksum_approval_package,C:\Users\zergv\Documents\Codex\2026-05-30\ep05-chat-ai-stock-backtest-lab\outputs\storage_checksum_approval_package_20260704
