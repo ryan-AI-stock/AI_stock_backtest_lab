@@ -63,17 +63,20 @@ class DynamicPool1PortfolioChallengerContractTest(unittest.TestCase):
                     repo_root=root,
                     candidate_dir=cand,
                     output_dir=root / "out",
+                    liquidity_calendar_dir=root / "missing_liquidity_calendar",
                 )
 
-            self.assertEqual(manifest["status"], "completed_portfolio_challenger_contract_only")
+            self.assertEqual(manifest["status"], "completed_next_tradable_date_contract_hygiene_only")
             self.assertFalse(manifest["formal_model_changed"])
             daily = pd.read_csv(root / "out" / "daily_portfolio_contract_panel.csv")
             self.assertEqual(daily.loc[0, "formal_conflict_state"], "no_conflict_formal_cash")
             variants = pd.read_csv(root / "out" / "portfolio_variant_matrix.csv")
             self.assertIn("dynamic_top1_when_formal_cash_or_market_exposure", set(variants["variant_id"]))
             readiness = json.loads((root / "out" / "readiness_for_experiments.json").read_text(encoding="utf-8"))
-            self.assertTrue(readiness["ready_for_experiments"])
+            self.assertFalse(readiness["ready_for_experiments"])
+            self.assertTrue(readiness["ready_for_experiments_calendar_audit_only"])
             self.assertFalse(readiness["active_in_trade_decision"])
+            self.assertTrue((root / "out" / "execution_calendar_adjustment_audit.csv").exists())
 
 
 if __name__ == "__main__":

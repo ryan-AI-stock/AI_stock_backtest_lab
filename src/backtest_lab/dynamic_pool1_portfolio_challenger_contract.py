@@ -12,8 +12,13 @@ from backtest_lab.costs import COST_MODEL_VERSION, cost_model_metadata
 
 
 TASK_ID = "TASK-BACKTEST-CORE-DYNAMIC-POOL1-PORTFOLIO-CHALLENGER-CONTRACT-001"
+HYGIENE_TASK_ID = "TASK-BACKTEST-CORE-DYNAMIC-POOL1-NEXT-TRADABLE-DATE-CONTRACT-HYGIENE-001"
 DEFAULT_CANDIDATE_DIR = Path("outputs/dynamic_pool1_candidate_panel_v0_20260704")
 DEFAULT_OUTPUT_DIR = Path("outputs/dynamic_pool1_portfolio_challenger_contract_20260704")
+DEFAULT_RADAR_LIQUIDITY_DIR = Path(
+    r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs"
+    r"\radar_dynamic_pool1_all_listed_liquid_universe_full_sweep_20260703"
+)
 FORMAL_STREAMS = [
     Path("outputs/combined_formal_target_stream_20150128_20211230_20260702/combined_formal_target_stream.csv"),
     Path("outputs/formal_long_range_signal_reconstruction_201411_latest_20260702/formal_long_range_target_stream.csv"),
@@ -29,6 +34,7 @@ def run_dynamic_pool1_portfolio_contract(
     repo_root: str | Path = ".",
     candidate_dir: str | Path = DEFAULT_CANDIDATE_DIR,
     output_dir: str | Path = DEFAULT_OUTPUT_DIR,
+    liquidity_calendar_dir: str | Path = DEFAULT_RADAR_LIQUIDITY_DIR,
 ) -> dict:
     root = Path(repo_root).resolve()
     candidate_path = _resolve(root, candidate_dir)
@@ -40,6 +46,8 @@ def run_dynamic_pool1_portfolio_contract(
     monthly = _monthly_candidate_summary(candidate_pool)
     formal = _load_formal_streams(root)
     daily = _build_daily_contract(formal, monthly, candidate_panel)
+    trading_calendar = _load_local_trading_calendar(root, _resolve(root, liquidity_calendar_dir))
+    daily, calendar_audit = _apply_execution_calendar(daily, trading_calendar)
     benchmark_availability = _benchmark_availability(root, daily)
     daily = daily.merge(benchmark_availability, on="trade_date", how="left")
     daily["cost_model_id"] = COST_MODEL_VERSION
@@ -51,6 +59,7 @@ def run_dynamic_pool1_portfolio_contract(
     schema = _input_schema()
 
     daily.to_csv(output / "daily_portfolio_contract_panel.csv", index=False, encoding="utf-8-sig")
+    calendar_audit.to_csv(output / "execution_calendar_adjustment_audit.csv", index=False, encoding="utf-8-sig")
     variant_matrix.to_csv(output / "portfolio_variant_matrix.csv", index=False, encoding="utf-8-sig")
     execution_rules.to_csv(output / "execution_rule_variants.csv", index=False, encoding="utf-8-sig")
     baseline_contract.to_csv(output / "baseline_contract.csv", index=False, encoding="utf-8-sig")
@@ -64,9 +73,11 @@ def run_dynamic_pool1_portfolio_contract(
 
     readiness = {
         "task_id": TASK_ID,
-        "status": "completed_contract_ready_for_experiments_validation",
-        "ready_for_experiments": True,
-        "experiments_task_id": "TASK-BACKTEST-EXPERIMENTS-DYNAMIC-POOL1-PORTFOLIO-CHALLENGER-VALIDATION-001",
+        "hygiene_task_id": HYGIENE_TASK_ID,
+        "status": "completed_next_tradable_date_contract_hygiene",
+        "ready_for_experiments": False,
+        "ready_for_experiments_calendar_audit_only": True,
+        "experiments_task_id": "",
         "ready_for_formal_absorption": False,
         "diagnostic_only": True,
         "strategy_replay_executed_by_core": False,
@@ -74,6 +85,8 @@ def run_dynamic_pool1_portfolio_contract(
         "trade_decision_changed": False,
         "active_in_trade_decision": False,
         "daily_contract_rows": int(len(daily)),
+        "execution_calendar_adjusted_rows": int(calendar_audit["calendar_adjusted"].fillna(False).sum()),
+        "execution_calendar_blocked_rows": int(calendar_audit["calendar_status"].astype(str).str.startswith("blocked").sum()),
         "benchmark_0050_available_rows": int(daily["benchmark_0050_return_available"].fillna(False).sum()),
         "benchmark_00631l_available_rows": int(daily["benchmark_00631l_return_available"].fillna(False).sum()),
         "benchmark_join_boundary": "explicit local cache availability only; no cross-section median substitute",
@@ -84,10 +97,13 @@ def run_dynamic_pool1_portfolio_contract(
     )
     manifest = {
         "task_id": TASK_ID,
-        "status": "completed_portfolio_challenger_contract_only",
+        "hygiene_task_id": HYGIENE_TASK_ID,
+        "status": "completed_next_tradable_date_contract_hygiene_only",
         "output_dir": str(output),
         "candidate_source": str(candidate_path),
         "daily_contract_rows": int(len(daily)),
+        "execution_calendar_adjusted_rows": int(calendar_audit["calendar_adjusted"].fillna(False).sum()),
+        "execution_calendar_blocked_rows": int(calendar_audit["calendar_status"].astype(str).str.startswith("blocked").sum()),
         "variant_count": int(len(variant_matrix)),
         "formal_model_changed": False,
         "trade_decision_changed": False,
@@ -95,8 +111,9 @@ def run_dynamic_pool1_portfolio_contract(
         "report_changed": False,
         "strategy_replay_executed_by_core": False,
         "forward_return_used_as_live_rule": False,
-        "ready_for_experiments_validation": True,
-        "handoff_to_experiments_task": readiness["experiments_task_id"],
+        "ready_for_experiments_validation": False,
+        "ready_for_experiments_calendar_audit_only": True,
+        "handoff_to_experiments_task": "",
     }
     (output / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     (output / "final_summary_zh.md").write_text(_summary(manifest, readiness), encoding="utf-8")
@@ -173,7 +190,8 @@ def _load_formal_streams(root: Path) -> pd.DataFrame:
 
 def _build_daily_contract(formal: pd.DataFrame, monthly: pd.DataFrame, candidate_panel: pd.DataFrame) -> pd.DataFrame:
     daily = formal.merge(monthly, on="candidate_refresh_month", how="left")
-    daily["next_tradable_date"] = daily["execution_date"].astype(str)
+    daily["next_tradable_date_raw"] = daily["execution_date"].astype(str)
+    daily["next_tradable_date"] = daily["next_tradable_date_raw"]
     daily["dynamic_pool_version"] = "dynamic_pool1_candidate_panel_v0"
     daily["candidate_rank"] = 1
     daily["candidate_score"] = daily["top1_candidate_score"]
@@ -189,6 +207,9 @@ def _build_daily_contract(formal: pd.DataFrame, monthly: pd.DataFrame, candidate
     columns = [
         "trade_date",
         "next_tradable_date",
+        "next_tradable_date_raw",
+        "calendar_status",
+        "calendar_adjusted",
         "dynamic_pool_version",
         "candidate_refresh_month",
         "candidate_pool_tickers",
@@ -214,6 +235,85 @@ def _build_daily_contract(formal: pd.DataFrame, monthly: pd.DataFrame, candidate
         "uses_forward_return_as_live_rule",
     ]
     return daily[[col for col in columns if col in daily.columns]].copy()
+
+
+def _load_local_trading_calendar(root: Path, liquidity_calendar_dir: Path) -> list[str]:
+    dates: set[str] = set()
+    shard_dir = liquidity_calendar_dir / "shards"
+    if shard_dir.exists():
+        for shard in sorted(shard_dir.glob("accepted_liquidity_rows_*.csv")):
+            try:
+                df = pd.read_csv(shard, usecols=["date"])
+            except (OSError, ValueError):
+                continue
+            dates.update(pd.to_datetime(df["date"], errors="coerce").dropna().dt.strftime("%Y-%m-%d").unique())
+    if dates:
+        return sorted(dates)
+    for rel in BENCHMARK_PRICE_PATHS.values():
+        path = root / rel
+        if not path.exists():
+            continue
+        try:
+            df = pd.read_csv(path, usecols=["date"])
+        except (OSError, ValueError):
+            continue
+        dates.update(pd.to_datetime(df["date"], errors="coerce").dropna().dt.strftime("%Y-%m-%d").unique())
+    return sorted(dates)
+
+
+def _apply_execution_calendar(daily: pd.DataFrame, trading_calendar: list[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
+    adjusted = daily.copy()
+    calendar = sorted(set(trading_calendar))
+    calendar_set = set(calendar)
+    audit_rows = []
+    final_dates = []
+    statuses = []
+    adjusted_flags = []
+    for row in adjusted.to_dict(orient="records"):
+        raw = str(row.get("next_tradable_date_raw", "") or "")
+        raw_date = pd.to_datetime(raw, errors="coerce")
+        if pd.isna(raw_date):
+            final_date = ""
+            status = "blocked_missing_next_tradable_date"
+            flag = False
+        else:
+            raw_text = raw_date.strftime("%Y-%m-%d")
+            if raw_text in calendar_set:
+                final_date = raw_text
+                status = "valid_local_trading_date"
+                flag = False
+            else:
+                later = [date for date in calendar if date > raw_text]
+                if later:
+                    final_date = later[0]
+                    status = "adjusted_to_next_available_local_trading_date"
+                    flag = True
+                else:
+                    final_date = ""
+                    status = "blocked_no_later_local_trading_date"
+                    flag = False
+        final_dates.append(final_date)
+        statuses.append(status)
+        adjusted_flags.append(flag)
+        audit_rows.append(
+            {
+                "trade_date": row.get("trade_date", ""),
+                "raw_next_tradable_date": raw,
+                "next_tradable_date": final_date,
+                "calendar_status": status,
+                "calendar_adjusted": flag,
+                "local_calendar_source": "radar_full_liquidity_sweep_or_benchmark_cache_fallback",
+                "formal_model_changed": False,
+                "trade_decision_changed": False,
+                "active_in_trade_decision": False,
+                "diagnostic_only": True,
+            }
+        )
+    adjusted["next_tradable_date"] = final_dates
+    adjusted["calendar_status"] = statuses
+    adjusted["calendar_adjusted"] = adjusted_flags
+    adjusted["blocked_fill_state"] = adjusted.apply(_blocked_fill_state, axis=1)
+    return adjusted, pd.DataFrame(audit_rows)
 
 
 def _formal_target_state(target: str) -> str:
@@ -253,14 +353,14 @@ def _blocked_fill_state(row: pd.Series) -> str:
 
 
 def _benchmark_availability(root: Path, daily: pd.DataFrame) -> pd.DataFrame:
-    out = pd.DataFrame({"trade_date": daily["trade_date"].unique()})
+    out = daily[["trade_date", "next_tradable_date"]].drop_duplicates("trade_date").copy()
     for ticker, rel in BENCHMARK_PRICE_PATHS.items():
         path = root / rel
         key = ticker.replace(".", "_").lower()
         if path.exists():
             prices = pd.read_csv(path, usecols=lambda col: col in {"date", "close", "adj_close"})
             dates = set(pd.to_datetime(prices["date"], errors="coerce").dropna().dt.strftime("%Y-%m-%d"))
-            out[f"benchmark_{key}_return_available"] = out["trade_date"].isin(dates)
+            out[f"benchmark_{key}_return_available"] = out["next_tradable_date"].isin(dates)
             out[f"benchmark_{key}_price_source"] = str(rel)
         else:
             out[f"benchmark_{key}_return_available"] = False
@@ -358,6 +458,9 @@ def _input_schema() -> pd.DataFrame:
     fields = [
         "trade_date",
         "next_tradable_date",
+        "next_tradable_date_raw",
+        "calendar_status",
+        "calendar_adjusted",
         "dynamic_pool_version",
         "candidate_refresh_month",
         "candidate_pool_tickers",
@@ -410,6 +513,7 @@ def _contract_text() -> str:
             "- all-formal-states 只作 diagnostic stress test，不得當 formal route。",
             "- 成本使用 current formal Taiwan fee/tax model。",
             "- 0050/00631L benchmark 只用 explicit local cache availability，不使用 cross-section median 替代。",
+            "- next_tradable_date 需落在本地價格/交易日曆；若 formal stream raw date 不是交易日，contract 層調整到下一個可用交易日並輸出 audit。",
         ]
     )
 
@@ -423,10 +527,12 @@ def _summary(manifest: dict, readiness: dict) -> str:
         [
             "# Dynamic Pool1 portfolio challenger contract",
             "",
-            "已建立 bounded next-day portfolio challenger contract，可交 Experiments 做 shadow/diagnostic validation。",
+            "本次 hygiene output 只修 next_tradable_date contract，不代表重啟 portfolio validation。",
             "",
             f"- daily contract rows：{manifest['daily_contract_rows']}",
             f"- variants：{manifest['variant_count']}",
+            f"- execution calendar adjusted rows：{manifest['execution_calendar_adjusted_rows']}",
+            f"- execution calendar blocked rows：{manifest['execution_calendar_blocked_rows']}",
             f"- 0050 benchmark explicit availability rows：{readiness['benchmark_0050_available_rows']}",
             f"- 00631L benchmark explicit availability rows：{readiness['benchmark_00631l_available_rows']}",
             "- Core 未跑 strategy replay，未改正式模型、交易或報告。",
