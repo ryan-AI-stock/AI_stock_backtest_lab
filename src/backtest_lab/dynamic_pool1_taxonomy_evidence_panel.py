@@ -13,12 +13,17 @@ DEFAULT_RADAR_OUTPUT = (
     "C:/Users/zergv/Documents/Codex/2026-05-23/ai-stock-rotation-radar-https-docs/outputs/"
     "radar_dynamic_pool1_mops_mainline_evidence_ledger_20260704"
 )
+DEFAULT_ADDITIONAL_RADAR_OUTPUT = (
+    "C:/Users/zergv/Documents/Codex/2026-05-23/ai-stock-rotation-radar-https-docs/outputs/"
+    "radar_dynamic_pool1_mops_document_extraction_v1_20260704"
+)
 DEFAULT_OUTPUT_DIR = "outputs/dynamic_pool1_taxonomy_evidence_panel_20260704"
 
 
 def run_dynamic_pool1_taxonomy_evidence_panel(
     *,
     radar_output: str | Path = DEFAULT_RADAR_OUTPUT,
+    additional_radar_output: str | Path | None = DEFAULT_ADDITIONAL_RADAR_OUTPUT,
     output_dir: str | Path = DEFAULT_OUTPUT_DIR,
 ) -> Path:
     output = Path(output_dir)
@@ -42,20 +47,37 @@ def run_dynamic_pool1_taxonomy_evidence_panel(
         log("load_radar_evidence", "started", str(radar_root))
         readiness = _load_json(radar_root / "readiness_for_core.json")
         manifest = _load_json(radar_root / "manifest.json")
-        accepted = _read_csv_required(radar_root / "accepted_evidence_rows.csv")
-        blocked = _read_csv_required(radar_root / "blocked_or_needs_review.csv")
+        packages = [_load_package(radar_root, "v0")]
+        additional_root = Path(additional_radar_output) if additional_radar_output else None
+        if additional_root and additional_root.exists():
+            log("load_additional_radar_evidence", "started", str(additional_root))
+            packages.append(_load_package(additional_root, "v1"))
+        accepted = pd.concat([package["accepted"] for package in packages], ignore_index=True, sort=False).fillna("")
+        blocked = pd.concat([package["blocked"] for package in packages], ignore_index=True, sort=False).fillna("")
         future_audit = _read_csv_if_exists(radar_root / "future_data_violation_audit.csv")
+        if len(packages) > 1:
+            future_audit = pd.concat(
+                [package["future_audit"] for package in packages if not package["future_audit"].empty],
+                ignore_index=True,
+                sort=False,
+            ).fillna("")
         source_audit = _read_csv_if_exists(radar_root / "taxonomy_acceptance_audit.csv")
+        if len(packages) > 1:
+            source_audit = pd.concat(
+                [package["source_audit"] for package in packages if not package["source_audit"].empty],
+                ignore_index=True,
+                sort=False,
+            ).fillna("")
 
         log("build_panels", "started", "")
         evidence_panel = _build_evidence_panel(accepted)
-        blocker_panel = _build_blocker_panel(blocked)
+        blocker_panel = _build_blocker_panel(blocked, accepted_tickers=set(evidence_panel["ticker"].astype(str)))
         by_ticker = _build_by_ticker(evidence_panel, blocker_panel)
         layer_summary = _build_layer_summary(evidence_panel, blocker_panel)
         source_quality = _build_source_quality_audit(source_audit, evidence_panel, blocker_panel)
         future_output = _build_future_audit(future_audit, readiness)
-        readiness_output = _build_readiness(readiness, manifest, evidence_panel, blocker_panel)
-        manifest_output = _build_manifest(output, radar_root, readiness_output)
+        readiness_output = _build_readiness(readiness, manifest, evidence_panel, blocker_panel, packages)
+        manifest_output = _build_manifest(output, radar_root, additional_root, readiness_output)
 
         log("write_outputs", "started", str(output))
         evidence_panel.to_csv(output / "taxonomy_evidence_panel.csv", index=False, encoding="utf-8-sig")
@@ -66,6 +88,10 @@ def run_dynamic_pool1_taxonomy_evidence_panel(
         source_quality.to_csv(output / "source_quality_audit.csv", index=False, encoding="utf-8-sig")
         future_output.to_csv(output / "future_data_violation_audit.csv", index=False, encoding="utf-8-sig")
         (output / "taxonomy_evidence_readiness.json").write_text(
+            json.dumps(readiness_output, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        (output / "readiness.json").write_text(
             json.dumps(readiness_output, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
@@ -94,6 +120,41 @@ def run_dynamic_pool1_taxonomy_evidence_panel(
         raise
 
 
+def _load_package(root: Path, version: str) -> dict[str, Any]:
+    readiness = _load_json(root / "readiness_for_core.json")
+    manifest = _load_json(root / "manifest.json")
+    accepted_path = root / "accepted_evidence_rows.csv"
+    if not accepted_path.exists():
+        accepted_path = root / "accepted_document_evidence_rows.csv"
+    blocked_path = root / "blocked_or_needs_review.csv"
+    if not blocked_path.exists():
+        blocked_path = root / "blocked_document_sources.csv"
+    source_audit_path = root / "taxonomy_acceptance_audit.csv"
+    if not source_audit_path.exists():
+        source_audit_path = root / "source_quality_audit.csv"
+    accepted = _read_csv_required(accepted_path)
+    blocked = _read_csv_if_exists(blocked_path)
+    accepted["evidence_version"] = version
+    accepted["source_package_task_id"] = readiness.get("task_id", manifest.get("task_id", ""))
+    accepted["source_package_status"] = readiness.get("status", manifest.get("status", ""))
+    accepted["source_package_path"] = str(root)
+    if not blocked.empty:
+        blocked["evidence_version"] = version
+        blocked["source_package_task_id"] = readiness.get("task_id", manifest.get("task_id", ""))
+        blocked["source_package_status"] = readiness.get("status", manifest.get("status", ""))
+        blocked["source_package_path"] = str(root)
+    return {
+        "root": root,
+        "version": version,
+        "readiness": readiness,
+        "manifest": manifest,
+        "accepted": accepted,
+        "blocked": blocked,
+        "future_audit": _read_csv_if_exists(root / "future_data_violation_audit.csv"),
+        "source_audit": _read_csv_if_exists(source_audit_path),
+    }
+
+
 def _build_evidence_panel(accepted: pd.DataFrame) -> pd.DataFrame:
     frame = accepted.copy().fillna("")
     for column in _evidence_columns():
@@ -114,11 +175,14 @@ def _build_evidence_panel(accepted: pd.DataFrame) -> pd.DataFrame:
     frame["accepted_for_formal"] = False
     frame["human_review_required"] = True
     frame["formal_exact"] = frame["formal_exact"].map(_bool_like)
-    return frame[_evidence_panel_columns()].sort_values(["ticker", "source_date", "source_doc_type"]).reset_index(drop=True)
+    return frame[_evidence_panel_columns()].sort_values(["ticker", "evidence_version", "source_date", "source_doc_type"]).reset_index(drop=True)
 
 
-def _build_blocker_panel(blocked: pd.DataFrame) -> pd.DataFrame:
+def _build_blocker_panel(blocked: pd.DataFrame, accepted_tickers: set[str] | None = None) -> pd.DataFrame:
+    accepted_tickers = accepted_tickers or set()
     frame = blocked.copy().fillna("")
+    if not frame.empty and "ticker" in frame.columns and accepted_tickers:
+        frame = frame[~frame["ticker"].astype(str).isin(accepted_tickers)].copy()
     for column in _blocker_columns():
         if column not in frame.columns:
             frame[column] = ""
@@ -133,6 +197,8 @@ def _build_blocker_panel(blocked: pd.DataFrame) -> pd.DataFrame:
     frame["formal_model_changed"] = False
     frame["trade_decision_changed"] = False
     frame["active_in_trade_decision"] = False
+    if frame.empty:
+        return pd.DataFrame(columns=_blocker_panel_columns())
     return frame[_blocker_panel_columns()].sort_values(["ticker"]).reset_index(drop=True)
 
 
@@ -141,6 +207,10 @@ def _build_by_ticker(evidence: pd.DataFrame, blockers: pd.DataFrame) -> pd.DataF
     if not evidence.empty:
         for ticker, group in evidence.groupby("ticker", dropna=False):
             first = group.iloc[0]
+            layers = sorted(set(group["ai_supply_chain_layer"].astype(str)) - {""})
+            themes = sorted(set(group["mainline_theme_label"].astype(str)) - {""})
+            evidence_versions = sorted(set(group["evidence_version"].astype(str)) - {""})
+            layer_conflict = len(layers) > 1 or len(themes) > 1
             accepted_rows.append(
                 {
                     "ticker": ticker,
@@ -150,9 +220,18 @@ def _build_by_ticker(evidence: pd.DataFrame, blockers: pd.DataFrame) -> pd.DataF
                     "taxonomy_status": "accepted_diagnostic_evidence_needs_human_review",
                     "has_accepted_evidence": True,
                     "accepted_evidence_count": int(len(group)),
-                    "ai_supply_chain_layers": "|".join(sorted(set(group["ai_supply_chain_layer"].astype(str)) - {""})),
-                    "mainline_theme_labels": "|".join(sorted(set(group["mainline_theme_label"].astype(str)) - {""})),
+                    "evidence_versions": "|".join(evidence_versions),
+                    "source_package_task_ids": "|".join(sorted(set(group["source_package_task_id"].astype(str)) - {""})),
+                    "ai_supply_chain_layers": "|".join(layers),
+                    "mainline_theme_labels": "|".join(themes),
                     "confidence_levels": "|".join(sorted(set(group["confidence_level"].astype(str)) - {""})),
+                    "duplicate_evidence_count": int(len(group)),
+                    "has_multiple_evidence_versions": len(evidence_versions) > 1,
+                    "has_layer_label_conflict": layer_conflict,
+                    "conflict_review_required": layer_conflict,
+                    "duplicate_or_conflict_review_reason": (
+                        "multiple layer/theme labels require human review" if layer_conflict else ""
+                    ),
                     "accepted_for_diagnostic": True,
                     "accepted_for_formal": False,
                     "human_review_required": True,
@@ -180,9 +259,16 @@ def _build_by_ticker(evidence: pd.DataFrame, blockers: pd.DataFrame) -> pd.DataF
                 "taxonomy_status": item.get("status", "needs_review_or_blocked"),
                 "has_accepted_evidence": False,
                 "accepted_evidence_count": 0,
+                "evidence_versions": str(item.get("evidence_version", "")),
+                "source_package_task_ids": str(item.get("source_package_task_id", "")),
                 "ai_supply_chain_layers": "",
                 "mainline_theme_labels": "",
                 "confidence_levels": "",
+                "duplicate_evidence_count": 0,
+                "has_multiple_evidence_versions": False,
+                "has_layer_label_conflict": False,
+                "conflict_review_required": False,
+                "duplicate_or_conflict_review_reason": "",
                 "accepted_for_diagnostic": False,
                 "accepted_for_formal": False,
                 "human_review_required": True,
@@ -202,11 +288,16 @@ def _build_by_ticker(evidence: pd.DataFrame, blockers: pd.DataFrame) -> pd.DataF
 def _build_layer_summary(evidence: pd.DataFrame, blockers: pd.DataFrame) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     if not evidence.empty:
-        grouped = evidence.groupby(["ai_supply_chain_layer", "mainline_theme_label", "confidence_level"], dropna=False)
+        grouped = evidence.groupby(
+            ["market", "candidate_scope", "ai_supply_chain_layer", "mainline_theme_label", "confidence_level"],
+            dropna=False,
+        )
         for keys, group in grouped:
-            layer, theme, confidence = keys
+            market, candidate_scope, layer, theme, confidence = keys
             rows.append(
                 {
+                    "market": market,
+                    "candidate_scope": candidate_scope,
                     "ai_supply_chain_layer": layer,
                     "mainline_theme_label": theme,
                     "confidence_level": confidence,
@@ -223,6 +314,8 @@ def _build_layer_summary(evidence: pd.DataFrame, blockers: pd.DataFrame) -> pd.D
     if not blockers.empty:
         rows.append(
             {
+                "market": "blocked_or_needs_review",
+                "candidate_scope": "blocked_or_needs_review",
                 "ai_supply_chain_layer": "blocked_or_needs_review",
                 "mainline_theme_label": "blocked_or_needs_review",
                 "confidence_level": "not_available",
@@ -260,7 +353,11 @@ def _build_source_quality_audit(source_audit: pd.DataFrame, evidence: pd.DataFra
                 "accepted_for_diagnostic": False,
                 "accepted_for_formal": False,
                 "human_review_required": True,
-                "decision": "bounded_document_extraction_required",
+                "decision": (
+                    "no_remaining_blocked_tickers_after_v1"
+                    if blockers.empty
+                    else "bounded_document_extraction_or_human_review_required"
+                ),
             },
         ]
     )
@@ -287,7 +384,10 @@ def _build_readiness(
     manifest: dict[str, Any],
     evidence: pd.DataFrame,
     blockers: pd.DataFrame,
+    packages: list[dict[str, Any]],
 ) -> dict[str, Any]:
+    source_versions = [package["version"] for package in packages]
+    package_task_ids = [package["readiness"].get("task_id", package["manifest"].get("task_id", "")) for package in packages]
     return {
         "schema_version": 1,
         "task_id": TASK_ID,
@@ -296,6 +396,8 @@ def _build_readiness(
         "accepted_evidence_rows": int(len(evidence)),
         "accepted_unique_tickers": int(evidence["ticker"].nunique()) if not evidence.empty else 0,
         "blocked_or_needs_review_tickers": int(blockers["ticker"].nunique()) if not blockers.empty else 0,
+        "evidence_versions": source_versions,
+        "source_package_task_ids": package_task_ids,
         "diagnostic_only": True,
         "ready_for_strategy_replay": False,
         "strategy_replay": False,
@@ -308,17 +410,21 @@ def _build_readiness(
         "active_in_trade_decision": False,
         "future_data_violation_count": int(readiness.get("future_data_violation_count", 0) or 0),
         "source_boundary": readiness.get("source_boundary", ""),
-        "remaining_blockers": readiness.get(
-            "remaining_blockers",
-            [
-                "bounded MOPS document extraction v1 still required for blocked tickers",
-                "formal taxonomy policy not approved",
-            ],
+        "remaining_blockers": (
+            ["formal taxonomy policy not approved", "human review still required before any formal taxonomy use"]
+            if blockers.empty
+            else readiness.get(
+                "remaining_blockers",
+                [
+                    "bounded document extraction or human review still required for blocked tickers",
+                    "formal taxonomy policy not approved",
+                ],
+            )
         ),
     }
 
 
-def _build_manifest(output: Path, radar_root: Path, readiness: dict[str, Any]) -> dict[str, Any]:
+def _build_manifest(output: Path, radar_root: Path, additional_root: Path | None, readiness: dict[str, Any]) -> dict[str, Any]:
     return {
         "schema_version": 1,
         "task_id": TASK_ID,
@@ -326,6 +432,7 @@ def _build_manifest(output: Path, radar_root: Path, readiness: dict[str, Any]) -
         "generated_at": pd.Timestamp.now(tz="Asia/Taipei").isoformat(),
         "output_dir": str(output),
         "radar_output": str(radar_root),
+        "additional_radar_output": str(additional_root) if additional_root else "",
         "accepted_evidence_rows": readiness["accepted_evidence_rows"],
         "accepted_unique_tickers": readiness["accepted_unique_tickers"],
         "blocked_or_needs_review_tickers": readiness["blocked_or_needs_review_tickers"],
@@ -347,6 +454,7 @@ def _build_manifest(output: Path, radar_root: Path, readiness: dict[str, Any]) -
             "blocked_or_needs_review_tickers": "blocked_or_needs_review_tickers.csv",
             "taxonomy_layer_coverage_summary": "taxonomy_layer_coverage_summary.csv",
             "taxonomy_evidence_readiness": "taxonomy_evidence_readiness.json",
+            "readiness": "readiness.json",
             "source_quality_audit": "source_quality_audit.csv",
             "future_data_violation_audit": "future_data_violation_audit.csv",
             "final_summary_zh": "final_summary_zh.md",
@@ -402,6 +510,10 @@ def _bool_like(value: Any) -> bool:
 
 def _evidence_columns() -> list[str]:
     return [
+        "evidence_version",
+        "source_package_task_id",
+        "source_package_status",
+        "source_package_path",
         "ticker",
         "company_name",
         "market",
@@ -425,6 +537,10 @@ def _evidence_columns() -> list[str]:
 
 def _blocker_columns() -> list[str]:
     return [
+        "evidence_version",
+        "source_package_task_id",
+        "source_package_status",
+        "source_package_path",
         "ticker",
         "company_name",
         "market",
@@ -439,6 +555,10 @@ def _blocker_columns() -> list[str]:
 
 def _evidence_panel_columns() -> list[str]:
     return [
+        "evidence_version",
+        "source_package_task_id",
+        "source_package_status",
+        "source_package_path",
         "ticker",
         "company_name",
         "market",
@@ -470,6 +590,10 @@ def _evidence_panel_columns() -> list[str]:
 
 def _blocker_panel_columns() -> list[str]:
     return [
+        "evidence_version",
+        "source_package_task_id",
+        "source_package_status",
+        "source_package_path",
         "ticker",
         "company_name",
         "market",
@@ -494,9 +618,14 @@ def _blocker_panel_columns() -> list[str]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Build Dynamic Pool1 diagnostic taxonomy evidence panel.")
     parser.add_argument("--radar-output", default=DEFAULT_RADAR_OUTPUT)
+    parser.add_argument("--additional-radar-output", default=DEFAULT_ADDITIONAL_RADAR_OUTPUT)
     parser.add_argument("--output-dir", default=DEFAULT_OUTPUT_DIR)
     args = parser.parse_args(argv)
-    run_dynamic_pool1_taxonomy_evidence_panel(radar_output=args.radar_output, output_dir=args.output_dir)
+    run_dynamic_pool1_taxonomy_evidence_panel(
+        radar_output=args.radar_output,
+        additional_radar_output=args.additional_radar_output,
+        output_dir=args.output_dir,
+    )
     return 0
 
 
