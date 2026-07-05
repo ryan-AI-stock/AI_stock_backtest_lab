@@ -459,6 +459,9 @@ def _score_branch(row: pd.Series, branch: str) -> tuple[bool, str, float, dict[s
         "bias_ready": bias_ready,
         "market_regime_0050": regime,
     }
+    if bool(row.get("case_trace_only", False)):
+        components["case_trace_only"] = True
+        return False, "case_trace_reference_only", 0.0, components
     if not (price_ready and benchmark_ready and bias_ready):
         return False, "data_not_ready", 0.0, components
     if branch == "long_strong_rs40_bias_guard":

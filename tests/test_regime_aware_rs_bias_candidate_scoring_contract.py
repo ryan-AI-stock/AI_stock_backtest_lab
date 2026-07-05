@@ -102,6 +102,9 @@ class RegimeAwareRsBiasCandidateScoringContractTest(unittest.TestCase):
                 },
             )
             self.assertFalse(bool(contract["uses_forward_return_as_rule"].any()))
+            case_trace_rows = contract[contract["case_trace_only"].astype(str).str.lower().eq("true")]
+            self.assertFalse(bool(case_trace_rows["branch_candidate_selected"].any()))
+            self.assertEqual(set(case_trace_rows["branch_candidate_label"]), {"case_trace_reference_only"})
             self.assertIn("rs40_vs_0050_pct", contract.columns)
             self.assertIn("stock_bias60_zscore", contract.columns)
             case = pd.read_csv(root / "out" / "case_trace_6669_2308_2317_2454.csv")
