@@ -22,6 +22,8 @@ TASK_ID = "TASK-BACKTEST-CORE-FALLBACK-BOUNDARY-00631L-EXCEPT-BEAR-CASH-CONTRACT
 EXPERIMENTS_TASK_ID = "TASK-BACKTEST-EXPERIMENTS-FALLBACK-BOUNDARY-00631L-EXCEPT-BEAR-CASH-DIAGNOSTIC-001"
 TASK_ID_V2 = "TASK-BACKTEST-CORE-FALLBACK-BOUNDARY-P2-BEAR-CASH-CLASSIFIER-CONTRACT-001"
 EXPERIMENTS_TASK_ID_V2 = "TASK-BACKTEST-EXPERIMENTS-FALLBACK-BOUNDARY-00631L-EXCEPT-BEAR-CASH-DIAGNOSTIC-RERUN-001"
+TASK_ID_REGIME = "TASK-BACKTEST-CORE-REGIME-CONDITIONED-FALLBACK-BOUNDARY-CONTRACT-001"
+EXPERIMENTS_TASK_ID_REGIME = "TASK-BACKTEST-EXPERIMENTS-REGIME-CONDITIONED-FALLBACK-BOUNDARY-DIAGNOSTIC-001"
 DEFAULT_FORMAL_STREAM = Path(
     "outputs/combined_formal_target_stream_20150128_20211230_20260702/combined_formal_target_stream.csv"
 )
@@ -30,8 +32,10 @@ DEFAULT_2022_LATEST_FORMAL_STREAM = Path(
 )
 DEFAULT_OUTPUT_DIR = Path("outputs/fallback_boundary_00631l_except_bear_cash_contract_20260705")
 DEFAULT_OUTPUT_DIR_V2 = Path("outputs/fallback_boundary_p2_bear_cash_classifier_contract_20260705")
+DEFAULT_OUTPUT_DIR_REGIME = Path("outputs/regime_conditioned_fallback_boundary_contract_20260705")
 CASH_TARGET = "CASH"
 MARKET_EXPOSURE_TARGET = "00631L.TW"
+REGIME_ALLOWED_FOR_FALLBACK = {"short_cycle_rotation", "ordinary_or_no_edge"}
 VARIANTS = [
     {
         "variant_id": "current_formal_old_no_target_cash",
@@ -55,6 +59,44 @@ VARIANTS = [
         "variant_id": "cash_only_bear_strict_reference",
         "role": "strict_readiness_reference",
         "mapping_rule": "keep only explicit bear/cash as cash; map classified no-stock market-exposure rows to 00631L; block ambiguous cash",
+        "upper_bound_reference": False,
+    },
+]
+REGIME_VARIANTS = [
+    {
+        "variant_id": "current_formal_old_no_target_cash",
+        "role": "baseline_reference",
+        "mapping_rule": "keep current formal target; no-target cash remains cash",
+        "upper_bound_reference": False,
+    },
+    {
+        "variant_id": "regime_conditioned_fallback_00631l_primary",
+        "role": "primary_diagnostic",
+        "mapping_rule": "map classified no-stock cash rows to 00631L only when 0050 regime allows market exposure fallback",
+        "upper_bound_reference": False,
+    },
+    {
+        "variant_id": "fallback_disabled_in_long_strong_ai_reference",
+        "role": "regime_reference_only",
+        "mapping_rule": "map no-stock cash rows to 00631L except when 0050 regime is long_strong_trend",
+        "upper_bound_reference": False,
+    },
+    {
+        "variant_id": "fallback_enabled_in_ordinary_short_cycle_reference",
+        "role": "regime_reference_only",
+        "mapping_rule": "map no-stock cash rows to 00631L only in ordinary_or_no_edge or short_cycle_rotation regimes",
+        "upper_bound_reference": False,
+    },
+    {
+        "variant_id": "upper_bound_all_no_target_00631l_reference",
+        "role": "upper_bound_reference_only",
+        "mapping_rule": "map all current formal CASH/no-target rows to 00631L regardless of regime or bear/cash readiness",
+        "upper_bound_reference": True,
+    },
+    {
+        "variant_id": "cash_only_bear_strict_reference",
+        "role": "strict_readiness_reference",
+        "mapping_rule": "keep explicit bear/cash as cash; map classified no-stock market-exposure rows only if regime eligible; block ambiguous cash",
         "upper_bound_reference": False,
     },
 ]
@@ -228,6 +270,112 @@ def run_fallback_boundary_p2_bear_cash_classifier_contract(
             {"step": "normalize_formal_stream_schemas", "status": "completed"},
             {"step": "classify_v2_cash_boundary_rows", "status": "completed"},
             {"step": "write_v2_contract_package", "status": "completed"},
+        ]
+    ).to_csv(output / "run_log.csv", index=False, encoding="utf-8-sig")
+    return manifest
+
+
+def run_regime_conditioned_fallback_boundary_contract(
+    *,
+    repo_root: str | Path = ".",
+    formal_streams: list[str | Path] | None = None,
+    output_dir: str | Path = DEFAULT_OUTPUT_DIR_REGIME,
+) -> dict[str, Any]:
+    root = Path(repo_root).resolve()
+    streams = formal_streams or [DEFAULT_FORMAL_STREAM, DEFAULT_2022_LATEST_FORMAL_STREAM]
+    resolved_streams = [_resolve(root, path) for path in streams]
+    output = _resolve(root, output_dir)
+    output.mkdir(parents=True, exist_ok=True)
+
+    stream = _load_formal_streams(resolved_streams)
+    benchmark = _benchmark_availability(root, stream)
+    regime = _build_0050_regime_context(root, stream)
+    state_panel = _build_execution_state_panel(stream, benchmark)
+    state_panel = _attach_regime_context(state_panel, regime)
+    cash_audit = _regime_cash_reason_code_audit(state_panel)
+    readiness = _regime_bear_cash_classifier_readiness(state_panel)
+    reason_codes = _regime_unclassified_reason_codes(state_panel)
+    eligibility = _fallback_eligibility_by_regime(state_panel)
+    variant_matrix = pd.DataFrame(REGIME_VARIANTS)
+    mapping_daily = _build_regime_mapping_daily_panel(state_panel)
+    period = _period_contract_validation(state_panel, mapping_daily, benchmark)
+    future = _regime_future_data_audit(state_panel, mapping_daily, regime)
+
+    state_panel.to_csv(output / "regime_conditioned_fallback_boundary_contract.csv", index=False, encoding="utf-8-sig")
+    mapping_daily.to_csv(output / "regime_conditioned_execution_state_panel.csv", index=False, encoding="utf-8-sig")
+    eligibility.to_csv(output / "fallback_eligibility_by_regime.csv", index=False, encoding="utf-8-sig")
+    readiness.to_csv(output / "bear_cash_classifier_readiness.csv", index=False, encoding="utf-8-sig")
+    cash_audit.to_csv(output / "cash_reason_code_audit.csv", index=False, encoding="utf-8-sig")
+    period.to_csv(output / "period_contract_validation.csv", index=False, encoding="utf-8-sig")
+    benchmark.to_csv(output / "benchmark_availability_audit.csv", index=False, encoding="utf-8-sig")
+    reason_codes.to_csv(output / "unclassified_cash_boundary_reason_codes.csv", index=False, encoding="utf-8-sig")
+    future.to_csv(output / "future_data_audit.csv", index=False, encoding="utf-8-sig")
+    variant_matrix.to_csv(output / "fallback_mapping_variant_matrix.csv", index=False, encoding="utf-8-sig")
+
+    future_count = int(future["future_data_violation"].sum()) if len(future) else 0
+    cash_rows = int(state_panel["is_current_formal_cash"].sum())
+    no_stock_rows = int(state_panel["execution_state"].eq("no_stock_target_but_market_exposure_allowed").sum())
+    eligible_rows = int(
+        (
+            state_panel["execution_state"].eq("no_stock_target_but_market_exposure_allowed")
+            & state_panel["fallback_eligible_by_regime"]
+        ).sum()
+    )
+    bear_rows = int(state_panel["execution_state"].eq("bear_or_cash_condition").sum())
+    blocked_rows = int(state_panel["execution_state"].eq("unclassified_cash_boundary_blocked").sum())
+    unknown_regime_rows = int(state_panel["market_regime_state"].eq("unknown").sum())
+    period_status = _period_status_summary(period)
+    bear_ready = bool(bear_rows > 0 and blocked_rows == 0)
+    ready_for_experiments = bool(len(mapping_daily) > 0 and future_count == 0 and period_status["p2_rows"] > 0)
+    manifest: dict[str, Any] = {
+        "task_id": TASK_ID_REGIME,
+        "status": "completed_regime_conditioned_contract_bear_cash_still_partial",
+        "output_dir": str(output),
+        "source_formal_streams": [str(path) for path in resolved_streams],
+        "formal_stream_rows": int(len(stream)),
+        "cash_rows": cash_rows,
+        "no_stock_target_but_market_exposure_allowed_rows": no_stock_rows,
+        "regime_eligible_no_stock_market_exposure_rows": eligible_rows,
+        "bear_or_cash_condition_rows": bear_rows,
+        "unclassified_cash_boundary_blocked_rows": blocked_rows,
+        "unknown_regime_rows": unknown_regime_rows,
+        "formal_00631L_target_rows": int(state_panel["execution_state"].eq("formal_00631L_target").sum()),
+        "direct_stock_target_rows": int(state_panel["execution_state"].eq("direct_stock_target").sum()),
+        "default_backtest_period_contract": DEFAULT_BACKTEST_PERIOD_CONTRACT,
+        "actual_signal_start": _date_text(stream["signal_date"].min()),
+        "actual_signal_end": _date_text(stream["signal_date"].max()),
+        "actual_execution_start": _date_text(stream["execution_date"].min()),
+        "actual_execution_end": _date_text(stream["execution_date"].max()),
+        "period_status_summary": period_status,
+        "comparison_regime_rs_base": "0050",
+        "fallback_execution_candidate": MARKET_EXPOSURE_TARGET,
+        "primary_mapping_policy": (
+            "map only traceable no-stock cash rows to 00631L when 0050 regime is "
+            "short_cycle_rotation or ordinary_or_no_edge; keep bear/cash as cash; block unclassified cash"
+        ),
+        "bear_cash_classification_ready": bear_ready,
+        "ready_for_experiments": ready_for_experiments,
+        "strategy_replay_executed_by_core": False,
+        "uses_forward_return_as_rule": False,
+        "future_data_violation_count": future_count,
+        "formal_model_changed": False,
+        "trade_decision_changed": False,
+        "active_in_trade_decision": False,
+        "report_changed": False,
+        "handoff_to_experiments_task": EXPERIMENTS_TASK_ID_REGIME,
+    }
+    (output / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    (output / "final_summary_zh.md").write_text(_summary_regime(manifest), encoding="utf-8")
+    pd.DataFrame([{"task_id": TASK_ID_REGIME, "status": "completed", "output_dir": str(output)}]).to_csv(
+        output / "completed.csv", index=False, encoding="utf-8-sig"
+    )
+    pd.DataFrame(columns=["task_id", "status", "reason"]).to_csv(output / "failed.csv", index=False, encoding="utf-8-sig")
+    pd.DataFrame(
+        [
+            {"step": "load_p1_and_p2_formal_streams", "status": "completed"},
+            {"step": "build_0050_regime_context", "status": "completed"},
+            {"step": "classify_regime_conditioned_cash_boundary", "status": "completed"},
+            {"step": "write_regime_conditioned_contract_package", "status": "completed"},
         ]
     ).to_csv(output / "run_log.csv", index=False, encoding="utf-8-sig")
     return manifest
@@ -495,6 +643,298 @@ def _bear_cash_condition_readiness(panel: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _build_0050_regime_context(root: Path, stream: pd.DataFrame) -> pd.DataFrame:
+    path = root / BENCHMARK_PRICE_PATHS["0050.TW"]
+    if not path.exists():
+        return pd.DataFrame(
+            {
+                "execution_date": sorted(stream["execution_date"].dropna().astype(str).unique()),
+                "market_regime_state": "unknown",
+                "regime_source": "missing_0050_price_cache",
+                "regime_categories": "unknown",
+                "market_regime_ready": False,
+                "fallback_eligible_by_regime": False,
+            }
+        )
+    prices = pd.read_csv(path, usecols=lambda col: col in {"date", "close", "adj_close"})
+    prices["date"] = pd.to_datetime(prices["date"], errors="coerce")
+    close_col = "adj_close" if "adj_close" in prices.columns else "close"
+    prices["close_0050"] = pd.to_numeric(prices[close_col], errors="coerce")
+    prices = prices.dropna(subset=["date", "close_0050"]).sort_values("date").drop_duplicates("date")
+    prices["ma20_0050"] = prices["close_0050"].rolling(20, min_periods=20).mean()
+    prices["ma60_0050"] = prices["close_0050"].rolling(60, min_periods=60).mean()
+    prices["ma120_0050"] = prices["close_0050"].rolling(120, min_periods=120).mean()
+    prices["ret20_0050_pct"] = prices["close_0050"].pct_change(20) * 100
+    prices["ret60_0050_pct"] = prices["close_0050"].pct_change(60) * 100
+    prices["ma60_slope20_0050_pct"] = prices["ma60_0050"].pct_change(20) * 100
+    prices["execution_date"] = prices["date"].dt.strftime("%Y-%m-%d")
+    needed = pd.DataFrame({"execution_date": sorted(stream["execution_date"].dropna().astype(str).unique())})
+    out = needed.merge(
+        prices[
+            [
+                "execution_date",
+                "close_0050",
+                "ma20_0050",
+                "ma60_0050",
+                "ma120_0050",
+                "ret20_0050_pct",
+                "ret60_0050_pct",
+                "ma60_slope20_0050_pct",
+            ]
+        ],
+        on="execution_date",
+        how="left",
+    )
+    out["market_regime_state"] = out.apply(_classify_0050_regime, axis=1)
+    out["regime_categories"] = out["market_regime_state"]
+    out["regime_source"] = str(BENCHMARK_PRICE_PATHS["0050.TW"])
+    out["market_regime_ready"] = out["market_regime_state"].ne("unknown")
+    out["fallback_eligible_by_regime"] = out["market_regime_state"].isin(REGIME_ALLOWED_FOR_FALLBACK)
+    return out
+
+
+def _classify_0050_regime(row: pd.Series) -> str:
+    close = _float_or_none(row.get("close_0050"))
+    ma20 = _float_or_none(row.get("ma20_0050"))
+    ma60 = _float_or_none(row.get("ma60_0050"))
+    ma120 = _float_or_none(row.get("ma120_0050"))
+    ret20 = _float_or_none(row.get("ret20_0050_pct"))
+    ret60 = _float_or_none(row.get("ret60_0050_pct"))
+    slope60 = _float_or_none(row.get("ma60_slope20_0050_pct"))
+    if None in {close, ma20, ma60, ma120, ret20, ret60, slope60}:
+        return "unknown"
+    if close < ma60 and ret60 < 0:
+        return "defensive_or_bear"
+    if close < ma120 and ret20 < 0:
+        return "defensive_or_bear"
+    if close > ma20 > ma60 > ma120 and ret60 >= 8 and slope60 > 0:
+        return "long_strong_trend"
+    if close > ma20 and ret20 > 0 and (ret60 < 8 or slope60 <= 0):
+        return "short_cycle_rotation"
+    return "ordinary_or_no_edge"
+
+
+def _attach_regime_context(panel: pd.DataFrame, regime: pd.DataFrame) -> pd.DataFrame:
+    out = panel.merge(regime, on="execution_date", how="left")
+    out["next_tradable_date"] = out["execution_date"]
+    out["current_formal_target"] = out["formal_target"]
+    out["current_formal_state"] = out.apply(_current_formal_state, axis=1)
+    out["market_regime_state"] = out["market_regime_state"].fillna("unknown")
+    out["regime_categories"] = out["regime_categories"].fillna("unknown")
+    out["market_regime_ready"] = out.get("market_regime_ready", False).fillna(False).map(_as_bool)
+    out["fallback_eligible_by_regime"] = out.get("fallback_eligible_by_regime", False).fillna(False).map(_as_bool)
+    out["market_exposure_allowed_flag"] = (
+        out["execution_state"].eq("no_stock_target_but_market_exposure_allowed") & out["fallback_eligible_by_regime"]
+    )
+    out["bear_or_cash_condition"] = out["execution_state"].eq("bear_or_cash_condition")
+    out["cash_reason_code"] = out.apply(_cash_reason_code, axis=1)
+    out["unclassified_cash_reason_code"] = out.apply(_unclassified_cash_reason_code, axis=1)
+    out["period_label"] = out["signal_date"].map(_period_label_for_date)
+    return out
+
+
+def _current_formal_state(row: pd.Series) -> str:
+    target = str(row.get("formal_target", ""))
+    if target == CASH_TARGET:
+        return "no_target_cash"
+    if target == MARKET_EXPOSURE_TARGET:
+        return "market_exposure_00631L"
+    if target:
+        return "direct_stock_target"
+    return "unknown"
+
+
+def _cash_reason_code(row: pd.Series) -> str:
+    if not bool(row.get("is_current_formal_cash", False)):
+        return ""
+    state = str(row.get("execution_state", ""))
+    if state == "bear_or_cash_condition":
+        return "explicit_bear_or_cash_condition"
+    if state == "no_stock_target_but_market_exposure_allowed":
+        if bool(row.get("fallback_eligible_by_regime", False)):
+            return "no_stock_no_edge_market_exposure_allowed_by_regime"
+        return f"no_stock_market_exposure_blocked_by_regime_{row.get('market_regime_state', 'unknown')}"
+    return _unclassified_cash_reason_code(row)
+
+
+def _unclassified_cash_reason_code(row: pd.Series) -> str:
+    if str(row.get("execution_state", "")) != "unclassified_cash_boundary_blocked":
+        return ""
+    if not bool(row.get("market_regime_ready", False)):
+        return "missing_regime_state"
+    no_target_reason = str(row.get("no_target_reason", ""))
+    if no_target_reason in {"", "pool1_no_actionable_formal_target", "pool1_no_target"}:
+        return "ambiguous_no_target_reason"
+    if not bool(row.get("benchmark_0050_available", False)) or not bool(row.get("benchmark_00631l_available", False)):
+        return "missing_price_or_benchmark"
+    return "missing_explicit_bear_cash_field"
+
+
+def _regime_cash_reason_code_audit(panel: pd.DataFrame) -> pd.DataFrame:
+    cash = panel[panel["is_current_formal_cash"]].copy()
+    if cash.empty:
+        return pd.DataFrame(columns=["cash_reason_code", "market_regime_state", "rows", "blocked_rows"])
+    return (
+        cash.groupby(["cash_reason_code", "market_regime_state"], dropna=False)
+        .agg(
+            rows=("signal_date", "count"),
+            blocked_rows=("execution_state", lambda s: int((s == "unclassified_cash_boundary_blocked").sum())),
+            example_no_target_reason=("no_target_reason", "first"),
+            example_pool1_candidate=("pool1_candidate", "first"),
+        )
+        .reset_index()
+    )
+
+
+def _regime_bear_cash_classifier_readiness(panel: pd.DataFrame) -> pd.DataFrame:
+    base = _bear_cash_condition_readiness(panel)
+    rows = base.to_dict(orient="records")
+    rows.append(
+        {
+            "field": "market_regime_state_0050",
+            "available": bool(panel["market_regime_ready"].any()),
+            "cash_rows": int(panel["is_current_formal_cash"].sum()),
+            "ready_for_exact_bear_cash_classification": False,
+            "note": "0050-derived regime context is available for diagnostic fallback eligibility, not exact bear/cash formal condition",
+        }
+    )
+    rows.append(
+        {
+            "field": "fallback_eligible_by_regime",
+            "available": True,
+            "cash_rows": int(panel["market_exposure_allowed_flag"].sum()),
+            "ready_for_exact_bear_cash_classification": False,
+            "note": "diagnostic eligibility only; does not replace formal cash rule",
+        }
+    )
+    return pd.DataFrame(rows)
+
+
+def _regime_unclassified_reason_codes(panel: pd.DataFrame) -> pd.DataFrame:
+    blocked = panel[panel["execution_state"].eq("unclassified_cash_boundary_blocked")].copy()
+    if blocked.empty:
+        return pd.DataFrame(columns=["reason_code", "rows", "example_no_target_reason", "example_market_regime_state"])
+    return (
+        blocked.groupby("unclassified_cash_reason_code", dropna=False)
+        .agg(
+            rows=("signal_date", "count"),
+            example_no_target_reason=("no_target_reason", "first"),
+            example_market_regime_state=("market_regime_state", "first"),
+            example_pool1_candidate=("pool1_candidate", "first"),
+            example_source_stream=("source_stream", "first"),
+        )
+        .reset_index()
+        .rename(columns={"unclassified_cash_reason_code": "reason_code"})
+    )
+
+
+def _fallback_eligibility_by_regime(panel: pd.DataFrame) -> pd.DataFrame:
+    return (
+        panel.groupby(["period_label", "market_regime_state"], dropna=False)
+        .agg(
+            rows=("signal_date", "count"),
+            cash_rows=("is_current_formal_cash", "sum"),
+            no_stock_market_exposure_rows=(
+                "execution_state",
+                lambda s: int((s == "no_stock_target_but_market_exposure_allowed").sum()),
+            ),
+            fallback_eligible_rows=("market_exposure_allowed_flag", "sum"),
+            bear_or_cash_rows=("bear_or_cash_condition", "sum"),
+            unclassified_cash_blocked_rows=(
+                "execution_state",
+                lambda s: int((s == "unclassified_cash_boundary_blocked").sum()),
+            ),
+        )
+        .reset_index()
+    )
+
+
+def _build_regime_mapping_daily_panel(panel: pd.DataFrame) -> pd.DataFrame:
+    rows: list[dict[str, Any]] = []
+    for _, row in panel.iterrows():
+        for variant in REGIME_VARIANTS:
+            target, state, blocked = _mapped_target_for_regime_variant(row, str(variant["variant_id"]))
+            rows.append(
+                {
+                    "variant_id": variant["variant_id"],
+                    "variant_role": variant["role"],
+                    "signal_date": row["signal_date"],
+                    "execution_date": row["execution_date"],
+                    "next_tradable_date": row["next_tradable_date"],
+                    "formal_target": row["formal_target"],
+                    "current_formal_state": row["current_formal_state"],
+                    "execution_state": row["execution_state"],
+                    "market_regime_state": row["market_regime_state"],
+                    "fallback_eligible_by_regime": row["fallback_eligible_by_regime"],
+                    "mapped_execution_state": state,
+                    "mapped_target": target,
+                    "mapped_target_weight": 1.0 if target else 0.0,
+                    "action_blocked_reason": blocked,
+                    "upper_bound_reference": bool(variant["upper_bound_reference"]),
+                    "benchmark_0050_available": row["benchmark_0050_available"],
+                    "benchmark_00631l_available": row["benchmark_00631l_available"],
+                    "uses_forward_return_as_rule": False,
+                    "strategy_replay_executed_by_core": False,
+                    "formal_model_changed": False,
+                    "trade_decision_changed": False,
+                    "active_in_trade_decision": False,
+                    "report_changed": False,
+                }
+            )
+    return pd.DataFrame(rows)
+
+
+def _mapped_target_for_regime_variant(row: pd.Series, variant_id: str) -> tuple[str, str, str]:
+    formal_target = str(row.get("formal_target", "")).strip()
+    state = str(row.get("execution_state", "")).strip()
+    regime = str(row.get("market_regime_state", "unknown"))
+    if variant_id == "current_formal_old_no_target_cash":
+        return formal_target, state, ""
+    if variant_id == "upper_bound_all_no_target_00631l_reference" and formal_target == CASH_TARGET:
+        return MARKET_EXPOSURE_TARGET, "upper_bound_all_no_target_to_00631L", ""
+    if state in {"direct_stock_target", "formal_00631L_target"}:
+        return formal_target, state, ""
+    if state == "bear_or_cash_condition":
+        return CASH_TARGET, state, ""
+    if state == "no_stock_target_but_market_exposure_allowed":
+        if variant_id == "fallback_disabled_in_long_strong_ai_reference" and regime != "long_strong_trend":
+            return MARKET_EXPOSURE_TARGET, "regime_reference_market_exposure_fallback", ""
+        if variant_id == "fallback_enabled_in_ordinary_short_cycle_reference" and regime in REGIME_ALLOWED_FOR_FALLBACK:
+            return MARKET_EXPOSURE_TARGET, "ordinary_short_cycle_market_exposure_fallback", ""
+        if variant_id in {"regime_conditioned_fallback_00631l_primary", "cash_only_bear_strict_reference"}:
+            if bool(row.get("fallback_eligible_by_regime", False)):
+                return MARKET_EXPOSURE_TARGET, "regime_conditioned_market_exposure_fallback", ""
+            return "", state, f"blocked_by_regime_{regime}"
+    if state == "unclassified_cash_boundary_blocked":
+        return "", state, str(row.get("action_blocked_reason", "blocked_unclassified_cash_boundary"))
+    return "", state or "unknown", "blocked_unknown_execution_state"
+
+
+def _regime_future_data_audit(panel: pd.DataFrame, mapping: pd.DataFrame, regime: pd.DataFrame) -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "audit_item": "regime_conditioned_fallback_boundary_contract",
+                "rows": int(len(panel)),
+                "future_data_violation": False,
+                "reason": "classification uses same-row formal stream fields and trailing 0050 data only",
+            },
+            {
+                "audit_item": "0050_market_regime_context",
+                "rows": int(len(regime)),
+                "future_data_violation": False,
+                "reason": "0050 regime features are trailing moving averages and trailing returns on execution date",
+            },
+            {
+                "audit_item": "regime_conditioned_execution_state_panel",
+                "rows": int(len(mapping)),
+                "future_data_violation": False,
+                "reason": "mapping variants use current formal target, live-safe cash classification, and trailing regime label only",
+            },
+        ]
+    )
+
+
 def _build_mapping_daily_panel(panel: pd.DataFrame) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     for _, row in panel.iterrows():
@@ -686,6 +1126,32 @@ def _summary_v2(manifest: dict[str, Any]) -> str:
     )
 
 
+def _summary_regime(manifest: dict[str, Any]) -> str:
+    period = manifest.get("period_status_summary", {})
+    return (
+        "# Regime-conditioned fallback boundary contract\n\n"
+        "## 結論\n\n"
+        "- 本包建立 row-level regime-conditioned fallback boundary contract；沒有改正式模型、報告或交易決策。\n"
+        "- comparison / regime base 使用 0050；fallback execution candidate 使用 00631L。\n"
+        f"- formal stream rows：{manifest['formal_stream_rows']}\n"
+        f"- current formal cash rows：{manifest['cash_rows']}\n"
+        f"- no-stock market exposure candidates：{manifest['no_stock_target_but_market_exposure_allowed_rows']}\n"
+        f"- regime eligible fallback rows：{manifest['regime_eligible_no_stock_market_exposure_rows']}\n"
+        f"- explicit bear/cash rows：{manifest['bear_or_cash_condition_rows']}\n"
+        f"- unclassified blocked cash rows：{manifest['unclassified_cash_boundary_blocked_rows']}\n"
+        f"- unknown regime rows：{manifest['unknown_regime_rows']}\n"
+        f"- P1 actual：{period.get('default_backtest_period_1_actual_start', '')}～{period.get('default_backtest_period_1_actual_end', '')}\n"
+        f"- P2 actual：{period.get('default_backtest_period_2_actual_start', '')}～{period.get('default_backtest_period_2_actual_end', '')}\n"
+        f"- bear_cash_classification_ready：{manifest['bear_cash_classification_ready']}\n"
+        f"- ready_for_experiments：{manifest['ready_for_experiments']}\n\n"
+        "## 邊界\n\n"
+        "- `regime_conditioned_fallback_00631l_primary` 不會把所有 CASH/no-target rows 硬轉 00631L。\n"
+        "- `upper_bound_all_no_target_00631l_reference` 只是 reference，不是 formal route。\n"
+        "- bear/cash classifier 仍需 explicit row-level bear/cash condition 才能 formal-ready。\n"
+        "- `strategy_replay_executed_by_core=false`；績效驗收交 Experiments。\n"
+    )
+
+
 def _canonical_target(value: object) -> str:
     text = str(value or "").strip()
     if not text or text.lower() == "nan":
@@ -713,14 +1179,36 @@ def _date_text(value: object) -> str:
     return str(value)[:10]
 
 
+def _float_or_none(value: object) -> float | None:
+    number = pd.to_numeric(pd.Series([value]), errors="coerce").iloc[0]
+    if pd.isna(number):
+        return None
+    return float(number)
+
+
+def _period_label_for_date(date_text: object) -> str:
+    value = str(date_text or "")
+    for period in DEFAULT_BACKTEST_PERIOD_CONTRACT:
+        if str(period["requested_start"]) <= value <= str(period["requested_end"]):
+            return str(period["period_label"])
+    return "outside_default_periods"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build fallback-boundary 00631L except bear/cash diagnostic contract.")
     parser.add_argument("--repo-root", default=".")
     parser.add_argument("--formal-stream", default=str(DEFAULT_FORMAL_STREAM))
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR))
     parser.add_argument("--v2", action="store_true", help="Build the P2 + bear/cash classifier v2 contract.")
+    parser.add_argument("--regime-conditioned", action="store_true", help="Build the regime-conditioned fallback boundary contract.")
     args = parser.parse_args()
-    if args.v2:
+    if args.regime_conditioned:
+        output_dir = DEFAULT_OUTPUT_DIR_REGIME if args.output_dir == str(DEFAULT_OUTPUT_DIR) else Path(args.output_dir)
+        manifest = run_regime_conditioned_fallback_boundary_contract(
+            repo_root=args.repo_root,
+            output_dir=output_dir,
+        )
+    elif args.v2:
         output_dir = DEFAULT_OUTPUT_DIR_V2 if args.output_dir == str(DEFAULT_OUTPUT_DIR) else Path(args.output_dir)
         manifest = run_fallback_boundary_p2_bear_cash_classifier_contract(
             repo_root=args.repo_root,

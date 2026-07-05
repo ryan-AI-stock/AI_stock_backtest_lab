@@ -7,6 +7,7 @@ import pandas as pd
 from backtest_lab.fallback_boundary_00631l_except_bear_cash_contract import (
     run_fallback_boundary_00631l_except_bear_cash_contract,
     run_fallback_boundary_p2_bear_cash_classifier_contract,
+    run_regime_conditioned_fallback_boundary_contract,
 )
 
 
@@ -190,6 +191,68 @@ class FallbackBoundary00631LExceptBearCashContractTest(unittest.TestCase):
             self.assertEqual(p2_row["execution_state"], "no_stock_target_but_market_exposure_allowed")
             blocked = panel[panel["signal_date"].eq("2021-12-29")].iloc[0]
             self.assertEqual(blocked["execution_state"], "unclassified_cash_boundary_blocked")
+
+    def test_regime_conditioned_contract_blocks_long_strong_primary_fallback(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            dates = pd.bdate_range("2023-01-02", periods=180)
+            p2 = root / "p2.csv"
+            pd.DataFrame(
+                [
+                    {
+                        "signal_date": dates[140].strftime("%Y-%m-%d"),
+                        "execution_date": dates[141].strftime("%Y-%m-%d"),
+                        "formal_target": "CASH",
+                        "formal_target_display": "cash",
+                        "no_target_reason": "pool2_disagrees_confirmation_1_not_met",
+                        "risk_off_state": "no_target_cash_all",
+                        "pool1_top_candidate": "00631L.TW",
+                        "pool2_confirmation_state": "pool2_disagreement_confirmation_not_met",
+                        "source_decision": "p2",
+                    },
+                    {
+                        "signal_date": dates[142].strftime("%Y-%m-%d"),
+                        "execution_date": dates[143].strftime("%Y-%m-%d"),
+                        "formal_target": "CASH",
+                        "formal_target_display": "cash",
+                        "no_target_reason": "pool1_no_actionable_formal_target",
+                        "risk_off_state": "no_target_cash_all",
+                        "pool1_top_candidate": "",
+                        "pool2_confirmation_state": "no_pool2_persistent_eligible_candidate",
+                        "source_decision": "p2",
+                    },
+                ]
+            ).to_csv(p2, index=False)
+            cache = root / "backtest_cache" / "stock_pool_observations"
+            cache.mkdir(parents=True)
+            price_rows = []
+            for idx, date in enumerate(dates):
+                price_rows.append({"date": date.strftime("%Y-%m-%d"), "close": 100 + idx})
+            pd.DataFrame(price_rows).to_csv(cache / "0050_TW.csv", index=False)
+            pd.DataFrame(price_rows).to_csv(cache / "00631L_TW.csv", index=False)
+
+            manifest = run_regime_conditioned_fallback_boundary_contract(
+                repo_root=root,
+                formal_streams=[p2],
+                output_dir=root / "out_regime",
+            )
+
+            self.assertFalse(manifest["formal_model_changed"])
+            self.assertFalse(manifest["strategy_replay_executed_by_core"])
+            self.assertEqual(manifest["no_stock_target_but_market_exposure_allowed_rows"], 1)
+            self.assertEqual(manifest["regime_eligible_no_stock_market_exposure_rows"], 0)
+            panel = pd.read_csv(root / "out_regime" / "regime_conditioned_fallback_boundary_contract.csv")
+            self.assertEqual(panel.loc[0, "market_regime_state"], "long_strong_trend")
+            self.assertFalse(bool(panel.loc[0, "fallback_eligible_by_regime"]))
+
+            mapped = pd.read_csv(root / "out_regime" / "regime_conditioned_execution_state_panel.csv")
+            primary = mapped[mapped["variant_id"].eq("regime_conditioned_fallback_00631l_primary")]
+            first = primary[primary["signal_date"].eq(dates[140].strftime("%Y-%m-%d"))].iloc[0]
+            self.assertTrue(pd.isna(first["mapped_target"]) or first["mapped_target"] == "")
+            self.assertIn("blocked_by_regime_long_strong_trend", first["action_blocked_reason"])
+            blocked = primary[primary["signal_date"].eq(dates[142].strftime("%Y-%m-%d"))].iloc[0]
+            self.assertTrue(pd.isna(blocked["mapped_target"]) or blocked["mapped_target"] == "")
+            self.assertIn("blocked_missing_explicit_bear", blocked["action_blocked_reason"])
 
 
 if __name__ == "__main__":
