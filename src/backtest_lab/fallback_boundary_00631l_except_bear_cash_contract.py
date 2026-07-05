@@ -20,10 +20,16 @@ from backtest_lab.strong_stock_trend_extension_bounded_portfolio_diagnostic impo
 
 TASK_ID = "TASK-BACKTEST-CORE-FALLBACK-BOUNDARY-00631L-EXCEPT-BEAR-CASH-CONTRACT-001"
 EXPERIMENTS_TASK_ID = "TASK-BACKTEST-EXPERIMENTS-FALLBACK-BOUNDARY-00631L-EXCEPT-BEAR-CASH-DIAGNOSTIC-001"
+TASK_ID_V2 = "TASK-BACKTEST-CORE-FALLBACK-BOUNDARY-P2-BEAR-CASH-CLASSIFIER-CONTRACT-001"
+EXPERIMENTS_TASK_ID_V2 = "TASK-BACKTEST-EXPERIMENTS-FALLBACK-BOUNDARY-00631L-EXCEPT-BEAR-CASH-DIAGNOSTIC-RERUN-001"
 DEFAULT_FORMAL_STREAM = Path(
     "outputs/combined_formal_target_stream_20150128_20211230_20260702/combined_formal_target_stream.csv"
 )
+DEFAULT_2022_LATEST_FORMAL_STREAM = Path(
+    "outputs/formal_long_range_signal_reconstruction_201411_latest_20260702/formal_long_range_target_stream.csv"
+)
 DEFAULT_OUTPUT_DIR = Path("outputs/fallback_boundary_00631l_except_bear_cash_contract_20260705")
+DEFAULT_OUTPUT_DIR_V2 = Path("outputs/fallback_boundary_p2_bear_cash_classifier_contract_20260705")
 CASH_TARGET = "CASH"
 MARKET_EXPOSURE_TARGET = "00631L.TW"
 VARIANTS = [
@@ -139,6 +145,94 @@ def run_fallback_boundary_00631l_except_bear_cash_contract(
     return manifest
 
 
+def run_fallback_boundary_p2_bear_cash_classifier_contract(
+    *,
+    repo_root: str | Path = ".",
+    formal_streams: list[str | Path] | None = None,
+    output_dir: str | Path = DEFAULT_OUTPUT_DIR_V2,
+) -> dict[str, Any]:
+    root = Path(repo_root).resolve()
+    streams = formal_streams or [DEFAULT_FORMAL_STREAM, DEFAULT_2022_LATEST_FORMAL_STREAM]
+    resolved_streams = [_resolve(root, path) for path in streams]
+    output = _resolve(root, output_dir)
+    output.mkdir(parents=True, exist_ok=True)
+
+    stream = _load_formal_streams(resolved_streams)
+    benchmark = _benchmark_availability(root, stream)
+    state_panel = _build_execution_state_panel(stream, benchmark)
+    cash_audit = _cash_row_classification_audit(state_panel)
+    readiness = _bear_cash_condition_readiness(state_panel)
+    reason_codes = _unclassified_reason_codes(state_panel)
+    variant_matrix = pd.DataFrame(VARIANTS)
+    mapping_daily = _build_mapping_daily_panel(state_panel)
+    period = _period_contract_validation(state_panel, mapping_daily, benchmark)
+    future = _future_data_audit(state_panel, mapping_daily)
+
+    state_panel.to_csv(output / "fallback_boundary_execution_state_panel_v2.csv", index=False, encoding="utf-8-sig")
+    readiness.to_csv(output / "bear_cash_classifier_readiness_v2.csv", index=False, encoding="utf-8-sig")
+    cash_audit.to_csv(output / "cash_row_classification_audit_v2.csv", index=False, encoding="utf-8-sig")
+    reason_codes.to_csv(output / "unclassified_cash_boundary_reason_codes.csv", index=False, encoding="utf-8-sig")
+    period.to_csv(output / "period_contract_validation_v2.csv", index=False, encoding="utf-8-sig")
+    benchmark.to_csv(output / "benchmark_availability_audit_v2.csv", index=False, encoding="utf-8-sig")
+    future.to_csv(output / "future_data_audit.csv", index=False, encoding="utf-8-sig")
+    variant_matrix.to_csv(output / "fallback_mapping_variant_matrix_v2.csv", index=False, encoding="utf-8-sig")
+    mapping_daily.to_csv(output / "fallback_mapping_daily_panel_v2.csv", index=False, encoding="utf-8-sig")
+
+    future_count = int(future["future_data_violation"].sum()) if len(future) else 0
+    cash_rows = int(state_panel["is_current_formal_cash"].sum())
+    no_stock_rows = int(state_panel["execution_state"].eq("no_stock_target_but_market_exposure_allowed").sum())
+    bear_rows = int(state_panel["execution_state"].eq("bear_or_cash_condition").sum())
+    blocked_rows = int(state_panel["execution_state"].eq("unclassified_cash_boundary_blocked").sum())
+    period_status = _period_status_summary(period)
+    bear_ready = bool(bear_rows > 0 and blocked_rows == 0)
+    ready_for_experiments = bool(len(mapping_daily) > 0 and future_count == 0 and period_status["p2_rows"] > 0)
+    manifest: dict[str, Any] = {
+        "task_id": TASK_ID_V2,
+        "status": "completed_v2_contract_p2_coverage_repaired_bear_cash_still_partial",
+        "output_dir": str(output),
+        "source_formal_streams": [str(path) for path in resolved_streams],
+        "formal_stream_rows": int(len(stream)),
+        "cash_rows": cash_rows,
+        "no_stock_target_but_market_exposure_allowed_rows": no_stock_rows,
+        "bear_or_cash_condition_rows": bear_rows,
+        "unclassified_cash_boundary_blocked_rows": blocked_rows,
+        "formal_00631L_target_rows": int(state_panel["execution_state"].eq("formal_00631L_target").sum()),
+        "direct_stock_target_rows": int(state_panel["execution_state"].eq("direct_stock_target").sum()),
+        "default_backtest_period_contract": DEFAULT_BACKTEST_PERIOD_CONTRACT,
+        "actual_signal_start": _date_text(stream["signal_date"].min()),
+        "actual_signal_end": _date_text(stream["signal_date"].max()),
+        "actual_execution_start": _date_text(stream["execution_date"].min()),
+        "actual_execution_end": _date_text(stream["execution_date"].max()),
+        "period_status_summary": period_status,
+        "primary_mapping_policy": "only traceable 00631L market-exposure cash rows map to 00631L; unclassified cash rows blocked",
+        "bear_cash_classification_ready": bear_ready,
+        "ready_for_experiments": ready_for_experiments,
+        "strategy_replay_executed_by_core": False,
+        "uses_forward_return_as_rule": False,
+        "future_data_violation_count": future_count,
+        "formal_model_changed": False,
+        "trade_decision_changed": False,
+        "active_in_trade_decision": False,
+        "report_changed": False,
+        "handoff_to_experiments_task": EXPERIMENTS_TASK_ID_V2,
+    }
+    (output / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    (output / "final_summary_zh.md").write_text(_summary_v2(manifest), encoding="utf-8")
+    pd.DataFrame([{"task_id": TASK_ID_V2, "status": "completed", "output_dir": str(output)}]).to_csv(
+        output / "completed.csv", index=False, encoding="utf-8-sig"
+    )
+    pd.DataFrame(columns=["task_id", "status", "reason"]).to_csv(output / "failed.csv", index=False, encoding="utf-8-sig")
+    pd.DataFrame(
+        [
+            {"step": "load_p1_and_p2_formal_streams", "status": "completed"},
+            {"step": "normalize_formal_stream_schemas", "status": "completed"},
+            {"step": "classify_v2_cash_boundary_rows", "status": "completed"},
+            {"step": "write_v2_contract_package", "status": "completed"},
+        ]
+    ).to_csv(output / "run_log.csv", index=False, encoding="utf-8-sig")
+    return manifest
+
+
 def _resolve(root: Path, value: str | Path) -> Path:
     path = Path(value)
     return path if path.is_absolute() else root / path
@@ -146,6 +240,51 @@ def _resolve(root: Path, value: str | Path) -> Path:
 
 def _load_formal_stream(path: Path) -> pd.DataFrame:
     df = pd.read_csv(path).fillna("")
+    df = _normalize_formal_stream_schema(df, path.name)
+    return df
+
+
+def _load_formal_streams(paths: list[Path]) -> pd.DataFrame:
+    frames = []
+    for path in paths:
+        if not path.exists():
+            continue
+        frame = pd.read_csv(path).fillna("")
+        frames.append(_normalize_formal_stream_schema(frame, path.as_posix()))
+    if not frames:
+        raise FileNotFoundError("No formal streams found for fallback-boundary contract.")
+    combined = pd.concat(frames, ignore_index=True, sort=False)
+    combined = combined.sort_values(["signal_date", "source_stream_priority"]).drop_duplicates("signal_date", keep="last")
+    return combined.sort_values("signal_date").reset_index(drop=True)
+
+
+def _normalize_formal_stream_schema(df: pd.DataFrame, source_stream: str) -> pd.DataFrame:
+    df = df.copy().fillna("")
+    if "pool1_candidate" not in df.columns and "pool1_top_candidate" in df.columns:
+        df["pool1_candidate"] = df["pool1_top_candidate"]
+    if "pool1_candidate_display" not in df.columns:
+        df["pool1_candidate_display"] = df.get("pool1_top_candidate", df.get("pool1_candidate", ""))
+    if "pool1_gate_status" not in df.columns:
+        df["pool1_gate_status"] = df.get("readiness_state", "")
+    if "pool1_attack_gate_active" not in df.columns:
+        df["pool1_attack_gate_active"] = False
+    if "pool1_target_is_actionable" not in df.columns:
+        df["pool1_target_is_actionable"] = df.get("pool1_candidate", "").astype(str).str.strip().ne("")
+    if "pool2_confirmation_status" not in df.columns:
+        state = df.get("pool2_confirmation_state", "").astype(str)
+        df["pool2_confirmation_status"] = state.map(
+            lambda value: "pool2_not_ready" if "not_met" in value or "disagreement" in value else "confirmed_or_not_required"
+        )
+    if "pool2_vote" not in df.columns:
+        df["pool2_vote"] = ""
+    if "pool2_support_without_persistence_vote" not in df.columns:
+        df["pool2_support_without_persistence_vote"] = ""
+    if "reason" not in df.columns:
+        df["reason"] = df.get("no_target_reason", "")
+    if "no_target_cash_all_applied" not in df.columns:
+        df["no_target_cash_all_applied"] = df.get("formal_target", "").astype(str).eq(CASH_TARGET)
+    df["source_stream"] = source_stream
+    df["source_stream_priority"] = 2 if "formal_long_range_signal_reconstruction" in source_stream else 1
     for col in ["signal_date", "execution_date"]:
         df[col] = pd.to_datetime(df[col], errors="coerce").dt.strftime("%Y-%m-%d")
     df["formal_target"] = df["formal_target"].astype(str).map(_canonical_target)
@@ -183,6 +322,7 @@ def _build_execution_state_panel(stream: pd.DataFrame, benchmark: pd.DataFrame) 
                 "risk_off_state": row.get("risk_off_state", ""),
                 "cash_all_policy_reason": row.get("reason", ""),
                 "source_decision": row.get("source_decision", ""),
+                "source_stream": row.get("source_stream", ""),
                 "is_current_formal_cash": row.get("formal_target", "") == CASH_TARGET,
                 "execution_state": state,
                 "classification_method": method,
@@ -225,7 +365,7 @@ def _classify_execution_state(row: pd.Series) -> tuple[str, str, str, str]:
         pool1_candidate == MARKET_EXPOSURE_TARGET
         and pool1_actionable
         and pool2_not_ready
-        and no_target_reason == "pool2_confirmation_not_ready"
+        and no_target_reason in {"pool2_confirmation_not_ready", "pool2_disagrees_confirmation_1_not_met"}
     ):
         return (
             "no_stock_target_but_market_exposure_allowed",
@@ -269,6 +409,46 @@ def _cash_row_classification_audit(panel: pd.DataFrame) -> pd.DataFrame:
     )
     grouped["uses_forward_return_as_rule"] = False
     return grouped
+
+
+def _unclassified_reason_codes(panel: pd.DataFrame) -> pd.DataFrame:
+    blocked = panel[panel["execution_state"].eq("unclassified_cash_boundary_blocked")].copy()
+    if blocked.empty:
+        return pd.DataFrame(columns=["reason_code", "rows", "example_no_target_reason", "example_source_stream"])
+    records: list[dict[str, Any]] = []
+    for _, row in blocked.iterrows():
+        codes = ["missing_explicit_bear_cash_field", "missing_regime_state"]
+        no_target_reason = str(row.get("no_target_reason", ""))
+        if no_target_reason in {"", "pool1_no_actionable_formal_target", "pool1_no_target"}:
+            codes.append("ambiguous_no_target_reason")
+        if not bool(row.get("next_tradable_date_available", False)):
+            codes.append("missing_execution_date")
+        if not bool(row.get("benchmark_0050_available", False)) or not bool(row.get("benchmark_00631l_available", False)):
+            codes.append("missing_price_or_benchmark")
+        for code in codes:
+            records.append(
+                {
+                    "reason_code": code,
+                    "signal_date": row.get("signal_date", ""),
+                    "no_target_reason": no_target_reason,
+                    "pool1_candidate": row.get("pool1_candidate", ""),
+                    "pool2_confirmation_state": row.get("pool2_confirmation_state", ""),
+                    "source_stream": row.get("source_stream", ""),
+                }
+            )
+    detail = pd.DataFrame(records)
+    summary = (
+        detail.groupby("reason_code", dropna=False)
+        .agg(
+            rows=("signal_date", "count"),
+            example_no_target_reason=("no_target_reason", "first"),
+            example_pool1_candidate=("pool1_candidate", "first"),
+            example_pool2_confirmation_state=("pool2_confirmation_state", "first"),
+            example_source_stream=("source_stream", "first"),
+        )
+        .reset_index()
+    )
+    return summary
 
 
 def _bear_cash_condition_readiness(panel: pd.DataFrame) -> pd.DataFrame:
@@ -430,6 +610,23 @@ def _period_row(layer: str, period: dict[str, str], frame: pd.DataFrame, date_co
     }
 
 
+def _period_status_summary(period: pd.DataFrame) -> dict[str, Any]:
+    rows: dict[str, Any] = {}
+    for label in ["default_backtest_period_1", "default_backtest_period_2"]:
+        frame = period[(period["period_label"].eq(label)) & (period["layer"].eq("formal_target_stream_signal"))]
+        if frame.empty:
+            rows[f"{label}_rows"] = 0
+            rows[f"{label}_actual_start"] = ""
+            rows[f"{label}_actual_end"] = ""
+        else:
+            rec = frame.iloc[0]
+            rows[f"{label}_rows"] = int(rec.get("rows", 0))
+            rows[f"{label}_actual_start"] = str(rec.get("actual_start", ""))
+            rows[f"{label}_actual_end"] = str(rec.get("actual_end", ""))
+    rows["p2_rows"] = rows.get("default_backtest_period_2_rows", 0)
+    return rows
+
+
 def _future_data_audit(panel: pd.DataFrame, mapping: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(
         [
@@ -467,6 +664,28 @@ def _summary(manifest: dict[str, Any]) -> str:
     )
 
 
+def _summary_v2(manifest: dict[str, Any]) -> str:
+    period = manifest.get("period_status_summary", {})
+    return (
+        "# Fallback boundary P2 + bear/cash classifier v2 contract\n\n"
+        "## 結論\n\n"
+        "- 本包補入 2022-latest formal stream，讓 P1 coverage 延伸，P2 有 actual coverage，但仍未到 requested 2026-06-30。\n"
+        f"- formal stream rows：{manifest['formal_stream_rows']}\n"
+        f"- current formal cash rows：{manifest['cash_rows']}\n"
+        f"- primary 可診斷轉 00631L rows：{manifest['no_stock_target_but_market_exposure_allowed_rows']}\n"
+        f"- explicit bear/cash rows：{manifest['bear_or_cash_condition_rows']}\n"
+        f"- unclassified blocked cash rows：{manifest['unclassified_cash_boundary_blocked_rows']}\n"
+        f"- P1 actual：{period.get('default_backtest_period_1_actual_start', '')}～{period.get('default_backtest_period_1_actual_end', '')}\n"
+        f"- P2 actual：{period.get('default_backtest_period_2_actual_start', '')}～{period.get('default_backtest_period_2_actual_end', '')}\n"
+        f"- bear_cash_classification_ready：{manifest['bear_cash_classification_ready']}\n"
+        f"- ready_for_experiments：{manifest['ready_for_experiments']}\n\n"
+        "## 邊界\n\n"
+        "- 仍沒有 explicit bear/cash row-level field，因此 bear/cash classifier 尚未 formal-ready。\n"
+        "- unclassified cash rows 不會在 primary 被硬轉 00631L。\n"
+        "- `strategy_replay_executed_by_core=false`；績效驗收交 Experiments。\n"
+    )
+
+
 def _canonical_target(value: object) -> str:
     text = str(value or "").strip()
     if not text or text.lower() == "nan":
@@ -499,12 +718,20 @@ def main() -> None:
     parser.add_argument("--repo-root", default=".")
     parser.add_argument("--formal-stream", default=str(DEFAULT_FORMAL_STREAM))
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR))
+    parser.add_argument("--v2", action="store_true", help="Build the P2 + bear/cash classifier v2 contract.")
     args = parser.parse_args()
-    manifest = run_fallback_boundary_00631l_except_bear_cash_contract(
-        repo_root=args.repo_root,
-        formal_stream=args.formal_stream,
-        output_dir=args.output_dir,
-    )
+    if args.v2:
+        output_dir = DEFAULT_OUTPUT_DIR_V2 if args.output_dir == str(DEFAULT_OUTPUT_DIR) else Path(args.output_dir)
+        manifest = run_fallback_boundary_p2_bear_cash_classifier_contract(
+            repo_root=args.repo_root,
+            output_dir=output_dir,
+        )
+    else:
+        manifest = run_fallback_boundary_00631l_except_bear_cash_contract(
+            repo_root=args.repo_root,
+            formal_stream=args.formal_stream,
+            output_dir=args.output_dir,
+        )
     print(json.dumps(manifest, ensure_ascii=False, indent=2))
 
 
