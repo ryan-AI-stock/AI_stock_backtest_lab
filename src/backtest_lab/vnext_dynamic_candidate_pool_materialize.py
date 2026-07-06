@@ -53,10 +53,11 @@ def materialize_vnext_dynamic_candidate_pool(
     output.mkdir(parents=True, exist_ok=True)
 
     liquidity = _load_liquidity(Path(liquidity_dir))
-    calendar = _build_trading_calendar(liquidity["trade_date"])
+    benchmark_features = _build_benchmark_features(Path(cache_dir))
+    benchmark_exact_dates = _benchmark_exact_dates(benchmark_features)
+    calendar = _build_trading_calendar(liquidity["trade_date"], benchmark_exact_dates)
     daily_market = _daily_market_features(liquidity)
 
-    benchmark_features = _build_benchmark_features(Path(cache_dir))
     trusted_benchmark_end = _trusted_benchmark_end(benchmark_features)
     benchmark_features = _append_blocked_case_trace_benchmark_rows(benchmark_features, trusted_benchmark_end)
     stock_features = _build_stock_features(liquidity, benchmark_features, calendar, trusted_benchmark_end)
@@ -198,11 +199,27 @@ def _load_liquidity(liquidity_dir: Path) -> pd.DataFrame:
     return out.sort_values(["trade_date", "ticker"]).reset_index(drop=True)
 
 
-def _build_trading_calendar(dates: pd.Series) -> pd.DataFrame:
+def _benchmark_exact_dates(benchmark_features: pd.DataFrame) -> set[pd.Timestamp]:
+    exact = benchmark_features[~benchmark_features["benchmark_data_blocked"].astype(bool)]
+    by_benchmark = [
+        set(group["trade_date"].dropna())
+        for _, group in exact.groupby("benchmark")
+    ]
+    if not by_benchmark:
+        return set()
+    return set.intersection(*by_benchmark)
+
+
+def _build_trading_calendar(dates: pd.Series, benchmark_exact_dates: set[pd.Timestamp]) -> pd.DataFrame:
     cal = pd.DataFrame({"trade_date": pd.to_datetime(dates).dropna().drop_duplicates().sort_values()})
     iso = cal["trade_date"].dt.isocalendar()
     cal["week_id"] = iso["year"].astype(str) + "-W" + iso["week"].astype(str).str.zfill(2)
-    cal["is_week_last_trading_day"] = cal["trade_date"].eq(cal.groupby("week_id")["trade_date"].transform("max"))
+    cal["benchmark_exact_available"] = cal["trade_date"].isin(benchmark_exact_dates)
+    aligned = cal[cal["benchmark_exact_available"]].copy()
+    aligned_last = aligned.groupby("week_id")["trade_date"].max()
+    cal["benchmark_aligned_week_last_trading_day"] = cal["trade_date"].eq(cal["week_id"].map(aligned_last))
+    cal["raw_market_week_last_trading_day"] = cal["trade_date"].eq(cal.groupby("week_id")["trade_date"].transform("max"))
+    cal["is_week_last_trading_day"] = cal["benchmark_aligned_week_last_trading_day"]
     cal["next_trade_date"] = cal["trade_date"].shift(-1)
     cal["source_last_available_date"] = cal["trade_date"].max()
     cal["latest_observed_week_partial"] = cal["week_id"].eq(cal.loc[cal.index[-1], "week_id"]) & (
