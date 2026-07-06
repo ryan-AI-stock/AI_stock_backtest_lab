@@ -102,6 +102,7 @@ def materialize_vnext_dynamic_candidate_pool(
     _write_csv(coverage, output / "coverage_summary.csv")
     _write_csv(blocked_rows, output / "blocked_rows.csv")
     _write_csv(_selected_hygiene_audit(weekly_snapshot, final_decision), output / "selected_row_hygiene_audit.csv")
+    _write_csv(_c8_score_decomposition_contract(weekly_snapshot), output / "vnext_c8_score_decomposition_contract.csv")
 
     ready_for_phase_a = bool(
         not weekly_snapshot.empty
@@ -131,6 +132,7 @@ def materialize_vnext_dynamic_candidate_pool(
             "vnext_weekly_candidate_snapshot": int(len(weekly_snapshot)),
             "vnext_final_decision_snapshot": int(len(final_decision)),
             "vnext_case_trace": int(len(case_trace)),
+            "vnext_c8_score_decomposition_contract": int(len(weekly_snapshot)),
             "blocked_rows": int(len(blocked_rows)),
         },
         "selected_row_hygiene_rule": "selected_outcome_candidate = selected_by_vnext AND NOT case_trace_only AND diagnostic_only",
@@ -145,6 +147,10 @@ def materialize_vnext_dynamic_candidate_pool(
     (output / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
     (output / "readiness_for_experiments.json").write_text(
         json.dumps(_readiness(manifest, coverage, blocked_rows), ensure_ascii=False, indent=2, default=str),
+        encoding="utf-8",
+    )
+    (output / "readiness_for_c8_score_decomposition.json").write_text(
+        json.dumps(_c8_readiness(manifest, weekly_snapshot, blocked_rows), ensure_ascii=False, indent=2, default=str),
         encoding="utf-8",
     )
     (output / "final_summary_zh.md").write_text(_summary(manifest, coverage, blocked_rows), encoding="utf-8")
@@ -560,6 +566,7 @@ def _build_weekly_snapshot(
     base["fallback_hurdle_result"] = base["excess_return_vs_00631L_20d"].map(lambda v: "missing" if pd.isna(v) else ("pass" if v > 0 else "fail"))
     base["rank_overall"] = base.groupby("trade_date")["router_adjusted_score"].rank(ascending=False, method="first")
     base["rank_in_subpool"] = base.groupby(["trade_date", "subpool_class"])["router_adjusted_score"].rank(ascending=False, method="first")
+    base = _add_c8_score_components(base)
     base["selected_by_vnext"] = base["eligible_pool_member"] & base["rank_overall"].le(2)
     base["case_trace_only"] = False
     base["diagnostic_only"] = True
@@ -603,7 +610,30 @@ def _build_weekly_snapshot(
         "router_weight_pullback_repair",
         "router_weight_short_cycle",
         "router_adjusted_score",
+        "router_long_strong_contribution",
+        "router_pullback_repair_contribution",
+        "router_short_cycle_contribution",
+        "final_selector_base_score",
+        "pullback_repair_contribution",
+        "theme_priority_contribution",
+        "rank_overall_contribution",
+        "risk_penalty_component",
+        "turnover_penalty_component",
+        "final_selector_score_decomposed",
+        "final_score_components_available",
+        "turnover_state",
         "risk_score",
+        "risk_bucket",
+        "hurdle_0050_rs20_proxy",
+        "hurdle_0050_rs40_proxy",
+        "hurdle_0050_rs60_proxy",
+        "hurdle_0050_proxy_result",
+        "hurdle_00631L_excess20_proxy",
+        "hurdle_00631L_excess40_proxy",
+        "hurdle_00631L_excess60_proxy",
+        "hurdle_00631L_proxy_result",
+        "benchmark_placeholder_blocked",
+        "benchmark_placeholder_blocked_reason",
         "fallback_hurdle_result",
         "rank_in_subpool",
         "rank_overall",
@@ -620,6 +650,68 @@ def _build_weekly_snapshot(
     ]
     ordinary = base[base["rank_overall"].le(100) | base["ticker"].isin(CASE_TICKERS)].copy()
     return ordinary[keep].sort_values(["snapshot_date", "rank_overall", "ticker"])
+
+
+def _add_c8_score_components(base: pd.DataFrame) -> pd.DataFrame:
+    base = base.copy()
+    base["router_long_strong_contribution"] = base["long_strong_score"].fillna(0) * base["router_weight_long_strong"]
+    base["router_pullback_repair_contribution"] = (
+        base["pullback_repair_score"].fillna(0) * base["router_weight_pullback_repair"]
+    )
+    base["router_short_cycle_contribution"] = base["short_cycle_score"].fillna(0) * base["router_weight_short_cycle"]
+    base["final_selector_base_score"] = (
+        base["router_long_strong_contribution"]
+        + base["router_pullback_repair_contribution"]
+        + base["router_short_cycle_contribution"]
+    )
+    base["pullback_repair_contribution"] = base["router_pullback_repair_contribution"]
+    base["theme_priority_contribution"] = base["membership_score"].fillna(0).astype(float) * 10.0
+    date_counts = base.groupby("trade_date")["ticker"].transform("count").replace(0, pd.NA)
+    base["rank_overall_contribution"] = ((date_counts - base["rank_overall"] + 1) / date_counts).fillna(0) * 10.0
+    base["risk_bucket"] = "normal"
+    base.loc[base["risk_score"].ge(60), "risk_bucket"] = "high"
+    base.loc[base["risk_score"].lt(30), "risk_bucket"] = "low"
+    base["risk_penalty_component"] = base["risk_score"].fillna(25.0) * 0.25
+    base["turnover_state"] = "normal"
+    base.loc[base["turnover_rank_pct_20d"].ge(0.8), "turnover_state"] = "high_attention"
+    base.loc[base["distribution_risk"].fillna(False).astype(bool), "turnover_state"] = "distribution_risk"
+    base["turnover_penalty_component"] = 0.0
+    base.loc[base["turnover_state"].eq("high_attention"), "turnover_penalty_component"] = 2.5
+    base.loc[base["turnover_state"].eq("distribution_risk"), "turnover_penalty_component"] = 12.5
+    base["final_selector_score_decomposed"] = (
+        base["final_selector_base_score"].fillna(0)
+        + base["theme_priority_contribution"].fillna(0)
+        + base["rank_overall_contribution"].fillna(0)
+        - base["risk_penalty_component"].fillna(0)
+        - base["turnover_penalty_component"].fillna(0)
+    )
+    base["hurdle_0050_rs20_proxy"] = base["RS20"]
+    base["hurdle_0050_rs40_proxy"] = base["RS40"]
+    base["hurdle_0050_rs60_proxy"] = base["RS60"]
+    base["hurdle_0050_proxy_result"] = base["hurdle_0050_rs20_proxy"].map(
+        lambda v: "missing" if pd.isna(v) else ("pass" if v > 0 else "fail")
+    )
+    base["hurdle_00631L_excess20_proxy"] = base["excess_return_vs_00631L_20d"]
+    base["hurdle_00631L_excess40_proxy"] = base["excess_return_vs_00631L_40d"]
+    base["hurdle_00631L_excess60_proxy"] = base["excess_return_vs_00631L_60d"]
+    base["hurdle_00631L_proxy_result"] = base["hurdle_00631L_excess20_proxy"].map(
+        lambda v: "missing" if pd.isna(v) else ("pass" if v > 0 else "fail")
+    )
+    required = [
+        "router_long_strong_contribution",
+        "router_pullback_repair_contribution",
+        "router_short_cycle_contribution",
+        "pullback_repair_contribution",
+        "theme_priority_contribution",
+        "rank_overall_contribution",
+        "risk_penalty_component",
+        "turnover_penalty_component",
+        "final_selector_score_decomposed",
+    ]
+    base["final_score_components_available"] = base[required].notna().all(axis=1)
+    base["benchmark_placeholder_blocked"] = False
+    base["benchmark_placeholder_blocked_reason"] = ""
+    return base
 
 
 def _build_final_decision_snapshot(weekly_snapshot: pd.DataFrame) -> pd.DataFrame:
@@ -834,6 +926,94 @@ def _selected_hygiene_audit(weekly_snapshot: pd.DataFrame, final_decision: pd.Da
             }
         ]
     )
+
+
+def _c8_score_decomposition_contract(weekly_snapshot: pd.DataFrame) -> pd.DataFrame:
+    cols = [
+        "snapshot_date",
+        "ticker",
+        "selected_by_vnext",
+        "selected_outcome_candidate",
+        "case_trace_only",
+        "diagnostic_only",
+        "router_regime",
+        "router_weight_long_strong",
+        "router_weight_pullback_repair",
+        "router_weight_short_cycle",
+        "router_long_strong_contribution",
+        "router_pullback_repair_contribution",
+        "router_short_cycle_contribution",
+        "final_selector_base_score",
+        "pullback_repair_contribution",
+        "theme_priority_contribution",
+        "rank_overall_contribution",
+        "risk_penalty_component",
+        "turnover_penalty_component",
+        "final_selector_score_decomposed",
+        "final_score_components_available",
+        "risk_score",
+        "risk_bucket",
+        "turnover_state",
+        "hurdle_0050_rs20_proxy",
+        "hurdle_0050_rs40_proxy",
+        "hurdle_0050_rs60_proxy",
+        "hurdle_0050_proxy_result",
+        "hurdle_00631L_excess20_proxy",
+        "hurdle_00631L_excess40_proxy",
+        "hurdle_00631L_excess60_proxy",
+        "hurdle_00631L_proxy_result",
+        "benchmark_placeholder_blocked",
+        "benchmark_placeholder_blocked_reason",
+        "formal_model_changed",
+        "trade_decision_changed",
+        "active_in_trade_decision",
+        "report_changed",
+    ]
+    return weekly_snapshot[cols].copy()
+
+
+def _c8_readiness(
+    manifest: dict[str, Any], weekly_snapshot: pd.DataFrame, blocked_rows: pd.DataFrame
+) -> dict[str, Any]:
+    component_cols = [
+        "router_long_strong_contribution",
+        "router_pullback_repair_contribution",
+        "router_short_cycle_contribution",
+        "pullback_repair_contribution",
+        "theme_priority_contribution",
+        "rank_overall_contribution",
+        "risk_penalty_component",
+        "turnover_penalty_component",
+        "final_selector_score_decomposed",
+    ]
+    missing_counts = {
+        col: int(weekly_snapshot[col].isna().sum())
+        for col in component_cols
+    }
+    return {
+        "date": "2026-07-06",
+        "task_id": "TASK-BACKTEST-CORE-VNEXT-C8-SCORE-DECOMPOSITION-CONTRACT-001",
+        "owner": "BACKTEST_LAB Core/Data",
+        "status": "c8_score_decomposition_contract_ready",
+        "source_materialization_status": manifest["status"],
+        "formal_model_changed": False,
+        "trade_decision_changed": False,
+        "active_in_trade_decision": False,
+        "report_changed": False,
+        "portfolio_replay_executed": False,
+        "candidate_forward_return_diagnostic_executed": False,
+        "diagnostic_only": True,
+        "rows": int(len(weekly_snapshot)),
+        "final_score_components_available_rows": int(weekly_snapshot["final_score_components_available"].sum()),
+        "component_missing_counts": missing_counts,
+        "case_trace_selected_violation_rows": int(
+            (weekly_snapshot["case_trace_only"] & weekly_snapshot["selected_outcome_candidate"]).sum()
+        ),
+        "benchmark_placeholder_rows": int(weekly_snapshot["benchmark_placeholder_blocked"].sum()),
+        "blocked_rows": blocked_rows.to_dict(orient="records"),
+        "next_owner": "BACKTEST_LAB Experiments",
+        "next_step": "Run C8-only risk/turnover penalty attenuation diagnostic; do not run portfolio replay.",
+    }
 
 
 def _readiness(manifest: dict[str, Any], coverage: pd.DataFrame, blocked_rows: pd.DataFrame) -> dict[str, Any]:
