@@ -57,8 +57,10 @@ def materialize_vnext_dynamic_candidate_pool(
     daily_market = _daily_market_features(liquidity)
 
     benchmark_features = _build_benchmark_features(Path(cache_dir))
-    stock_features = _build_stock_features(liquidity, benchmark_features, calendar)
-    attention_features = _build_attention_features(liquidity, calendar)
+    trusted_benchmark_end = _trusted_benchmark_end(benchmark_features)
+    benchmark_features = _append_blocked_case_trace_benchmark_rows(benchmark_features, trusted_benchmark_end)
+    stock_features = _build_stock_features(liquidity, benchmark_features, calendar, trusted_benchmark_end)
+    attention_features = _build_attention_features(liquidity, calendar, trusted_benchmark_end)
     fundamental_features = _build_fundamental_features(Path(revenue_dir), Path(fundamentals_dir))
     theme_membership = _build_theme_membership(Path(taxonomy_path), liquidity)
 
@@ -70,16 +72,20 @@ def materialize_vnext_dynamic_candidate_pool(
         theme_membership=theme_membership,
         calendar=calendar,
         benchmark_features=benchmark_features,
+        trusted_benchmark_end=trusted_benchmark_end,
     )
     final_decision = _build_final_decision_snapshot(weekly_snapshot)
-    case_trace = _build_case_trace(weekly_snapshot, stock_features, attention_features, daily_market, benchmark_features)
-    coverage = _coverage_summary(liquidity, benchmark_features, stock_features, weekly_snapshot)
+    case_trace = _build_case_trace(
+        weekly_snapshot, stock_features, attention_features, daily_market, benchmark_features, trusted_benchmark_end
+    )
+    coverage = _coverage_summary(liquidity, benchmark_features, stock_features, weekly_snapshot, trusted_benchmark_end)
     blocked_rows = _blocked_rows(
         stock_features=stock_features,
         weekly_snapshot=weekly_snapshot,
         final_decision=final_decision,
         case_trace=case_trace,
         benchmark_features=benchmark_features,
+        trusted_benchmark_end=trusted_benchmark_end,
     )
 
     _write_csv(calendar, output / "trading_calendar.csv")
@@ -132,7 +138,7 @@ def materialize_vnext_dynamic_candidate_pool(
             "00631L is fallback/hurdle/execution candidate only, not ordinary pool member.",
             "Weekly snapshot rows are diagnostic_only=true.",
             "Case trace rows are case_trace_only=true and excluded from selected outcomes.",
-            "Benchmark cache currently ends before 2026-06-30, so 2026-06-30 case trace benchmark-aligned fields are blocked.",
+            "Trusted benchmark coverage ends at 2026-06-29; 2026-06-30 case-trace benchmark rows are explicit blocked forward-fill placeholders.",
         ],
     }
     (output / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
@@ -268,11 +274,55 @@ def _build_benchmark_features(cache_dir: Path) -> pd.DataFrame:
         out[f"MA{window}"] = ma
         out[f"BIAS{window}"] = (out["adjusted_close"] - ma) / ma
     out["drawdown"] = out["adjusted_close"] / out.groupby("benchmark")["adjusted_close"].cummax() - 1
+    out["source_quality"] = "cache_exact"
+    out["benchmark_data_blocked"] = False
+    out["blocked_reason"] = ""
     return out
 
 
-def _build_stock_features(liquidity: pd.DataFrame, benchmark_features: pd.DataFrame, calendar: pd.DataFrame) -> pd.DataFrame:
-    weekly_dates = set(calendar.loc[calendar["is_week_last_trading_day"], "trade_date"])
+def _trusted_benchmark_end(benchmark_features: pd.DataFrame) -> pd.Timestamp:
+    exact = benchmark_features[~benchmark_features["benchmark_data_blocked"]]
+    return exact.groupby("benchmark")["trade_date"].max().min()
+
+
+def _append_blocked_case_trace_benchmark_rows(
+    benchmark_features: pd.DataFrame, trusted_benchmark_end: pd.Timestamp
+) -> pd.DataFrame:
+    case_date = pd.Timestamp(CASE_TRACE_DATE)
+    if case_date <= trusted_benchmark_end:
+        return benchmark_features
+    rows = []
+    for benchmark in BENCHMARKS:
+        existing = benchmark_features[
+            benchmark_features["benchmark"].eq(benchmark) & benchmark_features["trade_date"].eq(case_date)
+        ]
+        if not existing.empty:
+            continue
+        prior = benchmark_features[
+            benchmark_features["benchmark"].eq(benchmark) & benchmark_features["trade_date"].le(trusted_benchmark_end)
+        ].sort_values("trade_date").tail(1)
+        if prior.empty:
+            continue
+        row = prior.iloc[0].copy()
+        row["trade_date"] = case_date
+        row["source_quality"] = f"blocked_forward_fill_from_{trusted_benchmark_end.date()}"
+        row["benchmark_data_blocked"] = True
+        row["blocked_reason"] = "case_trace_requested_date_after_trusted_benchmark_cache_end"
+        rows.append(row)
+    if not rows:
+        return benchmark_features
+    return pd.concat([benchmark_features, pd.DataFrame(rows)], ignore_index=True).sort_values(["benchmark", "trade_date"])
+
+
+def _build_stock_features(
+    liquidity: pd.DataFrame,
+    benchmark_features: pd.DataFrame,
+    calendar: pd.DataFrame,
+    trusted_benchmark_end: pd.Timestamp,
+) -> pd.DataFrame:
+    weekly_dates = set(
+        calendar.loc[calendar["is_week_last_trading_day"] & calendar["trade_date"].le(trusted_benchmark_end), "trade_date"]
+    )
     weekly_dates.add(pd.Timestamp(CASE_TRACE_DATE))
     base = liquidity[["trade_date", "ticker", "adjusted_close"]].copy().sort_values(["ticker", "trade_date"])
     for window in WINDOWS:
@@ -305,8 +355,12 @@ def _build_stock_features(liquidity: pd.DataFrame, benchmark_features: pd.DataFr
     return out
 
 
-def _build_attention_features(liquidity: pd.DataFrame, calendar: pd.DataFrame) -> pd.DataFrame:
-    weekly_dates = set(calendar.loc[calendar["is_week_last_trading_day"], "trade_date"])
+def _build_attention_features(
+    liquidity: pd.DataFrame, calendar: pd.DataFrame, trusted_benchmark_end: pd.Timestamp
+) -> pd.DataFrame:
+    weekly_dates = set(
+        calendar.loc[calendar["is_week_last_trading_day"] & calendar["trade_date"].le(trusted_benchmark_end), "trade_date"]
+    )
     weekly_dates.add(pd.Timestamp(CASE_TRACE_DATE))
     out = liquidity[["trade_date", "ticker", "traded_value", "volume", "adjusted_close"]].copy()
     out = out.sort_values(["ticker", "trade_date"])
@@ -428,8 +482,11 @@ def _build_weekly_snapshot(
     theme_membership: pd.DataFrame,
     calendar: pd.DataFrame,
     benchmark_features: pd.DataFrame,
+    trusted_benchmark_end: pd.Timestamp,
 ) -> pd.DataFrame:
-    weekly_dates = calendar.loc[calendar["is_week_last_trading_day"], "trade_date"]
+    weekly_dates = calendar.loc[
+        calendar["is_week_last_trading_day"] & calendar["trade_date"].le(trusted_benchmark_end), "trade_date"
+    ]
     stock = stock_features[stock_features["trade_date"].isin(weekly_dates)].copy()
     attention = attention_features[attention_features["trade_date"].isin(weekly_dates)].copy()
     market = daily_market[daily_market["trade_date"].isin(weekly_dates)][
@@ -502,7 +559,8 @@ def _build_weekly_snapshot(
     base["requested_period_start"] = "2015-01-02"
     base["requested_period_end"] = "2026-06-30"
     base["actual_coverage_start"] = str(base["snapshot_date"].min().date())
-    base["actual_coverage_end"] = str(base["snapshot_date"].max().date())
+    actual_end = min(base["snapshot_date"].max(), trusted_benchmark_end, pd.Timestamp("2026-06-30"))
+    base["actual_coverage_end"] = str(actual_end.date())
     for col in ["formal_model_changed", "trade_decision_changed", "active_in_trade_decision", "report_changed"]:
         base[col] = False
     keep = [
@@ -561,8 +619,8 @@ def _build_final_decision_snapshot(weekly_snapshot: pd.DataFrame) -> pd.DataFram
                 "week_id": group["week_id"].iloc[0],
                 "requested_period_start": "2015-01-02",
                 "requested_period_end": "2026-06-30",
-                "actual_coverage_start": weekly_snapshot["snapshot_date"].min(),
-                "actual_coverage_end": weekly_snapshot["snapshot_date"].max(),
+                "actual_coverage_start": group["actual_coverage_start"].iloc[0],
+                "actual_coverage_end": group["actual_coverage_end"].iloc[0],
                 "final_primary_ticker": final_a,
                 "final_A_ticker": final_a,
                 "final_B_ticker": final_b,
@@ -590,6 +648,7 @@ def _build_case_trace(
     attention_features: pd.DataFrame,
     daily_market: pd.DataFrame,
     benchmark_features: pd.DataFrame,
+    trusted_benchmark_end: pd.Timestamp,
 ) -> pd.DataFrame:
     date = pd.Timestamp(CASE_TRACE_DATE)
     rows = []
@@ -668,10 +727,11 @@ def _coverage_summary(
     benchmark_features: pd.DataFrame,
     stock_features: pd.DataFrame,
     weekly_snapshot: pd.DataFrame,
+    trusted_benchmark_end: pd.Timestamp,
 ) -> pd.DataFrame:
     rows = []
     actual_start = max(liquidity["trade_date"].min(), benchmark_features["trade_date"].min())
-    actual_end = min(liquidity["trade_date"].max(), benchmark_features["trade_date"].max())
+    actual_end = min(liquidity["trade_date"].max(), trusted_benchmark_end)
     for label, (start, end) in REQUESTED_PERIODS.items():
         req_start = pd.Timestamp(start)
         req_end = actual_end if end == "latest_available" else pd.Timestamp(end)
@@ -696,15 +756,20 @@ def _blocked_rows(
     final_decision: pd.DataFrame,
     case_trace: pd.DataFrame,
     benchmark_features: pd.DataFrame,
+    trusted_benchmark_end: pd.Timestamp,
 ) -> pd.DataFrame:
     rows = []
-    if benchmark_features["trade_date"].max() < pd.Timestamp(CASE_TRACE_DATE):
+    blocked_case_bench = benchmark_features[
+        benchmark_features["trade_date"].eq(pd.Timestamp(CASE_TRACE_DATE))
+        & benchmark_features["benchmark_data_blocked"].astype(bool)
+    ]
+    if trusted_benchmark_end < pd.Timestamp(CASE_TRACE_DATE):
         rows.append(
             {
                 "table": "benchmark_features",
                 "severity": "warning",
-                "blocked_reason": "0050/00631L benchmark cache ends before 2026-06-30 case trace date",
-                "blocked_count": 2,
+                "blocked_reason": "2026-06-30 case trace benchmark rows are blocked forward-fill placeholders; trusted benchmark coverage ends earlier",
+                "blocked_count": int(len(blocked_case_bench)),
             }
         )
     if weekly_snapshot["case_trace_only"].any() and weekly_snapshot["selected_outcome_candidate"].any():
