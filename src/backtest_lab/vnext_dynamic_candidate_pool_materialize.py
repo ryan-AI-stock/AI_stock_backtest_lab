@@ -103,6 +103,12 @@ def materialize_vnext_dynamic_candidate_pool(
     _write_csv(blocked_rows, output / "blocked_rows.csv")
     _write_csv(_selected_hygiene_audit(weekly_snapshot, final_decision), output / "selected_row_hygiene_audit.csv")
     _write_csv(_c8_score_decomposition_contract(weekly_snapshot), output / "vnext_c8_score_decomposition_contract.csv")
+    ai_membership = _ai_theme_membership_contract(weekly_snapshot)
+    ai_strength = _ai_theme_strength_snapshot(weekly_snapshot)
+    ai_allocation = _ai_allocation_variant_support(weekly_snapshot, ai_strength)
+    _write_csv(ai_membership, output / "vnext_ai_theme_membership_contract.csv")
+    _write_csv(ai_strength, output / "vnext_ai_theme_strength_snapshot.csv")
+    _write_csv(ai_allocation, output / "vnext_ai_allocation_variant_support.csv")
 
     ready_for_phase_a = bool(
         not weekly_snapshot.empty
@@ -133,6 +139,9 @@ def materialize_vnext_dynamic_candidate_pool(
             "vnext_final_decision_snapshot": int(len(final_decision)),
             "vnext_case_trace": int(len(case_trace)),
             "vnext_c8_score_decomposition_contract": int(len(weekly_snapshot)),
+            "vnext_ai_theme_membership_contract": int(len(ai_membership)),
+            "vnext_ai_theme_strength_snapshot": int(len(ai_strength)),
+            "vnext_ai_allocation_variant_support": int(len(ai_allocation)),
             "blocked_rows": int(len(blocked_rows)),
         },
         "selected_row_hygiene_rule": "selected_outcome_candidate = selected_by_vnext AND NOT case_trace_only AND diagnostic_only",
@@ -151,6 +160,15 @@ def materialize_vnext_dynamic_candidate_pool(
     )
     (output / "readiness_for_c8_score_decomposition.json").write_text(
         json.dumps(_c8_readiness(manifest, weekly_snapshot, blocked_rows), ensure_ascii=False, indent=2, default=str),
+        encoding="utf-8",
+    )
+    (output / "readiness_for_ai_theme_allocation.json").write_text(
+        json.dumps(
+            _ai_theme_allocation_readiness(manifest, ai_membership, ai_strength, ai_allocation, blocked_rows),
+            ensure_ascii=False,
+            indent=2,
+            default=str,
+        ),
         encoding="utf-8",
     )
     (output / "final_summary_zh.md").write_text(_summary(manifest, coverage, blocked_rows), encoding="utf-8")
@@ -534,6 +552,9 @@ def _build_weekly_snapshot(
         )
     theme = theme_membership[["ticker", "theme_id", "theme_name", "membership_score"]].drop_duplicates("ticker")
     base = base.merge(theme, on="ticker", how="left")
+    base["theme_id"] = base["theme_id"].fillna("non_ai_unclassified_proxy")
+    base["theme_name"] = base["theme_name"].fillna("non-AI unclassified proxy")
+    base = _add_ai_theme_membership_fields(base)
     base["fundamental_pass"] = base["profitability"].fillna(0).ge(0) | base["revenue_growth"].fillna(0).ge(0)
     base["market_attention_member"] = base["turnover_rank_pct_20d"].ge(0.8) | base["traded_value_rank_pct"].ge(0.8)
     base["eligible_pool_member"] = base["valid_universe"] & base["market_attention_member"] & base["fundamental_pass"]
@@ -597,6 +618,15 @@ def _build_weekly_snapshot(
         "actual_coverage_end",
         "ticker",
         "name",
+        "theme_id",
+        "theme_name",
+        "is_ai_theme_member",
+        "ai_membership_source",
+        "ai_membership_source_quality",
+        "ai_membership_start_date",
+        "ai_membership_end_date",
+        "ai_membership_confidence",
+        "ai_subtheme",
         "valid_universe",
         "fundamental_pass",
         "market_attention_member",
@@ -624,6 +654,8 @@ def _build_weekly_snapshot(
         "turnover_state",
         "risk_score",
         "risk_bucket",
+        "ai_new_high_proxy_flag",
+        "drawdown_60d",
         "hurdle_0050_rs20_proxy",
         "hurdle_0050_rs40_proxy",
         "hurdle_0050_rs60_proxy",
@@ -650,6 +682,68 @@ def _build_weekly_snapshot(
     ]
     ordinary = base[base["rank_overall"].le(100) | base["ticker"].isin(CASE_TICKERS)].copy()
     return ordinary[keep].sort_values(["snapshot_date", "rank_overall", "ticker"])
+
+
+def _add_ai_theme_membership_fields(base: pd.DataFrame) -> pd.DataFrame:
+    base = base.copy()
+    text = (
+        base["theme_id"].fillna("").astype(str).str.lower()
+        + " "
+        + base["theme_name"].fillna("").astype(str).str.lower()
+    )
+    ai_terms = [
+        "ai_",
+        "server",
+        "cooling",
+        "thermal",
+        "power",
+        "odm",
+        "foundry",
+        "ic",
+        "connector",
+        "component",
+        "software",
+        "semiconductor",
+        "pcb",
+    ]
+    base["is_ai_theme_member"] = False
+    for term in ai_terms:
+        base["is_ai_theme_member"] = base["is_ai_theme_member"] | text.str.contains(term, regex=False)
+    base.loc[base["theme_id"].eq("non_ai_unclassified_proxy"), "is_ai_theme_member"] = False
+    base["ai_membership_source"] = "taxonomy_evidence_panel_20260704"
+    base.loc[~base["is_ai_theme_member"], "ai_membership_source"] = "non_ai_unclassified_proxy"
+    base["ai_membership_source_quality"] = "proxy"
+    base.loc[~base["is_ai_theme_member"], "ai_membership_source_quality"] = "unknown"
+    base["ai_membership_start_date"] = "2015-01-05"
+    base["ai_membership_end_date"] = ""
+    base["ai_membership_confidence"] = base["membership_score"].fillna(0.0)
+    base.loc[~base["is_ai_theme_member"], "ai_membership_confidence"] = 0.0
+    base["ai_subtheme"] = base["theme_id"].map(_ai_subtheme)
+    base.loc[~base["is_ai_theme_member"], "ai_subtheme"] = "non_ai"
+    return base
+
+
+def _ai_subtheme(theme_id: object) -> str:
+    text = str(theme_id).lower()
+    if "server" in text:
+        return "server"
+    if "cool" in text or "thermal" in text:
+        return "cooling"
+    if "power" in text:
+        return "power"
+    if "odm" in text:
+        return "ODM"
+    if "foundry" in text:
+        return "foundry"
+    if "ic" in text or "semiconductor" in text:
+        return "IC design"
+    if "connector" in text:
+        return "connector"
+    if "component" in text or "pcb" in text:
+        return "component"
+    if "software" in text:
+        return "software"
+    return "other"
 
 
 def _add_c8_score_components(base: pd.DataFrame) -> pd.DataFrame:
@@ -697,6 +791,7 @@ def _add_c8_score_components(base: pd.DataFrame) -> pd.DataFrame:
     base["hurdle_00631L_proxy_result"] = base["hurdle_00631L_excess20_proxy"].map(
         lambda v: "missing" if pd.isna(v) else ("pass" if v > 0 else "fail")
     )
+    base["ai_new_high_proxy_flag"] = base["drawdown_60d"].fillna(-1).ge(-0.02)
     required = [
         "router_long_strong_contribution",
         "router_pullback_repair_contribution",
@@ -1013,6 +1108,237 @@ def _c8_readiness(
         "blocked_rows": blocked_rows.to_dict(orient="records"),
         "next_owner": "BACKTEST_LAB Experiments",
         "next_step": "Run C8-only risk/turnover penalty attenuation diagnostic; do not run portfolio replay.",
+    }
+
+
+def _ai_theme_membership_contract(weekly_snapshot: pd.DataFrame) -> pd.DataFrame:
+    cols = [
+        "snapshot_date",
+        "ticker",
+        "theme_id",
+        "theme_name",
+        "is_ai_theme_member",
+        "ai_membership_source",
+        "ai_membership_source_quality",
+        "ai_membership_start_date",
+        "ai_membership_end_date",
+        "ai_membership_confidence",
+        "ai_subtheme",
+        "diagnostic_only",
+        "case_trace_only",
+        "formal_model_changed",
+        "trade_decision_changed",
+        "active_in_trade_decision",
+        "report_changed",
+    ]
+    return weekly_snapshot[cols].copy()
+
+
+def _ai_theme_strength_snapshot(weekly_snapshot: pd.DataFrame) -> pd.DataFrame:
+    rows = []
+    for snapshot_date, group in weekly_snapshot.groupby("snapshot_date"):
+        ai = group[group["is_ai_theme_member"]].copy()
+        non_ai = group[~group["is_ai_theme_member"]].copy()
+        ai_count = len(ai)
+        non_ai_count = len(non_ai)
+        ai_excess_0050 = ai["hurdle_0050_rs20_proxy"].mean() if ai_count else pd.NA
+        ai_excess_00631l = ai["hurdle_00631L_excess20_proxy"].mean() if ai_count else pd.NA
+        ai_breadth_0050 = ai["hurdle_0050_rs20_proxy"].gt(0).mean() if ai_count else pd.NA
+        ai_breadth_00631l = ai["hurdle_00631L_excess20_proxy"].gt(0).mean() if ai_count else pd.NA
+        ai_turnover = ai["turnover_state"].isin(["high_attention", "distribution_risk"]).sum() / ai_count if ai_count else pd.NA
+        ai_new_high_count = int(ai["ai_new_high_proxy_flag"].sum()) if ai_count else 0
+        ai_long_strong_count = int(ai["subpool_class"].eq("long_strong").sum()) if ai_count else 0
+        ai_pullback_repair_count = int(ai["subpool_class"].eq("pullback_repair").sum()) if ai_count else 0
+        ai_drawdown_resilience = ai["drawdown_60d"].mean() if ai_count else pd.NA
+        non_ai_score = non_ai["hurdle_0050_rs20_proxy"].mean() if non_ai_count else pd.NA
+        ai_score = _theme_strength_score(
+            ai_excess_0050,
+            ai_excess_00631l,
+            ai_breadth_0050,
+            ai_breadth_00631l,
+            ai_turnover,
+            ai_long_strong_count,
+            ai_pullback_repair_count,
+            ai_drawdown_resilience,
+        )
+        non_ai_theme_score = 0.0 if pd.isna(non_ai_score) else float(non_ai_score) * 100
+        spread = ai_score - non_ai_theme_score if not pd.isna(ai_score) else pd.NA
+        rows.append(
+            {
+                "snapshot_date": snapshot_date,
+                "theme_strength_score_ai": ai_score,
+                "ai_theme_excess_vs_0050": ai_excess_0050,
+                "ai_theme_excess_vs_00631L": ai_excess_00631l,
+                "ai_breadth_vs_0050": ai_breadth_0050,
+                "ai_breadth_vs_00631L": ai_breadth_00631l,
+                "ai_turnover_concentration": ai_turnover,
+                "ai_new_high_count": ai_new_high_count,
+                "ai_long_strong_count": ai_long_strong_count,
+                "ai_pullback_repair_count": ai_pullback_repair_count,
+                "ai_drawdown_resilience": ai_drawdown_resilience,
+                "best_non_ai_theme_id": "non_ai_unclassified_proxy",
+                "best_non_ai_theme_score": non_ai_theme_score,
+                "ai_vs_best_non_ai_theme_spread": spread,
+                "ai_theme_state": _ai_theme_state(ai_score, spread),
+                "ai_theme_member_count": ai_count,
+                "non_ai_candidate_count": non_ai_count,
+                "diagnostic_only": True,
+                "formal_model_changed": False,
+                "trade_decision_changed": False,
+                "active_in_trade_decision": False,
+                "report_changed": False,
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _theme_strength_score(
+    excess_0050: object,
+    excess_00631l: object,
+    breadth_0050: object,
+    breadth_00631l: object,
+    turnover: object,
+    long_strong_count: int,
+    pullback_count: int,
+    drawdown_resilience: object,
+) -> float:
+    def n(value: object, default: float = 0.0) -> float:
+        return default if pd.isna(value) else float(value)
+
+    return (
+        n(excess_0050) * 120
+        + n(excess_00631l) * 80
+        + (n(breadth_0050, 0.5) - 0.5) * 40
+        + (n(breadth_00631l, 0.5) - 0.5) * 30
+        + n(turnover) * 10
+        + min(long_strong_count, 20) * 0.5
+        + min(pullback_count, 20) * 0.3
+        + n(drawdown_resilience) * 20
+    )
+
+
+def _ai_theme_state(score: object, spread: object) -> str:
+    if pd.isna(score) or pd.isna(spread):
+        return "unknown"
+    score = float(score)
+    spread = float(spread)
+    if score >= 25 and spread >= 10:
+        return "dominant"
+    if score >= 10 and spread >= 0:
+        return "active"
+    if score >= 0 and spread > -10:
+        return "mixed"
+    if score > -15:
+        return "fading"
+    return "weak"
+
+
+def _ai_allocation_variant_support(weekly_snapshot: pd.DataFrame, ai_strength: pd.DataFrame) -> pd.DataFrame:
+    strength = ai_strength.set_index("snapshot_date")
+    rows = []
+    variants = [
+        ("D0_C3_no_ai_allocation", 0, 31, "disabled"),
+        ("D1_C3_fixed_ai_20", 20, 20, "fixed"),
+        ("D2_C3_ai_floor_10_cap_20", 10, 20, "floor_cap"),
+        ("D3_C3_ai_cap_20_no_floor", 0, 20, "cap_only"),
+        ("D4_C3_ai_soft_theme_strength_weight", 0, 31, "soft_weight"),
+        ("D5_C3_ai_state_gated_floor_cap", 0, 20, "state_gated"),
+    ]
+    for snapshot_date, group in weekly_snapshot.groupby("snapshot_date"):
+        qualified_ai = int((group["is_ai_theme_member"] & group["eligible_pool_member"]).sum())
+        qualified_non_ai = int((~group["is_ai_theme_member"] & group["eligible_pool_member"]).sum())
+        state = strength.loc[snapshot_date, "ai_theme_state"] if snapshot_date in strength.index else "unknown"
+        for variant, floor, cap, policy in variants:
+            if policy == "disabled":
+                ai_slots = 0
+                blocked = "ai_allocation_disabled_for_comparator"
+            elif policy == "fixed":
+                ai_slots = min(20, qualified_ai)
+                blocked = "" if qualified_ai >= 20 else "insufficient_qualified_ai_candidates_for_fixed_20"
+            elif policy == "floor_cap":
+                ai_slots = min(cap, max(min(floor, qualified_ai), qualified_ai if state in {"dominant", "active"} else 0))
+                blocked = "" if qualified_ai >= floor else "insufficient_qualified_ai_candidates_for_floor_10"
+            elif policy == "soft_weight":
+                ai_slots = 0
+                blocked = "soft_weight_only_no_hard_slot_allocation"
+            elif policy == "state_gated":
+                if state in {"dominant", "active"}:
+                    ai_slots = min(cap, max(min(10, qualified_ai), qualified_ai))
+                    blocked = "" if qualified_ai >= 10 else "insufficient_qualified_ai_candidates_for_state_gated_floor_10"
+                elif state in {"fading", "weak"}:
+                    ai_slots = 0
+                    blocked = f"ai_floor_disabled_because_state_{state}"
+                else:
+                    ai_slots = min(cap, qualified_ai)
+                    blocked = "" if qualified_ai > 0 else "no_qualified_ai_candidates"
+            else:
+                ai_slots = min(cap, qualified_ai)
+                blocked = "" if qualified_ai > 0 else "no_qualified_ai_candidates"
+            rows.append(
+                {
+                    "snapshot_date": snapshot_date,
+                    "ai_allocation_variant": variant,
+                    "ai_slot_count": ai_slots,
+                    "non_ai_slot_count": max(0, 31 - ai_slots),
+                    "qualified_ai_candidate_count": qualified_ai,
+                    "qualified_non_ai_candidate_count": qualified_non_ai,
+                    "ai_theme_state": state,
+                    "ai_allocation_blocked_reason": blocked,
+                    "diagnostic_only": True,
+                    "formal_model_changed": False,
+                    "trade_decision_changed": False,
+                    "active_in_trade_decision": False,
+                    "report_changed": False,
+                }
+            )
+    return pd.DataFrame(rows)
+
+
+def _ai_theme_allocation_readiness(
+    manifest: dict[str, Any],
+    membership: pd.DataFrame,
+    strength: pd.DataFrame,
+    allocation: pd.DataFrame,
+    blocked_rows: pd.DataFrame,
+) -> dict[str, Any]:
+    return {
+        "date": "2026-07-06",
+        "task_id": "TASK-BACKTEST-CORE-VNEXT-AI-THEME-ALLOCATION-CONTRACT-001",
+        "owner": "BACKTEST_LAB Core/Data",
+        "status": "ai_theme_allocation_contract_ready_with_proxy_limitations",
+        "source_materialization_status": manifest["status"],
+        "formal_model_changed": False,
+        "trade_decision_changed": False,
+        "active_in_trade_decision": False,
+        "report_changed": False,
+        "portfolio_replay_executed": False,
+        "candidate_forward_return_diagnostic_executed": False,
+        "diagnostic_only": True,
+        "membership_rows": int(len(membership)),
+        "theme_strength_rows": int(len(strength)),
+        "allocation_variant_rows": int(len(allocation)),
+        "ai_member_rows": int(membership["is_ai_theme_member"].sum()),
+        "source_quality_counts": membership["ai_membership_source_quality"].value_counts(dropna=False).to_dict(),
+        "blocked_fields": [
+            {
+                "field": "best_non_ai_theme_id",
+                "status": "proxy",
+                "reason": "non-AI dated theme taxonomy is not fully materialized; comparator uses non_ai_unclassified_proxy",
+            },
+            {
+                "field": "ai_new_high_count",
+                "status": "proxy",
+                "reason": "uses drawdown_60d >= -2% as non-forward new-high proxy",
+            },
+            {
+                "field": "ai_membership_source_quality",
+                "status": "proxy_heavy",
+                "reason": "current AI membership derives from diagnostic taxonomy evidence panel, not formal dated exact membership",
+            },
+        ],
+        "blocked_rows": blocked_rows.to_dict(orient="records"),
+        "next_owner": "BACKTEST_LAB Experiments",
+        "next_step": "Run bounded AI allocation diagnostic variants; do not run portfolio replay.",
     }
 
 
