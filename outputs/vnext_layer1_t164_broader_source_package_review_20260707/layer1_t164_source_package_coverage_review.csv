@@ -1,0 +1,6 @@
+﻿coverage_axis,group,requested_rows,materialized_rows,matched_rows,blocked_rows,status,diagnostic_only
+market,TPEx,16.0,16.0,16.0,0.0,passed_bounded_seed_only,True
+market,TWSE,24.0,24.0,24.0,0.0,passed_bounded_seed_only,True
+period,114Q4,20.0,20.0,20.0,0.0,passed_bounded_seed_only,True
+period,115Q1,20.0,20.0,20.0,0.0,passed_bounded_seed_only,True
+tpex_universal,TPEx,,,,,review_tpex_evidence_required,True

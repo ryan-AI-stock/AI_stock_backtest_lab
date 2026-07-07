@@ -1,0 +1,7 @@
+﻿requirement,status,detail,seed_cache_rows_per_materialized_row,diagnostic_only
+t05st01_candidate_query_pruning,required_before_full_universe,reduce month/all-year probes using report-period expected windows and direct subject tokens,42.075,True
+detail_fetch_pruning,required_before_full_universe,fetch detail only for subject candidates passing financial-report/period/token prefilter,42.075,True
+premeeting_notice_filter,required_before_full_universe,exclude premeeting notices before detail fan-out when possible,42.075,True
+wrong_period_filter,required_before_full_universe,drop 115Q1/114Q2/114Q3/113Q4 when target is 114Q4 before broad detail fan-out,42.075,True
+cost_budget_guard,required_before_full_universe,emit projected route count before full run; stop if route fan-out exceeds approved budget,42.075,True
+resume_checkpoint,required_before_full_universe,preserve current_step/checkpoint_state and cache manifest for restart,42.075,True

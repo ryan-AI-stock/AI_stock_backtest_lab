@@ -1,0 +1,7 @@
+﻿review_item,status,evidence_value,note,diagnostic_only
+statement_route,passed_bounded_seed,40.0,40/40 t164sb05/t164sb03 success in seed,True
+official_asof_join,passed_bounded_seed,40.0,40/40 official timestamp matched in seed,True
+blocked_or_ambiguous_rows,passed_bounded_seed,0.0,seed has no blocked rows,True
+field_coverage,partial,22.0,some balance-sheet/capex/receivable fields are sparse or label-policy-bound,True
+runner_cost,blocked_for_full_universe_without_pruning,42.075,1683 cache rows for 40 source rows; all-stock needs pruning,True
+market_period_coverage,bounded_seed_only,4.0,20 tickers x 2 periods only,True

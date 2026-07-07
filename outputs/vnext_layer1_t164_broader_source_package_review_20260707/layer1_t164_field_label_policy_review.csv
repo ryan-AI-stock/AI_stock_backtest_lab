@@ -1,0 +1,8 @@
+﻿field,status,missing_rows,missing_share,source_quality,policy_note,diagnostic_only
+operating_cash_flow,accepted_candidate_exact,0,0.0,candidate_exact,candidate PIT field after official-asof join,True
+investing_cash_flow,accepted_candidate_exact,0,0.0,candidate_exact,candidate PIT field after official-asof join,True
+capex_proxy,human_review_proxy_label_required,4,0.1,human_review_proxy_or_basket,do not promote proxy labels to formal,True
+inventory,accepted_candidate_exact,6,0.15,candidate_exact,candidate PIT field after official-asof join,True
+receivables_trade,human_review_proxy_label_required,4,0.1,human_review_proxy_or_basket,do not promote proxy labels to formal,True
+current_assets,accepted_candidate_exact,4,0.1,candidate_exact,candidate PIT field after official-asof join,True
+current_liabilities,accepted_candidate_exact,4,0.1,candidate_exact,candidate PIT field after official-asof join,True

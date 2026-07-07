@@ -1,0 +1,7 @@
+﻿handoff_item,status,request,next_owner,diagnostic_only
+candidate_detail_pruning_runner_v2,required,implement candidate/detail pruning before any all-stock run,Radar/Data,True
+projected_route_cost_report,required,estimate route/cache count for target universe and period range before execution,Radar/Data,True
+all_stock_tpex_proof,required,prove TPEx route stability beyond bounded seed,Radar/Data,True
+full_period_range_plan,required,define requested vs actual periods and disclosure lag coverage,Radar/Data,True
+label_inventory_expansion,required,expand capex/receivables label inventory and keep human_review_required tags,Radar/Data,True
+blocked_ambiguous_policy_audit,required,keep unmatched/ambiguous rows blocked; no proxy dates,Radar/Data,True
