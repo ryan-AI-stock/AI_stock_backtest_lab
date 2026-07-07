@@ -1,0 +1,4 @@
+﻿audit_item,status,future_data_violation_count,note
+prohibited_available_date_sources_not_used,passed,0,quarter_end/query_response/conservative proxy not used as official available_at
+remaining_blocked_rows_after_final_patch,passed,0,all 40 bounded sample rows have official public announcement timestamp
+forward_return_as_rule,passed,0,no forward return fields included
