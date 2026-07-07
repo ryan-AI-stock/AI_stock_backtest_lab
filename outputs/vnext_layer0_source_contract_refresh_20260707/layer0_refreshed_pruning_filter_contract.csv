@@ -1,0 +1,5 @@
+﻿contract_rule,rule,recommended_threshold,buffer,reason,ready,diagnostic_only
+primary_universe,recent 5D/20D traded_value rank and cumulative total-market traded-value share,top_200_to_300,plus_100_watchlist_buffer,"top 200 covers about 88%, top 300 about 93% in current estimate; buffer reduces miss risk",True,True
+surge_exception,include names with recent traded-value surge vs 60D baseline even if outside primary rank,policy_stage_only,watchlist,prevents excluding emerging mid-cap themes before fundamentals are fetched,True,True
+market_cap_rank,market-cap rank cumulative traded-value share,blocked_or_proxy,do_not_use_as_primary,exact full daily market cap unavailable; proxy not formal-ready,False,True
+instrument_exclusion,exclude/separate ETF/ETN/warrants when instrument type is known; KY tag separately; event-block only with PIT ledger,hygiene_policy,unknown_instrument_tagged_not_silent_drop,avoid non-common-stock pollution without losing unknown common stocks,False,True

@@ -1,0 +1,3 @@
+﻿next_owner,handoff_action,ready,reason,diagnostic_only
+Core/Data,build_layer0_materialized_weekly_universe_snapshot_contract_from_traded_value_primary,True,source hardening is sufficient for traded-value primary Layer0; instrument/event/market-cap remain proxy/blocked ledgers,True
+Radar/Data,do_not_resume_t164_mass_download_until_layer0_materialized_universe_is_accepted,False,Strategy Center paused t164 mass download; Layer0 should define reduced universe first,True

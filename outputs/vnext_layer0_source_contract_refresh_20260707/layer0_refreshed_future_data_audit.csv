@@ -1,0 +1,4 @@
+﻿audit_item,status,future_data_violation_count,note
+forward_return_as_rule,passed,0,no forward returns used
+traded_value_pit_source,passed,0,daily traded_value is PIT source
+proxy_no_silent_fill,passed,0,instrument/event/market-cap gaps remain explicit

@@ -1,0 +1,5 @@
+﻿layer0_kept_count,approx_layer1_download_reduction_vs_1900,recent_5d_turnover_share_estimate,core_risk_note,diagnostic_only
+100,0.9473684210526316,0.7647642339889265,too_narrow,True
+200,0.8947368421052632,0.882306445943342,recommended_core_range,True
+300,0.8421052631578947,0.9337730903071731,recommended_core_range,True
+500,0.736842105263158,0.9747790562891838,lower_miss_higher_cost,True

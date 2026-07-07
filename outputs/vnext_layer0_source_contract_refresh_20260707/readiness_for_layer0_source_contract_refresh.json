@@ -1,0 +1,35 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER0-SOURCE-CONTRACT-REFRESH-001",
+  "status": "layer0_source_contract_refreshed_traded_value_primary_ready_marketcap_event_instrument_partial",
+  "diagnostic_only": true,
+  "layer0_name": "Layer0 investable universe / data-pruning filter",
+  "primary_pruning_source": "daily_per_stock_traded_value",
+  "total_market_turnover_source": "derived_from_daily_per_stock_traded_value",
+  "recommended_universe": "top_200_to_300_by_recent_traded_value_plus_100_buffer_watchlist",
+  "estimated_layer1_download_reduction": "about_84pct_to_89pct_vs_1900_for_200_to_300_primary_names",
+  "ready_for_layer0_materialized_weekly_universe_snapshot_contract": true,
+  "ready_for_radar_source_hardening": false,
+  "ready_for_t164_mass_download": false,
+  "ready_for_experiments": false,
+  "ready_for_formal": false,
+  "ready_for_strategy_replay": false,
+  "future_data_violation_count": 0,
+  "blocked_fields": [
+    "instrument_type_master_full_pit",
+    "pit_disposition_full_delivery_event_ledger",
+    "direct_exact_market_cap_rank",
+    "historical_all_stock_universe_master"
+  ],
+  "proxy_fields": [
+    "capital_stock_x_close_market_cap_proxy",
+    "instrument_type_by_pattern_or_partial_metadata",
+    "KY_name_tag"
+  ],
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false
+}

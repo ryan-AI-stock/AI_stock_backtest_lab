@@ -1,0 +1,28 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER0-SOURCE-CONTRACT-REFRESH-001",
+  "status": "layer0_source_contract_refreshed_traded_value_primary_ready_marketcap_event_instrument_partial",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer0_source_contract_refresh_20260707",
+  "core_input_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer0_investable_universe_prefilter_contract_20260707",
+  "radar_input_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_layer0_investable_universe_source_hardening_20260707",
+  "radar_commit": "f694c20",
+  "output_files": [
+    "layer0_refreshed_source_contract.csv",
+    "layer0_refreshed_pruning_filter_contract.csv",
+    "layer0_refreshed_blocked_proxy_ledger.csv",
+    "layer0_layer1_cost_reduction_estimate.csv",
+    "layer0_next_step_handoff.csv",
+    "layer0_refreshed_future_data_audit.csv",
+    "readiness_for_layer0_source_contract_refresh.json",
+    "manifest.json",
+    "final_summary_zh.md"
+  ],
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "ready_for_strategy_replay": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false,
+  "diagnostic_only": true
+}

@@ -1,0 +1,15 @@
+﻿source,item,status,reason,diagnostic_only
+radar_gap,instrument_type_master,partial,no full historical PIT common stock / ETF / ETN / warrant / preferred master accepted from local packages,True
+radar_gap,pit_disposition_full_delivery,blocked_or_unverified,transition candidates are not fully verified official event ledger,True
+radar_gap,market_cap_rank_prefilter,partial_proxy,direct exact market cap rank not ready; capital_stock x close is proxy and filing asof is conservative,True
+radar_gap,historical_all_stock_universe,partial,current-or-carried universe cannot be treated as historical PIT all-stock universe,True
+instrument_inventory,common_stock_filter,partial_source_candidate,,True
+instrument_inventory,ETF_ETN_benchmark_fallback_split,proxy_candidate,,True
+instrument_inventory,warrant_preferred_special_cases,blocked_for_full_pit_master,,True
+instrument_inventory,KY_tag,tag_only_partial,,True
+event_inventory,listed_delisted_status,partial_source_candidate,,True
+event_inventory,suspension_resumption,partial_source_candidate,,True
+event_inventory,full_delivery_disposition,blocked_or_unverified_candidate,,True
+marketcap_policy,TWSE_direct_market_cap,blocked_for_direct_exact_market_cap,,True
+marketcap_policy,capital_stock_x_close_proxy,proxy_candidate_for_diagnostic_rank,,True
+marketcap_policy,TPEx_market_cap_rank,partial_or_blocked,,True

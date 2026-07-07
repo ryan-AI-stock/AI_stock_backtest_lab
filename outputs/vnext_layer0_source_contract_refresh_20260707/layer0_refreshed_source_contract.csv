@@ -1,0 +1,7 @@
+﻿source_item,contract_status,source_quality,policy,diagnostic_only
+daily_per_stock_traded_value,accepted_primary_layer0_source,pit_ready_low_cost,use as primary pruning signal,True
+total_market_traded_value,accepted_derived_from_daily_rows,pit_ready_derived,derive by summing accepted daily per-stock traded_value by date/market,True
+instrument_type_master,partial_blocked_no_full_pit_master,partial_proxy,"ETF/ETN separated by available tags/patterns; unknowns remain tagged, not silently included/excluded",True
+pit_event_ledger,partial_blocked,partial_suspension_only,disposition/full-delivery/delisted full master remains blocked,True
+market_cap_rank,proxy_only_not_primary,capital_stock_x_close_proxy_only,do not use as primary pruning until proxy policy accepted,True
+radar_source_confirmation_rows,source_rows=2,metadata,source confirmation imported from Radar hardening package,True
