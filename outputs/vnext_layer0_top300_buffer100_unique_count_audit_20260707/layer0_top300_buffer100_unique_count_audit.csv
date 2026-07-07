@@ -1,0 +1,6 @@
+﻿period,requested_start,requested_end,actual_start,actual_end,variant,variant_only_unique_count,recommended_variant_only_unique_count_all,reference_variant_mixed,weekly_snapshot_count,rows,duplicated_snapshot_ticker_rows,avg_weeks_per_ticker,median_weeks_per_ticker,tickers_ge_52_weeks,tickers_ge_104_weeks,diagnostic_only
+ALL,2015-01-09,2026-06-29,2015-01-09,2026-06-29,top300_buffer100,1843,1843,False,592,236800,0,128.48616386326643,55.0,940,665,True
+P1,2015-01-02,2022-12-29,2015-01-09,2022-12-23,top300_buffer100,1668,1843,False,411,164400,0,98.56115107913669,40.0,770,532,True
+P2,2023-01-02,2026-06-30,2023-01-06,2026-06-29,top300_buffer100,1430,1843,False,180,72000,0,50.34965034965035,25.0,478,277,True
+2024_latest,2024-01-02,2026-06-30,2024-01-05,2026-06-29,top300_buffer100,1297,1843,False,129,51600,0,39.784117193523514,20.0,392,199,True
+2026YTD,2026-01-02,2026-06-30,2026-01-02,2026-06-29,top300_buffer100,901,1843,False,26,10400,0,11.542730299667037,8.0,0,0,True

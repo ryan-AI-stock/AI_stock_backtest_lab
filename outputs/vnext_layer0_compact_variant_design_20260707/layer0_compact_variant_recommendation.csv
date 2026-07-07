@@ -1,0 +1,4 @@
+﻿item,recommendation,reason,diagnostic_only
+recommended_primary_candidate,top250_core_conditional_buffer50,"P2 avg weekly count=295.0, unique=1215, avg turnover share=0.8972; tighter than baseline unique=1430 while keeping weekly list inside 250-350 target.",True
+baseline_problem,do_not_use_top300_buffer100_as_high_cost_layer1_source_scope_without_period_scoping,Current baseline P2 avg weekly count=400 and unique=1430; rolling unique remains too broad for high-cost source acquisition.,True
+rank_basis_policy,use_20d_or_60d_as_stability_reference_not_sole_rule_yet,"20D/60D ranks reduce unique count, but this package is cost/readiness design only; no candidate-quality validation has been run.",True

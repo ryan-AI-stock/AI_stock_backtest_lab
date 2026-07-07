@@ -1,0 +1,4 @@
+﻿audit_item,status,future_data_violation_count,note
+forward_return_as_rule,passed,0,no forward returns used
+formal_rule_change,not_applicable,0,variant design only
+source_scope_change,not_applied,0,active Layer0 contract unchanged

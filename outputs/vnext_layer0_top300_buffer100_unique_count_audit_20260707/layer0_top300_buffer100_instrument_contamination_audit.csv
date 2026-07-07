@@ -1,0 +1,21 @@
+﻿period,contamination_type,affected_unique_tickers,share_of_unique,policy,diagnostic_only
+ALL,ticker_starts_00_etf_etn_proxy,0,0.0,flag/audit only; no silent exclusion unless accepted by Strategy Center,True
+ALL,non_4_digit_proxy_warrant_or_non_common_stock,0,0.0,flag/audit only; no silent exclusion unless accepted by Strategy Center,True
+ALL,ky_name_proxy_tag,103,0.05588714053174173,flag/audit only; no silent exclusion unless accepted by Strategy Center,True
+ALL,instrument_master_status,1843,1.0,instrument type master is partial proxy; disposition/full-delivery ledger remains blocked,True
+P1,ticker_starts_00_etf_etn_proxy,0,0.0,flag/audit only; no silent exclusion unless accepted by Strategy Center,True
+P1,non_4_digit_proxy_warrant_or_non_common_stock,0,0.0,flag/audit only; no silent exclusion unless accepted by Strategy Center,True
+P1,ky_name_proxy_tag,88,0.05275779376498801,flag/audit only; no silent exclusion unless accepted by Strategy Center,True
+P1,instrument_master_status,1668,1.0,instrument type master is partial proxy; disposition/full-delivery ledger remains blocked,True
+P2,ticker_starts_00_etf_etn_proxy,0,0.0,flag/audit only; no silent exclusion unless accepted by Strategy Center,True
+P2,non_4_digit_proxy_warrant_or_non_common_stock,0,0.0,flag/audit only; no silent exclusion unless accepted by Strategy Center,True
+P2,ky_name_proxy_tag,71,0.04965034965034965,flag/audit only; no silent exclusion unless accepted by Strategy Center,True
+P2,instrument_master_status,1430,1.0,instrument type master is partial proxy; disposition/full-delivery ledger remains blocked,True
+2024_latest,ticker_starts_00_etf_etn_proxy,0,0.0,flag/audit only; no silent exclusion unless accepted by Strategy Center,True
+2024_latest,non_4_digit_proxy_warrant_or_non_common_stock,0,0.0,flag/audit only; no silent exclusion unless accepted by Strategy Center,True
+2024_latest,ky_name_proxy_tag,64,0.04934464148033924,flag/audit only; no silent exclusion unless accepted by Strategy Center,True
+2024_latest,instrument_master_status,1297,1.0,instrument type master is partial proxy; disposition/full-delivery ledger remains blocked,True
+2026YTD,ticker_starts_00_etf_etn_proxy,0,0.0,flag/audit only; no silent exclusion unless accepted by Strategy Center,True
+2026YTD,non_4_digit_proxy_warrant_or_non_common_stock,0,0.0,flag/audit only; no silent exclusion unless accepted by Strategy Center,True
+2026YTD,ky_name_proxy_tag,37,0.041065482796892344,flag/audit only; no silent exclusion unless accepted by Strategy Center,True
+2026YTD,instrument_master_status,901,1.0,instrument type master is partial proxy; disposition/full-delivery ledger remains blocked,True

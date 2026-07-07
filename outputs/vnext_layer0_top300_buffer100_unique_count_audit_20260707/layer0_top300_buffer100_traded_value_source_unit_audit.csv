@@ -1,0 +1,5 @@
+﻿audit_item,status,evidence,diagnostic_only
+traded_value_unit,passed,"Layer0 uses daily_market_features.traded_value; rolling columns are traded_value_5d/20d/60d sums, not share volume.",True
+ordinary_stock_proxy_filter,partial_pass,Layer0 requires 4-digit ticker and excludes tickers starting 00; full PIT instrument master remains partial.,True
+market_merge_policy,passed,TWSE/TPEx are merged after ticker-level daily rows; duplicate snapshot_date+ticker audit separately checks collisions.,True
+source_schema_columns,observed,"trade_date,ticker,name,market,adjusted_close,volume,traded_value,turnover,listing_status,valid_universe,liquidity_flag,blocked_reason",True

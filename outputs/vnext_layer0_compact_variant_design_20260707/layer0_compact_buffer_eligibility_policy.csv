@@ -1,0 +1,4 @@
+﻿policy,definition,purpose,diagnostic_only,formal_ready
+conditional_buffer_2in4,buffer ticker must appear within core+buffer band at least 2 times in the latest 4 weekly snapshots before Layer1 source fetch,reduces one-week burst source fetch,True,False
+conditional_buffer_20d60d_confirmed,buffer ticker can qualify if 20D or 60D traded-value rank is also inside the core+buffer band,keeps persistent liquidity leaders missed by 5D noise,True,False
+5d_surge_watchlist_only,"5D burst without 2in4 or 20D/60D confirmation stays watchlist, not high-cost Layer1 source scope",prevents t164/current-ratio source spend on one-week turnover spikes,True,False

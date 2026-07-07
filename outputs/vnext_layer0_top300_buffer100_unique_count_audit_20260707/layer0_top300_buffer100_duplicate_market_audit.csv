@@ -1,0 +1,6 @@
+﻿period,duplicated_snapshot_ticker_rows,snapshot_ticker_market_collision_count,status,diagnostic_only
+ALL,0,0,passed,True
+P1,0,0,passed,True
+P2,0,0,passed,True
+2024_latest,0,0,passed,True
+2026YTD,0,0,passed,True

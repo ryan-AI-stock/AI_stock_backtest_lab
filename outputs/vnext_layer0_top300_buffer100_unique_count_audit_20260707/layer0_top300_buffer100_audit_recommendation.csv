@@ -1,0 +1,6 @@
+﻿item,judgment,evidence,diagnostic_only
+sanity_verdict,not_evidence_of_reference_variant_mix_or_weekly_duplicate,P2 unique=1430; duplicate audit status=passed; high churn is concentrated in short-lived appearances=545.,True
+main_attribution,5d_traded_value_rank_churn_and_buffer_policy_drive_high_unique_count,"P2 core unique=1256, core median weeks=18.0; buffer unique=1330, buffer median weeks=9.0.",True
+surge_exception_definition,surge_exception_currently_adds_no_names_beyond_top400,"Layer0 code defines top300 surge candidate with traded_value_rank_5d <= 400, then marks surge_exception only when rank > 400; therefore surge_exception rows are zero in this package.",True
+possible_policy_tightening,consider_stability_requirement_or_20d_60d_primary_rank_for_core,"Audit-only alternatives include requiring repeat appearance in recent 4 weeks, using 20D/60D traded-value ranks for primary core, and keeping surge as watchlist.",True
+instrument_pollution,no_large_etf_warrant_pollution_detected_by_proxy_but_full_instrument_master_still_partial,Layer0 excludes tickers starting 00 and non-4-digit via proxy; KY remains tagged only; disposition/full-delivery ledger blocked.,True

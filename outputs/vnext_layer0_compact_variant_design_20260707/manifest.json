@@ -1,0 +1,28 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER0-COMPACT-VARIANT-DESIGN-READINESS-001",
+  "status": "layer0_compact_variant_design_ready_for_strategy_center_policy_review",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer0_compact_variant_design_20260707",
+  "input_data_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_dynamic_candidate_pool_data_materialization_20260706",
+  "input_unique_count_audit_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer0_top300_buffer100_unique_count_audit_20260707",
+  "output_files": [
+    "layer0_compact_variant_period_summary.csv",
+    "layer0_compact_variant_rank_basis_comparison.csv",
+    "layer0_compact_buffer_eligibility_policy.csv",
+    "layer0_compact_variant_recommendation.csv",
+    "layer0_compact_variant_layer1_cost_estimate.csv",
+    "layer0_compact_variant_future_data_audit.csv",
+    "layer0_compact_variant_snapshot_sample.csv",
+    "readiness_for_layer0_compact_variant_design.json",
+    "manifest.json",
+    "final_summary_zh.md"
+  ],
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "ready_for_strategy_replay": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false,
+  "diagnostic_only": true
+}
