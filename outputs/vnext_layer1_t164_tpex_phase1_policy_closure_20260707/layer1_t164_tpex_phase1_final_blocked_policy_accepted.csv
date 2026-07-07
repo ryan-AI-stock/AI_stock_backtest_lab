@@ -1,0 +1,3 @@
+﻿ticker,market,report_period,blocked_reason,strategy_center_policy,accepted_as_partial_blocked_limit,ready_for_experiments,formal_ready,diagnostic_only
+6114,TPEx,114Q4,6114 has multiple target financial-report announcements; cannot map t164 current values to a specific version,version_match_blocked; no earliest/latest silent selection; no proxy available_at,True,False,False,True
+8080,TPEx,115Q1,accepted_candidate_count=0,blocked_no_official_target_candidate; no deadline/query/quarter-end backfill,True,False,False,True

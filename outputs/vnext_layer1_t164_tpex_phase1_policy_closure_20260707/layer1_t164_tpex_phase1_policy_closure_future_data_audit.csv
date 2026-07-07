@@ -1,0 +1,4 @@
+﻿audit_item,status,future_data_violation_count,note
+policy_closure_no_forward_return_rule,passed,0,closure uses Strategy Center source policy only
+final_2_blockers_no_silent_backfill,passed,0,6114 and 8080 remain explicit blocked rows
+prohibited_available_at_sources,passed,0,"quarter_end_date, query_response_datetime, and conservative deadline proxy remain prohibited"
