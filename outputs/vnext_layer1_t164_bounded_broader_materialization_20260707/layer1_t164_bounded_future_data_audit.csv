@@ -1,0 +1,4 @@
+﻿audit_item,status,future_data_violation_count,note
+quarter_end_query_response_deadline_proxy_not_used,passed,0,official route does not use prohibited available_at sources
+forward_return_as_rule,passed,0,no forward return rule inputs
+official_asof_match_all_rows,passed,0,all bounded rows use official t05st01/t05st01_detail timestamp

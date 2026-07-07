@@ -1,0 +1,6 @@
+﻿coverage_axis,group,sample_rows,ticker_count,period_count,statement_success_rows,official_asof_matched_rows,blocked_rows,diagnostic_only
+overall,all,40,20,2,40,40,0,True
+market,TPEx,16,8,2,16,16,0,True
+market,TWSE,24,12,2,24,24,0,True
+period,114Q4,20,20,1,20,20,0,True
+period,115Q1,20,20,1,20,20,0,True
