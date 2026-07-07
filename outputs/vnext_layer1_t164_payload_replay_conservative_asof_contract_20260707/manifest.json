@@ -1,0 +1,26 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER1-T164-PAYLOAD-REPLAY-CONSERVATIVE-ASOF-PROXY-CONTRACT-001",
+  "status": "diagnostic_only_payload_replay_contract_ready_exact_asof_blocked",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer1_t164_payload_replay_conservative_asof_contract_20260707",
+  "radar_input_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_layer1_t164_payload_asof_tpex_followup_20260707",
+  "radar_payload_asof_tpex_commit": "70b798b",
+  "output_files": [
+    "layer1_t164_payload_replay_contract.csv",
+    "layer1_t164_conservative_asof_policy_matrix.csv",
+    "layer1_t164_label_taxonomy_human_review.csv",
+    "layer1_t164_cashflow_inventory_receivable_payload_contract.csv",
+    "layer1_t164_blocked_prohibited_asof_ledger.csv",
+    "readiness_for_layer1_t164_diagnostic_only_contract.json",
+    "manifest.json",
+    "final_summary_zh.md"
+  ],
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "ready_for_strategy_replay": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false,
+  "diagnostic_only": true
+}

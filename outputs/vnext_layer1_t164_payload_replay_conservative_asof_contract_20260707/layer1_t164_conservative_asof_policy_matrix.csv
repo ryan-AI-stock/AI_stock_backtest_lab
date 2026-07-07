@@ -1,0 +1,5 @@
+﻿asof_policy,status,source_quality,policy_detail,readiness,ready_for_full_ingest,ready_for_formal,diagnostic_only
+exact_official_filing_timestamp,blocked,exact,Required for exact PIT/full ingest/formal; Radar route t163sb01 has announcement text but no exact datetime,not_ready,False,False,False
+conservative_filing_deadline_proxy,diagnostic_only_candidate,proxy,"Strategy Center accepted for diagnostic-only staging; use statutory filing deadline per report period, never quarter end",ready_for_diagnostic_only_contract,False,False,True
+quarter_end_date,prohibited,invalid,Quarter-end is before disclosure and would introduce future-data risk,never_use,False,False,False
+query_response_datetime,prohibited,invalid,"Response datetime is query time, not historical availability",never_use,False,False,False

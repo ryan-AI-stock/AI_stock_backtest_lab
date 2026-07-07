@@ -1,0 +1,43 @@
+{
+  "date": "2026-07-07",
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER1-T164-PAYLOAD-REPLAY-CONSERVATIVE-ASOF-PROXY-CONTRACT-001",
+  "owner": "BACKTEST_LAB Core/Data",
+  "status": "diagnostic_only_payload_replay_contract_ready_exact_asof_blocked",
+  "ready_for_layer1_t164_diagnostic_only_contract": true,
+  "ready_for_core_payload_replay_contract": true,
+  "ready_for_core_t164_cashflow_inventory_receivable_full_ingest": false,
+  "ready_for_experiments": false,
+  "ready_for_formal": false,
+  "ready_for_strategy_replay": false,
+  "direct_browser_equivalent_payload_replay": true,
+  "tpex_sample_confirmation": true,
+  "tpex_universal_ready": false,
+  "mops_disclosure_datetime_asof_join": false,
+  "exact_official_filing_timestamp_status": "blocked",
+  "conservative_filing_deadline_proxy_status": "diagnostic_only_candidate",
+  "quarter_end_date_status": "prohibited",
+  "query_response_datetime_status": "prohibited",
+  "label_taxonomy_policy_ready_for_human_review": true,
+  "human_policy_required_fields": [
+    "capex_proxy",
+    "receivables_basket"
+  ],
+  "future_data_violation_count": 0,
+  "blocked_items": [
+    "exact_official_filing_timestamp",
+    "quarter_end_date",
+    "query_response_datetime",
+    "MOPS_disclosure_datetime_asof_join",
+    "full_universe_ingest_runner",
+    "label_taxonomy_policy",
+    "legacy_ajax_security_block"
+  ],
+  "required_next_step": "vNext Research/Strategy judge interim diagnostic-only package vs wait for exact asof; Radar still needed for exact filing timestamp",
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false
+}

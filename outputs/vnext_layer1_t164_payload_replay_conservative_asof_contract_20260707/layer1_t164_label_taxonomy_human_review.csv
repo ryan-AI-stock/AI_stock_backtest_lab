@@ -1,0 +1,6 @@
+﻿canonical_field,primary_labels,secondary_labels,policy,ambiguity,human_review_required,formal_model_changed,trade_decision_changed,active_in_trade_decision,report_changed,portfolio_replay_executed,ready_for_strategy_replay,not_live_rule,core_policy_status,ready_for_formal,diagnostic_only
+operating_cash_flow,營業活動之淨現金流入（流出）,營運產生之現金流入（流出）,exact label match first; trim full-width spaces; keep statement row sign as reported,low,False,False,False,False,False,False,False,True,narrow_mapping_candidate,False,True
+investing_cash_flow,投資活動之淨現金流入（流出）,,exact label match first; keep sign as reported,low,False,False,False,False,False,False,False,True,narrow_mapping_candidate,False,True
+capex_proxy,取得不動產、廠房及設備,購置不動產、廠房及設備; 取得不動產及設備,diagnostic FCF proxy only; do not call exact free cash flow without human-approved label basket,medium,True,False,False,False,False,False,False,True,human_policy_required,False,True
+inventory,存貨,,use balance-sheet ending balance row; not cash-flow inventory change row for inventory_risk stock measure,low,False,False,False,False,False,False,False,True,narrow_mapping_candidate,False,True
+receivables_basket,應收帳款淨額; 應收票據淨額; 其他應收款淨額,應收帳款－關係人淨額; 其他應收款－關係人淨額,requires policy choice: trade-only vs broad receivables basket; keep components separate until approved,medium,True,False,False,False,False,False,False,True,human_policy_required,False,True

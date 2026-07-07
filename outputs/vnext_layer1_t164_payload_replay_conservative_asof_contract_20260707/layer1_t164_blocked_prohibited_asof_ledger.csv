@@ -1,0 +1,8 @@
+﻿item,status,reason,next_action,ready_for_full_ingest,diagnostic_only
+exact_official_filing_timestamp,blocked,Required for exact PIT/full ingest/formal; Radar route t163sb01 has announcement text but no exact datetime,Radar/Data exact filing timestamp route required,False,False
+quarter_end_date,prohibited,Quarter-end is before disclosure and would introduce future-data risk,Do not use,False,False
+query_response_datetime,prohibited,"Response datetime is query time, not historical availability",Do not use,False,False
+MOPS_disclosure_datetime_asof_join,blocked_exact_partial_route_found,full PIT ingest still blocked; cannot use quarter end or query time as available_date,"Strategy/Core decide whether to accept conservative filing-deadline proxy for diagnostic only, or require exact filing timestamp route",False,True
+full_universe_ingest_runner,blocked_by_asof_and_policy,do not start all-stock download,Core can design runner contract; Radar should not execute full sweep in this task,False,True
+label_taxonomy_policy,partial_policy_draft_available,OCF/investing/inventory can be narrower; FCF proxy/receivable risk not formal-ready,Strategy Center/Core policy decision,False,True
+legacy_ajax_security_block,blocked_do_not_use,legacy routes not needed for t164 current path,do not bypass security block,False,True
