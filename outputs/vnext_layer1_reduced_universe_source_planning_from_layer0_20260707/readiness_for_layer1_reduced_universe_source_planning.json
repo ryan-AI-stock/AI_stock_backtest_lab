@@ -1,0 +1,38 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER1-REDUCED-UNIVERSE-SOURCE-PLANNING-FROM-LAYER0-001",
+  "status": "layer1_reduced_universe_source_planning_ready_existing_low_cost_fields_first",
+  "diagnostic_only": true,
+  "layer0_variant": "top300_buffer100",
+  "weekly_snapshot_count": 592,
+  "event_rows": 236800,
+  "unique_ticker_count_all": 1843,
+  "average_weekly_ticker_count": 400.0,
+  "average_turnover_share_5d": 0.9339828252604127,
+  "all_period_unique_ticker_scope_warning": "top300_buffer100 rolling universe touches 1843 names across full history; source acquisition should be period-scoped, not all-history unique-scoped",
+  "ready_for_layer1_reduced_universe_interim_contract": true,
+  "ready_for_radar_reduced_universe_t164_scoped_source": false,
+  "ready_for_t164_mass_download": false,
+  "ready_for_experiments": false,
+  "ready_for_formal": false,
+  "ready_for_strategy_replay": false,
+  "future_data_violation_count": 0,
+  "blocked_fields": [
+    "free_float_market_cap",
+    "exact_daily_market_cap",
+    "full_industry_taxonomy",
+    "full_t164_remaining_fields"
+  ],
+  "proxy_fields": [
+    "capital_stock_x_close_market_cap_proxy",
+    "industry_proxy",
+    "t164_capex_proxy",
+    "receivables_basket_proxy"
+  ],
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false
+}

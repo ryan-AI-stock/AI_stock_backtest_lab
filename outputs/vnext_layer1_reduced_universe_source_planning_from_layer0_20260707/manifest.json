@@ -1,0 +1,28 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER1-REDUCED-UNIVERSE-SOURCE-PLANNING-FROM-LAYER0-001",
+  "status": "layer1_reduced_universe_source_planning_ready_existing_low_cost_fields_first",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer1_reduced_universe_source_planning_from_layer0_20260707",
+  "layer0_input_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer0_weekly_universe_snapshot_contract_20260707",
+  "layer0_commit": "52f7346",
+  "output_files": [
+    "layer1_reduced_universe_coverage_by_period.csv",
+    "layer1_reduced_universe_source_cost_estimate.csv",
+    "layer1_reduced_universe_field_priority.csv",
+    "layer1_reduced_universe_quality_floor_design.csv",
+    "layer1_reduced_universe_blocked_proxy_ledger.csv",
+    "layer1_reduced_universe_next_handoff.csv",
+    "layer1_reduced_universe_future_data_audit.csv",
+    "readiness_for_layer1_reduced_universe_source_planning.json",
+    "manifest.json",
+    "final_summary_zh.md"
+  ],
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "ready_for_strategy_replay": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false,
+  "diagnostic_only": true
+}

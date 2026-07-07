@@ -1,0 +1,4 @@
+﻿audit_item,status,future_data_violation_count,note
+forward_return_as_rule,passed,0,no forward returns used
+layer0_asof_basis,passed,0,Layer0 snapshot already PIT traded-value based
+formal_selector,not_applicable,0,quality floor planning only

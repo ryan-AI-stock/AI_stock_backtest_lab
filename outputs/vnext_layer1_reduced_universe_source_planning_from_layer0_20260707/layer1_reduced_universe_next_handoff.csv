@@ -1,0 +1,3 @@
+﻿next_owner,handoff_action,ready,reason,diagnostic_only
+Core/Data,build_layer1_reduced_universe_interim_contract_using_existing_low_cost_fields,True,Layer0 top300_buffer100 provides reduced weekly universe and existing monthly/quarterly/liquidity/listing fields are usable for interim quality-floor contract,True
+Radar/Data,do_not_resume_1900_t164_mass_download; wait for scoped Layer0 reduced universe source request,False,high-cost t164 fields should be scoped to accepted reduced universe only,True

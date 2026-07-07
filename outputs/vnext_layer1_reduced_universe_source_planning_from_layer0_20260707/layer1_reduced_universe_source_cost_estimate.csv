@@ -1,0 +1,16 @@
+﻿period,cost_basis,reduced_universe_units,full_universe_units,estimated_reduction_vs_1900,note,diagnostic_only
+ALL,unique_ticker_source_fetch,1843.0,1900,0.030000000000000027,full historical rolling universe touches many names; do not use this as the main t164 scope without period pruning,True
+ALL,rolling_period_source_fetch_estimate,400.0,1900,0.7894736842105263,"preferred source acquisition policy: fetch by Layer0 active universe per source period, not all historical unique tickers",True
+ALL,weekly_snapshot_event_join,236800.0,1124800,0.7894736842105263,best for joining already materialized PIT fields to weekly snapshot rows,True
+P1,unique_ticker_source_fetch,1668.0,1900,0.12210526315789472,full historical rolling universe touches many names; do not use this as the main t164 scope without period pruning,True
+P1,rolling_period_source_fetch_estimate,400.0,1900,0.7894736842105263,"preferred source acquisition policy: fetch by Layer0 active universe per source period, not all historical unique tickers",True
+P1,weekly_snapshot_event_join,164400.0,780900,0.7894736842105263,best for joining already materialized PIT fields to weekly snapshot rows,True
+P2,unique_ticker_source_fetch,1430.0,1900,0.24736842105263157,full historical rolling universe touches many names; do not use this as the main t164 scope without period pruning,True
+P2,rolling_period_source_fetch_estimate,400.0,1900,0.7894736842105263,"preferred source acquisition policy: fetch by Layer0 active universe per source period, not all historical unique tickers",True
+P2,weekly_snapshot_event_join,72000.0,342000,0.7894736842105263,best for joining already materialized PIT fields to weekly snapshot rows,True
+2024_latest,unique_ticker_source_fetch,1297.0,1900,0.31736842105263163,full historical rolling universe touches many names; do not use this as the main t164 scope without period pruning,True
+2024_latest,rolling_period_source_fetch_estimate,400.0,1900,0.7894736842105263,"preferred source acquisition policy: fetch by Layer0 active universe per source period, not all historical unique tickers",True
+2024_latest,weekly_snapshot_event_join,51600.0,245100,0.7894736842105263,best for joining already materialized PIT fields to weekly snapshot rows,True
+2026YTD,unique_ticker_source_fetch,901.0,1900,0.5257894736842106,full historical rolling universe touches many names; do not use this as the main t164 scope without period pruning,True
+2026YTD,rolling_period_source_fetch_estimate,400.0,1900,0.7894736842105263,"preferred source acquisition policy: fetch by Layer0 active universe per source period, not all historical unique tickers",True
+2026YTD,weekly_snapshot_event_join,10400.0,49400,0.7894736842105263,best for joining already materialized PIT fields to weekly snapshot rows,True

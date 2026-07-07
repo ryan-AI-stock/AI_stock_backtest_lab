@@ -1,0 +1,5 @@
+﻿field,status,policy,diagnostic_only
+free_float_market_cap,blocked,do not use for quality floor until source exists,True
+exact_daily_market_cap,blocked_or_proxy,capital stock x close can be proxy only,True
+industry_taxonomy,proxy_or_blocked,do not silently group themes/industries,True
+t164_cashflow_inventory_receivable,scoped_high_cost,only after Layer0 reduced universe acceptance,True

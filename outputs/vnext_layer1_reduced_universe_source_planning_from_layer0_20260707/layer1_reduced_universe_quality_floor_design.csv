@@ -1,0 +1,5 @@
+﻿candidate,design,status,diagnostic_only
+exclude_bottom20,remove worst 20% by available quality/fundamental risk composite within Layer0 universe,candidate_only,True
+exclude_bottom30,stricter floor for sparse/poor-quality financials,candidate_only,True
+financial_risk_flags,debt/leverage/profitability deterioration/current_ratio/inventory_receivable flags where available,candidate_only,True
+not_top_only_alpha,do not rank only top fundamentals; purpose is removing unsuitable names before later layers,required_policy,True

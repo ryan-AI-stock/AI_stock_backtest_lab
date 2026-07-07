@@ -1,0 +1,5 @@
+﻿priority,field_group,source_status,policy,diagnostic_only,formal_ready
+P1_low_cost_quality_floor,monthly_revenue_yoy_3m; quarterly_margin_eps_profitability; liquidity; listing_status,mostly_existing_or_low_cost,build first,True,False
+P1_low_cost_quality_floor,gross_margin; operating_margin; eps; roe_roa_if_available,existing_quarterly_sweep_partial,"use as quality floor, not alpha selector",True,False
+P2_high_cost_t164_scoped,operating_cash_flow; current_ratio; inventory; receivables risk; capex_proxy,source_partial_t164_scoped_only,"only for Layer0 reduced universe, no 1900 mass download",True,False
+P3_proxy_or_blocked,market_cap; free_float; industry,proxy_or_blocked,"keep ledger, no silent fill",True,False
