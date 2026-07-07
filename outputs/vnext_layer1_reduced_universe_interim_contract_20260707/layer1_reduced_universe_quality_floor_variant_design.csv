@@ -1,0 +1,5 @@
+﻿variant,definition,status,formal_ready,diagnostic_only
+exclude_bottom20,exclude worst 20% by interim financial risk score within each weekly Layer0 universe,candidate_only,False,True
+exclude_bottom30,exclude worst 30% by interim financial risk score within each weekly Layer0 universe,candidate_only,False,True
+financial_risk_flags,"negative revenue growth, negative EPS, negative operating income, low gross margin, missing core fundamentals",candidate_only,False,True
+not_top_only,do not select top fundamental names; use as quality floor before Layer2/3,required_boundary,False,True

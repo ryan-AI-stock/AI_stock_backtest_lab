@@ -1,0 +1,40 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER1-REDUCED-UNIVERSE-INTERIM-CONTRACT-BUILD-001",
+  "status": "layer1_reduced_universe_interim_contract_built_diagnostic_ready_for_strategy_center_planning",
+  "diagnostic_only": true,
+  "layer0_variant": "top300_buffer100",
+  "planning_status": "layer1_reduced_universe_source_planning_ready_existing_low_cost_fields_first",
+  "contract_rows": 236800,
+  "weekly_snapshot_count": 592,
+  "unique_ticker_count_all": 1843,
+  "monthly_revenue_available_share": 0.9576182432432433,
+  "quarterly_fundamental_available_share": 0.9387584459459459,
+  "liquidity_context_available_share": 1.0,
+  "listing_status_available_share": 1.0,
+  "ready_for_layer1_reduced_universe_candidate_quality_diagnostic_planning": true,
+  "ready_for_experiments": false,
+  "ready_for_formal": false,
+  "ready_for_strategy_replay": false,
+  "ready_for_t164_mass_download": false,
+  "t164_stage2_scoped_to_layer0_active_passers_only": true,
+  "future_data_violation_count": 0,
+  "blocked_fields": [
+    "free_float_market_cap",
+    "exact_daily_market_cap",
+    "full_industry_taxonomy",
+    "full_t164_remaining_fields"
+  ],
+  "proxy_fields": [
+    "capital_stock_x_close_market_cap_proxy",
+    "industry_proxy",
+    "t164_capex_proxy",
+    "receivables_basket_proxy"
+  ],
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false
+}

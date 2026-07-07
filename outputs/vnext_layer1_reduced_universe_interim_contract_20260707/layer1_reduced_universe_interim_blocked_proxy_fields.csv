@@ -1,0 +1,7 @@
+﻿field,status,policy,diagnostic_only
+free_float_market_cap,blocked,not available; no silent fill,True
+exact_daily_market_cap,blocked,capital_stock_x_close remains proxy only and not materialized here,True
+full_industry_taxonomy,blocked_or_proxy,do not use as formal theme/industry floor,True
+full_listing_disposition_delivery_event_master,partial,listing/status context only; not full exclusion master,True
+t164_cashflow,stage2_scoped_only,not in interim; only for Layer0 active passers later,True
+current_ratio_inventory_receivable_capex_proxy,stage2_scoped_only_proxy_or_human_review,not in interim; no formal-ready claim,True
