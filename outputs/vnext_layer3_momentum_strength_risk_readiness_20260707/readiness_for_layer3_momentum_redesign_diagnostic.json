@@ -1,0 +1,33 @@
+{
+  "date": "2026-07-07",
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER3-MOMENTUM-SLEEVE-GROSS-STRENGTH-RISK-PENALTY-READINESS-001",
+  "owner": "BACKTEST_LAB Core/Data",
+  "status": "partial_ready_layer3_momentum_redesign_proxy_limited",
+  "ready_for_layer3_momentum_redesign_event_diagnostic": true,
+  "rs30_exact_available": false,
+  "rs30_proxy_available": true,
+  "persistence_daily_winrate_available": false,
+  "persistence_rs5_positive_share_proxy_available": true,
+  "volatility_large_down_day_available": true,
+  "blowoff_turnover_available": true,
+  "blowoff_turnover_source_quality": "proxy",
+  "ready_for_portfolio_like_diagnostic": false,
+  "ready_for_strategy_replay": false,
+  "ready_for_formal": false,
+  "future_data_violation_count": 0,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false,
+  "candidate_join_rows": 60654,
+  "blocked_fields": [],
+  "proxy_fields": [
+    "RS30",
+    "persistence_daily_winrate",
+    "blowoff_turnover",
+    "MA20_MA60_slope"
+  ],
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false
+}

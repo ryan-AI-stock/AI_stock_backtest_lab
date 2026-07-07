@@ -1,0 +1,9 @@
+﻿field_or_contract,status,blocked_or_proxy_reason,available_rows,diagnostic_only
+RS30,proxy,RS30 exact not materialized; RS30_proxy=(RS20+RS40)/2,0,True
+persistence_daily_winrate,proxy,exact 1D beat-0050 daily history unavailable; RS5_positive_share_20d/30d used as proxy,0,True
+volatility_large_down_day,PIT-ready,computed from stock adjusted_close daily history only,0,True
+blowoff_turnover,proxy,turnover/value spike plus RS short-window deterioration proxy; not a formal blow-off definition,0,True
+MA20_MA60_slope,proxy,computed from MA level change over 20 trading days,0,True
+stock_BIAS_percentile,PIT-ready,materialized in stock_features,0,True
+risk_score_bucket,PIT-ready,existing vNext weekly snapshot diagnostic fields,0,True
+forward_return_as_rule,prohibited,forward returns are not used,60654,True

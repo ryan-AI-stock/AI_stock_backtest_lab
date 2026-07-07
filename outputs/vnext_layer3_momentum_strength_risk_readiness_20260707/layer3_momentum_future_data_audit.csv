@@ -1,0 +1,4 @@
+﻿audit_item,status,future_data_violation_count,note
+stock_feature_source_asof_lte_signal_date,passed,0,stock and derived rolling features are joined on exact signal_date from past/current history
+attention_trade_date_equals_signal_date,passed,0,attention features joined on exact signal_date
+forward_return_as_rule,passed,0,no forward return columns included
