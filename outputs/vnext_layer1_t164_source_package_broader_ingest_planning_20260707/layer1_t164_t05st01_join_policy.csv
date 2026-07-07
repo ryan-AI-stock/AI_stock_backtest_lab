@@ -1,0 +1,11 @@
+﻿policy_item,status,policy_detail,effect,diagnostic_only
+official_timestamp_source,accepted,t05st01/t05st01_detail public material-information announcement timestamp,market_available_at,True
+strict_subject_match,accepted,financial-report approval/pass subject maps to target report period,accepted official route,True
+detail_period_validation,required,detail text/reporting period must map to target quarter or annual range,wrong-period rows blocked,True
+after_close_policy,required,"if announcement after regular close, signal eligibility starts next trading day",same-day pre-announcement use prohibited,True
+multiple_strict_candidates,blocked,must disambiguate or keep blocked,no silent first/last candidate selection,True
+premeeting_notice,excluded,board meeting schedule notice is not market_available_at for financial report,not accepted,True
+supporting_later_announcement,excluded_or_supporting,lower-priority later board-resolution detail can support but not replace direct report timestamp,do not shift accepted timestamp later when direct report exists,True
+quarter_end_date,prohibited,period end precedes disclosure,never available_at,True
+query_response_datetime,prohibited,query time is not official availability,never available_at,True
+conservative_deadline_proxy,separate_proxy_only,"may be staged separately if Research approves, but not mixed into official route",not official_asof,True

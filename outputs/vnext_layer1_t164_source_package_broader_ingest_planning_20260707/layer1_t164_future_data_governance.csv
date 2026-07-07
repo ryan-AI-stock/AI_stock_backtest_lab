@@ -1,0 +1,9 @@
+﻿governance_item,policy,detail,future_data_violation_count,diagnostic_only
+market_available_at,must_equal_official_public_announcement_timestamp,t05st01/t05st01_detail accepted timestamp only,0,True
+signal_eligible_date,after_close_next_trading_day,announcement after close cannot be used same day,0,True
+quarter_end_date,prohibited,not available_at,0,True
+query_response_datetime,prohibited,not available_at,0,True
+conservative_deadline_proxy,separate_proxy_only,never mixed into official route,0,True
+forward_return_as_rule,false_required,no forward return as rule input,0,True
+raw_response_cache,required,cache response hash and query payload for audit,0,True
+blocked_rows,required,unmatched/ambiguous rows remain blocked,0,True

@@ -1,0 +1,7 @@
+﻿handoff_item,next_owner,request,status,diagnostic_only
+full_or_broader_t164_materialization_runner,Radar/Data,Build resumable runner over agreed ticker universe and period range for t164sb05/t164sb03 plus t05st01_detail.,required_before_core_ingest,True
+raw_cache_and_hash_manifest,Radar/Data,"Provide payload, response hash, route status, retry count, and route_error_count per ticker/period/route.",required_before_core_ingest,True
+official_asof_candidate_ledger,Radar/Data,"For every ticker/period, provide accepted timestamp or blocked reason with subject/detail evidence.",required_before_core_ingest,True
+coverage_by_market_period,Radar/Data,Report TWSE/TPEx and period-level materialized/matched/blocked counts.,required_before_core_ingest,True
+label_inventory_for_human_review,Radar/Data,Inventory capex and receivables labels seen in broader sample for Core/Research policy review.,required_before_full_label_acceptance,True
+tpex_universal_readiness,Radar/Data,Confirm TPEx all-stock route stability beyond bounded samples.,required_before_full_universe_claim,True

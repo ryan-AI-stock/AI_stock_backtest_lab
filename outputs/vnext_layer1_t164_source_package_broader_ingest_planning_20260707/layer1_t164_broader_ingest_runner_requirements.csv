@@ -1,0 +1,10 @@
+﻿requirement,status,detail,owner,notes,diagnostic_only
+ticker_universe,required,TWSE and TPEx listed/common-stock universe with listing/status PIT filters,Radar/Data,exclude invalid/suspended/delisted rows by effective date,True
+period_range,required,at least P1/P2 requested periods plus disclosure lag coverage; start before 2015 if needed for lagged fundamentals,Radar/Data,must report requested vs actual coverage,True
+markets,required,TWSE and TPEx routes both enabled and separately audited,Radar/Data,TPEx universal readiness still requires full coverage proof,True
+t164_payload_replay,required,"dataType=2, ROC year, season 1-4, subsidiaryCompanyId empty",Radar/Data,cache raw payload/response hash,True
+t05st01_join,required,official announcement route per ticker/year/month/date-window with detail validation,Radar/Data,unmatched/ambiguous rows blocked,True
+rate_limit_cache,required,"persistent per-route cache, retry ledger, response hash, route_error_count, no uncontrolled repeated calls",Radar/Data,support resume and failure audit,True
+failure_ledger,required,"statement failure, route error, no candidate, multiple candidates, wrong period, excluded premeeting/non-financial report",Radar/Data,no silent row drops,True
+calendar_join,required,after-close next-trading-day eligibility using Core trading_calendar,Core/Data,do not use same-day if announced after market close,True
+full_coverage_audit,required,by ticker/market/period/field/match status before Experiments,Core/Data,bounded 40-row closure not sufficient,True

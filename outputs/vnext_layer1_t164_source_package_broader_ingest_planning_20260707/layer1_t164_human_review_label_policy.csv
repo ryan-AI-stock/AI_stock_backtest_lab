@@ -1,0 +1,6 @@
+﻿field_or_label,policy_status,reason,required_labeling,formal_ready,diagnostic_only
+capex_proxy,proxy_human_review_required,derived from t164sb05 cashflow rows; label variants may differ,keep proxy label; not formal FCF,False,True
+free_cash_flow_quality,blocked_until_policy,requires OCF minus accepted capex proxy policy and source-quality approval,do not fabricate exact FCF,False,True
+receivables_basket,proxy_human_review_required,receivable rows may include trade notes/accounts/other receivables depending statement label,explicit basket definition required,False,True
+inventory_risk,candidate_exact_input,inventory field accepted when t164sb03 PIT/asof joined,risk threshold remains diagnostic only,False,True
+current_ratio,candidate_exact_derived_input,current_assets/current_liabilities accepted when PIT/asof joined,threshold remains diagnostic only,False,True

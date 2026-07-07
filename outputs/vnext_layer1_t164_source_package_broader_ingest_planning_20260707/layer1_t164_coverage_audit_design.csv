@@ -1,0 +1,8 @@
+﻿audit_name,group_by,required_metrics,purpose,diagnostic_only
+ticker_coverage,ticker,"requested_rows, materialized_rows, statement_success_rows, official_asof_matched_rows, blocked_rows",detect ticker-level gaps,True
+market_coverage,market,"TWSE/TPEx requested rows, success, route errors, match share",separate TPEx universal readiness from TWSE,True
+period_coverage,report_period,"period requested rows, actual materialized rows, official_asof match share",avoid claiming coverage where periods are missing,True
+field_coverage,field,"non_null_rows, missing_rows, missing_share, source_quality",cashflow/inventory/receivable/current_ratio/capex availability,True
+match_status_coverage,match_status,"accepted, unmatched, ambiguous, wrong_period, premeeting_excluded, route_error",explicit blocked/proxy status,True
+future_data_audit,policy,"quarter_end_used, query_time_used, deadline_proxy_used, forward_return_as_rule",must all be false for official route,True
+requested_vs_actual,range,"requested_start/end, actual_start/end, reason for gaps",do not report actual as requested,True
