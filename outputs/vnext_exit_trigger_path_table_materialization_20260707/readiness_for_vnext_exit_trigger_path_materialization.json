@@ -1,0 +1,40 @@
+{
+  "date": "2026-07-07",
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-EXIT-TRIGGER-PATH-TABLE-MATERIALIZATION-001",
+  "owner": "BACKTEST_LAB Core/Data",
+  "status": "ready_for_experiments_tightened_exit_trigger_attribution",
+  "source_experiments_status": "partial_completed_prior_trigger_attribution_tightened_recompute_blocked",
+  "source_experiments_verdict": "blocked_for_optimized_core_path_trigger_materialization_partial_prior_attribution_only",
+  "event_base": "vnext selected_outcome_candidate true, case_trace_only false",
+  "bands": [
+    "band_3_30",
+    "band_5_30"
+  ],
+  "total_event_count": 509,
+  "included_event_count": 433,
+  "blocked_event_count": 76,
+  "path_rows": 23382,
+  "expected_path_rows": 23382,
+  "ready_for_exit_trigger_tightening_diagnostic": true,
+  "ready_for_experiments": true,
+  "ready_for_portfolio_like_diagnostic": false,
+  "ready_for_strategy_replay": false,
+  "ready_for_formal": false,
+  "future_data_violation_count": 0,
+  "blocked_fields": [
+    "stock_bias_cross_section_percentile"
+  ],
+  "proxy_fields": [
+    "BIAS20_z",
+    "BIAS60_z",
+    "turnover_blowoff_without_price_continuation"
+  ],
+  "endpoint_labels_evaluation_metadata_only": true,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false,
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false
+}

@@ -1,0 +1,14 @@
+﻿field,missing_rows,total_rows,missing_share,source_quality,diagnostic_only
+RS5,0,23382,0.0,pit_computed_from_daily_price_or_benchmark,True
+RS10,0,23382,0.0,pit_computed_from_daily_price_or_benchmark,True
+RS20,0,23382,0.0,pit_computed_from_daily_price_or_benchmark,True
+RS60,140,23382,0.0059875117611838165,pit_computed_from_daily_price_or_benchmark,True
+BIAS20_z,134,23382,0.005730904114275939,pit_self_history_zscore_proxy_cross_section_percentile_blocked,True
+BIAS60_z,456,23382,0.019502181164998716,pit_self_history_zscore_proxy_cross_section_percentile_blocked,True
+turnover_spike_ratio,0,23382,0.0,pit_computed_from_daily_price_or_benchmark,True
+large_down_day_count_20d,0,23382,0.0,pit_computed_from_daily_price_or_benchmark,True
+volatility_20d,0,23382,0.0,pit_computed_from_daily_price_or_benchmark,True
+0050_BIAS60,0,23382,0.0,pit_computed_from_daily_price_or_benchmark,True
+observed_excess_vs_00631L_so_far,0,23382,0.0,pit_computed_from_daily_price_or_benchmark,True
+endpoint_30d_excess_vs_00631L,0,23382,0.0,evaluation_metadata_only_not_rule_input,True
+stock_bias_cross_section_percentile,23382,23382,1.0,blocked_not_materialized_daily_cross_section,True

@@ -1,0 +1,4 @@
+﻿audit_item,status,future_data_violation_count,note
+future_high_as_rule,passed,0,profit protection uses observed-to-date cummax only
+forward_return_as_rule,passed,0,endpoint 30D labels are evaluation metadata only
+max_in_band_as_rule,passed,0,no future full-band maximum is used as trigger input
