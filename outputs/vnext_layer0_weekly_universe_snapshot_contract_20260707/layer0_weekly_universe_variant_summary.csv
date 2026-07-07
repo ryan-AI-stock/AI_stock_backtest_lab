@@ -1,0 +1,6 @@
+﻿variant,weekly_snapshot_count,average_ticker_count,median_ticker_count,average_turnover_share_5d,median_turnover_share_5d,average_surge_exception_count,diagnostic_only
+top200_buffer100,592,300.0,300.0,0.895655142824046,0.897397053927318,0.0,True
+top300_buffer100,592,400.0,400.0,0.9339828252604127,0.935598412840305,0.0,True
+top500_reference_only,592,500.0,500.0,0.9567659737222085,0.9578712276261245,0.0,True
+turnover_share_80_reference,592,176.9408783783784,175.5,0.8005911771123653,0.800573781937582,0.0,True
+turnover_share_90_reference,592,308.1503378378378,306.0,0.9002489839076925,0.9002400805529627,0.0,True

@@ -1,0 +1,5 @@
+﻿audit_item,status,future_data_violation_count,note
+forward_return_as_rule,passed,0,no forward returns used
+traded_value_asof,passed,0,rolling traded value uses only current/prior daily rows
+market_cap_silent_fill,passed,0,"market-cap rank blocked/proxy, not used primary"
+instrument_event_silent_fill,passed,0,instrument/event gaps remain explicit

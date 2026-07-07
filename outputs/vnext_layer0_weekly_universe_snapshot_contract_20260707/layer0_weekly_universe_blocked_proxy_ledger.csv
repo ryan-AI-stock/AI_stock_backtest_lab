@@ -1,0 +1,7 @@
+﻿field,status,reason,diagnostic_only
+instrument_type_master_full_pit,partial_proxy,ticker/name/listing metadata only; no full PIT instrument master,True
+pit_disposition_full_delivery_event_ledger,blocked,no full accepted PIT disposition/full-delivery ledger,True
+direct_exact_market_cap_rank,blocked,not used in primary Layer0 materialization,True
+capital_stock_x_close_market_cap_proxy,proxy,"available only as diagnostic proxy, not formal-ready",True
+KY_name_tag,proxy_tag_only,"KY is tagged, not auto-excluded",True
+ETF_ETN,separate_universe_policy,excluded by ticker pattern proxy from ordinary stock Layer0,True

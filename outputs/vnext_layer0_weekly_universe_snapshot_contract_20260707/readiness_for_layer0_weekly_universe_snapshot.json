@@ -1,0 +1,41 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER0-MATERIALIZED-WEEKLY-UNIVERSE-SNAPSHOT-CONTRACT-001",
+  "status": "layer0_weekly_universe_snapshot_materialized_diagnostic_ready_not_experiments",
+  "diagnostic_only": true,
+  "snapshot_rows": 997574,
+  "weekly_snapshot_count": 592,
+  "variants": [
+    "top200_buffer100",
+    "top300_buffer100",
+    "top500_reference_only",
+    "turnover_share_80_reference",
+    "turnover_share_90_reference"
+  ],
+  "recommended_primary_variant": "top300_buffer100",
+  "top300_buffer100_average_ticker_count": 400.0,
+  "top300_buffer100_average_turnover_share_5d": 0.9339828252604127,
+  "primary_source": "daily_per_stock_traded_value",
+  "ready_for_layer1_reduced_universe_source_planning": true,
+  "ready_for_t164_mass_download": false,
+  "ready_for_experiments": false,
+  "ready_for_formal": false,
+  "ready_for_strategy_replay": false,
+  "future_data_violation_count": 0,
+  "blocked_fields": [
+    "instrument_type_master_full_pit",
+    "pit_disposition_full_delivery_event_ledger",
+    "direct_exact_market_cap_rank"
+  ],
+  "proxy_fields": [
+    "instrument_type_by_pattern_or_partial_metadata",
+    "capital_stock_x_close_market_cap_proxy",
+    "KY_name_tag"
+  ],
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false
+}
