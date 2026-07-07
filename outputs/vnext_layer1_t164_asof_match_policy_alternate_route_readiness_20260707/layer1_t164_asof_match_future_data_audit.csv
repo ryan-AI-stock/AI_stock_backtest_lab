@@ -1,0 +1,5 @@
+﻿audit_item,status,future_data_violation_count,note
+prohibited_available_date_sources_not_used,passed,0,quarter_end_date/query_response_datetime/conservative_deadline_proxy are not used as official available_at
+unmatched_rows_not_backfilled,passed,0,"unmatched rows remain blocked, not filled with proxy dates"
+radar_future_data_audit_imported,passed,0,Radar/Data audit imported
+forward_return_as_rule,passed,0,no forward returns used

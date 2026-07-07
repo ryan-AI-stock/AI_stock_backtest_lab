@@ -1,0 +1,27 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER1-T164-ASOF-MATCH-POLICY-ALTERNATE-ROUTE-READINESS-001",
+  "status": "blocked_by_official_asof_match_gaps",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer1_t164_asof_match_policy_alternate_route_readiness_20260707",
+  "radar_input_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_layer1_t164_full_universe_materialization_readiness_20260707",
+  "radar_commit": "5f4d9be",
+  "output_files": [
+    "layer1_t164_asof_match_policy_readiness_contract.csv",
+    "layer1_t164_asof_match_failure_attribution.csv",
+    "layer1_t164_alternate_official_route_policy.csv",
+    "layer1_t164_partial_contract_blocked_rows_policy.csv",
+    "layer1_t164_asof_match_blocked_proxy_fields.csv",
+    "layer1_t164_asof_match_future_data_audit.csv",
+    "readiness_for_layer1_t164_asof_match_policy_alternate_route.json",
+    "manifest.json",
+    "final_summary_zh.md"
+  ],
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "ready_for_strategy_replay": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false,
+  "diagnostic_only": true
+}

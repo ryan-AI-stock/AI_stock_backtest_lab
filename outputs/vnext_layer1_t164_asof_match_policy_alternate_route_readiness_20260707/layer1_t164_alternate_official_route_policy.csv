@@ -1,0 +1,5 @@
+﻿route_or_policy,status,defensible_as_official_market_available_at,can_fill_current_unmatched_rows,affected_unmatched_rows,next_owner,required_next_evidence,policy_note,diagnostic_only
+current_t05st01_t05st01_detail_exact_subject_match,partial_blocked_by_unmatched_rows,True,False,6,Radar/Data,"capture alternate official announcement query or subject pattern for 3008, 6669, 6187 in 115Q1 and 114Q4",retain matched rows; keep unmatched rows blocked; no silent backfill,True
+broaden_t05st01_query_and_subject_policy,candidate_not_validated,True,False,6,Radar/Data,prove exact public material-information announcement timestamp and period mapping for each missed row,acceptable only if source remains t05st01/t05st01_detail or equivalent public official announcement timestamp,True
+conservative_filing_deadline_proxy,separate_proxy_candidate_only,False,False,6,Core/Research policy only,policy approval would still not make it official-asof; must remain separate proxy field,must not be mixed into matched official route,True
+quarter_end_date_or_query_response_datetime,prohibited,False,False,6,none,not applicable,never use as available_at,True

@@ -1,0 +1,5 @@
+﻿policy_item,status,detail,diagnostic_only
+matched_official_rows,usable_in_partial_contract_only,matched rows may retain official t05st01 market_available_at and after-close next-trading-day eligibility,True
+unmatched_rows,blocked_no_silent_backfill,"block 6 rows until official route match is proven; affected tickers=3008,6187,6669",True
+partial_acceptance_threshold,requires_research_or_strategy_policy,Core does not accept 85% match share as Experiments-ready because 6669 case/reference rows are unmatched,True
+after_close_next_trading_day_eligibility,applies_to_matched_or_validated_alternate_official_route_only,alternate route can use same eligibility policy only when it supplies official public timestamp,True
