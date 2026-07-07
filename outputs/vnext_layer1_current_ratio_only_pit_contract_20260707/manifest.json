@@ -1,0 +1,27 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER1-CURRENT-RATIO-ONLY-PIT-CONTRACT-READINESS-001",
+  "status": "sample_ready_current_ratio_only_contract_design_not_full_ingest",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer1_current_ratio_only_pit_contract_20260707",
+  "input_materialization_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_dynamic_candidate_pool_data_materialization_20260706",
+  "radar_sample_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_layer1_remaining_fields_bounded_parser_sample_unlock_20260707",
+  "radar_sample_commit": "4ff1ec9",
+  "output_files": [
+    "layer1_current_ratio_pit_contract.csv",
+    "layer1_current_ratio_candidate_join_contract.csv",
+    "layer1_current_ratio_source_quality_matrix.csv",
+    "layer1_current_ratio_missingness_by_period.csv",
+    "layer1_current_ratio_future_data_audit.csv",
+    "readiness_for_layer1_current_ratio_diagnostic.json",
+    "manifest.json",
+    "final_summary_zh.md"
+  ],
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "ready_for_strategy_replay": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false,
+  "diagnostic_only": true
+}

@@ -1,0 +1,40 @@
+{
+  "date": "2026-07-07",
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER1-CURRENT-RATIO-ONLY-PIT-CONTRACT-READINESS-001",
+  "owner": "BACKTEST_LAB Core/Data",
+  "status": "sample_ready_current_ratio_only_contract_design_not_full_ingest",
+  "ready_for_current_ratio_contract_design_review": true,
+  "ready_for_layer1_current_ratio_full_diagnostic": false,
+  "ready_for_layer1_remaining_parser_ingest": false,
+  "ready_for_merge_with_layer1_fuller_interim_diagnostic": false,
+  "recommendation": "research_judgment_required_merge_now_vs_wait_for_cashflow_inventory_receivable",
+  "current_ratio_contract_scope": "sample_only_not_full_universe",
+  "sample_contract_rows": 36,
+  "candidate_join_rows": 60654,
+  "candidate_join_current_ratio_available_rows": 68,
+  "source_quality_rows": 11,
+  "missingness_rows": 16,
+  "future_data_violation_count": 0,
+  "blocked_fields": [
+    "inventory_risk",
+    "receivable_risk",
+    "operating_cash_flow_quality",
+    "free_cash_flow_quality",
+    "free_float_market_cap",
+    "exact_market_cap",
+    "full_sector_pit"
+  ],
+  "prohibited_fields": [
+    "forward_return_as_rule"
+  ],
+  "ready_for_portfolio_like_diagnostic": false,
+  "ready_for_strategy_replay": false,
+  "ready_for_formal": false,
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false
+}

@@ -1,0 +1,12 @@
+﻿field,source_quality,available_rows,source_quality_reason,usable_for_current_ratio_contract_design,usable_for_full_layer1_diagnostic,usable_for_formal,diagnostic_only,radar_ready_for_core_contract_design_current_ratio_only,radar_ready_for_core_layer1_remaining_parser_ingest,mapping_rows,radar_blocked_ledger_rows
+current_assets,sample_unlocked_proxy,68,parsed from bounded t163sb05 sample; full sweep not materialized,True,False,False,True,True,False,5,7
+current_liabilities,sample_unlocked_proxy,68,parsed from bounded t163sb05 sample; full sweep not materialized,True,False,False,True,True,False,5,7
+current_ratio,sample_unlocked_proxy,68,derived as current_assets/current_liabilities; sample-only,True,False,False,True,True,False,5,7
+inventory_risk,blocked,0,not in standard t163sb05 summary sample,False,False,False,True,True,False,5,7
+receivable_risk,blocked,0,profile-specific or missing; no universal parser,False,False,False,True,True,False,5,7
+operating_cash_flow_quality,blocked,0,cash-flow route sample missing,False,False,False,True,True,False,5,7
+free_cash_flow_quality,blocked,0,depends on operating cash flow and capex fields,False,False,False,True,True,False,5,7
+free_float_market_cap,blocked,0,outside parser scope; no local official free-float route,False,False,False,True,True,False,5,7
+exact_market_cap,blocked,0,TWSE exact daily market cap still blocked,False,False,False,True,True,False,5,7
+full_sector_pit,blocked,0,TPEx all-stock sector PIT remains blocked,False,False,False,True,True,False,5,7
+forward_return_as_rule,prohibited,0,forward returns prohibited,False,False,False,True,True,False,5,7
