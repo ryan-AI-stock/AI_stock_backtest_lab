@@ -1,0 +1,7 @@
+﻿instrument_group,policy,source_basis,diagnostic_only
+ETF_ETN,exclude_from_common_stock_universe; keep separate benchmark/fallback universe,ticker starts with 00 or accepted instrument master,True
+warrants_structured_products,exclude,instrument master required for robust full-universe policy,True
+KY,do_not_auto_exclude; tag separately for governance/risk review,name contains -KY proxy until exact source,True
+disposition_full_delivery,exclude_or_block_until_event_ledger_confirms status,blocked until PIT event ledger,True
+too_low_liquidity,exclude if below minimum traded-value/liquidity flags over PIT window,daily_market_features liquidity_flag + traded_value,True
+suspended_delisted,exclude/block by PIT listing_status,daily_market_features listing_status plus listing ledger,True

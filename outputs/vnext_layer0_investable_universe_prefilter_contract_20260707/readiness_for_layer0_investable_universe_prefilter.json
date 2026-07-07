@@ -1,0 +1,40 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER0-INVESTABLE-UNIVERSE-PREFILTER-CONTRACT-001",
+  "status": "layer0_investable_universe_prefilter_design_ready_traded_value_ready_market_cap_partial",
+  "recommended_name": "Layer0 investable universe / data-pruning filter",
+  "not_layer1_selector": true,
+  "recent_panel_rows": 1971,
+  "recent_panel_eligible_rows": 1971,
+  "actual_recent_coverage_basis": "latest_5_trade_dates_from_daily_market_features",
+  "traded_value_prefilter_ready": true,
+  "total_market_traded_value_ready": true,
+  "market_cap_rank_prefilter_ready": false,
+  "market_cap_rank_prefilter_status": "blocked_or_proxy_until_full_exact_or_accepted_market_cap_proxy",
+  "hybrid_prefilter_contract_ready": true,
+  "recommended_initial_universe_size": "200_to_500_with_buffer",
+  "ready_for_layer0_event_or_coverage_diagnostic": false,
+  "ready_for_radar_source_hardening": true,
+  "ready_for_experiments": false,
+  "ready_for_formal": false,
+  "ready_for_strategy_replay": false,
+  "future_data_violation_count": 0,
+  "blocked_fields": [
+    "full_exact_daily_market_cap",
+    "free_float_market_cap",
+    "instrument_type_master",
+    "disposition_full_delivery_pit_ledger",
+    "formal_market_cap_rank_policy"
+  ],
+  "proxy_fields": [
+    "market_cap_proxy",
+    "instrument_type_by_ticker_pattern",
+    "KY_name_tag"
+  ],
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false
+}

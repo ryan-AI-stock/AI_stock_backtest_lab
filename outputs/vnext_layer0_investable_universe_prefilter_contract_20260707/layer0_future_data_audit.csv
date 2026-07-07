@@ -1,0 +1,5 @@
+﻿audit_item,status,future_data_violation_count,note
+forward_return_as_rule,passed,0,no forward returns used in prefilter design
+asof_traded_value,passed,0,use only daily traded value up to signal/asof date
+market_cap_proxy,blocked_or_proxy,0,must use PIT available market cap/proxy only
+formal_selector,not_applicable,0,"Layer0 is data-pruning, not selector"

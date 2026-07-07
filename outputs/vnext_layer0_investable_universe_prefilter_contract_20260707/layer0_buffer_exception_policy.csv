@@ -1,0 +1,5 @@
+﻿buffer_type,policy,purpose,diagnostic_only
+core_keep,coverage threshold reached by traded_value_rank or hybrid,target 200-300 initial design,True
+near_threshold_buffer,next 50-100 names by traded value or market-cap proxy,reduces churn/future-winner miss,True
+turnover_surge_exception,include if recent 5D traded value rank improves materially vs 60D rank,needs PIT rank deltas,True
+case_trace_buffer,allow case_trace_only rows for known review cases without selected outcome inclusion,diagnostic_only,True

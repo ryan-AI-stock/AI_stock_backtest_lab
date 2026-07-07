@@ -1,0 +1,5 @@
+﻿rule_family,rule_design,readiness,risk_note,diagnostic_only,not_live_rule
+market_cap_rank_cumulative_turnover_share,Rank ordinary common stocks by PIT market cap; add rows until cumulative traded-value share reaches 60/70/80.,blocked_until_full_exact_or_accepted_proxy_market_cap,Can miss smaller high-turnover momentum names if used alone.,True,True
+traded_value_rank_cumulative_turnover_share,Rank by recent PIT 5D/20D traded value; add rows until cumulative traded-value share reaches threshold.,ready_with_local_daily_market_features,"Better cost control and liquidity focus, but can over-include short-lived heat.",True,True
+hybrid_investable_universe,Keep market-cap top bucket OR traded-value top bucket OR recent turnover-surge exception; add near-threshold buffer.,recommended_design,Best balance: avoids market-cap-only blind spot and reduces future-winner miss risk.,True,True
+buffer_near_threshold,Include names just below threshold for 2-4 weeks or until liquidity collapses; diagnostic only.,recommended_design,Prevents churn and keeps emerging mid-cap leaders from being excluded too early.,True,True

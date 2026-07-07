@@ -1,0 +1,9 @@
+﻿source_item,readiness,local_source_or_gap,source_quality,diagnostic_only
+daily_per_stock_traded_value,ready,daily_market_features.csv traded_value,exact_pit_local,True
+total_market_traded_value,ready_derived,sum eligible daily_market_features traded_value by date,derived_pit_local,True
+recent_5d_traded_value_rank,ready,aggregate last 5 trading dates,exact_pit_local,True
+turnover_rank_pct_5d_20d_60d,ready,attention_features.csv,exact_or_diagnostic_pit_local,True
+full_exact_daily_market_cap,blocked,not available full TWSE+TPEx exact daily market cap,blocked,True
+market_cap_proxy,partial_proxy,tpex_market_cap_proxy/capital stock proxy exists in Layer1 contracts,proxy_partial_not_full_universe,True
+instrument_type_master,partial_proxy,ticker pattern + listing metadata; ETF/warrant/KY policies need source hardening,proxy,True
+disposition_full_delivery_ledger,blocked,needs accepted PIT event ledger,blocked,True
