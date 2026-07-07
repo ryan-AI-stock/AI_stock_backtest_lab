@@ -1,0 +1,5 @@
+﻿audit_item,status,future_data_violation_count,note
+same_day_pre_announcement_use,passed,0,after-close announcements are next-trading-day eligible
+prohibited_available_date_sources_not_used,passed,0,"no conservative proxy, quarter-end, or query response datetime used for matched rows"
+unmatched_rows_blocked_not_backfilled,passed,0,unmatched rows=0; kept blocked/separate
+forward_return_as_rule,passed,0,no forward return fields included

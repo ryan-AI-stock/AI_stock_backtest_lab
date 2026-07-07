@@ -1,0 +1,28 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER1-T164-T05ST01-INTERIM-OFFICIAL-ASOF-JOIN-READINESS-001",
+  "status": "interim_official_asof_join_sample_ready_not_full_ingest",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer1_t164_t05st01_interim_official_asof_join_20260707",
+  "input_t05st01_asof_contract_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer1_t05st01_official_announcement_asof_contract_20260707",
+  "input_t164_payload_contract_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer1_t164_payload_replay_conservative_asof_contract_20260707",
+  "output_files": [
+    "layer1_t164_t05st01_interim_official_asof_join_contract.csv",
+    "layer1_t164_t05st01_join_coverage_by_period.csv",
+    "layer1_t164_t05st01_unmatched_blocked_rows.csv",
+    "layer1_t164_t05st01_signal_eligibility_policy_audit.csv",
+    "layer1_t164_t05st01_label_human_review_fields.csv",
+    "layer1_t164_t05st01_blocked_proxy_fields.csv",
+    "layer1_t164_t05st01_future_data_audit.csv",
+    "readiness_for_layer1_t164_t05st01_interim_official_asof_diagnostic.json",
+    "final_summary_zh.md",
+    "manifest.json"
+  ],
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "ready_for_strategy_replay": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false,
+  "diagnostic_only": true
+}

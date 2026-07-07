@@ -1,0 +1,8 @@
+﻿field_or_contract,status,affected_rows,reason,diagnostic_only
+unmatched_official_timestamp_rows,blocked,0,unmatched rows must remain blocked or separate conservative-asof candidates,True
+conservative_filing_deadline_proxy,separate_candidate_only,0,do not silently backfill official timestamp,True
+capex_proxy,human_policy_required,1,FCF proxy label/policy requires human review,True
+receivables_basket,human_policy_required,1,receivables basket policy requires human review,True
+tpex_universal_ready,blocked,0,bounded sample confirmation only; not universal ready,True
+full_ingest,blocked,0,this package is sample/interim readiness only,True
+formal_selector,prohibited,0,no Layer1 selector created,True

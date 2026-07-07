@@ -1,0 +1,10 @@
+﻿ticker,market,report_period,candidate_field,market_available_at,after_regular_close,signal_eligible_date,same_day_pre_announcement_use_allowed,policy_applied,diagnostic_only
+1101,TWSE,2026Q1,operating_cash_flow,2026-05-13T19:18:38,True,2026-05-14,False,next_trading_day_after_close,True
+1101,TWSE,2026Q1,capex_proxy,2026-05-13T19:18:38,True,2026-05-14,False,next_trading_day_after_close,True
+1101,TWSE,2026Q1,inventory_change_cashflow,2026-05-13T19:18:38,True,2026-05-14,False,next_trading_day_after_close,True
+1101,TWSE,2026Q1,receivable_change_cashflow,2026-05-13T19:18:38,True,2026-05-14,False,next_trading_day_after_close,True
+1101,TWSE,2026Q1,inventory,2026-05-13T19:18:38,True,2026-05-14,False,next_trading_day_after_close,True
+1101,TWSE,2026Q1,receivables_basket,2026-05-13T19:18:38,True,2026-05-14,False,next_trading_day_after_close,True
+1101,TWSE,2026Q1,current_assets,2026-05-13T19:18:38,True,2026-05-14,False,next_trading_day_after_close,True
+1101,TWSE,2026Q1,current_liabilities,2026-05-13T19:18:38,True,2026-05-14,False,next_trading_day_after_close,True
+1101,TWSE,2026Q1,current_ratio,2026-05-13T19:18:38,True,2026-05-14,False,next_trading_day_after_close,True
