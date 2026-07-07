@@ -1,0 +1,54 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER1-T164-TPEX-PHASE1-REMAINING12-ASOF-PATCH-REVIEW-001",
+  "status": "phase1_tpex_asof_patch_reviewed_partial_98_of_100_final_blocked",
+  "diagnostic_only": true,
+  "input_rows": 12,
+  "resolved_patch_rows": 10,
+  "still_blocked_rows": 2,
+  "previous_official_asof_matched_rows": 88,
+  "updated_official_asof_matched_rows": 98,
+  "sample_rows": 100,
+  "updated_official_asof_matched_share": 0.98,
+  "final_blocked_tickers": [
+    "6114",
+    "8080"
+  ],
+  "final_blocked_reasons": [
+    "6114 has multiple target financial-report announcements; cannot map t164 current values to a specific version",
+    "accepted_candidate_count=0"
+  ],
+  "route_error_count": 0,
+  "future_data_violation_count": 0,
+  "accepted_10_row_patch_for_diagnostic_metadata": true,
+  "ready_for_core_t164_tpex_all_stock_proof_readiness_update": false,
+  "ready_for_core_t164_broader_ingest_contract": false,
+  "ready_for_core_t164_broader_materialization": false,
+  "ready_for_experiments": false,
+  "ready_for_formal": false,
+  "ready_for_strategy_replay": false,
+  "ready_for_full_universe": false,
+  "tpex_all_stock_universal_ready": false,
+  "ready_for_strategy_center_policy_decision": true,
+  "ready_for_radar_next_work": false,
+  "blocked_fields": [
+    "6114_version_match_blocked",
+    "8080_no_official_target_candidate",
+    "tpex_historical_all_stock_universe",
+    "full_period_range",
+    "full_universe_materialization",
+    "capex_proxy_formal_label",
+    "receivables_trade_formal_label"
+  ],
+  "proxy_fields": [
+    "capex_proxy",
+    "receivables_trade",
+    "current_or_carried_tpex_universe_candidate"
+  ],
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false
+}

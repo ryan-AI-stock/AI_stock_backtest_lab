@@ -1,0 +1,8 @@
+﻿item,status,policy,decision_owner,diagnostic_only
+accept_10_row_patch,accepted_for_diagnostic_official_asof_metadata,official t05st01/t05st01_detail timestamp only,Core/Data,True
+update_phase1_metadata_to_98_of_100,accepted_metadata_only,not all-stock proof; not Experiments-ready,Core/Data,True
+6114 114Q4,blocked,6114 has multiple target financial-report announcements; cannot map t164 current values to a specific version,Strategy Center/Radar/Data,True
+8080 115Q1,blocked,accepted_candidate_count=0,Radar/Data or Strategy Center,True
+quarter_end_date,prohibited,cannot be official available_at,Core/Data,True
+query_response_datetime,prohibited,cannot be official available_at,Core/Data,True
+conservative_deadline_proxy,prohibited_as_official_available_at,separate diagnostic candidate only,Core/Data,True

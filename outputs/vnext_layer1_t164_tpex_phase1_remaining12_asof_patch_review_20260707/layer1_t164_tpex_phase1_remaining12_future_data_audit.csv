@@ -1,0 +1,8 @@
+﻿policy,status,violation_count,formal_model_changed,trade_decision_changed,active_in_trade_decision,report_changed,portfolio_replay_executed,ready_for_strategy_replay,not_live_rule,forward_returns_live_rule_usage,audit_item,future_data_violation_count,note
+market_available_at,official_t05st01_timestamp_only,0.0,False,False,False,False,False,False,True,False,,,
+quarter_end_date,prohibited,0.0,False,False,False,False,False,False,True,False,,,
+query_response_datetime,prohibited,0.0,False,False,False,False,False,False,True,False,,,
+conservative_deadline_proxy,prohibited_as_official_available_at,0.0,False,False,False,False,False,False,True,False,,,
+6114_dual_candidate,version_match_required_no_silent_earliest_selection,0.0,False,False,False,False,False,False,True,False,,,
+,passed,,,,,,,,,,core_remaining12_patch_review_forward_return_as_rule,0.0,review uses official-asof source metadata only
+,passed,,,,,,,,,,remaining_blocked_rows_no_silent_backfill,0.0,6114 and 8080 remain blocked
