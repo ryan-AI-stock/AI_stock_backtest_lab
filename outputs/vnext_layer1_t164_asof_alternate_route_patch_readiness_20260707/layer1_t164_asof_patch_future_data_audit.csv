@@ -1,0 +1,4 @@
+﻿audit_item,status,future_data_violation_count,note
+prohibited_available_date_sources_not_used,passed,0,no quarter_end/query_response/conservative proxy used as official available_at
+remaining_blocked_not_backfilled,passed,0,6187 TPEx 114Q4 remains blocked; no premeeting/proxy backfill
+forward_return_as_rule,passed,0,no forward return fields included

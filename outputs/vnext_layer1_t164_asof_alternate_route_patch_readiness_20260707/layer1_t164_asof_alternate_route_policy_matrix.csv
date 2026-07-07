@@ -1,0 +1,6 @@
+﻿policy_item,status,allowed,notes,formal_model_changed,trade_decision_changed,active_in_trade_decision,report_changed,portfolio_replay_executed,ready_for_strategy_replay,not_live_rule,forward_returns_live_rule_usage,core_policy_decision,diagnostic_only
+accepted_market_available_at,single strict official t05st01 subject candidate required,True,must include official announcement date/time and report-period subject mapping,False,False,False,False,False,False,True,False,accepted_for_patch_when_single_strict_candidate,True
+relaxed_subject_policy_candidate,human_review_required,False,"period+financial token without board/approval token is evidence only, not accepted timestamp",False,False,False,False,False,False,True,False,evidence_only_human_review_required_not_patch,True
+quarter_end_date,prohibited,False,cannot be available_at,False,False,False,False,False,False,True,False,prohibited,True
+query_response_datetime,prohibited,False,query time cannot be available_at,False,False,False,False,False,False,True,False,prohibited,True
+conservative_filing_deadline_proxy,separate_proxy_candidate_only,False,cannot replace official route,False,False,False,False,False,False,True,False,separate_proxy_candidate_only_not_official_patch,True
