@@ -1,0 +1,2 @@
+﻿runner_scope,ticker_count,period_count,markets,sample_rows,projected_routes_per_row,budget_routes_per_row,budget_status,full_universe,full_period_range,diagnostic_only
+bounded_pruning_v2_seed,20,2,"TPEx,TWSE",40,8.0,10,pass,False,False,True

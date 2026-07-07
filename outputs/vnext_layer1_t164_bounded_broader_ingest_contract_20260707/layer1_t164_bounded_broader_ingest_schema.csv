@@ -1,0 +1,15 @@
+﻿column,type,meaning,source_quality,diagnostic_only
+ticker,string,join key,exact,True
+market,TWSE/TPEx,market route key,exact,True
+report_period,ROC quarter/annual period label,financial report period,exact,True
+official_market_available_at,ROC datetime,official t05st01/t05st01_detail public timestamp,exact_official_asof,True
+signal_eligible_date,YYYY-MM-DD,after-close adjusted trading eligibility date,derived_policy,True
+operating_cash_flow,numeric,t164sb05 cashflow field,exact_pit,True
+investing_cash_flow,numeric,t164sb05 cashflow field,exact_pit,True
+capex_proxy,numeric,cashflow capex-like proxy,human_review_proxy,True
+inventory,numeric,t164sb03 balance-sheet field,exact_pit,True
+receivables_trade,numeric,receivables basket/proxy field,human_review_proxy,True
+current_assets,numeric,t164sb03 balance-sheet field,exact_pit,True
+current_liabilities,numeric,t164sb03 balance-sheet field,exact_pit,True
+current_ratio,numeric,current_assets/current_liabilities,derived_pit,True
+blocked_reason,string,blocked/unmatched/ambiguous reason,contract_hygiene,True

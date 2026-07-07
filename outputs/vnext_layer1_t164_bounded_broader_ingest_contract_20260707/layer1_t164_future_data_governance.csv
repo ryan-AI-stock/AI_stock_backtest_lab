@@ -1,0 +1,6 @@
+﻿governance_item,policy,future_data_violation_count,detail,diagnostic_only
+quarter_end_date,prohibited,0,not used as official available_at,True
+query_response_datetime,prohibited,0,not used as official available_at,True
+conservative_deadline_proxy,separate_proxy_only,0,not mixed into official route,True
+forward_return_as_rule,false_required,0,no forward returns included,True
+official_market_available_at,required,0,must equal t05st01/t05st01_detail public timestamp,True

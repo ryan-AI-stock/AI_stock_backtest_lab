@@ -1,0 +1,9 @@
+﻿policy_item,status,detail,diagnostic_only
+subject_detail_matching,required,accepted subject must be financial-report approval/pass and detail period must map to target report period,True
+detail_period_mapping,required,detail text/reporting period validates quarter or annual date range,True
+after_close_next_trading_day,required,timestamp >= 13:30 uses next trading day for signal eligibility,True
+unmatched_rows,blocked,no silent fill; write blocked reason,True
+ambiguous_rows,blocked,no first/last candidate default; require disambiguation,True
+quarter_end_date,prohibited,not available_at,True
+query_response_datetime,prohibited,not available_at,True
+conservative_deadline_proxy,separate_proxy_only,not official route,True

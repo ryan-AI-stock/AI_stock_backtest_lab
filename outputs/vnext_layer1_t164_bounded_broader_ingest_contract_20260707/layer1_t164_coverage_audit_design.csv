@@ -1,0 +1,6 @@
+﻿audit_axis,group_by,required_metrics,diagnostic_only
+ticker,ticker,"requested_rows, materialized_rows, statement_success, official_asof_match, blocked_reason",True
+market,market,"requested_rows, materialized_rows, statement_success_rows, official_asof_matched_rows, blocked_rows",True
+period,report_period,"requested_rows, materialized_rows, statement_success_rows, official_asof_matched_rows, blocked_rows",True
+field,field,"requested_rows, non_null_rows, missing_rows, missing_share, source_quality",True
+future_data,policy,"quarter_end_used, query_response_used, deadline_proxy_used, forward_return_as_rule",True

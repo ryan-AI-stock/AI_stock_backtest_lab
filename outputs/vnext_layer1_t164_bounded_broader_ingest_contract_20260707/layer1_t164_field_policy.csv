@@ -1,0 +1,9 @@
+﻿field,policy_status,source_quality,missing_rows,missing_share,formal_ready,diagnostic_only
+operating_cash_flow,accepted,exact_pit_after_official_asof_join,0.0,0.0,False,True
+investing_cash_flow,accepted,exact_pit_after_official_asof_join,0.0,0.0,False,True
+capex_proxy,accepted_proxy_human_review_required,proxy_not_formal_fcf,4.0,0.1,False,True
+inventory,accepted,exact_pit_after_official_asof_join,6.0,0.15,False,True
+receivables_trade,accepted_proxy_human_review_required,receivables_basket_proxy,4.0,0.1,False,True
+current_assets,accepted,exact_pit_after_official_asof_join,4.0,0.1,False,True
+current_liabilities,accepted,exact_pit_after_official_asof_join,4.0,0.1,False,True
+current_ratio,accepted_derived,derived_pit_current_assets_div_current_liabilities,,,False,True

@@ -1,0 +1,37 @@
+{
+  "date": "2026-07-07",
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER1-T164-BOUNDED-BROADER-INGEST-CONTRACT-BUILD-001",
+  "owner": "BACKTEST_LAB Core/Data",
+  "status": "bounded_broader_ingest_contract_built_not_materialized",
+  "radar_status": "candidate_detail_pruning_runner_v2_ready_not_full_universe",
+  "diagnostic_only": true,
+  "sample_rows": 40,
+  "ticker_count": 20,
+  "period_count": 2,
+  "markets": [
+    "TPEx",
+    "TWSE"
+  ],
+  "official_asof_matched_rows": 40,
+  "statement_success_rows": 40,
+  "ready_for_core_t164_bounded_broader_materialization": true,
+  "ready_for_radar_tpex_all_stock_proof_if_needed": true,
+  "ready_for_experiments": false,
+  "ready_for_formal": false,
+  "ready_for_strategy_replay": false,
+  "ready_for_full_universe": false,
+  "blocked_fields": [
+    "TPEx all-stock proof not complete",
+    "full period range not complete",
+    "full universe false",
+    "capex_proxy / receivables_trade human-review proxy policy required"
+  ],
+  "future_data_violation_count": 0,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false,
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false
+}

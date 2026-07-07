@@ -1,0 +1,6 @@
+﻿blocker,status,detail,diagnostic_only
+TPEx all-stock proof not complete,blocked,full universe false,True
+full period range not complete,blocked,bounded seed has only 115Q1 and 114Q4,True
+full universe false,blocked,20 ticker seed only,True
+capex_proxy human-review proxy policy required,human_review_required,not formal FCF,True
+receivables_trade human-review proxy policy required,human_review_required,receivables basket/proxy,True
