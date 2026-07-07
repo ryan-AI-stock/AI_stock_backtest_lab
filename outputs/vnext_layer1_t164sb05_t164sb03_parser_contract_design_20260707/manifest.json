@@ -1,0 +1,27 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER1-T164SB05-T164SB03-PARSER-CONTRACT-DESIGN-001",
+  "status": "parser_contract_design_ready_not_full_ingest",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer1_t164sb05_t164sb03_parser_contract_design_20260707",
+  "radar_input_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_layer1_cashflow_inventory_receivable_browser_route_capture_20260707",
+  "radar_browser_route_capture_commit": "ba63444",
+  "output_files": [
+    "layer1_t164sb05_cashflow_parser_contract_design.csv",
+    "layer1_t164sb03_balance_sheet_parser_contract_design.csv",
+    "layer1_cashflow_inventory_receivable_normalized_schema.csv",
+    "layer1_cashflow_inventory_receivable_pit_timing_requirements.csv",
+    "layer1_browser_equivalent_payload_prerequisites.csv",
+    "blocked_prerequisites_ledger.csv",
+    "readiness_for_layer1_cashflow_inventory_receivable_ingest.json",
+    "manifest.json",
+    "final_summary_zh.md"
+  ],
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "ready_for_strategy_replay": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false,
+  "diagnostic_only": true
+}

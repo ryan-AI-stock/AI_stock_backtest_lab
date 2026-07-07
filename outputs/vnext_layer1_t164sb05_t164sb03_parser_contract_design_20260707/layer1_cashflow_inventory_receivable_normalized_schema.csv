@@ -1,0 +1,16 @@
+﻿column,dtype,allowed_or_example,requirement_level,purpose,diagnostic_only
+statement_source,enum,t164sb05_cashflow|t164sb03_balance_sheet,required,route source,True
+ticker,string,TW ticker,required,join key,True
+market,string,TWSE/TPEx if available,required,coverage audit key,True
+report_period,string,"fiscal period, e.g. 2026Q1",required,period key,True
+period_label_raw,string,民國115年第1季,required,source trace,True
+source_label,string,raw MOPS label,required,parser trace,True
+normalized_field,string,one row per mapped field,required,canonical field,True
+value,decimal,numeric value,required,TWD thousand unless unit says otherwise,True
+unit,string,TWD_thousand,required,unit audit,True
+available_datetime,datetime,MOPS disclosure/filing datetime,blocked_prerequisite,PIT as-of,True
+source_capture_method,enum,browser_ui|browser_equivalent_payload|direct_api,required,route replay audit,True
+payload_contract_version,string,versioned sanitized payload,blocked_prerequisite,replay audit,True
+source_quality,enum,sample_unlocked|PIT_ready|proxy|blocked,required,readiness audit,True
+human_review_required,boolean,true,required,label taxonomy control,True
+diagnostic_only,boolean,true,required,boundary flag,True

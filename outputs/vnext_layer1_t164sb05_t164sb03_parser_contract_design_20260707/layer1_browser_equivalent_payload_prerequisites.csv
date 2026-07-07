@@ -1,0 +1,6 @@
+﻿prerequisite,status,evidence,next_action,ready_for_full_ingest,diagnostic_only
+browser_equivalent_payload_replay,blocked,direct POST returned code=500 parameter exception without full browser context,Capture full SPA payload/context or browser-equivalent request transformation for /mops/api/t164sb05 and /mops/api/t164sb03,False,True
+payload_versioning,blocked,latest UI sample only; no versioned reusable payload contract,Persist sanitized payload schema including companyId/dataType/year/season/subsidiaryCompanyId and any SPA context fields,False,True
+session_cookie_policy,blocked,cookie/session not saved in Radar package,Define allowed browser-context replay policy without bypassing security blocks,False,True
+TPEx_sample_confirmation,blocked,TPEx multi-sample automation unstable; not evidence of universal route readiness,Run bounded stable TPEx sample after payload replay is solved,False,True
+legacy_ajax_route,blocked,legacy ajax routes returned security block pages,Do not use or bypass legacy ajax security block; prefer SPA routes,False,True

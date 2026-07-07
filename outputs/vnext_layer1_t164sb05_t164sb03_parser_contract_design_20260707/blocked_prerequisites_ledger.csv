@@ -1,0 +1,9 @@
+﻿blocked_item,status,blocked_reason,next_action,source,ready_for_full_ingest,diagnostic_only
+MOPS_disclosure_datetime_asof_join,blocked,browser latest page alone is not sufficient for historical PIT,Acquire/join MOPS filing/disclosure datetime per ticker/report period,Core contract design,False,True
+direct_browser_equivalent_payload_replay,blocked,direct API minimal payload returns code=500,Capture SPA-equivalent payload/context,Core contract design,False,True
+TPEx_sample_confirmation,blocked,multi-sample automation unstable,Run bounded TPEx sample with stable browser/session or solved payload replay,Core contract design,False,True
+full_universe_ingest_runner,blocked,only 1101 latest browser sample exists,Build resumable full-universe runner only after payload/asof prerequisites pass,Core contract design,False,True
+label_taxonomy_policy,blocked,capex/receivable labels vary by company/profile,Human-review normalized label taxonomy before diagnostic ingest,Core contract design,False,True
+direct_api_replay_without_browser_context,blocked,missing SPA/browser-equivalent request context or full payload transformation,Core/Data or Radar/Data parser should use browser-equivalent route capture or inspect SPA store payload transformation before full ingest,Radar blocked ledger,False,True
+TPEx multi-sample t164sb05/t164sb03,partial_blocked,"bounded browser control instability, not evidence that official route lacks TPEx support",small follow-up TPEx sample with stable browser session or direct SPA payload once context issue is solved,Radar blocked ledger,False,True
+legacy_ajax_security_block,blocked,legacy ajax routes security protected; no bypass attempted,prefer MOPS SPA t164sb05/t164sb03 routes over legacy ajax,Radar blocked ledger,False,True
