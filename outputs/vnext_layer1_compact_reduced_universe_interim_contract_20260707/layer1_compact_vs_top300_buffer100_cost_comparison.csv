@@ -1,0 +1,9 @@
+﻿metric,compact_value,top300_buffer100_value,delta_or_reduction_vs_top300,diagnostic_only
+ALL_contract_rows,171494.0,236800.0,0.27578547297297296,True
+ALL_average_weekly_count,289.68581081081084,400.0,0.27578547297297296,True
+ALL_unique_ticker_count,1612.0,1843.0,0.1253391209983722,True
+ALL_monthly_revenue_available_share,0.9586749390649235,0.9576182432432433,0.0010566958216802202,True
+ALL_quarterly_fundamental_available_share,0.939718007627089,0.9387584459459459,0.000959561681143084,True
+P2_contract_rows,52149.0,72000.0,0.27570833333333333,True
+P2_average_weekly_count,289.71666666666664,400.0,0.27570833333333344,True
+P2_unique_ticker_count,1181.0,1430.0,0.1741258741258741,True

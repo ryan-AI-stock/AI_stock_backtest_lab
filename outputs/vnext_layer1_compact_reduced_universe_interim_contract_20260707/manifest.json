@@ -1,0 +1,35 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER1-COMPACT-REDUCED-UNIVERSE-INTERIM-CONTRACT-REBUILD-001",
+  "status": "layer1_compact_reduced_universe_interim_contract_built_ready_for_strategy_center_planning",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer1_compact_reduced_universe_interim_contract_20260707",
+  "input_compact_layer0_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer0_compact_weekly_universe_snapshot_contract_20260707",
+  "input_compact_layer0_commit": "57c2e20",
+  "input_previous_layer1_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer1_reduced_universe_interim_contract_20260707",
+  "output_files": [
+    "layer1_compact_reduced_universe_interim_contract.csv",
+    "layer1_compact_reduced_universe_interim_contract_sample.csv",
+    "layer1_compact_reduced_universe_interim_coverage_by_period.csv",
+    "layer1_compact_reduced_universe_interim_missingness_by_period.csv",
+    "layer1_compact_reduced_universe_interim_source_quality_matrix.csv",
+    "layer1_compact_reduced_universe_quality_floor_variant_design.csv",
+    "layer1_compact_reduced_universe_interim_blocked_proxy_fields.csv",
+    "layer1_compact_reduced_universe_interim_future_data_audit.csv",
+    "layer1_compact_vs_top300_buffer100_cost_comparison.csv",
+    "readiness_for_layer1_compact_reduced_universe_interim_contract.json",
+    "manifest.json",
+    "final_summary_zh.md"
+  ],
+  "large_local_files_not_tracked": [
+    "layer1_compact_reduced_universe_interim_contract.csv"
+  ],
+  "large_local_file_policy": "full materialized compact Layer1 contract is retained in local output path; Git tracks sample/readiness/audit files only",
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "ready_for_strategy_replay": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false,
+  "diagnostic_only": true
+}

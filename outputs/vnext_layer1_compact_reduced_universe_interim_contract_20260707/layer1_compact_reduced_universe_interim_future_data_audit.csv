@@ -1,0 +1,5 @@
+﻿audit_item,status,future_data_violation_count,note
+monthly_revenue_available_date_lte_snapshot,passed,0,as-of merge uses only available_date <= snapshot_date
+quarterly_fundamental_available_date_lte_snapshot,passed,0,as-of merge uses only available_date <= snapshot_date
+forward_return_as_rule,passed,0,no forward returns used
+formal_selector,not_applicable,0,candidate quality-floor contract only
