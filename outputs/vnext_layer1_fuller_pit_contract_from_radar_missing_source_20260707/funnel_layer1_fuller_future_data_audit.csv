@@ -1,0 +1,8 @@
+﻿audit_item,status,future_data_violation_count,note
+monthly_available_date_lte_signal_date,passed,0,monthly_available_date joined by backward/as-of or exact signal-date PIT policy
+quarterly_available_date_lte_signal_date,passed,0,quarterly_available_date joined by backward/as-of or exact signal-date PIT policy
+capital_available_date_lte_signal_date,passed,0,capital_available_date joined by backward/as-of or exact signal-date PIT policy
+listing_event_date_lte_signal_date,passed,0,listing_event_date joined by backward/as-of or exact signal-date PIT policy
+tpex_market_cap_available_date_lte_signal_date,passed,0,tpex_market_cap_available_date joined by backward/as-of or exact signal-date PIT policy
+radar_missing_source_future_data_audit,passed,0,Radar timing risk ledger rows=5
+forward_return_as_rule,passed,0,no forward return columns are included in fuller Layer 1 contracts

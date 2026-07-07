@@ -1,0 +1,19 @@
+﻿field_or_contract,status,source_quality,proxy_available,blocked_or_proxy_reason,diagnostic_only,status_radar,blocked_or_proxy_reason_radar,ready_for_core_contract
+monthly_revenue_growth,PIT-ready,PIT-ready,False,MOPS monthly revenue as-of available_date; conservative timing,True,,,
+quarterly_growth_margin_profitability,PIT-ready,PIT-ready,False,quarterly fundamentals as-of available_date; exact filing timestamp unavailable,True,,,
+tpex_market_cap_proxy,proxy,proxy,True,TPEx daily market cap proxy from official close * issued shares; TWSE exact daily market cap still blocked,True,,,
+twse_capital_stock_shares_proxy,proxy,proxy,True,TWSE capital stock/shares quarterly proxy; not daily exact market cap,True,,,
+debt_leverage_solvency,blocked,blocked_or_sparse_actual_rows_zero,False,"Radar route says derivable, but accepted quarterly total_assets/total_liabilities/equity are empty locally",True,,,
+listing_board_status_partial_proxy,proxy,proxy,True,partial event/status source; master_ready=false,True,,,
+twse_industry_diagnostic_proxy,proxy,proxy_not_materialized,True,TWSE official industry diagnostic route noted; no accepted PIT industry rows materialized in Core package,True,,,
+average_traded_value,proxy,proxy,True,existing attention_features signal-date traded_value,True,,,
+turnover,proxy,proxy,True,existing attention_features turnover windows,True,,,
+free_float_market_cap,blocked,blocked,False,no local free-float shares/free-float cap route,True,blocked,do not ingest until source acquired; high if inferred from current float or index weights; do not use current/static maps,False
+operating_cash_flow_quality,blocked,blocked,False,cash-flow statement full sweep not materialized,True,blocked,Radar source acquisition needed before Core contract; medium until available_date policy and route parser are built,False
+free_cash_flow_quality,blocked,blocked,False,OCF/capex fields unavailable; do not proxy from profitability,True,blocked,blocked; do not proxy from profitability; medium until source acquisition,False
+current_ratio,blocked,blocked,False,current assets/current liabilities not materialized,True,blocked,Radar source acquisition needed; medium until full sweep and missingness audit,False
+inventory_risk,blocked,blocked,False,inventory detail not materialized,True,blocked,blocked; medium until detailed balance-sheet route acquired,False
+receivable_risk,blocked,blocked,False,receivable detail not materialized,True,blocked,blocked; medium until detailed balance-sheet route acquired,False
+tpex_all_stock_sector_pit,blocked,blocked,False,accepted TPEx sector rows=0,True,,,
+twse_exact_daily_market_cap,blocked,blocked,False,TWSE direct daily market cap / issued shares route remains blocked,True,,,
+forward_return_as_rule,prohibited,prohibited,False,forward returns prohibited as Layer 1 rule inputs,True,,,

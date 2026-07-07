@@ -1,0 +1,28 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER1-FULLER-PIT-CONTRACT-FROM-RADAR-MISSING-SOURCE-READINESS-001",
+  "status": "partial_ready_layer1_fuller_pit_contract_proxy_limited",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer1_fuller_pit_contract_from_radar_missing_source_20260707",
+  "input_materialization_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_dynamic_candidate_pool_data_materialization_20260706",
+  "radar_missing_source_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_layer1_missing_fundamental_source_acquisition_readiness_20260707",
+  "radar_missing_source_commit": "26168ad",
+  "output_files": [
+    "funnel_layer1_fuller_fundamental_pit_contract.csv",
+    "funnel_layer1_fuller_candidate_join_contract.csv",
+    "funnel_layer1_fuller_source_quality_matrix.csv",
+    "funnel_layer1_fuller_missingness_by_period.csv",
+    "funnel_layer1_fuller_blocked_proxy_fields.csv",
+    "funnel_layer1_fuller_future_data_audit.csv",
+    "readiness_for_funnel_layer1_fuller_diagnostic.json",
+    "manifest.json",
+    "final_summary_zh.md"
+  ],
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "ready_for_strategy_replay": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false,
+  "diagnostic_only": true
+}

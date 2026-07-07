@@ -1,0 +1,19 @@
+﻿field_group,source_quality,available_rows,source_quality_reason,usable_for_layer1_fuller_diagnostic,usable_for_formal,diagnostic_only,radar_ready_for_core_layer1_fuller_contract_refresh,radar_ready_for_experiments,radar_missing_inventory_rows,twse_official_industry_diagnostic_only
+monthly_revenue_growth,PIT-ready,52507,MOPS monthly revenue as-of available_date; conservative timing,True,False,True,True,False,10,True
+quarterly_growth_margin_profitability,PIT-ready,51286,quarterly fundamentals as-of available_date; exact filing timestamp unavailable,True,False,True,True,False,10,True
+tpex_market_cap_proxy,proxy,30273,TPEx daily market cap proxy from official close * issued shares; TWSE exact daily market cap still blocked,True,False,True,True,False,10,True
+twse_capital_stock_shares_proxy,proxy,28786,TWSE capital stock/shares quarterly proxy; not daily exact market cap,True,False,True,True,False,10,True
+debt_leverage_solvency,blocked_or_sparse_actual_rows_zero,0,"Radar route says derivable, but accepted quarterly total_assets/total_liabilities/equity are empty locally",False,False,True,True,False,10,True
+listing_board_status_partial_proxy,proxy,4594,partial event/status source; master_ready=false,True,False,True,True,False,10,True
+twse_industry_diagnostic_proxy,proxy_not_materialized,0,TWSE official industry diagnostic route noted; no accepted PIT industry rows materialized in Core package,True,False,True,True,False,10,True
+average_traded_value,proxy,60654,existing attention_features signal-date traded_value,True,False,True,True,False,10,True
+turnover,proxy,60652,existing attention_features turnover windows,True,False,True,True,False,10,True
+free_float_market_cap,blocked,0,no local free-float shares/free-float cap route,False,False,True,True,False,10,True
+operating_cash_flow_quality,blocked,0,cash-flow statement full sweep not materialized,False,False,True,True,False,10,True
+free_cash_flow_quality,blocked,0,OCF/capex fields unavailable; do not proxy from profitability,False,False,True,True,False,10,True
+current_ratio,blocked,0,current assets/current liabilities not materialized,False,False,True,True,False,10,True
+inventory_risk,blocked,0,inventory detail not materialized,False,False,True,True,False,10,True
+receivable_risk,blocked,0,receivable detail not materialized,False,False,True,True,False,10,True
+tpex_all_stock_sector_pit,blocked,0,accepted TPEx sector rows=0,False,False,True,True,False,10,True
+twse_exact_daily_market_cap,blocked,0,TWSE direct daily market cap / issued shares route remains blocked,False,False,True,True,False,10,True
+forward_return_as_rule,prohibited,0,forward returns prohibited as Layer 1 rule inputs,False,False,True,True,False,10,True
