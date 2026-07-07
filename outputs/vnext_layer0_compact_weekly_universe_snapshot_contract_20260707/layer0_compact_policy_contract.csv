@@ -1,0 +1,7 @@
+﻿policy_item,definition,scope_policy,boundary,diagnostic_only
+primary_variant,top250_core_conditional_buffer50,accepted_by_strategy_center,diagnostic_contract_only,True
+core,5D traded-value rank <= 250,active_layer1_source_scope,not_live_rule,True
+conditional_buffer_candidate,5D traded-value rank 251-300,candidate_for_active_scope_or_watchlist,not_live_rule,True
+buffer_condition_1,top300 5D band appears at least 2 times in latest 4 weekly snapshots,active_layer1_source_scope,not_live_rule,True
+buffer_condition_2,20D or 60D traded-value rank <= 300,active_layer1_source_scope,not_live_rule,True
+pure_5d_burst,rank 251-300 without condition_1 or condition_2,watchlist_reference_only,not_layer1_source_scope,True

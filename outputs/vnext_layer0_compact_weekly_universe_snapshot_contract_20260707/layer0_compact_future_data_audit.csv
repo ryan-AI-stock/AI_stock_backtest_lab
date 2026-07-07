@@ -1,0 +1,4 @@
+﻿audit_item,status,future_data_violation_count,note
+forward_return_as_rule,passed,0,no forward returns used
+formal_rule_change,not_applicable,0,contract refresh only; formal model unchanged
+watchlist_mixed_into_active_scope,passed,0,watchlist_reference has separate scope_type and active_for_layer1_source_scope=false

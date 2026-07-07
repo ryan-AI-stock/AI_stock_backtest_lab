@@ -1,0 +1,34 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER0-COMPACT-WEEKLY-UNIVERSE-SNAPSHOT-CONTRACT-REFRESH-001",
+  "status": "layer0_compact_weekly_universe_snapshot_materialized_ready_for_layer1_compact_rebuild",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer0_compact_weekly_universe_snapshot_contract_20260707",
+  "input_data_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_dynamic_candidate_pool_data_materialization_20260706",
+  "input_design_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer0_compact_variant_design_20260707",
+  "input_design_commit": "19270e8",
+  "output_files": [
+    "layer0_compact_weekly_universe_snapshot.csv",
+    "layer0_compact_weekly_universe_snapshot_sample.csv",
+    "layer0_compact_weekly_universe_coverage_by_period.csv",
+    "layer0_compact_weekly_universe_scope_split_by_week.csv",
+    "layer0_compact_weekly_universe_short_lived_distribution.csv",
+    "layer0_compact_policy_contract.csv",
+    "layer0_compact_blocked_proxy_ledger.csv",
+    "layer0_compact_future_data_audit.csv",
+    "readiness_for_layer0_compact_weekly_universe_snapshot.json",
+    "manifest.json",
+    "final_summary_zh.md"
+  ],
+  "large_local_files_not_tracked": [
+    "layer0_compact_weekly_universe_snapshot.csv"
+  ],
+  "large_local_file_policy": "full compact materialized snapshot is retained in local output path; Git tracks sample/readiness/audit files only",
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "ready_for_strategy_replay": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false,
+  "diagnostic_only": true
+}
