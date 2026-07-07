@@ -1,0 +1,8 @@
+﻿review_item,status,evidence_value,note,diagnostic_only
+statement_route,passed_bounded_seed,40.0,40/40 t164 statement success,True
+official_asof_join,passed_bounded_seed,40.0,40/40 official-asof matched,True
+route_error,passed,0.0,no route errors,True
+cache_efficiency,passed_bounded_cost_guard,11.4,actual cache rows per materialized row reduced from baseline,True
+route_reduction,passed,0.7291,route reduction vs baseline source package,True
+coverage_scope,bounded_seed_only,40.0,20 tickers x 2 periods; not full universe,True
+projected_route_budget,pass,8.0,projected_routes_per_row <= budget_routes_per_row,True

@@ -1,0 +1,8 @@
+﻿requirement,status,detail,purpose,diagnostic_only
+input_scope,required,bounded seed only unless Research/Strategy approves larger scope,avoid silent full-universe claim,True
+source_contract,required,t164sb05/t164sb03 statement rows joined to official t05st01/t05st01_detail asof,market_available_at policy preserved,True
+cache_manifest,required,raw cache hash manifest and query payload hash per route,reproducibility,True
+coverage_audit,required,coverage by ticker/market/period/field/match status,requested vs actual coverage,True
+blocked_policy,required,"unmatched/ambiguous rows blocked, no silent fill",contract hygiene,True
+label_policy,required,capex_proxy and receivables_trade remain human_review_proxy_label_required,not formal-ready labels,True
+future_data_governance,required,quarter_end/query_response/deadline proxy prohibited for official route,PIT hygiene,True

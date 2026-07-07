@@ -1,0 +1,7 @@
+﻿blocker,status,detail,owner,diagnostic_only
+full_universe_scope,blocked,20 tickers x 2 periods only; not all-stock,Radar/Data or Research/Strategy,True
+full_period_range,blocked,only 115Q1 and 114Q4 in seed,Radar/Data or Research/Strategy,True
+tpex_all_stock_proof,blocked,"TPEx bounded seed passes pruning v2, but all-stock TPEx proof not executed",Radar/Data,True
+capex_proxy,human_review_proxy_label_required,capex label/basket remains proxy,Research/Strategy label policy,True
+receivables_trade,human_review_proxy_label_required,receivables basket remains proxy,Research/Strategy label policy,True
+experiments_authorization,blocked,source package not Experiments-ready,vNext Research,True

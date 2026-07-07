@@ -1,0 +1,4 @@
+﻿next_owner,handoff_item,request,status,diagnostic_only
+vNext Research,judge_bounded_ingest_contract_planning,Decide whether Core should build bounded broader ingest contract from pruning v2 seed.,recommended_next,True
+Radar/Data,all_stock_tpex_and_full_period_plan,"If Research wants broader/full route, provide TPEx all-stock proof and full period range materialization plan.",parallel_blocker,True
+Strategy Center,label_policy_decision,capex_proxy / receivables_trade human-review proxy policy remains unresolved.,policy_blocker,True

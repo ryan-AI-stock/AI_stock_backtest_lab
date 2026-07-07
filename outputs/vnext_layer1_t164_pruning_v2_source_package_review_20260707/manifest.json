@@ -1,0 +1,27 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER1-T164-PRUNING-V2-SOURCE-PACKAGE-REVIEW-001",
+  "status": "pruning_v2_review_passed_bounded_contract_planning_ready_not_full_ingest",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer1_t164_pruning_v2_source_package_review_20260707",
+  "radar_input_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_layer1_t164_candidate_detail_pruning_runner_v2_20260707",
+  "radar_commit": "542d529",
+  "output_files": [
+    "layer1_t164_pruning_v2_review_matrix.csv",
+    "layer1_t164_bounded_broader_ingest_contract_requirements.csv",
+    "layer1_t164_pruning_v2_remaining_blockers.csv",
+    "layer1_t164_pruning_v2_future_data_audit.csv",
+    "layer1_t164_pruning_v2_next_handoff.csv",
+    "layer1_t164_pruning_v2_effectiveness_audit_imported.csv",
+    "readiness_for_layer1_t164_pruning_v2_source_package_review.json",
+    "manifest.json",
+    "final_summary_zh.md"
+  ],
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "ready_for_strategy_replay": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false,
+  "diagnostic_only": true
+}
