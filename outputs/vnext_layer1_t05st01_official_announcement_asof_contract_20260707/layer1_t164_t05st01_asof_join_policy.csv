@@ -1,0 +1,7 @@
+﻿policy_item,field_or_rule,requirement,policy_detail,ready_for_contract_design,ready_for_full_ingest,diagnostic_only
+join_key_company,ticker/companyId,required,Match t164sb05/t164sb03 companyId to t05st01 companyId.,True,False,True
+join_key_report_period,ROC year + season inferred from t164 payload and t05st01 subject/period text,required_with_human_review,Use subject regex for 董事會通過 + fiscal year/quarter; keep unmatched rows blocked.,True,False,True
+join_key_market,marketKind sii/otc from t05st01_detail + t164 market sample,required,Use market for detail payload and TPEx/TWSE audit; bounded samples passed both markets.,True,False,True
+join_timestamp,official_announcement_timestamp,required,Set market_available_at to public material-information 發言日期+發言時間.,True,False,True
+internal_filing_upload_timestamp,not available,blocked_not_required_for_market_available_at_policy,Keep exact_internal_filing_upload_timestamp_found=false.,True,False,True
+prohibited_available_date_sources,API response datetime / quarter-end date / conservative filing-deadline proxy,prohibited,Cannot replace official announcement timestamp when route match exists.,False,False,True

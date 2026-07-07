@@ -1,0 +1,5 @@
+﻿eligibility_case,signal_eligibility_rule,reason,sample_after_close_rows,same_day_pre_announcement_use_allowed,diagnostic_only,not_live_rule
+market_available_at_before_or_during_session,same trading day only after timestamp and only if signal construction time is after market_available_at,avoid same-day pre-announcement leakage,3,False,True,True
+market_available_at_after_regular_close,next trading day eligibility,sample announcements after 13:30 cannot be used by same-day signal,3,False,True,True
+weekly_signal_date,"eligible only if market_available_at <= signal_timestamp; if signal timestamp unknown, use next trading day after announcement",conservative PIT policy,3,False,True,True
+announcement_time_missing,blocked until timestamp resolved,date-only route is not enough,3,False,True,True

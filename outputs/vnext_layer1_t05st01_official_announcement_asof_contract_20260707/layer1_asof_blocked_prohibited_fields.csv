@@ -1,0 +1,10 @@
+﻿field,status,reason,ready_for_asof_join,ready_for_formal,diagnostic_only
+exact_internal_filing_upload_timestamp,blocked,No route found; Strategy accepts public announcement timestamp as market_available_at but internal upload remains false.,False,False,True
+api_response_datetime,prohibited,Query-time response datetime is not historical availability.,False,False,True
+quarter_end_date,prohibited,Quarter-end precedes disclosure; forbidden as available_date.,False,False,True
+conservative_filing_deadline_proxy,superseded_for_matched_rows,Do not replace official timestamp when t05st01 match exists.,True,False,True
+date_only_announcement,insufficient,"Use 發言日期+發言時間, not date-only.",False,False,True
+internal_exact_filing_upload_timestamp,blocked,formal exact filing timestamp remains blocked if policy requires upload timestamp rather than public announcement timestamp,False,False,True
+date_only_announcement_route,superseded_by_timestamp_route,date-only official route not needed for sampled material-information path,False,False,True
+query_datetime,forbidden,must not be used as PIT available_at,False,False,True
+quarter_end_date,forbidden,must not be used as PIT available_at,False,False,True
