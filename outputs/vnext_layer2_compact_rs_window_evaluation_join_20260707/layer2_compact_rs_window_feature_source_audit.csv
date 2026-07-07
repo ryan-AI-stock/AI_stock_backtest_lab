@@ -1,0 +1,6 @@
+﻿field_group,source_quality,available_rows,note
+RS5_RS10_RS20_RS40_RS60,exact_from_stock_features_pit,169823,"as-of snapshot_date stock_features, vs 0050"
+RS30_proxy,proxy_midpoint_rs20_rs40,169823,RS30 exact unavailable; midpoint of RS20 and RS40 for diagnostic only
+rs_acceleration_deterioration_flags,diagnostic_derived_from_pit_rs,171499,no forward returns used
+rs60_high_short_rs_weakening_exhaustion_context,diagnostic_derived_from_pit_rs,171499,"context only, not live rule"
+forward_returns,evaluation_metadata_only,169040,evaluation labels only

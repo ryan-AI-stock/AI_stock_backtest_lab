@@ -1,0 +1,34 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER2-COMPACT-RS-WINDOW-EVALUATION-JOIN-001",
+  "status": "layer2_compact_rs_window_evaluation_join_ready_for_experiments_intake",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer2_compact_rs_window_evaluation_join_20260707",
+  "input_layer1_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer1_compact_reduced_universe_interim_contract_20260707",
+  "input_data_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_dynamic_candidate_pool_data_materialization_20260706",
+  "output_files": [
+    "layer2_compact_rs_window_evaluation_join.csv",
+    "layer2_compact_rs_window_evaluation_join_sample.csv",
+    "layer2_compact_rs_window_blocked_latest_rows.csv",
+    "layer2_compact_rs_window_missingness_by_period.csv",
+    "layer2_compact_rs_window_requested_vs_actual_coverage.csv",
+    "layer2_compact_rs_window_evaluation_summary.csv",
+    "layer2_compact_rs_window_feature_source_audit.csv",
+    "layer2_compact_rs_window_future_data_audit.csv",
+    "readiness_for_layer2_compact_rs_window_evaluation_join.json",
+    "manifest.json",
+    "final_summary_zh.md"
+  ],
+  "large_local_files_not_tracked": [
+    "layer2_compact_rs_window_evaluation_join.csv"
+  ],
+  "large_local_file_policy": "full RS evaluation join is retained in local output path; Git tracks sample/readiness/audit files only",
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "ready_for_strategy_replay": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false,
+  "candidate_forward_return_diagnostic_executed": false,
+  "diagnostic_only": true
+}
