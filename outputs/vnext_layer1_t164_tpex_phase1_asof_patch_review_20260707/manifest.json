@@ -1,0 +1,28 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER1-T164-TPEX-PHASE1-ASOF-PATCH-REVIEW-001",
+  "status": "phase1_tpex_asof_patch_reviewed_partial_88_of_100_still_blocked",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer1_t164_tpex_phase1_asof_patch_review_20260707",
+  "radar_input_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_layer1_t164_tpex_phase1_official_asof_alternate_route_disambiguation_20260707",
+  "radar_commit": "794b805",
+  "radar_task_id": "TASK-RADAR-DATA-VNEXT-LAYER1-T164-TPEX-PHASE1-OFFICIAL-ASOF-ALTERNATE-ROUTE-DISAMBIGUATION-001",
+  "output_files": [
+    "layer1_t164_tpex_phase1_asof_patch_updated_summary.csv",
+    "layer1_t164_tpex_phase1_accepted_asof_patch_contract.csv",
+    "layer1_t164_tpex_phase1_still_blocked_asof_rows.csv",
+    "layer1_t164_tpex_phase1_policy_decision_needed.csv",
+    "layer1_t164_tpex_phase1_next_handoff.csv",
+    "layer1_t164_tpex_phase1_asof_patch_future_data_audit.csv",
+    "readiness_for_layer1_t164_tpex_phase1_asof_patch_review.json",
+    "manifest.json",
+    "final_summary_zh.md"
+  ],
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "ready_for_strategy_replay": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false,
+  "diagnostic_only": true
+}

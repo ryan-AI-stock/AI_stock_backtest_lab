@@ -1,0 +1,5 @@
+﻿decision_item,core_recommendation,reason,decision_owner,ready,diagnostic_only
+accept_3_row_patch,accept_for_diagnostic_official_asof_patch_metadata,accepted rows use official public t05st01/t05st01_detail timestamp and preserve prohibited available_at policy,Core/Data,True,True
+update_phase1_readiness_to_88_of_100,yes_update_metadata_only,85 prior matched + 3 accepted patch rows = 88/100; still not all-stock proof,Core/Data,True,True
+remaining_no_candidate_rows,requires_radar_alternate_source_or_accept_blocked_policy,11 rows still have accepted_candidate_count=0 after alternate route,Strategy Center / Radar/Data,False,True
+6114_114Q4_ambiguous_two_official_candidates,requires_strategy_center_policy_or_stronger_radar_evidence; no silent earliest/latest selection,two official-looking financial report announcements remain; Core will not choose without policy,Strategy Center,False,True

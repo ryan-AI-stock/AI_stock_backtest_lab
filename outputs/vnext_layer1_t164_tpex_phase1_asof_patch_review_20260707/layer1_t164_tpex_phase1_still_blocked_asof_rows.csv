@@ -1,0 +1,13 @@
+﻿ticker,name,market,report_period,blocked_reason,accepted_candidate_count,route_error_count,requires_core_or_strategy_policy,formal_model_changed,trade_decision_changed,active_in_trade_decision,report_changed,portfolio_replay_executed,ready_for_strategy_replay,not_live_rule,forward_returns_live_rule_usage,alternate_query_payload_count,candidate_evidence_rows,detail_fetch_count,blocked_policy,needs_policy_decision,needs_additional_source_route,ready_for_experiments,formal_ready,diagnostic_only
+1240,茂生農經,TPEx,115Q1,accepted_candidate_count=0,0,0,False,False,False,False,False,False,False,True,False,4,1,1,blocked_no_silent_backfill,False,True,False,False,True
+3567,逸昌,TPEx,114Q4,accepted_candidate_count=0,0,0,False,False,False,False,False,False,False,True,False,5,3,0,blocked_no_silent_backfill,False,True,False,False,True
+4974,亞泰,TPEx,115Q1,accepted_candidate_count=0,0,0,False,False,False,False,False,False,False,True,False,4,1,1,blocked_no_silent_backfill,False,True,False,False,True
+4974,亞泰,TPEx,114Q4,accepted_candidate_count=0,0,0,False,False,False,False,False,False,False,True,False,5,2,1,blocked_no_silent_backfill,False,True,False,False,True
+5213,亞昕,TPEx,115Q1,accepted_candidate_count=0,0,0,False,False,False,False,False,False,False,True,False,4,2,1,blocked_no_silent_backfill,False,True,False,False,True
+5514,三豐,TPEx,115Q1,accepted_candidate_count=0,0,0,False,False,False,False,False,False,False,True,False,4,1,0,blocked_no_silent_backfill,False,True,False,False,True
+5514,三豐,TPEx,114Q4,accepted_candidate_count=0,0,0,False,False,False,False,False,False,False,True,False,5,2,0,blocked_no_silent_backfill,False,True,False,False,True
+6114,久威,TPEx,114Q4,accepted_candidate_count=2,2,0,True,False,False,False,False,False,False,True,False,5,6,2,blocked_no_silent_backfill,True,False,False,False,True
+6725,矽科宏晟,TPEx,115Q1,accepted_candidate_count=0,0,0,False,False,False,False,False,False,False,True,False,4,1,0,blocked_no_silent_backfill,False,True,False,False,True
+6875,國邑*,TPEx,115Q1,accepted_candidate_count=0,0,0,False,False,False,False,False,False,False,True,False,4,1,1,blocked_no_silent_backfill,False,True,False,False,True
+6875,國邑*,TPEx,114Q4,accepted_candidate_count=0,0,0,False,False,False,False,False,False,False,True,False,5,2,1,blocked_no_silent_backfill,False,True,False,False,True
+8080,泰霖,TPEx,115Q1,accepted_candidate_count=0,0,0,False,False,False,False,False,False,False,True,False,4,0,0,blocked_no_silent_backfill,False,True,False,False,True

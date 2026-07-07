@@ -1,0 +1,2 @@
+﻿metric,input_blocked_rows,resolved_rows,still_blocked_rows,previous_official_asof_matched_rows,updated_official_asof_matched_rows,sample_rows,updated_official_asof_matched_share,ready_for_all_stock_proof_update,ready_for_experiments,diagnostic_only
+phase1_official_asof_after_patch,15,3,12,85,88,100,0.88,False,False,True
