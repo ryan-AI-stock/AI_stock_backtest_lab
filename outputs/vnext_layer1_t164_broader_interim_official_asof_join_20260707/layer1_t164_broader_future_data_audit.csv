@@ -1,0 +1,5 @@
+﻿audit_item,status,future_data_violation_count,note
+prohibited_available_date_sources_not_used,passed,0,no quarter_end/query_response/conservative backfill used
+after_close_calendar_join_has_signal_eligible_date,passed,0,missing calendar next_trade_date rows=0
+radar_asof_policy_audit,passed,0,Radar asof policy audit imported
+forward_return_as_rule,passed,0,no forward return fields included

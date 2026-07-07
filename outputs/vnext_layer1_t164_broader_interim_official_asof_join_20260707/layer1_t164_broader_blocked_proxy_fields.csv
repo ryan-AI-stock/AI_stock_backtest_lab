@@ -1,0 +1,13 @@
+﻿field_or_contract,status,affected_rows,reason,diagnostic_only
+full_universe_runner,blocked,0,bounded broader sample only; no all-stock runner,True
+tpex_universal_ready,blocked,0,"TPEx has bounded samples only, not universal readiness",True
+capex_proxy,human_review_required,8,FCF proxy label policy still needs review,True
+receivables_basket,human_review_required,8,receivables basket policy still needs review,True
+exact_upload_timestamp,not_found,0,"market_available_at is public announcement timestamp, not internal upload timestamp",True
+conservative_asof_backfill,prohibited_for_matched_rows,0,official timestamp matched rows must not be backfilled by deadline proxy,True
+formal_selector,prohibited,0,no Layer1 selector created,True
+full_universe_materialization_runner,blocked_not_started,0,this task is bounded readiness; no full download/full sweep,True
+tpex_universal_ready,blocked_bounded_only,0,TPEx 6488/8299 samples pass but not all-stock coverage,True
+quarter_end_date,prohibited,0,quarter end precedes disclosure,True
+query_response_datetime,prohibited,0,API response datetime is query time,True
+capex_proxy_and_receivables_basket,human_review_required,0,label variants and basket definition require policy approval,True

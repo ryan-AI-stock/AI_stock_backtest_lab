@@ -1,0 +1,5 @@
+﻿report_period,market,rows,matched_rows,unmatched_rows,matched_share,ticker_count,cashflow_success_rows,balance_sheet_success_rows,diagnostic_only
+114Q4,TPEx,2,2,0,1.0,2,2,2,True
+114Q4,TWSE,2,2,0,1.0,2,2,2,True
+115Q1,TPEx,2,2,0,1.0,2,2,2,True
+115Q1,TWSE,2,2,0,1.0,2,2,2,True
