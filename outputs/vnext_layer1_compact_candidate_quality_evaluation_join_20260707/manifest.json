@@ -1,0 +1,32 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER1-COMPACT-CANDIDATE-QUALITY-EVALUATION-JOIN-001",
+  "status": "layer1_compact_candidate_quality_evaluation_join_ready_for_experiments_intake",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer1_compact_candidate_quality_evaluation_join_20260707",
+  "input_layer1_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer1_compact_reduced_universe_interim_contract_20260707",
+  "input_data_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_dynamic_candidate_pool_data_materialization_20260706",
+  "output_files": [
+    "layer1_compact_candidate_quality_evaluation_join.csv",
+    "layer1_compact_candidate_quality_evaluation_join_sample.csv",
+    "layer1_compact_candidate_quality_blocked_latest_rows.csv",
+    "layer1_compact_candidate_quality_requested_vs_actual_coverage.csv",
+    "layer1_compact_candidate_quality_evaluation_summary.csv",
+    "layer1_compact_candidate_quality_future_data_audit.csv",
+    "readiness_for_layer1_compact_candidate_quality_evaluation_join.json",
+    "manifest.json",
+    "final_summary_zh.md"
+  ],
+  "large_local_files_not_tracked": [
+    "layer1_compact_candidate_quality_evaluation_join.csv"
+  ],
+  "large_local_file_policy": "full evaluation join is retained in local output path; Git tracks sample/readiness/audit files only",
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "ready_for_strategy_replay": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false,
+  "candidate_forward_return_diagnostic_executed": false,
+  "diagnostic_only": true
+}

@@ -1,0 +1,5 @@
+﻿audit_item,status,future_data_violation_count,note
+forward_return_as_rule,passed,0,forward returns are evaluation_metadata_only and not live rule inputs
+future_return_as_rule,passed,0,future_return_as_rule=false on joined rows
+formal_selector_change,not_applicable,0,evaluation join only
+portfolio_replay,not_executed,0,no replay executed
