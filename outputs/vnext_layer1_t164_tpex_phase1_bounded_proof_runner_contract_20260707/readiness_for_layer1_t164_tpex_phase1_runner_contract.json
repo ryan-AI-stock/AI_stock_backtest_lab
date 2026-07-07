@@ -1,0 +1,43 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER1-T164-TPEX-PHASE1-BOUNDED-PROOF-RUNNER-CONTRACT-001",
+  "status": "phase1_tpex_50x2_runner_contract_ready_not_executed",
+  "diagnostic_only": true,
+  "runner_contract_rows": 100,
+  "phase1_ticker_count": 50,
+  "phase1_period_count": 2,
+  "market": "TPEx",
+  "planned_routes_per_row": 8.0,
+  "route_budget_guard_per_row": 10.0,
+  "phase1_budget_status": "pass_planning",
+  "ready_for_radar_phase1_tpex_50x2_runner_execution": true,
+  "ready_for_core_t164_tpex_all_stock_proof_runner_contract": true,
+  "ready_for_core_t164_full_period_bounded_expansion_contract": false,
+  "ready_for_core_t164_broader_or_full_ingest_contract": false,
+  "ready_for_core_t164_broader_or_full_materialization": false,
+  "ready_for_experiments": false,
+  "ready_for_formal": false,
+  "ready_for_strategy_replay": false,
+  "ready_for_full_universe": false,
+  "tpex_all_stock_universal_ready": false,
+  "future_data_violation_count": 0,
+  "blocked_fields": [
+    "tpex_historical_all_stock_universe",
+    "full_period_materialization",
+    "full_universe_materialization",
+    "capex_proxy_formal_label",
+    "receivables_trade_formal_label"
+  ],
+  "proxy_fields": [
+    "capex_proxy",
+    "receivables_trade",
+    "current_or_carried_tpex_universe_candidate"
+  ],
+  "source_package_status": "bounded_expansion_plan_ready_tpex_all_stock_proof_not_complete",
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false
+}

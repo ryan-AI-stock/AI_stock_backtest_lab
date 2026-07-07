@@ -1,0 +1,12 @@
+﻿item,status,blocked_reason,source,diagnostic_only
+tpex_all_stock_proof,blocked_pending_bounded_runner,Need 50x2 TPEx stratified proof batch before claiming route works beyond 8 seed tickers.,Radar blocked_proxy_human_review_ledger.csv,True
+full_period_range,blocked_pending_phased_materialization,"2014Q4-2026Q1 TPEx full period range is estimated at 44,114 ticker-period rows for current 959-ticker snapshot candidate.",Radar blocked_proxy_human_review_ledger.csv,True
+tpex_historical_membership,blocked,Current-or-carried TPEx snapshot cannot be used to backfill PIT historical universe.,Radar blocked_proxy_human_review_ledger.csv,True
+capex_proxy,diagnostic_proxy_only,Strategy Center policy: capex_proxy may remain in source package but is not formal fundamentals.,Radar blocked_proxy_human_review_ledger.csv,True
+receivables_trade,diagnostic_proxy_only,Strategy Center policy: receivables_trade may remain in source package but is not formal fundamentals.,Radar blocked_proxy_human_review_ledger.csv,True
+ticker_universe,blocked_or_proxy,TPEx historical all-stock listing membership remains incomplete.,Radar core_contract_expansion_items.csv,True
+statement_payload,blocked_or_proxy,,Radar core_contract_expansion_items.csv,True
+official_asof,blocked_or_proxy,Universal TPEx proof pending broader sample execution.,Radar core_contract_expansion_items.csv,True
+cost_budget_guard,blocked_or_proxy,,Radar core_contract_expansion_items.csv,True
+tpex_historical_all_stock_universe,blocked,current-or-carried TPEx universe candidate cannot be backfilled as historical PIT membership,Core policy,True
+full_current_snapshot_tpex_x_full_period,blocked_for_this_contract,891 x 46 plan needs checkpoint/resume/budget guard and separate authorization,Core policy,True

@@ -1,0 +1,9 @@
+﻿rule,status,future_data_violation_count,formal_model_changed,trade_decision_changed,active_in_trade_decision,report_changed,portfolio_replay_executed,ready_for_strategy_replay,not_live_rule,forward_returns_live_rule_usage,audit_item,note
+market_available_at,official_t05st01_timestamp_required,0,False,False,False,False,False,False,True,False,,
+after_close_announcement,eligible_next_trading_day_only,0,False,False,False,False,False,False,True,False,,
+quarter_end_date_as_available_at,prohibited,0,False,False,False,False,False,False,True,False,,
+query_response_datetime_as_available_at,prohibited,0,False,False,False,False,False,False,True,False,,
+conservative_filing_deadline_proxy,separate_proxy_only_not_official_route,0,False,False,False,False,False,False,True,False,,
+forward_returns_as_rule,prohibited_false,0,False,False,False,False,False,False,True,False,,
+,passed,0,,,,,,,,,phase1_contract_forward_return_as_rule,runner contract contains no forward-return rule input
+,passed,0,,,,,,,,,available_at_source_policy,quarter_end_date/query_response_datetime/conservative deadline proxy are prohibited as official route available_at

@@ -1,0 +1,5 @@
+﻿input_item,value,source,source_quality,diagnostic_only
+phase_1_ticker_period_rows,100,tpex_all_stock_proof_sample_policy.csv first 50 tickers x target periods,bounded_sampling_contract,True
+tpex_current_or_carried_universe_candidate_count,891,Radar current-or-carried TPEx universe candidate,sampling_universe_only_not_historical_pit,True
+planned_phase_1_sample_ticker_count,50,Radar readiness,bounded_plan,True
+planned_full_period_range,2014Q4-2026Q1,Radar readiness,planning_only_requires_checkpoint_for_execution,True
