@@ -1,0 +1,65 @@
+{
+  "date": "2026-07-07",
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-FUNNEL-LAYER1-REFRESHED-PIT-CONTRACT-READINESS-001",
+  "merged_task_ids": [
+    "TASK-BACKTEST-CORE-VNEXT-FUNNEL-LAYER1-REFRESHED-PIT-CONTRACT-FROM-RADAR-SOURCE-INVENTORY-001",
+    "TASK-BACKTEST-CORE-VNEXT-FUNNEL-LAYER1-REFRESHED-PIT-CONTRACT-READINESS-001"
+  ],
+  "owner": "BACKTEST_LAB Core/Data",
+  "status": "partial_ready_layer1_refreshed_pit_contract_proxy_limited",
+  "ready_for_funnel_layer1_refreshed_event_diagnostic": true,
+  "ready_for_funnel_layer1_candidate_pool_quality_diagnostic": true,
+  "layer1_refreshed_exact_coverage": "partial",
+  "layer1_exact_coverage": "partial",
+  "layer1_source_upgrade_vs_previous": "material",
+  "ready_for_layer2_diagnostic": false,
+  "ready_for_portfolio_like_diagnostic": false,
+  "ready_for_strategy_replay": false,
+  "ready_for_formal": false,
+  "future_data_violation_count": 0,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false,
+  "candidate_join_rows": 60654,
+  "pit_contract_rows": 60654,
+  "source_quality_rows": 16,
+  "missingness_rows": 60,
+  "blocked_fields": [
+    "industry_sector",
+    "market_cap_free_float_market_cap",
+    "cash_flow_quality",
+    "current_ratio",
+    "inventory_receivable_risk"
+  ],
+  "proxy_fields": [
+    "roe_roa",
+    "debt_to_equity_proxy",
+    "paid_in_capital_issued_shares_proxy",
+    "listing_status_partial_event",
+    "listing_board_proxy",
+    "average_traded_value",
+    "turnover"
+  ],
+  "diagnostic_fields": [
+    "monthly_revenue_yoy_mom_rolling3m",
+    "quarterly_revenue_eps_operating_income_growth",
+    "gross_operating_margin",
+    "roe_roa",
+    "listing_board_proxy",
+    "average_traded_value",
+    "turnover"
+  ],
+  "known_blocker_summary": [
+    "industry/sector remains blocked/proxy",
+    "cash-flow quality, current ratio, inventory/receivable risk remain blocked",
+    "complete market cap / free-float market cap remains blocked/proxy",
+    "capital stock is TWSE proxy, not full daily exact market cap",
+    "listing/status is partial event proxy, not full listing master"
+  ],
+  "radar_ready_for_experiments": false,
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "blocked_any": true
+}

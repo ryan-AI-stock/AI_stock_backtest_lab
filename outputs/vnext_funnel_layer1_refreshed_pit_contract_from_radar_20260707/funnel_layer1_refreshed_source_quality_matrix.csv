@@ -1,0 +1,17 @@
+﻿field_group,source_tier,available_rows,source_quality_reason,usable_for_layer1_refreshed_diagnostic,usable_for_formal,diagnostic_only,radar_ready_for_core_layer1_contract_refresh,radar_ready_for_experiments,radar_inventory_rows,radar_source_candidate_rows
+monthly_revenue_yoy_mom_rolling3m,higher_quality_diagnostic,52507,MOPS monthly revenue full-universe; conservative available_date; exact filing timestamp unavailable,True,False,True,True,False,15,6
+quarterly_revenue_eps_operating_income_growth,higher_quality_diagnostic,51286,quarterly fundamentals full sweep; growth computed from past quarters only,True,False,True,True,False,15,6
+gross_operating_margin,higher_quality_diagnostic,55857,quarterly fundamentals as-of join,True,False,True,True,False,15,6
+roe_roa,higher_quality_diagnostic_sparse,0,quarterly fundamentals where profile supplies total assets/equity/ROE,True,False,True,True,False,15,6
+debt_to_equity_proxy,proxy,0,balance-sheet proxy; not current ratio or full leverage policy,True,False,True,True,False,15,6
+paid_in_capital_issued_shares_proxy,proxy,28786,TWSE capital stock proxy; TPEx missing and no daily exact issued shares,True,False,True,True,False,15,6
+listing_status_partial_event,partial_event_proxy,4594,partial accepted listing events only; not full listing master,True,False,True,True,False,15,6
+listing_board_proxy,diagnostic_proxy,57442,derived from MOPS market/source table and partial events,True,False,True,True,False,15,6
+average_traded_value,diagnostic_proxy,60654,existing attention_features signal-date traded_value,True,False,True,True,False,15,6
+turnover,diagnostic_proxy,60652,existing attention_features turnover windows,True,False,True,True,False,15,6
+industry_sector,blocked_or_proxy,0,industry/sector remains blocked/proxy; TPEx all-stock historical route not accepted,False,False,True,True,False,15,6
+market_cap_free_float_market_cap,blocked_or_proxy,0,full market cap and free-float market cap not materialized,False,False,True,True,False,15,6
+cash_flow_quality,blocked,0,cash-flow quality contract not present,False,False,True,True,False,15,6
+current_ratio,blocked,0,current ratio contract not present,False,False,True,True,False,15,6
+inventory_receivable_risk,blocked,0,inventory/receivable risk contract not present,False,False,True,True,False,15,6
+forward_return_as_rule,prohibited,0,forward returns are prohibited as Layer 1 rule inputs,False,False,True,True,False,15,6

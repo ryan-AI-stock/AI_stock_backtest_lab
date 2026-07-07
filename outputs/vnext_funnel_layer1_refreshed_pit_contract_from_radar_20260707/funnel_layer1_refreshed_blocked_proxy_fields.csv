@@ -1,0 +1,17 @@
+﻿field_or_contract,status,source_tier,proxy_available,blocked_reason,diagnostic_only
+monthly_revenue_yoy_mom_rolling3m,diagnostic,higher_quality_diagnostic,False,MOPS monthly revenue full-universe; conservative available_date; exact filing timestamp unavailable,True
+quarterly_revenue_eps_operating_income_growth,diagnostic,higher_quality_diagnostic,False,quarterly fundamentals full sweep; growth computed from past quarters only,True
+gross_operating_margin,diagnostic,higher_quality_diagnostic,False,quarterly fundamentals as-of join,True
+roe_roa,partial,higher_quality_diagnostic_sparse,True,quarterly fundamentals where profile supplies total assets/equity/ROE,True
+debt_to_equity_proxy,proxy,proxy,True,balance-sheet proxy; not current ratio or full leverage policy,True
+paid_in_capital_issued_shares_proxy,proxy,proxy,True,TWSE capital stock proxy; TPEx missing and no daily exact issued shares,True
+listing_status_partial_event,proxy,partial_event_proxy,True,partial accepted listing events only; not full listing master,True
+listing_board_proxy,proxy,diagnostic_proxy,True,derived from MOPS market/source table and partial events,True
+average_traded_value,proxy,diagnostic_proxy,True,existing attention_features signal-date traded_value,True
+turnover,proxy,diagnostic_proxy,True,existing attention_features turnover windows,True
+industry_sector,blocked,blocked_or_proxy,False,industry/sector remains blocked/proxy; TPEx all-stock historical route not accepted,True
+market_cap_free_float_market_cap,blocked,blocked_or_proxy,False,full market cap and free-float market cap not materialized,True
+cash_flow_quality,blocked,blocked,False,cash-flow quality contract not present,True
+current_ratio,blocked,blocked,False,current ratio contract not present,True
+inventory_receivable_risk,blocked,blocked,False,inventory/receivable risk contract not present,True
+forward_return_as_rule,prohibited,prohibited,False,forward returns are prohibited as Layer 1 rule inputs,True
