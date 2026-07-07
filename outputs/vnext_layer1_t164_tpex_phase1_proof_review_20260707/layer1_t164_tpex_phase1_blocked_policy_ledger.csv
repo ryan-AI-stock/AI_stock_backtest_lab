@@ -1,0 +1,6 @@
+﻿item,status,blocked_rows,policy,ready_for_experiments,diagnostic_only
+official_asof_unmatched_or_ambiguous_rows,blocked,15,no_silent_backfill; no quarter_end_date; no query_response_datetime; no conservative_deadline_proxy as official route,False,True
+tpex_all_stock_universal_ready,blocked,15,85/100 official-asof match is not sufficient to claim TPEx all-stock proof,False,True
+full_period_or_full_universe_expansion,blocked,,do not expand before asof blocker policy improves or Strategy Center accepts blocked-row policy,False,True
+capex_proxy,proxy_human_review_required,,diagnostic proxy only; not formal fundamental field,False,True
+receivables_trade,proxy_human_review_required,,diagnostic proxy only; not formal fundamental field,False,True

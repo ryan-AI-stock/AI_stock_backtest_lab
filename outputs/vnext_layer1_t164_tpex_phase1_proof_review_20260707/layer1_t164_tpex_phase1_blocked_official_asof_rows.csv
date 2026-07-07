@@ -1,0 +1,16 @@
+﻿ticker,market,report_period,blocked_reason,formal_model_changed,trade_decision_changed,active_in_trade_decision,report_changed,portfolio_replay_executed,ready_for_strategy_replay,not_live_rule,forward_returns_live_rule_usage
+1240,TPEx,115Q1,accepted_candidate_count=0,False,False,False,False,False,False,True,False
+3521,TPEx,115Q1,accepted_candidate_count=2,False,False,False,False,False,False,True,False
+3567,TPEx,115Q1,accepted_candidate_count=0,False,False,False,False,False,False,True,False
+3567,TPEx,114Q4,accepted_candidate_count=0,False,False,False,False,False,False,True,False
+4974,TPEx,115Q1,accepted_candidate_count=0,False,False,False,False,False,False,True,False
+4974,TPEx,114Q4,accepted_candidate_count=0,False,False,False,False,False,False,True,False
+5213,TPEx,115Q1,accepted_candidate_count=0,False,False,False,False,False,False,True,False
+5514,TPEx,115Q1,accepted_candidate_count=0,False,False,False,False,False,False,True,False
+5514,TPEx,114Q4,accepted_candidate_count=0,False,False,False,False,False,False,True,False
+6114,TPEx,114Q4,accepted_candidate_count=2,False,False,False,False,False,False,True,False
+6220,TPEx,115Q1,accepted_candidate_count=2,False,False,False,False,False,False,True,False
+6725,TPEx,115Q1,accepted_candidate_count=0,False,False,False,False,False,False,True,False
+6875,TPEx,115Q1,accepted_candidate_count=0,False,False,False,False,False,False,True,False
+6875,TPEx,114Q4,accepted_candidate_count=0,False,False,False,False,False,False,True,False
+8080,TPEx,115Q1,accepted_candidate_count=0,False,False,False,False,False,False,True,False

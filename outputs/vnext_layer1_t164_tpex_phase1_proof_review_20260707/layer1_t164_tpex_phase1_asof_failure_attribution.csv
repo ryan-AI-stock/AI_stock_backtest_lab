@@ -1,0 +1,3 @@
+﻿failure_class,blocked_reason,blocked_rows,tickers,periods,core_attribution,recommended_next_action,diagnostic_only
+no_accepted_official_candidate,accepted_candidate_count=0,12,1240;3567;4974;5213;5514;6725;6875;8080,114Q4;115Q1,official_asof_match_gap; likely subject/detail token window or alternate announcement route issue; statement route itself succeeded,Radar/Data bounded alternate route and broader subject/detail query for listed blocked rows,True
+ambiguous_multiple_accepted_candidates,accepted_candidate_count=2,3,3521;6114;6220,114Q4;115Q1,official_asof_disambiguation_gap; multiple plausible t05st01/detail rows need stricter period/subject/detail priority policy,Radar/Data detail-level disambiguation policy for listed ambiguous rows; keep no-silent-backfill,True
