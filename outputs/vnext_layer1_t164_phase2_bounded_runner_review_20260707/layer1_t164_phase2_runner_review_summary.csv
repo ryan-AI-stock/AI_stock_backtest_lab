@@ -1,0 +1,4 @@
+﻿review_item,status,sample_rows,statement_success_rows,official_asof_matched_rows,blocked_rows,core_verdict,diagnostic_only
+runner_result,phase2_tpex_100x4_bounded_runner_executed_not_full_universe,400,400,352,48,statement_route_passed_but_official_asof_completeness_needs_patch,True
+route_cost,passed_budget_guard,400,400,352,48,actual_cache_rows_per_materialized_row=6.695; budget=10,True
+plain_strategy_center_summary,source_completeness_priority,400,400,352,48,Layer1 財報數值欄位已大致能抓到，但 official-asof 仍是主要缺口；最有效補強是先修 48 筆公告時間對齊，不是進 Experiments。,True

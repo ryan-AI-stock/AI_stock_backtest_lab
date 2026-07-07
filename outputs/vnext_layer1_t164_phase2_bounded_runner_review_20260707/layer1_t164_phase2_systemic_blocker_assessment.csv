@@ -1,0 +1,8 @@
+﻿assessment_item,status,evidence,core_judgment,recommended_action,diagnostic_only
+official_asof_coverage,blocked_for_completeness_patch,official_asof_matched_rows=352/400; blocked_rows=48,352/400 is useful but not enough to stop source cleanup because official-asof blockers remain material,run bounded alternate official-asof route/disambiguation for 48 rows,True
+older_period_route_pattern,systemic_or_route_policy_suspected,older_period_blocked_rows=35/48; older_periods=114Q3/114Q2,"114Q3/114Q2 have visibly lower match rates, so this is likely route/query-window/policy related rather than only isolated ticker noise",Radar/Data should prioritize older-period query windows and subject/detail token policy before per-row manual chase,True
+period_TPEx,period_coverage,matched=352/400; blocked=48; match_share=0.88,period-level metadata,include in alternate-route validation summary,True
+period_114Q2,period_coverage,matched=83/100; blocked=17; match_share=0.83,period-level metadata,include in alternate-route validation summary,True
+period_114Q3,period_coverage,matched=82/100; blocked=18; match_share=0.82,period-level metadata,include in alternate-route validation summary,True
+period_114Q4,period_coverage,matched=93/100; blocked=7; match_share=0.93,period-level metadata,include in alternate-route validation summary,True
+period_115Q1,period_coverage,matched=94/100; blocked=6; match_share=0.94,period-level metadata,include in alternate-route validation summary,True

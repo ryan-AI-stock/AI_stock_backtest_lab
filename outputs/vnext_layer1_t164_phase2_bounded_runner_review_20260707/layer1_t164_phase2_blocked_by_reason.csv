@@ -1,0 +1,3 @@
+﻿blocked_reason,failure_class,blocked_rows,tickers,diagnostic_only
+accepted_candidate_count=0,no_accepted_official_candidate,34,2745;3152;3339;4401;4527;4568;5236;5351;5905;6140;6156;6263;7782;7839;8043;8093;8147;8924,True
+accepted_candidate_count=2,ambiguous_multiple_official_candidates,14,3374;3489;3630;4542;4804;5315;5905;8043,True

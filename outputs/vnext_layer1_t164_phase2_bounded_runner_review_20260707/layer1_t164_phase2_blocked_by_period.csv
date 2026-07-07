@@ -1,0 +1,9 @@
+﻿report_period,failure_class,blocked_rows,diagnostic_only
+114Q2,ambiguous_multiple_official_candidates,2,True
+114Q2,no_accepted_official_candidate,15,True
+114Q3,ambiguous_multiple_official_candidates,2,True
+114Q3,no_accepted_official_candidate,16,True
+114Q4,ambiguous_multiple_official_candidates,5,True
+114Q4,no_accepted_official_candidate,2,True
+115Q1,ambiguous_multiple_official_candidates,5,True
+115Q1,no_accepted_official_candidate,1,True

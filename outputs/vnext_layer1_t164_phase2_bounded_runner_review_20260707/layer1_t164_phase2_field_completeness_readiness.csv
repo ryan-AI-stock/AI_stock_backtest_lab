@@ -1,0 +1,8 @@
+﻿field,requested_rows,non_null_rows,missing_rows,missing_share,source_quality,formal_model_changed,trade_decision_changed,active_in_trade_decision,report_changed,portfolio_replay_executed,ready_for_strategy_replay,not_live_rule,forward_returns_live_rule_usage,field_readiness,formal_ready,diagnostic_only
+operating_cash_flow,400,400,0,0.0,candidate_exact,False,False,False,False,False,False,True,False,complete_in_phase2_sample,False,True
+investing_cash_flow,400,400,0,0.0,candidate_exact,False,False,False,False,False,False,True,False,complete_in_phase2_sample,False,True
+capex_proxy,400,390,10,0.025,human_review_proxy_or_basket,False,False,False,False,False,False,True,False,proxy_human_review_required,False,True
+inventory,400,367,33,0.0825,candidate_exact,False,False,False,False,False,False,True,False,partial_missingness,False,True
+receivables_trade,400,399,1,0.0025,human_review_proxy_or_basket,False,False,False,False,False,False,True,False,proxy_human_review_required,False,True
+current_assets,400,400,0,0.0,candidate_exact,False,False,False,False,False,False,True,False,complete_in_phase2_sample,False,True
+current_liabilities,400,400,0,0.0,candidate_exact,False,False,False,False,False,False,True,False,complete_in_phase2_sample,False,True
