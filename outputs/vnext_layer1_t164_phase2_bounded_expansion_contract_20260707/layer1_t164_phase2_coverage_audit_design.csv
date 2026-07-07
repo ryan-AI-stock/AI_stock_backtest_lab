@@ -1,0 +1,6 @@
+﻿coverage_scope,requested_rows,ticker_count,period_count,market_mix,required_audit,diagnostic_only
+overall,400,100,4,TPEx_only_phase2,statement_success_rows;official_asof_matched_rows;blocked_rows;route_error_count,True
+period_114Q2,100,100,1,TPEx_only_phase2,statement_success_rows;official_asof_matched_rows;blocked_rows;route_error_count,True
+period_114Q3,100,100,1,TPEx_only_phase2,statement_success_rows;official_asof_matched_rows;blocked_rows;route_error_count,True
+period_114Q4,100,100,1,TPEx_only_phase2,statement_success_rows;official_asof_matched_rows;blocked_rows;route_error_count,True
+period_115Q1,100,100,1,TPEx_only_phase2,statement_success_rows;official_asof_matched_rows;blocked_rows;route_error_count,True

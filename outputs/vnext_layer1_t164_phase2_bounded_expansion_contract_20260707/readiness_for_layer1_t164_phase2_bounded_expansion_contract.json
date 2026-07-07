@@ -1,0 +1,54 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER1-T164-PHASE2-BOUNDED-EXPANSION-FULL-PERIOD-PLANNING-CONTRACT-001",
+  "status": "phase2_bounded_expansion_contract_ready_for_radar_runner_not_experiments",
+  "diagnostic_only": true,
+  "phase2_ticker_count": 100,
+  "phase2_period_count": 4,
+  "phase2_ticker_period_rows": 400,
+  "market_mix": {
+    "TPEx": 400
+  },
+  "period_range": [
+    "115Q1",
+    "114Q4",
+    "114Q3",
+    "114Q2"
+  ],
+  "projected_routes_per_row": 8.0,
+  "projected_total_routes": 3200,
+  "route_budget_guard_per_row": 10.0,
+  "checkpoint_resume_required": true,
+  "phase2_budget_status": "pass_planning",
+  "phase1_policy_closure_status": "phase1_tpex_proof_partial_pass_with_explicit_2_blockers_not_all_stock_ready",
+  "phase1_accepted_partial_blocked_limit": true,
+  "stop_6114_8080_chase": true,
+  "ready_for_radar_phase2_bounded_runner_execution": true,
+  "ready_for_core_phase2_materialization_review_after_radar": false,
+  "ready_for_experiments": false,
+  "ready_for_formal": false,
+  "ready_for_strategy_replay": false,
+  "ready_for_full_universe": false,
+  "tpex_all_stock_universal_ready": false,
+  "future_data_violation_count": 0,
+  "blocked_fields": [
+    "tpex_historical_all_stock_universe",
+    "full_universe_materialization",
+    "full_period_46_quarters_materialization",
+    "phase1_6114_version_match_blocked",
+    "phase1_8080_no_official_target_candidate",
+    "capex_proxy_formal_label",
+    "receivables_trade_formal_label"
+  ],
+  "proxy_fields": [
+    "capex_proxy",
+    "receivables_trade",
+    "current_or_carried_tpex_universe_candidate"
+  ],
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false
+}

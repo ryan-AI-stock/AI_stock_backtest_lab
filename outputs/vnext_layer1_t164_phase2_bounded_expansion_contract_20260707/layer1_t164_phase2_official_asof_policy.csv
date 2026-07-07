@@ -1,0 +1,8 @@
+﻿policy_item,policy,diagnostic_only
+market_available_at,official t05st01/t05st01_detail public financial-report announcement timestamp only,True
+after_close_eligibility,after 13:30 Taiwan regular close => next trading day eligibility,True
+unmatched_or_ambiguous,explicit blocked ledger; no silent backfill,True
+6114_8080_phase1_precedent,do not chase in phase2 unless encountered as new bounded blocker and authorized by policy,True
+quarter_end_date,prohibited as available_at,True
+query_response_datetime,prohibited as available_at,True
+conservative_deadline_proxy,prohibited as official available_at; separate diagnostic candidate only,True

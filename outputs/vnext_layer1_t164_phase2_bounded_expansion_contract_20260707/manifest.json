@@ -1,0 +1,31 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER1-T164-PHASE2-BOUNDED-EXPANSION-FULL-PERIOD-PLANNING-CONTRACT-001",
+  "status": "phase2_bounded_expansion_contract_ready_for_radar_runner_not_experiments",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer1_t164_phase2_bounded_expansion_contract_20260707",
+  "radar_plan_input_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_layer1_t164_tpex_all_stock_proof_full_period_bounded_expansion_plan_20260707",
+  "phase1_closure_input_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer1_t164_tpex_phase1_policy_closure_20260707",
+  "output_files": [
+    "layer1_t164_phase2_bounded_runner_contract.csv",
+    "layer1_t164_phase2_ticker_universe_seed.csv",
+    "layer1_t164_phase2_period_plan.csv",
+    "layer1_t164_phase2_checkpoint_resume_contract.csv",
+    "layer1_t164_phase2_route_budget_guard.csv",
+    "layer1_t164_phase2_official_asof_policy.csv",
+    "layer1_t164_phase2_blocked_row_policy.csv",
+    "layer1_t164_phase2_field_label_policy.csv",
+    "layer1_t164_phase2_coverage_audit_design.csv",
+    "layer1_t164_phase2_future_data_audit.csv",
+    "readiness_for_layer1_t164_phase2_bounded_expansion_contract.json",
+    "manifest.json",
+    "final_summary_zh.md"
+  ],
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "ready_for_strategy_replay": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false,
+  "diagnostic_only": true
+}

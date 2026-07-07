@@ -1,0 +1,5 @@
+﻿blocked_item,policy,source,diagnostic_only
+phase1_6114_114Q4,carry explicit blocked status; no version silent selection,phase1 policy closure,True
+phase1_8080_115Q1,carry explicit blocked status; no proxy backfill,phase1 policy closure,True
+phase2_new_unmatched_or_ambiguous_rows,record in blocked_or_ambiguous_rows.csv; do not block entire runner unless route/system failure exceeds guard,phase2 contract,True
+tpex_historical_all_stock_universe,"current-or-carried universe is sampling-only, not historical PIT membership",Radar plan,True

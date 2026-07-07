@@ -1,0 +1,7 @@
+﻿phase,ticker_count,period_count,ticker_period_rows,projected_routes_per_row,projected_total_routes,route_budget_guard_per_row,budget_status,checkpoint_required,allowed_by_core_contract_now,blocked_reason,diagnostic_only,not_live_rule
+phase_0_existing_seed,8,2,16,8.0,128,10.0,pass_planning,False,False,not authorized in this phase2 contract,True,True
+phase_1_tpex_stratified_50x2,50,2,100,8.0,800,10.0,pass_planning,False,False,not authorized in this phase2 contract,True,True
+phase_2_tpex_100x4_recent,100,4,400,8.0,3200,10.0,pass_planning,True,True,,True,True
+phase_3_tpex_200x8_recent_two_years,200,8,1600,8.0,12800,10.0,pass_planning,True,False,not authorized in this phase2 contract,True,True
+phase_4_tpex_all_current_snapshot_2_periods,891,2,1782,8.0,14256,10.0,pass_planning,True,False,not authorized in this phase2 contract,True,True
+phase_5_tpex_all_current_snapshot_full_period_range,891,46,40986,8.0,327888,10.0,pass_planning,True,False,not authorized in this phase2 contract,True,True

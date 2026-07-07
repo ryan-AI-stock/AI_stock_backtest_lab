@@ -1,0 +1,8 @@
+﻿checkpoint_item,policy,description,diagnostic_only
+checkpoint_state.json,required,"resume ticker-period cursor, route counts, and blocked rows",True
+current_step.txt,required,observable runner progress,True
+raw_cache_hash_manifest.csv,required,payload/response hash and cache relative path,True
+blocked_or_ambiguous_rows.csv,required,explicit official-asof or route blockers,True
+coverage_by_market_period.csv,required,statement and official-asof coverage,True
+route_error_threshold,block_if_exceeded,runner should block if route_error_count is nonzero after bounded retry,True
+budget_guard,block_if_exceeded,projected or actual routes per row must remain <= 10 unless reauthorized,True

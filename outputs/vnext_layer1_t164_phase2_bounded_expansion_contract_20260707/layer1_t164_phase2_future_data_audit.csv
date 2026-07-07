@@ -1,0 +1,4 @@
+﻿audit_item,status,future_data_violation_count,note
+contract_forward_return_as_rule,passed,0,contract has no return evaluation or live rule
+official_available_at_policy,passed,0,requires official public announcement timestamp only
+blocked_rows_no_silent_backfill,passed,0,unmatched/ambiguous rows remain explicit blocked rows

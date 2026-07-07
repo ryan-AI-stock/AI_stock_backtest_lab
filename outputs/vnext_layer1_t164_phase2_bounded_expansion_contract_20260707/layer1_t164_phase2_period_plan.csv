@@ -1,0 +1,5 @@
+﻿report_period,period_order,scope,reason,diagnostic_only
+115Q1,1,phase2_recent_4_quarters,extend beyond phase1 two-period proof without jumping to full 46-period range,True
+114Q4,2,phase2_recent_4_quarters,extend beyond phase1 two-period proof without jumping to full 46-period range,True
+114Q3,3,phase2_recent_4_quarters,extend beyond phase1 two-period proof without jumping to full 46-period range,True
+114Q2,4,phase2_recent_4_quarters,extend beyond phase1 two-period proof without jumping to full 46-period range,True
