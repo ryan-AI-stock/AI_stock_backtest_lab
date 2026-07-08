@@ -1,6 +1,6 @@
 ﻿period,contract_rows,stock_exception_rows,stock_unadjusted_ready_rows,official_unadjusted_ohlc_ready_share,adjusted_close_ready_share,proxy_trigger_stock_rows
-full,592,24,24,1.0,0.0,3
+full,592,26,24,0.9230769230769231,0.0,0
 P1,411,21,21,1.0,0.0,0
-P2,180,3,3,1.0,0.0,3
-2024_latest,129,3,3,1.0,0.0,3
-2026YTD,26,2,2,1.0,0.0,2
+P2,180,5,3,0.6,0.0,0
+2024_latest,129,4,3,0.75,0.0,0
+2026YTD,26,3,2,0.6666666666666666,0.0,0

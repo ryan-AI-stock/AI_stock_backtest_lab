@@ -1,0 +1,70 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-FULL-PERIOD-EXACT-CONSENSUS-TRIGGER-CONTRACT-001",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_full_period_exact_consensus_trigger_contract_20260708",
+  "inputs": {
+    "p1_legacy_trace": "C:\\Users\\zergv\\Documents\\Codex\\2026-07-06\\backtest-lab-experiments-diagnostic-validation-attribution\\outputs\\vnext_p1_legacy_regime_unadjusted_ohlc_cost_timing_diagnostic_20260708\\p1_legacy_regime_unadjusted_ohlc_trade_path_trace.csv",
+    "p1_exact_reference": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_exact_consensus4_top5_exception_candidate_contract_20260708\\p1_c2_exact_consensus4_top5_exception_candidate_contract.csv",
+    "full_route_trace": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_full_period_regime_switch_benchmark_exception_path_20260708\\full_period_regime_switch_route_signal_trace.csv"
+  },
+  "artifacts": [
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_full_period_exact_consensus_trigger_contract_20260708\\full_period_exact_consensus_trigger_contract.csv",
+      "sha256": "15d48ceb66e890c37a54f056e4773b61688a88f25b367902575de154a31c5112",
+      "bytes": 449798
+    },
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_full_period_exact_consensus_trigger_contract_20260708\\full_period_exact_consensus_trigger_source_variant_matrix.csv",
+      "sha256": "295ea4f80200e02155a8494e280741957b2f2b6c20a451752ac080d622aaa7fa",
+      "bytes": 726168
+    },
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_full_period_exact_consensus_trigger_contract_20260708\\full_period_exact_consensus_trigger_p1_match_audit.csv",
+      "sha256": "08cdccc90be9ab2b24460c12c989ba2c57ebcdfdfea188996a05f4bcaedabd19",
+      "bytes": 5044
+    },
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_full_period_exact_consensus_trigger_contract_20260708\\full_period_exact_consensus_trigger_missing_source_ledger.csv",
+      "sha256": "57587189f50f6a38e7febfde20469b494f558e9cf99ff26c73e9f370d13c4d4e",
+      "bytes": 12996
+    },
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_full_period_exact_consensus_trigger_contract_20260708\\full_period_exact_consensus_trigger_proxy_alternative_options.csv",
+      "sha256": "789fed0164c586965f221344af5e86d5c98cc467860bb3c89cdceb2ce9179401",
+      "bytes": 408
+    },
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_full_period_exact_consensus_trigger_contract_20260708\\readiness_for_full_period_exact_consensus_trigger_contract.json",
+      "sha256": "77101bb1b72b2c843a32fc48f0e30fca84470c949bad13ea9fcd59a4ef9274da",
+      "bytes": 893
+    },
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_full_period_exact_consensus_trigger_contract_20260708\\final_summary_zh.md",
+      "sha256": "c7c016bf74e5b156e8b870c675d57fb500e6148ef401219bef5a1a21176097e6",
+      "bytes": 1100
+    }
+  ],
+  "readiness": {
+    "task_id": "TASK-BACKTEST-CORE-VNEXT-FULL-PERIOD-EXACT-CONSENSUS-TRIGGER-CONTRACT-001",
+    "status": "full_period_exact_consensus_trigger_ready",
+    "ready_for_route_support_max1_full_period_exact_same_basis_contract_refresh": true,
+    "p1_exact_trigger_match_share": 1.0,
+    "p2_exact_trigger_ready": true,
+    "recent_exact_trigger_ready": true,
+    "proxy_only": false,
+    "ready_for_experiments": false,
+    "ready_for_formal": false,
+    "ready_for_strategy_replay": false,
+    "contract_rows": 1386,
+    "exact_trigger_pass_rows": 57,
+    "source_matrix_rows": 2935,
+    "missing_source_variant_rows": 68,
+    "future_data_violation_count": 0,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false,
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false
+  }
+}

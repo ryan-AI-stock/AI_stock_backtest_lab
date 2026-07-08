@@ -1,0 +1,3 @@
+﻿option_id,description,accepted_as_primary,reason
+route_support_ge4_proxy,Use route_support_variant_count>=4 as date/candidate proxy.,False,Strategy Center rejected this as primary full-period same-basis conclusion.
+exact_same_ticker_consensus_ge4,Use same ticker selected by >=4 of the five PIT source variants.,True,This matches P1 exact consensus semantics and is rebuilt from source variant matrix.

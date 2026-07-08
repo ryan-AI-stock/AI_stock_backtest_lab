@@ -19,6 +19,12 @@ MARKET_FIELDS = (
 FULL_PERIOD_DIR = REPO_ROOT / "outputs" / "vnext_full_period_regime_switch_benchmark_exception_path_20260708"
 FULL_BENCHMARK_PATH = FULL_PERIOD_DIR / "full_period_regime_switch_benchmark_reference_path.csv"
 FULL_STOCK_PATH = FULL_PERIOD_DIR / "full_period_regime_switch_stock_route_path.csv"
+EXACT_TRIGGER = (
+    REPO_ROOT
+    / "outputs"
+    / "vnext_full_period_exact_consensus_trigger_contract_20260708"
+    / "full_period_exact_consensus_trigger_contract.csv"
+)
 P1_MAX1_DIR = REPO_ROOT / "outputs" / "vnext_p1_c2_route_support_max1_modelization_contract_20260708"
 P1_MAX1_CONTRACT = P1_MAX1_DIR / "p1_c2_route_support_max1_modelization_contract.csv"
 P1_WEIGHTED_REFRESHED = (
@@ -227,9 +233,24 @@ def _full_proxy_top1() -> pd.DataFrame:
     top = pool[pool["candidate_rank"].eq(1)].copy()
     top = top.rename(columns={"snapshot_date": "signal_date"})
     top["score_variant"] = "route_support"
-    top["consensus_trigger"] = top["route_support_variant_count"] >= 4
-    top["consensus_trigger_source_quality"] = "derived_route_support_ge4_proxy_not_exact_consensus4"
     return top
+
+
+def _exact_trigger_dates() -> pd.DataFrame:
+    exact = pd.read_csv(EXACT_TRIGGER, low_memory=False, dtype={"candidate_ticker": str})
+    exact["signal_date"] = pd.to_datetime(exact["signal_date"], errors="coerce").dt.strftime("%Y-%m-%d")
+    exact = exact[exact["exact_trigger_pass"].astype(str).str.lower().eq("true")].copy()
+    g = (
+        exact.groupby("signal_date", as_index=False)
+        .agg(
+            consensus_trigger_candidate_count=("candidate_ticker", "nunique"),
+            max_consensus_count=("consensus_count", "max"),
+            trigger_source_variants=("trigger_source_variants", lambda x: "|".join(sorted(set(map(str, x.dropna()))))),
+        )
+    )
+    g["consensus_trigger"] = True
+    g["consensus_trigger_source_quality"] = "exact_same_ticker_consensus_ge4_full_period"
+    return g
 
 
 def _path_map() -> pd.DataFrame:
@@ -288,6 +309,12 @@ def _build_contract() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     proxy = proxy[~proxy["signal_date"].isin(set(p1["signal_date"]))].copy()
     top1 = pd.concat([p1, proxy], ignore_index=True, sort=False)
     top1 = top1.merge(c2, on="signal_date", how="left")
+    top1 = top1.merge(_exact_trigger_dates(), on="signal_date", how="left", suffixes=("", "_exact"))
+    for col in ["consensus_trigger", "consensus_trigger_source_quality"]:
+        exact_col = f"{col}_exact"
+        if exact_col in top1.columns:
+            top1[col] = top1[col].where(top1[col].notna(), top1[exact_col])
+            top1 = top1.drop(columns=[exact_col])
     paths = _path_map()
     rows = []
     missing = []
@@ -301,7 +328,7 @@ def _build_contract() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         next_signal_date = r.next_signal_date
         cand = by_date.get(signal_date)
         c2_gate = bool(cand.get("c2_market_health_gate")) if cand is not None and not pd.isna(cand.get("c2_market_health_gate")) else False
-        trigger = bool(cand.get("consensus_trigger")) if cand is not None else False
+        trigger = bool(cand.get("consensus_trigger")) if cand is not None and not pd.isna(cand.get("consensus_trigger")) else False
         use_stock = bool(cand is not None and c2_gate and trigger)
         if use_stock:
             target_ticker = _ticker(cand.get("ticker"))
@@ -322,7 +349,7 @@ def _build_contract() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                     "exit_date": exit_date,
                     "missing_field": "entry_close_or_exit_close",
                     "blocked_reason": path.get("blocked_reason", "selected_stock_official_unadjusted_ohlc_not_materialized_for_route_support_top1"),
-                    "next_owner": "Radar/Data bounded selected-ticker-only OHLC fill if Strategy Center accepts proxy trigger scope",
+                    "next_owner": "Radar/Data bounded selected-ticker-only OHLC fill; exact trigger is ready, no full-market download",
                 })
             state_reason = "c2_consensus_trigger_route_support_top1_stock_exception"
         else:
@@ -350,7 +377,9 @@ def _build_contract() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
             "c2_market_health_gate": c2_gate,
             "c2_definition": cand.get("c2_definition") if cand is not None else "0050_price_vs_ma60>=0 AND 0050_return_20d>=0 AND 0050_return_40d>=0",
             "consensus_trigger": trigger,
-            "consensus_trigger_source_quality": cand.get("consensus_trigger_source_quality") if cand is not None else "no_trigger",
+            "consensus_trigger_source_quality": cand.get("consensus_trigger_source_quality") if cand is not None and trigger else "no_exact_trigger",
+            "consensus_trigger_candidate_count": cand.get("consensus_trigger_candidate_count") if cand is not None else 0,
+            "max_consensus_count": cand.get("max_consensus_count") if cand is not None else 0,
             "score_variant": "route_support",
             "route_support_weighted_score": cand.get("weighted_score") if cand is not None else None,
             "route_support_variant_count": cand.get("route_support_variant_count") if cand is not None else 0,
@@ -412,17 +441,6 @@ def _blocked(contract: pd.DataFrame, missing: pd.DataFrame) -> pd.DataFrame:
     if not missing.empty:
         for r in missing.itertuples(index=False):
             rows.append(r._asdict() | {"blocked_item": "selected_stock_official_unadjusted_ohlc"})
-    if contract["consensus_trigger_source_quality"].astype(str).str.contains("proxy").any():
-        rows.append({
-            "signal_date": "",
-            "ticker": "",
-            "entry_date": "",
-            "exit_date": "",
-            "missing_field": "p2_recent_exact_consensus4_trigger",
-            "blocked_reason": "P2/recent exact consensus4 trigger source is not materialized; route_support>=4 is proxy trigger only",
-            "next_owner": "Strategy Center/Core policy decision before exact same-basis Experiments verdict",
-            "blocked_item": "exact_consensus_trigger_full_period",
-        })
     rows.extend([
         {"signal_date": "", "ticker": "", "entry_date": "", "exit_date": "", "missing_field": "adjusted_close", "blocked_reason": "selected-stock adjusted close remains blocked; official unadjusted OHLC diagnostic-only", "next_owner": "Strategy Center/Radar only if adjusted-close source is authorized", "blocked_item": "selected_stock_adjusted_close"},
         {"signal_date": "", "ticker": "", "entry_date": "", "exit_date": "", "missing_field": "cash_bear_classifier", "blocked_reason": "cash/bear classifier blocked; no cash rule added", "next_owner": "Strategy Center/Core if cash classifier is re-opened", "blocked_item": "cash_bear_classifier"},
@@ -469,7 +487,7 @@ def _readiness(contract: pd.DataFrame, missing: pd.DataFrame) -> dict[str, Any]:
     proxy_ready = official_share == 1.0
     return {
         "task_id": TASK_ID,
-        "status": "full_period_same_basis_exact_blocked_proxy_contract_materialized" if proxy_rows else ("full_period_same_basis_contract_ready" if exact_ready else "full_period_same_basis_contract_partial_ohlc_blocked"),
+        "status": "full_period_same_basis_contract_ready" if exact_ready else "full_period_same_basis_contract_partial_ohlc_blocked",
         "ready_for_route_support_max1_full_period_same_basis_modelization_diagnostic": bool(exact_ready),
         "ready_for_route_support_max1_full_period_proxy_modelization_review": bool(proxy_ready),
         "ready_for_experiments": bool(exact_ready),
@@ -505,6 +523,7 @@ def _manifest(files: list[Path], readiness: dict[str, Any]) -> dict[str, Any]:
             "market_fields": str(MARKET_FIELDS),
             "full_benchmark_path": str(FULL_BENCHMARK_PATH),
             "full_stock_path": str(FULL_STOCK_PATH),
+            "exact_consensus_trigger": str(EXACT_TRIGGER),
             "p1_max1_contract": str(P1_MAX1_CONTRACT),
             "p1_weighted_refreshed": str(P1_WEIGHTED_REFRESHED),
         },
@@ -553,13 +572,13 @@ def main() -> None:
             "",
             "- 已 materialize P1/P2/2024-latest/2026YTD/full integrated state-machine contract。",
             "- Default state = 00631L state-hold；C2 + consensus trigger 才允許 route_support quant score max1 stock exception。",
-            "- P1 使用既有 exact consensus4 trigger；P2/recent 目前只能用 route_support>=4 derived proxy trigger，不能包裝成 exact same-basis verdict。",
+            "- P1/P2/recent 均使用 full-period exact consensus trigger contract，不使用 route_support>=4 proxy trigger。",
             f"- official_unadjusted_ohlc_ready_share = {readiness['official_unadjusted_ohlc_ready_share']:.4f}；adjusted_close_ready=false。",
             f"- p2_recent_proxy_trigger_stock_rows = {readiness['p2_recent_proxy_trigger_stock_rows']}。",
             "- Cost model ready：EP05 TaiwanCostModel unit-notional transition cost；後續主結論必須 net after transaction cost。",
-            "- Full-period exact same-basis Experiments readiness 仍 blocked，原因是 P2/recent exact consensus4 trigger source 尚未 materialized。",
+            "- 若 readiness true，下一棒交 Experiments 做 full-period exact same-basis route_support max1 diagnostic。",
             "",
-            "下一棒：回 Strategy Center 判斷是否接受 P2/recent route_support>=4 proxy trigger 做 bounded diagnostic，或要求 Core 先設計 exact full-period consensus trigger contract。",
+            "下一棒：若 ready_for_experiments=true，交 Experiments；若 false，依 missing ledger 補 bounded selected-ticker path。",
             "",
             "Flags: formal_model_changed=false; trade_decision_changed=false; active_in_trade_decision=false; report_changed=false; portfolio_replay_executed=false; ready_for_strategy_replay=false; ready_for_formal=false; not_live_rule=true; forward_returns_live_rule_usage=false.",
             "",

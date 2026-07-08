@@ -2,13 +2,13 @@
 
 - 已 materialize P1/P2/2024-latest/2026YTD/full integrated state-machine contract。
 - Default state = 00631L state-hold；C2 + consensus trigger 才允許 route_support quant score max1 stock exception。
-- P1 使用既有 exact consensus4 trigger；P2/recent 目前只能用 route_support>=4 derived proxy trigger，不能包裝成 exact same-basis verdict。
-- official_unadjusted_ohlc_ready_share = 1.0000；adjusted_close_ready=false。
-- p2_recent_proxy_trigger_stock_rows = 3。
+- P1/P2/recent 均使用 full-period exact consensus trigger contract，不使用 route_support>=4 proxy trigger。
+- official_unadjusted_ohlc_ready_share = 0.9231；adjusted_close_ready=false。
+- p2_recent_proxy_trigger_stock_rows = 0。
 - Cost model ready：EP05 TaiwanCostModel unit-notional transition cost；後續主結論必須 net after transaction cost。
-- Full-period exact same-basis Experiments readiness 仍 blocked，原因是 P2/recent exact consensus4 trigger source 尚未 materialized。
+- 若 readiness true，下一棒交 Experiments 做 full-period exact same-basis route_support max1 diagnostic。
 
-下一棒：回 Strategy Center 判斷是否接受 P2/recent route_support>=4 proxy trigger 做 bounded diagnostic，或要求 Core 先設計 exact full-period consensus trigger contract。
+下一棒：若 ready_for_experiments=true，交 Experiments；若 false，依 missing ledger 補 bounded selected-ticker path。
 
 Flags: formal_model_changed=false; trade_decision_changed=false; active_in_trade_decision=false; report_changed=false; portfolio_replay_executed=false; ready_for_strategy_replay=false; ready_for_formal=false; not_live_rule=true; forward_returns_live_rule_usage=false.
 

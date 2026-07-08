@@ -6,44 +6,45 @@
     "market_fields": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_regime_switch_hybrid_route_market_fields_path_materialization_20260708\\regime_switch_market_regime_fields.csv",
     "full_benchmark_path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_full_period_regime_switch_benchmark_exception_path_20260708\\full_period_regime_switch_benchmark_reference_path.csv",
     "full_stock_path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_full_period_regime_switch_benchmark_exception_path_20260708\\full_period_regime_switch_stock_route_path.csv",
+    "exact_consensus_trigger": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_full_period_exact_consensus_trigger_contract_20260708\\full_period_exact_consensus_trigger_contract.csv",
     "p1_max1_contract": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_route_support_max1_modelization_contract_20260708\\p1_c2_route_support_max1_modelization_contract.csv",
     "p1_weighted_refreshed": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_weighted_pool80_top5_ohlc_absorption_20260708\\p1_c2_weighted_pool80_top5_contract_refreshed.csv"
   },
   "artifacts": [
     {
       "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_route_support_max1_full_period_same_basis_contract_20260708\\route_support_max1_full_period_same_basis_modelization_contract.csv",
-      "sha256": "59427a475802ab58fc17d874c3440c84db37fe21be7a600b80c19d88a5fe1abe",
-      "bytes": 320550
+      "sha256": "dad49aaf9ba12eaa5402620d2d35ef0e2712fee1e7b8f7732a2020bce79de92b",
+      "bytes": 302340
     },
     {
       "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_route_support_max1_full_period_same_basis_contract_20260708\\route_support_max1_full_period_transition_trace.csv",
-      "sha256": "a6609f849b7bedd2675ccd0c735659ffdd5f00fb0b4509e9bbf67f7f9419b6dc",
-      "bytes": 12681
+      "sha256": "8ee9fd55deed62d1f16a8a2374bd4407a123ab61b76ab0ac34937a2c90a9ee27",
+      "bytes": 13699
     },
     {
       "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_route_support_max1_full_period_same_basis_contract_20260708\\route_support_max1_full_period_score_audit.csv",
-      "sha256": "e8dadf0789c49d2da6871907dea01ff161a6bb16bc745d1a8f593e7764ecd116",
-      "bytes": 9477
+      "sha256": "02a706a2f4cc658e3ef9105c907ca6f3f07035ab60d391a10d56d2c011ec6041",
+      "bytes": 10038
     },
     {
       "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_route_support_max1_full_period_same_basis_contract_20260708\\route_support_max1_full_period_coverage_audit.csv",
-      "sha256": "383978cd45b0efc75caefc79d98f8ada78bf29e2b8f737f36e4f7844c8358013",
-      "bytes": 292
+      "sha256": "0f475056bbf5ad9ebea84455ff731189bd4f3b3169dce11a0e712b40036ce50d",
+      "bytes": 323
     },
     {
       "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_route_support_max1_full_period_same_basis_contract_20260708\\route_support_max1_full_period_cost_audit.csv",
-      "sha256": "090142cf816eea39563c7f4c5bc648defb65a80752aa57ed6b8cbd81c088b149",
+      "sha256": "ef3daed2521152e5651e2d12a223e4c046248353cd83ddc314c8308921f250bd",
       "bytes": 607
     },
     {
       "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_route_support_max1_full_period_same_basis_contract_20260708\\route_support_max1_full_period_blocked_proxy_ledger.csv",
-      "sha256": "85c7a99b66104f8d54ddc38c718a66e3f4b73dc4b30017d561465c140edf20af",
-      "bytes": 709
+      "sha256": "b5db74b74a3288242f1ec8bddcb7aeb927859d4f22519fbad6a8feeb128ff71a",
+      "bytes": 982
     },
     {
       "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_route_support_max1_full_period_same_basis_contract_20260708\\route_support_max1_full_period_missing_ohlc_ledger.csv",
-      "sha256": "f01a374e9c81e3db89b3a42940c4d6a5447684986a1296e42bf13f196eed6295",
-      "bytes": 5
+      "sha256": "c356363ac4ac4715ccf5a3c31e92e5cd8f46bde32d268f5bce7186b53e7c1543",
+      "bytes": 536
     },
     {
       "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_route_support_max1_full_period_same_basis_contract_20260708\\route_support_max1_full_period_future_data_audit.csv",
@@ -52,27 +53,27 @@
     },
     {
       "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_route_support_max1_full_period_same_basis_contract_20260708\\readiness_for_route_support_max1_full_period_same_basis_modelization_diagnostic.json",
-      "sha256": "690b306a0b0cddf0c9779c11d9e4e5d73fc955d8e59260cad99596667b1b5b13",
-      "bytes": 1118
+      "sha256": "641007bad5406586cfc200981ef49b2aa51f2874acd728c93272afaab27fe8bc",
+      "bytes": 1122
     },
     {
       "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_route_support_max1_full_period_same_basis_contract_20260708\\final_summary_zh.md",
-      "sha256": "f1bcdb431e62736d001bebecbdaa7c1ed8b6ff8c20bc4a30063042005365ae58",
-      "bytes": 1459
+      "sha256": "5f536a12d0d0a16f138c2cd0f40db88b182dd290eb8b3191fdb2187a4504cb11",
+      "bytes": 1331
     }
   ],
   "readiness": {
     "task_id": "TASK-BACKTEST-CORE-VNEXT-ROUTE-SUPPORT-MAX1-FULL-PERIOD-SAME-BASIS-MODELIZATION-CONTRACT-001",
-    "status": "full_period_same_basis_exact_blocked_proxy_contract_materialized",
+    "status": "full_period_same_basis_contract_partial_ohlc_blocked",
     "ready_for_route_support_max1_full_period_same_basis_modelization_diagnostic": false,
-    "ready_for_route_support_max1_full_period_proxy_modelization_review": true,
+    "ready_for_route_support_max1_full_period_proxy_modelization_review": false,
     "ready_for_experiments": false,
     "contract_rows": 592,
-    "stock_exception_rows": 24,
-    "transition_count": 47,
-    "p2_recent_proxy_trigger_stock_rows": 3,
-    "official_unadjusted_ohlc_ready_share": 1.0,
-    "official_unadjusted_ohlc_missing_rows": 0,
+    "stock_exception_rows": 26,
+    "transition_count": 51,
+    "p2_recent_proxy_trigger_stock_rows": 0,
+    "official_unadjusted_ohlc_ready_share": 0.9230769230769231,
+    "official_unadjusted_ohlc_missing_rows": 2,
     "adjusted_close_ready": false,
     "cost_model_ready": true,
     "comparison_baseline_hooks_ready": true,

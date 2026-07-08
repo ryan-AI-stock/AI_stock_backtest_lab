@@ -1,4 +1,5 @@
 ﻿signal_date,ticker,entry_date,exit_date,missing_field,blocked_reason,next_owner,blocked_item
-,,,,p2_recent_exact_consensus4_trigger,P2/recent exact consensus4 trigger source is not materialized; route_support>=4 is proxy trigger only,Strategy Center/Core policy decision before exact same-basis Experiments verdict,exact_consensus_trigger_full_period
+2023-03-17,2330,,,entry_close_or_exit_close,selected_stock_official_unadjusted_ohlc_not_materialized_for_route_support_top1,"Radar/Data bounded selected-ticker-only OHLC fill; exact trigger is ready, no full-market download",selected_stock_official_unadjusted_ohlc
+2026-05-29,2330,,,entry_close_or_exit_close,selected_stock_official_unadjusted_ohlc_not_materialized_for_route_support_top1,"Radar/Data bounded selected-ticker-only OHLC fill; exact trigger is ready, no full-market download",selected_stock_official_unadjusted_ohlc
 ,,,,adjusted_close,selected-stock adjusted close remains blocked; official unadjusted OHLC diagnostic-only,Strategy Center/Radar only if adjusted-close source is authorized,selected_stock_adjusted_close
 ,,,,cash_bear_classifier,cash/bear classifier blocked; no cash rule added,Strategy Center/Core if cash classifier is re-opened,cash_bear_classifier
