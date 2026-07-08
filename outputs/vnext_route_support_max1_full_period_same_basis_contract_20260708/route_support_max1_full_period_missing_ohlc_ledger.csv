@@ -1,3 +1,1 @@
-﻿signal_date,ticker,entry_date,exit_date,missing_field,blocked_reason,next_owner
-2023-03-17,2330,,,entry_close_or_exit_close,selected_stock_official_unadjusted_ohlc_not_materialized_for_route_support_top1,"Radar/Data bounded selected-ticker-only OHLC fill; exact trigger is ready, no full-market download"
-2026-05-29,2330,,,entry_close_or_exit_close,selected_stock_official_unadjusted_ohlc_not_materialized_for_route_support_top1,"Radar/Data bounded selected-ticker-only OHLC fill; exact trigger is ready, no full-market download"
+﻿

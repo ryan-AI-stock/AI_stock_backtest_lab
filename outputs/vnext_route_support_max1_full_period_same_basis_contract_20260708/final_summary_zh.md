@@ -3,7 +3,7 @@
 - 已 materialize P1/P2/2024-latest/2026YTD/full integrated state-machine contract。
 - Default state = 00631L state-hold；C2 + consensus trigger 才允許 route_support quant score max1 stock exception。
 - P1/P2/recent 均使用 full-period exact consensus trigger contract，不使用 route_support>=4 proxy trigger。
-- official_unadjusted_ohlc_ready_share = 0.9231；adjusted_close_ready=false。
+- official_unadjusted_ohlc_ready_share = 1.0000；adjusted_close_ready=false。
 - p2_recent_proxy_trigger_stock_rows = 0。
 - Cost model ready：EP05 TaiwanCostModel unit-notional transition cost；後續主結論必須 net after transaction cost。
 - 若 readiness true，下一棒交 Experiments 做 full-period exact same-basis route_support max1 diagnostic。

@@ -19,6 +19,11 @@ MARKET_FIELDS = (
 FULL_PERIOD_DIR = REPO_ROOT / "outputs" / "vnext_full_period_regime_switch_benchmark_exception_path_20260708"
 FULL_BENCHMARK_PATH = FULL_PERIOD_DIR / "full_period_regime_switch_benchmark_reference_path.csv"
 FULL_STOCK_PATH = FULL_PERIOD_DIR / "full_period_regime_switch_stock_route_path.csv"
+RADAR_OHLC_PATCH = Path(
+    "C:/Users/zergv/Documents/Codex/2026-05-23/ai-stock-rotation-radar-https-docs/outputs/"
+    "radar_vnext_route_support_max1_full_period_selected_stock_ohlc_gap_fill_20260708/"
+    "route_support_max1_full_period_selected_stock_ohlc_filled_rows.csv"
+)
 EXACT_TRIGGER = (
     REPO_ROOT
     / "outputs"
@@ -267,9 +272,22 @@ def _path_map() -> pd.DataFrame:
     full["signal_date"] = pd.to_datetime(full["signal_date"], errors="coerce").dt.strftime("%Y-%m-%d")
     full["ticker"] = full["ticker"].map(_ticker)
     full["entry_close"] = full["entry_price"]
+    full["exit_close"] = full["exit_price"]
     full["official_unadjusted_ohlc_ready"] = full["path_ready"].astype(str).str.lower().eq("true")
     full["source_quality"] = full["source_quality"].fillna("official_unadjusted_ohlc_selected_route_path")
     frames.append(full)
+    if RADAR_OHLC_PATCH.exists():
+        patch = pd.read_csv(RADAR_OHLC_PATCH, low_memory=False, dtype={"ticker": str})
+        patch["signal_date"] = pd.to_datetime(patch["signal_date"], errors="coerce").dt.strftime("%Y-%m-%d")
+        patch["ticker"] = patch["ticker"].map(_ticker)
+        patch["entry_close"] = pd.to_numeric(patch["entry_close"], errors="coerce")
+        patch["exit_close"] = pd.to_numeric(patch["exit_close"], errors="coerce")
+        patch["entry_open"] = pd.to_numeric(patch["entry_open"], errors="coerce")
+        patch["gross_return_unadjusted"] = patch["exit_close"] / patch["entry_close"] - 1.0
+        patch["official_unadjusted_ohlc_ready"] = patch["official_ohlc_path_ready"].astype(str).str.lower().eq("true")
+        patch["source_quality"] = patch["source_quality"].fillna("official_unadjusted_ohlcv_selected_ticker_month")
+        patch["blocked_reason"] = patch["blocked_reason"].fillna("")
+        frames.append(patch)
     out = pd.concat(frames, ignore_index=True, sort=False)
     keep = [
         "signal_date",
@@ -523,6 +541,7 @@ def _manifest(files: list[Path], readiness: dict[str, Any]) -> dict[str, Any]:
             "market_fields": str(MARKET_FIELDS),
             "full_benchmark_path": str(FULL_BENCHMARK_PATH),
             "full_stock_path": str(FULL_STOCK_PATH),
+            "radar_ohlc_patch": str(RADAR_OHLC_PATCH),
             "exact_consensus_trigger": str(EXACT_TRIGGER),
             "p1_max1_contract": str(P1_MAX1_CONTRACT),
             "p1_weighted_refreshed": str(P1_WEIGHTED_REFRESHED),
