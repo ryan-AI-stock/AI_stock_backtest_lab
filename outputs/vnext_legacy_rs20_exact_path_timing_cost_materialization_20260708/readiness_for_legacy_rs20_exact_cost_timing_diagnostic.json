@@ -1,0 +1,96 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LEGACY-RS20-EXACT-PATH-TIMING-COST-MATERIALIZATION-001",
+  "status": "legacy_rs20_exact_path_timing_cost_blocked_missing_selected_stock_price_path",
+  "diagnostic_only": true,
+  "primary_variant": "dynamic80_top3_rs20_risk_tiebreak_proxy",
+  "supported_signal_variants": [
+    "dynamic80_top3_rs20_risk_tiebreak_proxy",
+    "dynamic80_top1_rs20_proxy",
+    "dynamic80_top1_rs20_31_bonus_proxy"
+  ],
+  "reference_variants_retained_as_design_only": [
+    "00631L_buy_hold_reference"
+  ],
+  "prior_core_status": "legacy_rs20_operating_mode_materialized_proxy_runner_ready_exact_path_blocked",
+  "selected_signal_rows": 1776,
+  "selected_unique_ticker_count": 388,
+  "price_registry_selected_ticker_matches": 0,
+  "exact_selected_stock_adjusted_close_ready_ticker_count": 0,
+  "exact_selected_stock_adjusted_close_path_ready": false,
+  "next_trading_day_close_path_ready": false,
+  "next_trading_day_open_path_ready": false,
+  "same_week_close_rebalance_comparator_materialized": false,
+  "local_ep05_cost_model_found": true,
+  "formal_cost_model_formula_ready": true,
+  "formal_cost_model_ready": false,
+  "placeholder_cost_model_used": true,
+  "ready_for_legacy_rs20_exact_cost_timing_diagnostic": false,
+  "ready_for_experiments": false,
+  "ready_for_formal": false,
+  "ready_for_strategy_replay": false,
+  "future_data_violation_count": 0,
+  "requested_vs_actual_coverage": [
+    {
+      "period": "P1",
+      "requested_start": "2015-01-02",
+      "requested_end": "2022-12-29",
+      "actual_start": "2015-01-09",
+      "actual_end": "2022-12-23",
+      "signal_rows": 1233,
+      "unique_tickers": 284
+    },
+    {
+      "period": "P2",
+      "requested_start": "2023-01-02",
+      "requested_end": "2026-06-30",
+      "actual_start": "2023-01-06",
+      "actual_end": "2026-06-29",
+      "signal_rows": 540,
+      "unique_tickers": 139
+    },
+    {
+      "period": "2024_latest",
+      "requested_start": "2024-01-02",
+      "requested_end": "2026-06-30",
+      "actual_start": "2024-01-05",
+      "actual_end": "2026-06-29",
+      "signal_rows": 387,
+      "unique_tickers": 100
+    },
+    {
+      "period": "2026YTD",
+      "requested_start": "2026-01-02",
+      "requested_end": "2026-06-30",
+      "actual_start": "2026-01-02",
+      "actual_end": "2026-06-29",
+      "signal_rows": 78,
+      "unique_tickers": 23
+    },
+    {
+      "period": "legacy_requested",
+      "requested_start": "2024-01-02",
+      "requested_end": "2026-05-26",
+      "actual_start": "2024-01-05",
+      "actual_end": "2026-05-22",
+      "signal_rows": 369,
+      "unique_tickers": 96
+    }
+  ],
+  "blocked_fields": [
+    "full_selected_stock_adjusted_close_path",
+    "next_trading_day_close_entry_exact_return",
+    "next_trading_day_open_entry_exact_return",
+    "numeric_formal_cost_application"
+  ],
+  "proxy_fields": [
+    "tradable_close_proxy_if_unadjusted_close_later_allowed",
+    "roundtrip_10bp_20bp_40bp_placeholder_reference"
+  ],
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false
+}

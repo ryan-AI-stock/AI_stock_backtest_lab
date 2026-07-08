@@ -1,0 +1,4 @@
+audit_item,result,violation_count,evidence
+selection_rule_uses_future_return,passed,0,selection carried from prior PIT signal table; no forward return columns used to construct this exact path package
+00631L_plus_excess_reconstruction_used_for_selected_stock_return,passed,0,trade path only attempts selected ticker price path; proxy_stock_forward_return_5d is not used
+future_return_as_rule,passed,0,forward returns are not rule inputs; package is diagnostic readiness only

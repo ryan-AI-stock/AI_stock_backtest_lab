@@ -1,0 +1,5 @@
+timing_variant,entry_basis,exit_basis,price_requirement,source_quality,formal_ready,diagnostic_role
+same_week_close_to_next_rebalance_close_comparator,signal_date close,next weekly signal/rebalance close,selected ticker adjusted close on signal_date and next signal_date,exact_if_adjusted_close_path_available_else_blocked,False,proxy comparator retained for continuity with Experiments
+next_day_close_entry_fixed_5td_exit,next trading day close,entry_date + 5 trading days close,selected ticker adjusted close on entry/exit dates,exact_if_adjusted_close_path_available_else_blocked,False,primary exact bounded timing candidate if close path exists
+next_day_close_entry_weekly_rebalance_exit,next trading day close,next weekly signal/rebalance close,selected ticker adjusted close on entry/exit dates,exact_if_adjusted_close_path_available_else_blocked,False,weekly rebalance timing candidate
+next_day_open_entry_fixed_5td_exit,next trading day open,entry_date + 5 trading days close,selected ticker executable open and adjusted/close exit path,blocked_if_open_or_adjusted_close_missing,False,open-entry timing audit only

@@ -1,0 +1,69 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LEGACY-RS20-EXACT-PATH-TIMING-COST-MATERIALIZATION-001",
+  "status": "legacy_rs20_exact_path_timing_cost_blocked_missing_selected_stock_price_path",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_legacy_rs20_exact_path_timing_cost_materialization_20260708",
+  "input_signal_table": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_legacy_rs20_operating_mode_runner_readiness_20260708\\legacy_rs20_operating_mode_signal_table.csv",
+  "input_prior_readiness": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_legacy_rs20_operating_mode_runner_readiness_20260708\\readiness_for_legacy_rs20_operating_mode_diagnostic.json",
+  "input_experiments_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-07-06\\backtest-lab-experiments-diagnostic-validation-attribution\\outputs\\vnext_legacy_rs20_operating_mode_cost_timing_diagnostic_20260708",
+  "input_price_registry": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\data\\price_source_registry.csv",
+  "input_benchmark_features": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_dynamic_candidate_pool_data_materialization_20260706\\benchmark_features.csv",
+  "output_files": [
+    "legacy_rs20_exact_selected_stock_trade_path.csv",
+    "legacy_rs20_exact_selected_stock_signal_table.csv",
+    "legacy_rs20_exact_timing_variant_design.csv",
+    "legacy_rs20_exact_cost_model_audit.csv",
+    "legacy_rs20_exact_missing_price_audit.csv",
+    "legacy_rs20_exact_selected_ticker_price_source_request.csv",
+    "legacy_rs20_exact_future_data_audit.csv",
+    "readiness_for_legacy_rs20_exact_cost_timing_diagnostic.json",
+    "final_summary_zh.md",
+    "manifest.json"
+  ],
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "ready_for_strategy_replay": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false,
+  "diagnostic_only": true,
+  "file_hashes": {
+    "legacy_rs20_exact_selected_stock_trade_path.csv": {
+      "sha256": "af155de8167ab04b2caafb8972f4948f3efb363349b2ff73fae8e3a9e6514ddd",
+      "bytes": 2026766
+    },
+    "legacy_rs20_exact_selected_stock_signal_table.csv": {
+      "sha256": "202373583b2f145202518adfa295298ebcbac426e8f1b9763431d08eeb1fc997",
+      "bytes": 846744
+    },
+    "legacy_rs20_exact_timing_variant_design.csv": {
+      "sha256": "cba7a5ba5b2ae64e20f54921a4eca015231a59ff450567ae0fb034391a8f2edd",
+      "bytes": 1127
+    },
+    "legacy_rs20_exact_cost_model_audit.csv": {
+      "sha256": "5cfc6865fab7c235d1338ff3257b784ff5a2af615516ff6461ad61a0c6af1cca",
+      "bytes": 1439
+    },
+    "legacy_rs20_exact_missing_price_audit.csv": {
+      "sha256": "3eb74aca7560359dc200e45d212556b0ba466d4ff443b207f05fa619cca5d16e",
+      "bytes": 43416
+    },
+    "legacy_rs20_exact_selected_ticker_price_source_request.csv": {
+      "sha256": "e7970f638f2c60cefa00da43517dce85136a4ab259745cfa4ddac089a34e0af1",
+      "bytes": 96713
+    },
+    "legacy_rs20_exact_future_data_audit.csv": {
+      "sha256": "3b1f045140973498d96e7824352faa6adc69a27d02cb5b3d5e24b376461acab2",
+      "bytes": 479
+    },
+    "readiness_for_legacy_rs20_exact_cost_timing_diagnostic.json": {
+      "sha256": "50a133dafda4f5ed4bf36eb52a77b8c95d540f757c125f6dbc59c33a3d1e1222",
+      "bytes": 3305
+    },
+    "final_summary_zh.md": {
+      "sha256": "59ede6a7db3d2a159463405f0c326b238c26006ecc3f7b90ed98e170e01976ca",
+      "bytes": 2030
+    }
+  }
+}
