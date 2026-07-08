@@ -1,0 +1,73 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER5-LIFECYCLE-STATE-SELECTOR-CANDIDATE-CONTRACT-001",
+  "status": "layer5_lifecycle_state_selector_candidate_contract_ready_for_experiments_intake",
+  "diagnostic_only": true,
+  "input_within80_status": "layer5_within80_daily_rank_context_contract_ready_for_experiments_intake",
+  "input_incumbent_status": "layer5_incumbent_aware_selector_candidate_contract_ready_for_experiments_intake",
+  "input_hurdle_status": "layer5_stock_vs_00631l_hurdle_context_contract_ready_for_experiments_intake",
+  "input_experiments_verdict": "PARTIAL_context_only_hurdle_fallback_improves_stock_baseline_but_not_action_ready",
+  "row_count": 5328,
+  "weekly_snapshot_count": 592,
+  "lifecycle_selector_candidate_variant_count": 9,
+  "lifecycle_selector_candidate_variants": [
+    "clean_trend_low_risk_selector",
+    "high_confidence_bonus_lifecycle_selector",
+    "incumbent_reentry_baseline",
+    "lifecycle_top10_clean_state_selector",
+    "pullback_repair_reacceleration_selector",
+    "raw_top1_baseline",
+    "reentry_confirmed_lifecycle_selector",
+    "stock_vs_00631L_best_baseline",
+    "strengthening_not_overheated_selector"
+  ],
+  "avg_state_match_share_by_variant": {
+    "clean_trend_low_risk_selector": 0.9430847729267402,
+    "high_confidence_bonus_lifecycle_selector": 1.0,
+    "incumbent_reentry_baseline": 1.0,
+    "lifecycle_top10_clean_state_selector": 0.9884194727154121,
+    "pullback_repair_reacceleration_selector": 0.7494375931060703,
+    "raw_top1_baseline": 1.0,
+    "reentry_confirmed_lifecycle_selector": 0.9217758724647386,
+    "stock_vs_00631L_best_baseline": 1.0,
+    "strengthening_not_overheated_selector": 0.9430847729267402
+  },
+  "avg_switch_rate_proxy_by_variant": {
+    "clean_trend_low_risk_selector": 0.7247496230329815,
+    "high_confidence_bonus_lifecycle_selector": 0.9334437913235429,
+    "incumbent_reentry_baseline": 0.7172433110333039,
+    "lifecycle_top10_clean_state_selector": 0.9272255109857814,
+    "pullback_repair_reacceleration_selector": 0.9277502024724675,
+    "raw_top1_baseline": 0.715971323250167,
+    "reentry_confirmed_lifecycle_selector": 0.9096500136335559,
+    "stock_vs_00631L_best_baseline": 0.7323048469509095,
+    "strengthening_not_overheated_selector": 0.9486989547322121
+  },
+  "ready_for_layer5_lifecycle_state_single_stock_selector_diagnostic": true,
+  "ready_for_experiments_intake": true,
+  "ready_for_live_layer5_rule": false,
+  "ready_for_stock_vs_00631l_fallback_rule": false,
+  "ready_for_portfolio_like_diagnostic": false,
+  "ready_for_formal": false,
+  "ready_for_strategy_replay": false,
+  "future_data_violation_count": 0,
+  "blocked_fields": [
+    "real_current_holder_state",
+    "cash_bear_classifier",
+    "00631L_fallback_rule",
+    "turnover_cost_model",
+    "portfolio_replay"
+  ],
+  "proxy_fields": [
+    "risk_bucket",
+    "large_down_day_count_20d_proxy",
+    "blowoff_turnover_without_price_continuation_proxy",
+    "RS30_proxy"
+  ],
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false
+}

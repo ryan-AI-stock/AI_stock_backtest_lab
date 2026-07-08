@@ -1,0 +1,8 @@
+﻿lifecycle_state_feature,definition,source_quality
+strengthening_not_overheated,"RS20/30 support, RS5/10 not deteriorating, BIAS/volatility not hot",PIT/proxy context
+pullback_repair_reacceleration,"Prior strength plus correction and current reacceleration, not breakdown",PIT/proxy context
+reentry_after_watchlist_confirmation,100 extended watchlist to 80 primary with multi-snapshot or capital confirmation,PIT context
+clean_trend_low_risk,Stable RS/capital/trend context without high risk/exhaustion,PIT/proxy context
+high_confidence_bonus,31 high-confidence subpool overlap as bonus only,reference context
+avoid_late_stage,"RS60 high + short RS weakening, high BIAS, blowoff/large-down proxies",diagnostic proxy
+forward_evaluation_metadata,"5D/10D/20D/30D primary, 40D decay reference",evaluation-only

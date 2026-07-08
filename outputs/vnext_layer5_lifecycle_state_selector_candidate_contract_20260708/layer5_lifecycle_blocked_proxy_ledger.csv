@@ -1,0 +1,12 @@
+﻿field_or_policy,status,reason
+risk_bucket,proxy_or_blocked,No accepted formal risk bucket; use source_quality field when present
+large_down_day_count_20d_proxy,diagnostic_proxy,"PIT proxy threshold, not formal"
+blowoff_turnover_without_price_continuation_proxy,diagnostic_proxy,"PIT proxy threshold, not formal"
+BIAS_volatility_thresholds,diagnostic_proxy,Used only as lifecycle context
+RS30,proxy,RS30_proxy used where exact unavailable
+real_current_holder_state,blocked,No live/formal holder state contract
+cash_bear_classifier,blocked,No cash rule in this package
+00631L_fallback_rule,blocked,00631L is benchmark/reference/fallback metadata only
+A_B_switch_or_second_stock_allocation,blocked,Not authorized
+portfolio_replay,blocked,Not authorized
+latest_forward_path,blocked_partial,Latest rows may lack future evaluation path by horizon

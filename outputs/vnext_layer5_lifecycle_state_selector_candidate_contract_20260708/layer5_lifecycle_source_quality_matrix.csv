@@ -1,0 +1,11 @@
+﻿field_group,source_quality,contract_role
+Layer4_80_primary_pool,PIT materialized Core contract,base universe
+within80_rank_top10,PIT context,"candidate scope, not top1 rule"
+RS5_10_20_30_60,RS30 proxy where exact unavailable,lifecycle context
+BIAS_volatility_large_down_blowoff,diagnostic proxy thresholds,risk/late-stage context
+31_high_confidence_subpool,reference only,"bonus, not mandatory filter"
+100_extended_watchlist,reference only,reentry context
+00631L,benchmark/fallback metadata only,not ordinary stock row
+real_current_holder_state,blocked,no formal live holder state
+cash_bear_classifier,blocked,no cash/fallback trading rule
+forward_returns,evaluation_metadata_only,not rule construction

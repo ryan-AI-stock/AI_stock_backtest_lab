@@ -1,0 +1,10 @@
+﻿lifecycle_selector_candidate_variant,definition,status
+lifecycle_top10_clean_state_selector,"top10 lifecycle composite, clean-state preferred",candidate design only
+pullback_repair_reacceleration_selector,top10 prior-strong repair/reacceleration state,candidate design only
+reentry_confirmed_lifecycle_selector,top10 reentry after watchlist confirmation,candidate design only
+strengthening_not_overheated_selector,top10 strengthening but not overheated,candidate design only
+clean_trend_low_risk_selector,"top10 stable trend, lower risk",candidate design only
+high_confidence_bonus_lifecycle_selector,"top10 lifecycle plus 31 subpool bonus, not mandatory filter",candidate design only
+raw_top1_baseline,within80 raw top1 baseline,baseline only
+incumbent_reentry_baseline,prior incumbent-aware/reentry baseline,baseline only
+stock_vs_00631L_best_baseline,prior stock-vs-00631L best stock/hurdle context baseline,baseline only
