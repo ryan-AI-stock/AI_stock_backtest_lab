@@ -1,0 +1,6 @@
+﻿scope,rows,signal_dates,unique_tickers,official_unadjusted_ohlc_ready_rows,official_unadjusted_ohlc_ready_share,adjusted_close_ready_rows,adjusted_close_ready_share
+all_exact_consensus4_rank_le5_candidate_rows,41,41,38,41,1.0,0,0.0
+all_exact_consensus4_rank_le5_slots_including_shortfall,205,41,39,41,0.2,0,0.0
+c2_true_rank_le5_candidate_rows,21,21,20,21,1.0,0,0.0
+c2_true_rank_le5_slots_including_shortfall,105,21,21,21,0.2,0,0.0
+c2_allowed_exception_rank_le5_candidate_rows,21,21,20,21,1.0,0,0.0

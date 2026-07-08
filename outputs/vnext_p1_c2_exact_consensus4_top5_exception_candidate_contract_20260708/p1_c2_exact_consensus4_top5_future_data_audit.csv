@@ -1,0 +1,3 @@
+﻿audit_item,future_return_used_as_rule,rule_source,future_data_violation_count
+candidate_ranking,False,same-date route consensus_count only,0
+ohlc_path,False,evaluation/path metadata only,0
