@@ -1,0 +1,5 @@
+audit_item,result,violation_count,evidence
+future_return_as_rule,passed,0,"Benchmark paths are evaluation/reference rows only, not rule construction."
+benchmark_reference_mixed_with_stock_selection,passed,0,Output is benchmark/reference path only.
+cash_interest_or_slippage_fabricated,passed,0,"Cash path is explicit zero-return proxy, no interest and no slippage."
+open_price_fabricated,passed,0,Next-day open path is blocked because benchmark open is unavailable.

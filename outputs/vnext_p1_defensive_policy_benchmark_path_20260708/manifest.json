@@ -1,0 +1,72 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P1-DEFENSIVE-POLICY-BENCHMARK-PATH-MATERIALIZATION-001",
+  "status": "p1_defensive_policy_benchmark_close_cash_reference_ready_open_blocked",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_defensive_policy_benchmark_path_20260708",
+  "input_experiments_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-07-06\\backtest-lab-experiments-diagnostic-validation-attribution\\outputs\\vnext_p1_ordinary_defensive_reference_policy_diagnostic_20260708",
+  "input_benchmark_features": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_dynamic_candidate_pool_data_materialization_20260706\\benchmark_features.csv",
+  "output_files": [
+    "p1_defensive_policy_benchmark_reference_path.csv",
+    "p1_defensive_policy_00631l_path.csv",
+    "p1_defensive_policy_0050_path.csv",
+    "p1_defensive_policy_cash_reference_path.csv",
+    "p1_defensive_policy_buy_hold_reference.csv",
+    "p1_defensive_policy_benchmark_timing_cost_audit.csv",
+    "p1_defensive_policy_benchmark_missing_price_audit.csv",
+    "p1_defensive_policy_benchmark_future_data_audit.csv",
+    "readiness_for_p1_defensive_policy_benchmark_diagnostic.json",
+    "final_summary_zh.md",
+    "manifest.json"
+  ],
+  "diagnostic_only": true,
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "ready_for_strategy_replay": false,
+  "ready_for_formal": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false,
+  "file_hashes": {
+    "p1_defensive_policy_benchmark_reference_path.csv": {
+      "sha256": "7c3719ca25a51d0e9066b94618ba3b61a35c4f53cae40baccc100c826bf00252",
+      "bytes": 1506431
+    },
+    "p1_defensive_policy_00631l_path.csv": {
+      "sha256": "654226e880b6cfc3bdd91330f9e3702a9ab1795cb0ab1ef9af9ffed880bab048",
+      "bytes": 552460
+    },
+    "p1_defensive_policy_0050_path.csv": {
+      "sha256": "c9268569cf6603365d154151edc5b9a822438a1d12a2336c83b770c471950a9d",
+      "bytes": 545900
+    },
+    "p1_defensive_policy_cash_reference_path.csv": {
+      "sha256": "7e1f9116bf9deabb6f96456250f267fe92d3e9ac5f5dfeec2ae4aa5f20fb3a9b",
+      "bytes": 408293
+    },
+    "p1_defensive_policy_buy_hold_reference.csv": {
+      "sha256": "06ef33396bc5853bcf9138a23d636716902817e466a30571c32e1ef049d82be6",
+      "bytes": 1535
+    },
+    "p1_defensive_policy_benchmark_timing_cost_audit.csv": {
+      "sha256": "7218b51a126e4a7ffb5382775f9d8f51c7c7abc88b59d761c5185f41b97e3b78",
+      "bytes": 1362
+    },
+    "p1_defensive_policy_benchmark_missing_price_audit.csv": {
+      "sha256": "ddc6627104db51c07cda4c3bce4b95c6576b1919a1f7273e6b3719f2731d81d8",
+      "bytes": 510
+    },
+    "p1_defensive_policy_benchmark_future_data_audit.csv": {
+      "sha256": "ee69e2c099b5132bdfb382ac9e440f685e6296a0ad3426b353c307eaa76f9254",
+      "bytes": 471
+    },
+    "readiness_for_p1_defensive_policy_benchmark_diagnostic.json": {
+      "sha256": "ad49c04fe62087f790cbabcb2b60a3085aa8439d04490e78a7803ac5cb4a63a8",
+      "bytes": 1334
+    },
+    "final_summary_zh.md": {
+      "sha256": "e6276d01d9c5bec2942328b7ee6e94eb032786067081e72362b5917629e6fb7d",
+      "bytes": 990
+    }
+  }
+}

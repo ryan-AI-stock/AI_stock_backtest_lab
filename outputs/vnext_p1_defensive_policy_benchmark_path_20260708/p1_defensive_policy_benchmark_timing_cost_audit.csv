@@ -1,0 +1,6 @@
+audit_item,ready,source_quality,notes,cost_model_version,broker_fee_rate,broker_fee_discount,minimum_fee_twd,stock_sell_tax_rate,etf_sell_tax_rate,broker_fee_applies_on,securities_transaction_tax_applies_on,etf_and_stock_tax_split,yuanta_actual_discount_known,cost_model_boundary_zh
+next_day_close_signal_aligned_path,True,benchmark_features_adjusted_close,Full 0050/00631L signal-date aligned close path.,,,,,,,,,,,
+same_week_close_signal_aligned_path,True,benchmark_features_adjusted_close,Final signal date has no next signal and is excluded from readiness check via blocked ledger if present.,,,,,,,,,,,
+next_day_open_signal_aligned_path,False,blocked_open_price_not_in_benchmark_features,Open price is not available locally; not fabricated.,,,,,,,,,,,
+cash_zero_return_proxy,True,cash_proxy_no_interest_no_slippage,"Cash reference assumes zero return, zero interest, zero slippage.",,,,,,,,,,,
+local_ep05_cost_model,True,local_taiwan_standard_fee_tax_v1,Applied to 0050/00631L ETF unit-notional diagnostic rows only; not portfolio replay.,taiwan_standard_fee_tax_v1,0.001425,1.0,20.0,0.003,0.001,buy_and_sell,sell_only,True,False,台股標準成本口徑：買進與賣出皆扣券商手續費，賣出另扣證券交易稅；ETF 賣出稅率 0.1%，個股賣出稅率 0.3%。若未提供元大實際折扣，先用未折扣標準手續費 0.1425%。
