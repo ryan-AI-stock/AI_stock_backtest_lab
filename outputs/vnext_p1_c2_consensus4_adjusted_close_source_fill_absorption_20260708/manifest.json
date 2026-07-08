@@ -1,0 +1,104 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P1-C2-CONSENSUS4-ADJUSTED-CLOSE-SOURCE-FILL-ABSORPTION-001",
+  "status": "p1_c2_consensus4_adjusted_close_source_fill_absorbed_blocked_no_refresh",
+  "created_at": "2026-07-08T17:19:14.284295+08:00",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_consensus4_adjusted_close_source_fill_absorption_20260708",
+  "inputs": {
+    "radar_output": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_p1_c2_consensus4_selected_stock_adjusted_close_source_fill_20260708",
+    "core_prior_c2_contract": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_market_health_consensus4_adjusted_state_machine_contract_20260708"
+  },
+  "artifacts": [
+    {
+      "name": "p1_c2_consensus4_adjusted_close_source_fill_absorption.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_consensus4_adjusted_close_source_fill_absorption_20260708\\p1_c2_consensus4_adjusted_close_source_fill_absorption.csv",
+      "sha256": "251cb104f4dd1b9cf8184ee34176cad49dfadb9a2f34b66806a3bc4497133e13",
+      "rows": 1
+    },
+    {
+      "name": "p1_c2_consensus4_adjusted_close_remaining_blocked_ledger.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_consensus4_adjusted_close_source_fill_absorption_20260708\\p1_c2_consensus4_adjusted_close_remaining_blocked_ledger.csv",
+      "sha256": "a2d834b443906b3380cac1d584a6fbf27d6eb3a1e81a8d0178f540eaa128f719",
+      "rows": 16
+    },
+    {
+      "name": "p1_c2_consensus4_adjusted_close_source_route_attempts.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_consensus4_adjusted_close_source_fill_absorption_20260708\\p1_c2_consensus4_adjusted_close_source_route_attempts.csv",
+      "sha256": "9b2955108830c616b88e03079c9d7c1035f37055ded3e5086f702fda2fe3b3ec",
+      "rows": 4
+    },
+    {
+      "name": "p1_c2_consensus4_adjusted_close_missing_scope.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_consensus4_adjusted_close_source_fill_absorption_20260708\\p1_c2_consensus4_adjusted_close_missing_scope.csv",
+      "sha256": "218185ee9ddf0952fa446bb037c875dd2a698e738f75e69aa62a713ef76a7c8e",
+      "rows": 16
+    },
+    {
+      "name": "p1_c2_consensus4_adjusted_close_patch_rows.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_consensus4_adjusted_close_source_fill_absorption_20260708\\p1_c2_consensus4_adjusted_close_patch_rows.csv",
+      "sha256": "887ac712959de4b2163ce81c404bd15146af791965955a3faf3286a4954b8625",
+      "rows": 0
+    },
+    {
+      "name": "p1_c2_consensus4_adjusted_close_policy_options.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_consensus4_adjusted_close_source_fill_absorption_20260708\\p1_c2_consensus4_adjusted_close_policy_options.csv",
+      "sha256": "0af4c6f08e509a3ef44dadf702740b2a7d1280980bb52d5e6af5a8cfd219b7a6",
+      "rows": 3
+    },
+    {
+      "name": "p1_c2_consensus4_adjusted_close_absorption_future_data_audit.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_consensus4_adjusted_close_source_fill_absorption_20260708\\p1_c2_consensus4_adjusted_close_absorption_future_data_audit.csv",
+      "sha256": "95413fde58f6905fdf78db51357d0e08bd917f2c7570416ef5b85d7e89094d46",
+      "rows": 3
+    },
+    {
+      "name": "readiness_for_p1_c2_consensus4_adjusted_close_absorption.json",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_consensus4_adjusted_close_source_fill_absorption_20260708\\readiness_for_p1_c2_consensus4_adjusted_close_absorption.json",
+      "sha256": "208456d6972dc7f5931e36914e66cd7dbc77b8e98fef9046ac8b19b9c4c8a427",
+      "rows": null
+    },
+    {
+      "name": "final_summary_zh.md",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_consensus4_adjusted_close_source_fill_absorption_20260708\\final_summary_zh.md",
+      "sha256": "dfed6774d576c070644bab7ea4f10eff0142846e865cea8c7ebc8e32503fca03",
+      "rows": null
+    }
+  ],
+  "readiness": {
+    "task_id": "TASK-BACKTEST-CORE-VNEXT-P1-C2-CONSENSUS4-ADJUSTED-CLOSE-SOURCE-FILL-ABSORPTION-001",
+    "status": "p1_c2_consensus4_adjusted_close_source_fill_absorbed_blocked_no_refresh",
+    "upstream_radar_task_id": "TASK-RADAR-DATA-VNEXT-P1-C2-CONSENSUS4-SELECTED-STOCK-ADJUSTED-CLOSE-SOURCE-FILL-001",
+    "ready_for_p1_c2_market_health_consensus4_net_cost_diagnostic": false,
+    "ready_for_core_p1_c2_consensus4_adjusted_state_machine_refresh": false,
+    "ready_for_unadjusted_ohlc_comparator_diagnostic": true,
+    "ready_for_experiments": false,
+    "ready_for_formal": false,
+    "ready_for_strategy_replay": false,
+    "patched_interval_rows": 0,
+    "remaining_blocked_interval_rows": 16,
+    "entry_exit_adjusted_price_values_requested": 32,
+    "entry_exit_adjusted_price_values_filled": 0,
+    "selected_stock_adjusted_close_ready_share": 0.23809523809523808,
+    "adjusted_close_ready": false,
+    "future_data_violation_count": 0,
+    "next_owner": "Strategy Center",
+    "next_decision_required": true,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false,
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false
+  },
+  "flags": {
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "ready_for_strategy_replay": false,
+    "ready_for_formal": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false
+  }
+}

@@ -1,0 +1,4 @@
+﻿audit_item,status,violation_count,notes
+radar_patch_ingest,blocked_no_rows_to_ingest,0,Radar returned 0 adjusted-close patch rows; Core did not fabricate or silent-fill adjusted prices.
+unadjusted_proxy_boundary,preserved,0,Unadjusted OHLC comparator remains proxy-only and is not promoted to adjusted-close path or formal evidence.
+future_return_as_rule,pass,0,"No future return, 00631L+excess reconstruction, or hindsight price fill was used."
