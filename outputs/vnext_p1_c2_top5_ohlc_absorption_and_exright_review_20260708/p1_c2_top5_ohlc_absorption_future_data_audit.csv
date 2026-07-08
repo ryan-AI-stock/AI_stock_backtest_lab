@@ -1,0 +1,3 @@
+﻿audit_item,status,violation_count,notes
+ohlc_patch_absorption,pass,0,Absorbed selected-ticker official OHLC rows only; no full-market mass download and no silent fill.
+adjusted_close,blocked_preserved,0,Adjusted close remains blocked; unadjusted OHLC is diagnostic-only.

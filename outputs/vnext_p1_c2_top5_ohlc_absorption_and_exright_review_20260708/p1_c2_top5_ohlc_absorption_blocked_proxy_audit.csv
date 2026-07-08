@@ -1,0 +1,4 @@
+﻿field_or_component,status,ready_rows,blocked_rows,reason
+top5_official_unadjusted_ohlc_path,ready,1020,0,Radar source fill covered all previously missing top5 candidate official OHLC rows.
+adjusted_close,blocked,0,16,Official dividend route is partial and exact ex-date/capital-change route remains incomplete.
+cash_bear_classifier,blocked,0,2055,No accepted cash/bear classifier; no cash rule fabricated.

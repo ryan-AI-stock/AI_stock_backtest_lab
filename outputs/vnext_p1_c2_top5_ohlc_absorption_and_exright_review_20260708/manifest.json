@@ -1,0 +1,122 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P1-C2-TOP5-OHLC-ABSORPTION-AND-EXRIGHT-REVIEW-001",
+  "status": "p1_c2_top5_ohlc_absorbed_ready_exright_adjusted_blocked",
+  "created_at": "2026-07-08T19:13:18.926455+08:00",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_top5_ohlc_absorption_and_exright_review_20260708",
+  "inputs": {
+    "core_top5_contract": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_top5_multi_stock_exception_candidate_contract_20260708",
+    "radar_ohlc_source_fill": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_p1_c2_top5_exception_candidate_ohlc_source_fill_20260708",
+    "radar_exright_route_unlock": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_p1_c2_official_historical_exright_capital_change_route_unlock_20260708"
+  },
+  "artifacts": [
+    {
+      "name": "p1_c2_top5_exception_candidate_path_contract_refreshed.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_top5_ohlc_absorption_and_exright_review_20260708\\p1_c2_top5_exception_candidate_path_contract_refreshed.csv",
+      "sha256": "d06b599249f75ebb0c559759df5c7497ce0f80dff3cc42ad6bd457fe9ee5ae9f",
+      "rows": 2055
+    },
+    {
+      "name": "p1_c2_top5_exception_candidate_contract.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_top5_ohlc_absorption_and_exright_review_20260708\\p1_c2_top5_exception_candidate_contract.csv",
+      "sha256": "6bf2b1f1f4b967b23b1ce316eeaacd3b27ffc0776f2af2abaa6ce4415f59ab01",
+      "rows": 2055
+    },
+    {
+      "name": "p1_c2_top5_exception_candidate_transition_cost_design.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_top5_ohlc_absorption_and_exright_review_20260708\\p1_c2_top5_exception_candidate_transition_cost_design.csv",
+      "sha256": "86c9c3d796a2a4ed5a7a7520b59cf10c8b599dca4799e9c07dc5b28194547ca6",
+      "rows": 15
+    },
+    {
+      "name": "p1_c2_top5_exception_candidate_missing_path_after_absorption.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_top5_ohlc_absorption_and_exright_review_20260708\\p1_c2_top5_exception_candidate_missing_path_after_absorption.csv",
+      "sha256": "0185f020923414b6644c16b04df90a922e500e37a1276264135e58817f39bee5",
+      "rows": 0
+    },
+    {
+      "name": "p1_c2_top5_ohlc_absorption_coverage.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_top5_ohlc_absorption_and_exright_review_20260708\\p1_c2_top5_ohlc_absorption_coverage.csv",
+      "sha256": "4bd7eb2e19ed2066e2bc2f832b4a8628ce551f9f8f351e4fbf8427f8e3ed9cfe",
+      "rows": 2
+    },
+    {
+      "name": "p1_c2_exright_capital_change_source_review.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_top5_ohlc_absorption_and_exright_review_20260708\\p1_c2_exright_capital_change_source_review.csv",
+      "sha256": "c666cf6112fbbad12a9b45f9494137476c9fc0f2c7f2402f0ce4cae9d3a417a0",
+      "rows": 1
+    },
+    {
+      "name": "p1_c2_exright_adjustment_factor_source_candidates.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_top5_ohlc_absorption_and_exright_review_20260708\\p1_c2_exright_adjustment_factor_source_candidates.csv",
+      "sha256": "7880aa5bbde75b8dafde88a64308ec2cd6387721aa06c79e3d3de639e8dcff9f",
+      "rows": 51
+    },
+    {
+      "name": "p1_c2_exright_capital_change_blocked_ledger.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_top5_ohlc_absorption_and_exright_review_20260708\\p1_c2_exright_capital_change_blocked_ledger.csv",
+      "sha256": "f49a77d82f4f1ba3e31567cbbe47708f6de906909683e0ebecb8f71c3cd6f26b",
+      "rows": 16
+    },
+    {
+      "name": "p1_c2_top5_ohlc_absorption_blocked_proxy_audit.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_top5_ohlc_absorption_and_exright_review_20260708\\p1_c2_top5_ohlc_absorption_blocked_proxy_audit.csv",
+      "sha256": "f22d7ac6d211dc681de3226a28bf581fc24f014d6e80d4c0a3828fdeed19e143",
+      "rows": 3
+    },
+    {
+      "name": "p1_c2_top5_ohlc_absorption_future_data_audit.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_top5_ohlc_absorption_and_exright_review_20260708\\p1_c2_top5_ohlc_absorption_future_data_audit.csv",
+      "sha256": "b271a25bfbd3761f9c382fbe5b850d8c37849ec513f1678fddc8f581780358c8",
+      "rows": 2
+    },
+    {
+      "name": "readiness_for_p1_c2_top5_multi_stock_exception_count_diagnostic.json",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_top5_ohlc_absorption_and_exright_review_20260708\\readiness_for_p1_c2_top5_multi_stock_exception_count_diagnostic.json",
+      "sha256": "7ffb1078c3e1bebdacc392d9debd9390f36dc90b69c02de568f56f4b468bc4c4",
+      "rows": null
+    },
+    {
+      "name": "final_summary_zh.md",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_top5_ohlc_absorption_and_exright_review_20260708\\final_summary_zh.md",
+      "sha256": "96543c503a039e7909c6d981dd3d2c6c500b0a7acf4e1d2511a7b912e98cb46d",
+      "rows": null
+    }
+  ],
+  "readiness": {
+    "task_id": "TASK-BACKTEST-CORE-VNEXT-P1-C2-TOP5-OHLC-ABSORPTION-AND-EXRIGHT-REVIEW-001",
+    "status": "p1_c2_top5_ohlc_absorbed_ready_exright_adjusted_blocked",
+    "ready_for_p1_c2_top5_multi_stock_exception_count_diagnostic": true,
+    "ready_for_experiments": true,
+    "candidate_contract_ready": true,
+    "official_unadjusted_ohlc_path_ready": true,
+    "c2_true_candidate_path_required_rows": 1020,
+    "official_ohlc_ready_rows": 1020,
+    "official_ohlc_blocked_rows": 0,
+    "transition_cost_design_ready": true,
+    "adjusted_close_ready": false,
+    "ready_for_core_p1_c2_adjustment_contract": false,
+    "exright_event_candidate_rows": 51,
+    "adjustment_factor_source_candidate_rows": 51,
+    "future_data_violation_count": 0,
+    "ready_for_formal": false,
+    "ready_for_strategy_replay": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false,
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false
+  },
+  "flags": {
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "ready_for_strategy_replay": false,
+    "ready_for_formal": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false
+  }
+}
