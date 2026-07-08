@@ -1,0 +1,4 @@
+﻿component,rows,ready_rows,blocked_rows,coverage_status
+state_machine_interval_contract,412,412,0,ready
+transition_trace,76,76,0,ready
+00631L_base_adjusted_close,1956,1956,0,ready

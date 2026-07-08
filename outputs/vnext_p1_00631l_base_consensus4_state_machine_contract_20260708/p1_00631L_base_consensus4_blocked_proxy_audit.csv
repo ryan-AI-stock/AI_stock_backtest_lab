@@ -1,0 +1,4 @@
+﻿field_or_component,status,reason,affected_rows
+cash_condition_bear_classifier,blocked,no accepted cash/bear classifier; no cash rule fabricated,412
+stock_exception_adjusted_close,blocked,stock exception path uses official unadjusted OHLC; adjusted close not fabricated,41
+transition_cost_model,diagnostic_proxy_ready,EP05 TaiwanCostModel applied to unit notional; ETF sell tax and stock sell tax are separated by asset type,412
