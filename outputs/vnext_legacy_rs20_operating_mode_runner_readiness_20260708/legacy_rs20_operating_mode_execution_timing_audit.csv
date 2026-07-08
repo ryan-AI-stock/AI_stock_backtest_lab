@@ -1,0 +1,5 @@
+﻿timing_item,status,affected_count,evidence
+same_week_close_to_next_5td_proxy,materialized_proxy,2368,uses existing forward_excess_vs_00631L_5d and 00631L benchmark forward return
+next_trading_day_entry_exact,blocked,388,price_source_registry lacks full selected-stock adjusted close coverage
+weekly_rebalance,template_ready_proxy,2368,signal dates are weekly snapshots; exact trade dates need price calendar path
+hold_until_rank_deterioration,template_only,2368,PIT-observable but path not materialized here

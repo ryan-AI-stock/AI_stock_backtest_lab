@@ -1,0 +1,10 @@
+﻿contract_component,definition,materialization_basis,source_quality
+universe,Layer4 80 primary pool,outputs/vnext_layer5_within80_daily_rank_context_contract_20260708,PIT existing contract
+main_candidate,weekly RS20 top1 within 80,RS20 rank within signal_date,PIT
+comparator,RS20 top3 risk/context tie-break,top3 by RS20 then layer4_risk_aware_score,PIT/proxy
+comparator,RS20 top1 with 7-core flag,flag only for 2330/2454/2308/2317/2382/3231/6669,PIT context
+comparator,RS20 with optional 31 high-confidence bonus,RS20 + small context bonus; not formal,PIT/proxy
+execution_timing_a,same-week close to next 5 trading days proxy,uses forward_excess_vs_00631L_5d + 00631L forward 5d,proxy materialized
+execution_timing_b,next-trading-day entry,blocked until exact adjusted-close daily path exists for selected stocks,blocked
+holding_discipline,fixed 5 trading days / weekly rebalance / rank deterioration template,rank deterioration is PIT feasible but not computed as path rule here,template
+cost_scenarios,0/10/20/40bp roundtrip,scenario fields only,diagnostic

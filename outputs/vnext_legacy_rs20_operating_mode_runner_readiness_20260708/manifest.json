@@ -1,0 +1,32 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LEGACY-RS20-OPERATING-MODE-MATERIALIZED-RUNNER-READINESS-001",
+  "status": "legacy_rs20_operating_mode_materialized_proxy_runner_ready_exact_path_blocked",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_legacy_rs20_operating_mode_runner_readiness_20260708",
+  "input_layer5_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer5_within80_daily_rank_context_contract_20260708",
+  "input_benchmark_path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_dynamic_candidate_pool_data_materialization_20260706\\benchmark_features.csv",
+  "input_price_registry": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\data\\price_source_registry.csv",
+  "input_experiments_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-07-06\\backtest-lab-experiments-diagnostic-validation-attribution\\outputs\\vnext_legacy_operating_mode_dynamic_layer4_80_pool_diagnostic_20260708",
+  "output_files": [
+    "legacy_rs20_operating_mode_runner_contract.csv",
+    "legacy_rs20_operating_mode_signal_table.csv",
+    "legacy_rs20_operating_mode_price_return_path_table.csv",
+    "legacy_rs20_operating_mode_trade_path_template.csv",
+    "legacy_rs20_operating_mode_execution_timing_audit.csv",
+    "legacy_rs20_operating_mode_cost_scenarios.csv",
+    "legacy_rs20_operating_mode_legacy_runner_search_audit.csv",
+    "legacy_rs20_operating_mode_missingness_coverage.csv",
+    "legacy_rs20_operating_mode_future_data_audit.csv",
+    "readiness_for_legacy_rs20_operating_mode_diagnostic.json",
+    "manifest.json",
+    "final_summary_zh.md"
+  ],
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "ready_for_strategy_replay": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false,
+  "diagnostic_only": true
+}

@@ -1,0 +1,6 @@
+﻿audit_item,status,violation_count,evidence
+selection_uses_forward_return,passed,0,selection ranks by RS20 and PIT context only
+future_return_as_rule,passed,0,false for all signal rows
+trade_template_forward_return_as_rule,passed,0,false for trade templates
+formal_model_changed,passed,0,contract/readiness only
+trade_decision_output,passed,0,no live trade decision output

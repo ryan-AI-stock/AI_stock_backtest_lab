@@ -1,0 +1,7 @@
+﻿path_or_scope,search_status,evidence,exact_legacy_runner_not_found
+configs/ep05_universe.json,found_config,"2024-01-02 to 2026-05-26, T close / T+1 open policy, 0050+00631L+mega caps universe",False
+src/backtest_lab/cli.py,found_legacy_ep05_runner_entry,Runs relative_strength_top1 on fixed group through yfinance/cache; not dynamic Layer4 80 exact runner,False
+src/backtest_lab/simulation.py,found_legacy_strategy_functions,"Likely contains relative_strength_top1 mechanics, but not exact vNext dynamic80 materialized runner",False
+docs/regime_aware_strategy_product_spec.md,found_historical_design_doc,Daily chasing / weekly rotation design notes only,False
+experiments legacy_mode_dynamic_pool_summary.json,found_prior_proxy_result,Experiments already marked exact_legacy_runner_found=false,False
+repo_wide_keyword_search,exact_legacy_runner_not_found,"No audited exact legacy runner with dynamic80, costs, timing, and price path found in minimal search",True

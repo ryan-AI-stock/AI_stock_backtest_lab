@@ -1,0 +1,6 @@
+﻿cost_scenario,roundtrip_cost_bp,cost_application,source_quality,formal_cost_model
+roundtrip_0bp,0.0,subtract from each switch/holding interval in Experiments diagnostic,no_cost_reference,False
+roundtrip_10bp,10.0,subtract from each switch/holding interval in Experiments diagnostic,scenario_placeholder,False
+roundtrip_20bp,20.0,subtract from each switch/holding interval in Experiments diagnostic,scenario_placeholder,False
+roundtrip_40bp,40.0,subtract from each switch/holding interval in Experiments diagnostic,scenario_placeholder,False
+local_ep05_standard_cost_model,,available in configs/ep05_universe.json but not applied in Core readiness,blocked_until_experiments_cost_runner_applies_turnover_tax_fee,False

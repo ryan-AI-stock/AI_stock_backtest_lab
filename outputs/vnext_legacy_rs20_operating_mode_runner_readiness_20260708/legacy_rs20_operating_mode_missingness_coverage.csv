@@ -1,0 +1,8 @@
+﻿coverage_item,row_count,missing_count,missing_share,status
+RS20,2368,16,0.006756756756756757,partial
+RS60,2368,120,0.05067567567567568,partial
+forward_excess_vs_00631L_5d,2368,24,0.010135135135135136,partial
+00631L_forward_return_5d,2368,8,0.0033783783783783786,partial
+proxy_stock_forward_return_5d,2368,24,0.010135135135135136,partial
+exact_selected_stock_adjusted_close_path,388,388,1.0,blocked_for_exact_next_day_runner
+selected_unique_ticker_count,388,0,0.0,informational
