@@ -30,6 +30,7 @@ class VNextReportPaths:
     radar_official_ohlcv_manifest: Path
     radar_pit_daily_sample: Path
     eod_source_scoped_rows: Path | None = None
+    signal_refresh_dir: Path | None = None
 
 
 def default_paths(root: Path) -> VNextReportPaths:
@@ -55,6 +56,7 @@ def main() -> None:
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR))
     parser.add_argument("--publish-drive", action="store_true")
     parser.add_argument("--eod-source-dir", default="")
+    parser.add_argument("--signal-refresh-dir", default="")
     parser.add_argument("--folder-id", default=DEFAULT_FOLDER_ID)
     parser.add_argument("--remote-name", default=REMOTE_REPORT_NAME)
     parser.add_argument("--file-id", default=os.environ.get("VNEXT_DAILY_REPORT_DRIVE_FILE_ID", ""))
@@ -73,6 +75,7 @@ def main() -> None:
         remote_name=args.remote_name,
         file_id=args.file_id.strip() or None,
         eod_source_dir=Path(args.eod_source_dir) if args.eod_source_dir else None,
+        signal_refresh_dir=Path(args.signal_refresh_dir) if args.signal_refresh_dir else None,
     )
 
 
@@ -86,6 +89,7 @@ def build_package(
     remote_name: str = REMOTE_REPORT_NAME,
     file_id: str | None = None,
     eod_source_dir: Path | None = None,
+    signal_refresh_dir: Path | None = None,
 ) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     paths = default_paths(root)
@@ -94,6 +98,13 @@ def build_package(
             **{
                 **paths.__dict__,
                 "eod_source_scoped_rows": eod_source_dir / "vnext_adhoc_20260708_scoped_common_stock_etf_rows.csv",
+            }
+        )
+    if signal_refresh_dir is not None:
+        paths = VNextReportPaths(
+            **{
+                **paths.__dict__,
+                "signal_refresh_dir": signal_refresh_dir,
             }
         )
     snapshot = build_signal_snapshot(paths, requested_date)
@@ -137,7 +148,7 @@ def build_package(
         "future_data_violation_count": 0,
         "ready_for_daily_report_pipeline_review": True,
         "ready_for_live_publish": False,
-        "live_publish_blocker": "Drive publish not executed locally; requested-date vNext Layer0-Layer4/trigger/score fields are not fully materialized; local Poppler/pypdf visual/text validation tools unavailable.",
+        "live_publish_blocker": "Drive publish not executed locally; live publish is blocked until Strategy Center authorizes report-only publication and visual validation / Drive upload are verified.",
     }
     write_json(output_dir / "vnext_daily_report_pipeline_readiness.json", readiness)
 
@@ -175,6 +186,9 @@ def build_package(
 
 
 def build_signal_snapshot(paths: VNextReportPaths, requested_date: str) -> dict[str, Any]:
+    refreshed = load_signal_refresh_snapshot(paths.signal_refresh_dir, requested_date)
+    if refreshed:
+        return refreshed
     field_dates = {
         "single_day_eod_source_anchor": max_date(paths.eod_source_scoped_rows, "date") if paths.eod_source_scoped_rows else None,
         "radar_full_sweep_official_ohlcv": max_date(paths.radar_official_ohlcv_manifest, "last_date"),
@@ -298,6 +312,99 @@ def build_requested_vs_actual_coverage(paths: VNextReportPaths, requested_date: 
             }
         )
     return pd.DataFrame(out)
+
+
+def load_signal_refresh_snapshot(signal_refresh_dir: Path | None, requested_date: str) -> dict[str, Any] | None:
+    if signal_refresh_dir is None:
+        return None
+    snapshot_path = signal_refresh_dir / "vnext_adhoc_20260708_signal_snapshot.json"
+    rs20_path = signal_refresh_dir / "vnext_adhoc_20260708_rs20_top3_reference.csv"
+    market_path = signal_refresh_dir / "vnext_adhoc_20260708_0050_market_regime_partial.csv"
+    if not snapshot_path.exists():
+        return None
+    raw = json.loads(snapshot_path.read_text(encoding="utf-8"))
+    rs20 = []
+    if rs20_path.exists():
+        rs = pd.read_csv(rs20_path, dtype={"ticker": str})
+        for _, row in rs.iterrows():
+            rs20.append(
+                {
+                    "ticker": str(row.get("ticker", "")),
+                    "name": row.get("name", ""),
+                    "RS20": none_if_nan(row.get("RS20")),
+                    "RS40": None,
+                    "RS60": None,
+                    "traded_value_rank_20d": none_if_nan(row.get("traded_value_rank_20d")),
+                    "risk_overheat_penalty_context": None,
+                    "source_quality": row.get("source_quality", "bounded_20260708_rs20_reference"),
+                }
+            )
+    market = {}
+    if market_path.exists():
+        m = pd.read_csv(market_path, dtype={"ticker": str})
+        rows = m[m["ticker"].eq("0050")]
+        if not rows.empty:
+            row = rows.iloc[0]
+            market = {
+                "snapshot_date": row.get("date"),
+                "0050_adjusted_close": row.get("close"),
+                "0050_return_20d": row.get("return_20d"),
+                "0050_return_40d": row.get("return_40d"),
+                "0050_return_60d": row.get("return_60d"),
+                "0050_price_vs_ma60": row.get("bias60"),
+                "0050_bias20": None,
+                "0050_bias60": row.get("bias60"),
+                "0050_ma60": row.get("ma60"),
+                "c2_market_health_gate": row.get("c2_market_health_gate"),
+                "c2_market_health_gate_ready": row.get("c2_market_health_gate_ready"),
+            }
+    selected_asset_type = raw.get("c2_selected_asset_type") or "blocked"
+    selected_ticker = raw.get("c2_selected_ticker") or ""
+    selected_name = raw.get("c2_selected_name") or ""
+    market_ready = bool(raw.get("c2_gate_ready")) and (
+        (not bool(raw.get("c2_gate_pass"))) or bool(raw.get("consensus_trigger_ready"))
+    )
+    if bool(raw.get("c2_gate_pass")) and not bool(raw.get("consensus_trigger_ready")):
+        selected_branch_value = "blocked_consensus_trigger_missing"
+        regime = "健康強勢但個股觸發未齊"
+    elif selected_asset_type == "00631L_fallback":
+        selected_branch_value = "fallback_00631L"
+        regime = "普通防守 - C2 未通過"
+    else:
+        selected_branch_value = "blocked_vnext_fields_missing"
+        regime = "資料未齊 - selected blocked"
+    return {
+        "as_of_requested_date": requested_date,
+        "as_of_data_date": raw.get("as_of_data_date", requested_date),
+        "data_actual_date": raw.get("as_of_data_date", requested_date),
+        "official_eod_anchor_ready": True,
+        "market_data_ready": market_ready,
+        "field_as_of_dates": {"signal_refresh": raw.get("as_of_data_date", requested_date)},
+        "requested_date_field_presence": {"signal_refresh": True},
+        "regime_label": regime,
+        "selected_branch": selected_branch_value,
+        "branch_reason": raw.get("c2_blocked_reason", ""),
+        "triggered_features": [
+            f"C2={raw.get('c2_gate_pass')}",
+            f"consensus={raw.get('consensus_trigger_pass')}",
+            f"0050_return_20d={raw.get('0050_return_20d')}",
+            f"0050_return_40d={raw.get('0050_return_40d')}",
+            f"0050_bias60={raw.get('0050_bias60')}",
+        ],
+        "selected_asset_type": selected_asset_type,
+        "selected_ticker": selected_ticker,
+        "selected_name": selected_name,
+        "c2_gate_pass": bool(raw.get("c2_gate_pass")),
+        "consensus_trigger_pass": bool(raw.get("consensus_trigger_pass")),
+        "route_support_score": None,
+        "route_support_rank": None,
+        "rs20_reference_top3": rs20,
+        "rs20_reference_top1": rs20[0] if rs20 else None,
+        "latest_0050_market_reference": market,
+        "current_eod_anchor_rows": {},
+        "diagnostic_only": True,
+        "not_live_trade_decision": True,
+    }
 
 
 def build_blocked_proxy_audit(snapshot: dict[str, Any], coverage: pd.DataFrame) -> pd.DataFrame:
@@ -568,7 +675,9 @@ def write_summary(path: Path, *, snapshot: dict[str, Any], readiness: dict[str, 
 - actual data date: `{snapshot['data_actual_date']}`。
 - vNext signal actual date: `{snapshot['as_of_data_date']}`。
 - market_data_ready_for_requested_date: `{snapshot['market_data_ready']}`。
-- 目前 sample PDF 使用 latest available reference；若要產出 2026-07-08 真正 report，需要先補 vNext 2026-07-08 source/materialization。
+- selected_branch: `{snapshot['selected_branch']}`。
+- branch_reason: `{snapshot['branch_reason']}`。
+- 若 `market_data_ready_for_requested_date=false`，代表今日主推薦尚未可發布成 selected signal；reference-only 欄位不可包裝成交易建議。
 
 ## 報告口徑
 

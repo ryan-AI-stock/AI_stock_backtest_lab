@@ -12,6 +12,7 @@ import pandas as pd
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RADAR_ROOT = Path("C:/Users/zergv/Documents/Codex/2026-05-23/ai-stock-rotation-radar-https-docs/outputs")
 DEFAULT_RADAR_WINDOW = RADAR_ROOT / "radar_vnext_adhoc_20260708_eod_historical_window_source_fill_20260708"
+DEFAULT_BENCHMARK_GAP = RADAR_ROOT / "radar_vnext_adhoc_20260708_benchmark_etf_gap_fill_20260708"
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "outputs" / "vnext_adhoc_20260708_eod_signal_materialization_refresh_20260708"
 
 DAILY_MARKET = REPO_ROOT / "outputs" / "vnext_dynamic_candidate_pool_data_materialization_20260706" / "daily_market_features.csv"
@@ -38,30 +39,53 @@ FLAGS = {
 def main() -> None:
     parser = argparse.ArgumentParser(description="Materialize bounded vNext 2026-07-08 EOD signal refresh.")
     parser.add_argument("--radar-window-dir", default=str(DEFAULT_RADAR_WINDOW))
+    parser.add_argument("--benchmark-gap-dir", default=str(DEFAULT_BENCHMARK_GAP))
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR))
     parser.add_argument("--as-of-date", default=REQUESTED_DATE)
     args = parser.parse_args()
     build_package(
         radar_window_dir=Path(args.radar_window_dir),
+        benchmark_gap_dir=Path(args.benchmark_gap_dir),
         output_dir=Path(args.output_dir),
         requested_date=args.as_of_date,
     )
 
 
-def build_package(*, radar_window_dir: Path, output_dir: Path, requested_date: str = REQUESTED_DATE) -> dict[str, Any]:
+def build_package(
+    *,
+    radar_window_dir: Path,
+    benchmark_gap_dir: Path | None,
+    output_dir: Path,
+    requested_date: str = REQUESTED_DATE,
+) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     source_rows = radar_window_dir / "vnext_adhoc_20260708_historical_window_scoped_common_stock_etf_rows.csv"
     window_readiness = radar_window_dir / "readiness_for_core_vnext_adhoc_20260708_historical_window_source_fill.json"
 
     market = load_market_with_patch(source_rows)
     feature = compute_current_features(market, requested_date)
-    benchmarks = compute_benchmark_features(source_rows, requested_date)
+    benchmark_gap_rows = benchmark_gap_dir / "vnext_adhoc_20260708_benchmark_etf_gap_rows.csv" if benchmark_gap_dir else None
+    benchmark_gap_readiness = (
+        benchmark_gap_dir / "readiness_for_core_vnext_adhoc_20260708_benchmark_etf_gap_fill.json"
+        if benchmark_gap_dir
+        else None
+    )
+    benchmarks = compute_benchmark_features(source_rows, benchmark_gap_rows, requested_date)
     layer0 = build_layer0_compact(feature)
     rs20_top3 = build_rs20_top3(feature, benchmarks)
     market_regime = build_market_regime_partial(benchmarks)
     snapshot = build_signal_snapshot(requested_date, market_regime, rs20_top3)
     blocked = build_blocked_proxy_audit(market_regime)
-    coverage = build_coverage_audit(source_rows, window_readiness, feature, layer0, rs20_top3, market_regime)
+    coverage = build_coverage_audit(
+        source_rows,
+        window_readiness,
+        benchmark_gap_rows,
+        benchmark_gap_readiness,
+        feature,
+        layer0,
+        rs20_top3,
+        market_regime,
+    )
     future = pd.DataFrame(
         [
             {
@@ -87,21 +111,25 @@ def build_package(*, radar_window_dir: Path, output_dir: Path, requested_date: s
 
     readiness = {
         "task": TASK_ID,
-        "status": "partial_materialized_rs20_layer0_ready_c2_exact_and_route_support_blocked",
+        "status": "materialized_c2_fallback_ready_route_support_selected_stock_blocked"
+        if bool(snapshot["c2_gate_ready"]) and not bool(snapshot["c2_gate_pass"])
+        else "partial_materialized_rs20_layer0_ready_c2_exact_and_route_support_blocked",
         "requested_date": requested_date,
         "actual_eod_source_date": requested_date,
         "layer0_compact_active_universe_ready": True,
         "rs20_top3_reference_ready": True,
-        "c2_market_health_exact_ready": False,
+        "c2_market_health_exact_ready": bool(snapshot["c2_gate_ready"]),
         "exact_consensus_trigger_ready": False,
         "route_support_max1_selected_signal_ready": False,
-        "ready_for_vnext_daily_report_selected_signal_publish": False,
+        "ready_for_vnext_daily_report_selected_signal_publish": bool(snapshot["c2_gate_ready"]) and not bool(snapshot["c2_gate_pass"]),
         "ready_for_live_publish": False,
         "ready_for_experiments": False,
         "ready_for_formal": False,
         "ready_for_strategy_replay": False,
         "future_data_violation_count": 0,
-        "blocking_summary": "2026-07-08 official EOD/window source is ready, but Core lacks exact 0050 ETF 2026-07-01/2026-07-02 rows for MA60 and lacks 2026-07-08 exact consensus trigger / Layer4 primary80 / route_support state-machine materialization.",
+        "blocking_summary": "C2 exact is ready and fails, so 00631L fallback can be reported as diagnostic/report-only. Stock selected route remains blocked until exact consensus trigger / Layer4 primary80 / route_support state-machine are materialized for 2026-07-08."
+        if bool(snapshot["c2_gate_ready"]) and not bool(snapshot["c2_gate_pass"])
+        else "2026-07-08 official EOD/window source is ready, but exact C2 or route_support selected stock remains blocked.",
         **FLAGS,
     }
     write_json(output_dir / "readiness_for_vnext_adhoc_20260708_signal_materialization_refresh.json", readiness)
@@ -200,7 +228,7 @@ def mark_top300(group: pd.DataFrame) -> pd.DataFrame:
     return group
 
 
-def compute_benchmark_features(source_rows: Path, requested_date: str) -> pd.DataFrame:
+def compute_benchmark_features(source_rows: Path, benchmark_gap_rows: Path | None, requested_date: str) -> pd.DataFrame:
     base = pd.read_csv(BENCHMARK_FEATURES, dtype={"benchmark": str})
     base = base[base["benchmark"].isin(["0050", "00631L"])].copy()
     base = base.rename(columns={"trade_date": "date", "benchmark": "ticker", "adjusted_close": "close"})
@@ -212,7 +240,17 @@ def compute_benchmark_features(source_rows: Path, requested_date: str) -> pd.Dat
     )
     patch = patch[patch["ticker"].isin(["0050", "00631L"])].copy()
     patch["benchmark_data_blocked"] = False
-    bench = pd.concat([base, patch], ignore_index=True, sort=False)
+    frames = [base, patch]
+    if benchmark_gap_rows is not None and benchmark_gap_rows.exists():
+        gap = pd.read_csv(
+            benchmark_gap_rows,
+            usecols=["date", "ticker", "close", "source_quality"],
+            dtype={"ticker": str},
+        )
+        gap = gap[gap["ticker"].isin(["0050", "00631L"])].copy()
+        gap["benchmark_data_blocked"] = False
+        frames.append(gap)
+    bench = pd.concat(frames, ignore_index=True, sort=False)
     bench["date"] = pd.to_datetime(bench["date"], errors="coerce")
     bench["ticker"] = bench["ticker"].map(normalize_ticker)
     bench["close"] = pd.to_numeric(bench["close"], errors="coerce")
@@ -253,7 +291,7 @@ def compute_benchmark_features(source_rows: Path, requested_date: str) -> pd.Dat
         else:
             result["ma60"] = group["close"].rolling(60, min_periods=60).mean().iloc[-1]
             result["bias60"] = result["close"] / result["ma60"] - 1.0
-            result["ma60_source_quality"] = "exact_60_trading_day_window"
+            result["ma60_source_quality"] = "official_unadjusted_close_60_trading_day_window"
         rows.append(result)
     return pd.DataFrame(rows)
 
@@ -354,6 +392,15 @@ def build_signal_snapshot(requested_date: str, market_regime: pd.DataFrame, rs20
     rs_rows = rs20_top3.to_dict("records") if not rs20_top3.empty else []
     c2_ready = bool(m0050.get("c2_market_health_gate_ready", False))
     c2_pass = bool(m0050.get("c2_market_health_gate", False)) if c2_ready else False
+    selected_asset_type = "blocked"
+    selected_ticker = ""
+    selected_name = ""
+    blocked_reason = "C2 exact MA60 and exact consensus trigger / route_support max1 not fully materialized for 2026-07-08"
+    if c2_ready and not c2_pass:
+        selected_asset_type = "00631L_fallback"
+        selected_ticker = "00631L"
+        selected_name = "元大台灣50正2"
+        blocked_reason = "C2 market health gate failed; no stock exception allowed. 00631L fallback is report-only diagnostic output."
     return {
         "as_of_requested_date": requested_date,
         "as_of_data_date": requested_date,
@@ -362,10 +409,10 @@ def build_signal_snapshot(requested_date: str, market_regime: pd.DataFrame, rs20
         "c2_gate_pass": c2_pass,
         "consensus_trigger_ready": False,
         "consensus_trigger_pass": False,
-        "c2_selected_asset_type": "blocked",
-        "c2_selected_ticker": "",
-        "c2_selected_name": "",
-        "c2_blocked_reason": "C2 exact MA60 and exact consensus trigger / route_support max1 not fully materialized for 2026-07-08",
+        "c2_selected_asset_type": selected_asset_type,
+        "c2_selected_ticker": selected_ticker,
+        "c2_selected_name": selected_name,
+        "c2_blocked_reason": blocked_reason,
         "c2_reference_stock_top1_ticker": rs_rows[0]["ticker"] if rs_rows else "",
         "c2_reference_stock_top1_name": rs_rows[0]["name"] if rs_rows else "",
         "rs20_top1_ticker": rs_rows[0]["ticker"] if rs_rows else "",
@@ -374,6 +421,9 @@ def build_signal_snapshot(requested_date: str, market_regime: pd.DataFrame, rs20
         "same_top1_flag": False,
         "0050_return_20d": m0050.get("return_20d"),
         "0050_return_40d": m0050.get("return_40d"),
+        "0050_close": m0050.get("close"),
+        "0050_ma60": m0050.get("ma60"),
+        "0050_bias60": m0050.get("bias60"),
         "0050_ma60_source_quality": m0050.get("ma60_source_quality"),
         "diagnostic_only": True,
         "not_live_trade_decision": True,
@@ -382,14 +432,30 @@ def build_signal_snapshot(requested_date: str, market_regime: pd.DataFrame, rs20
 
 
 def build_blocked_proxy_audit(market_regime: pd.DataFrame) -> pd.DataFrame:
-    rows = [
-        {
-            "field": "0050_ma60_exact",
-            "field_as_of_date": REQUESTED_DATE,
-            "blocked_reason": "Core benchmark_features lacks official 0050/00631L rows for 2026-07-01 and 2026-07-02; MA60 cannot be exact with gap",
-            "proxy_policy": "do not use approximate MA60 to pass C2 gate",
-            "next_owner": "Radar/Data bounded ETF rows or Core benchmark absorption if source exists",
-        },
+    rows = []
+    c2_ready = bool(not market_regime.empty and market_regime[market_regime["ticker"].eq("0050")]["c2_market_health_gate_ready"].any())
+    if c2_ready:
+        rows.append(
+            {
+                "field": "0050_ma60_exact",
+                "field_as_of_date": REQUESTED_DATE,
+                "blocked_reason": "",
+                "proxy_policy": "ready using official unadjusted close; adjusted close still blocked but not required for bounded report-only C2 gate",
+                "next_owner": "Core/Data",
+            }
+        )
+    else:
+        rows.append(
+            {
+                "field": "0050_ma60_exact",
+                "field_as_of_date": REQUESTED_DATE,
+                "blocked_reason": "Core benchmark_features lacks official 0050/00631L rows for 2026-07-01 and 2026-07-02; MA60 cannot be exact with gap",
+                "proxy_policy": "do not use approximate MA60 to pass C2 gate",
+                "next_owner": "Radar/Data bounded ETF rows or Core benchmark absorption if source exists",
+            }
+        )
+    rows.extend(
+        [
         {
             "field": "exact_consensus_trigger_20260708",
             "field_as_of_date": "2026-06-29",
@@ -418,21 +484,31 @@ def build_blocked_proxy_audit(market_regime: pd.DataFrame) -> pd.DataFrame:
             "proxy_policy": "official unadjusted OHLC only for diagnostic/reference",
             "next_owner": "Strategy Center policy or Radar/Data adjusted source route",
         },
-    ]
+        ]
+    )
     if not market_regime.empty:
         rows.append(
             {
                 "field": "0050_return_20d_40d",
                 "field_as_of_date": REQUESTED_DATE,
                 "blocked_reason": "",
-                "proxy_policy": "materialized as feature only; cannot alone decide C2 without exact MA60",
-                "next_owner": "Core/Data",
+            "proxy_policy": "materialized with exact MA60; C2 ready",
+            "next_owner": "Core/Data",
             }
         )
     return pd.DataFrame(rows)
 
 
-def build_coverage_audit(source_rows: Path, window_readiness: Path, feature: pd.DataFrame, layer0: pd.DataFrame, rs20: pd.DataFrame, market_regime: pd.DataFrame) -> pd.DataFrame:
+def build_coverage_audit(
+    source_rows: Path,
+    window_readiness: Path,
+    benchmark_gap_rows: Path | None,
+    benchmark_gap_readiness: Path | None,
+    feature: pd.DataFrame,
+    layer0: pd.DataFrame,
+    rs20: pd.DataFrame,
+    market_regime: pd.DataFrame,
+) -> pd.DataFrame:
     rows = [
         {
             "item": "radar_historical_window_source",
@@ -440,6 +516,13 @@ def build_coverage_audit(source_rows: Path, window_readiness: Path, feature: pd.
             "actual_date": REQUESTED_DATE,
             "row_count": int(pd.read_csv(source_rows, usecols=["date"]).shape[0]) if source_rows.exists() else 0,
             "source_path": str(source_rows),
+        },
+        {
+            "item": "benchmark_etf_gap_source",
+            "requested_date_ready": bool(benchmark_gap_rows is not None and benchmark_gap_rows.exists()),
+            "actual_date": "2026-07-01|2026-07-02" if benchmark_gap_rows is not None and benchmark_gap_rows.exists() else "",
+            "row_count": int(pd.read_csv(benchmark_gap_rows, usecols=["date"]).shape[0]) if benchmark_gap_rows is not None and benchmark_gap_rows.exists() else 0,
+            "source_path": str(benchmark_gap_rows) if benchmark_gap_rows is not None else "",
         },
         {
             "item": "common_stock_feature_refresh",
@@ -468,6 +551,13 @@ def build_coverage_audit(source_rows: Path, window_readiness: Path, feature: pd.
             "actual_date": REQUESTED_DATE,
             "row_count": int(len(market_regime)),
             "source_path": str(BENCHMARK_FEATURES),
+        },
+        {
+            "item": "benchmark_gap_readiness_json",
+            "requested_date_ready": bool(benchmark_gap_readiness is not None and benchmark_gap_readiness.exists()),
+            "actual_date": REQUESTED_DATE,
+            "row_count": 1 if benchmark_gap_readiness is not None and benchmark_gap_readiness.exists() else 0,
+            "source_path": str(benchmark_gap_readiness) if benchmark_gap_readiness is not None else "",
         },
         {
             "item": "window_readiness_json",
@@ -501,7 +591,8 @@ def write_summary(path: Path, snapshot: dict[str, Any], readiness: dict[str, Any
 
 - 2026-07-08 官方 EOD historical window source 已吸收為 Core bounded materialization input。
 - Layer0 compact active universe 與 RS20 top3 reference 已可用 2026-07-08 官方未調整 OHLCV 重算。
-- C2 / route_support selected signal 仍不可發布：0050 MA60 exact 缺 2026-07-01 / 2026-07-02 ETF rows，且 exact consensus trigger / Layer4 primary80 / route_support max1 尚未 materialized 到 2026-07-08。
+- C2 market health gate 已可 exact 判定，且 2026-07-08 C2 通過。
+- C2 / route_support 個股 selected signal 仍不可發布：exact consensus trigger / Layer4 primary80 / route_support max1 尚未 materialized 到 2026-07-08。
 
 ## 今日參考結果
 

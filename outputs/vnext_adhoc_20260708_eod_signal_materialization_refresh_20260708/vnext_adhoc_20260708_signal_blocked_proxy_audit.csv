@@ -1,7 +1,7 @@
 ﻿field,field_as_of_date,blocked_reason,proxy_policy,next_owner
-0050_ma60_exact,2026-07-08,Core benchmark_features lacks official 0050/00631L rows for 2026-07-01 and 2026-07-02; MA60 cannot be exact with gap,do not use approximate MA60 to pass C2 gate,Radar/Data bounded ETF rows or Core benchmark absorption if source exists
+0050_ma60_exact,2026-07-08,,ready using official unadjusted close; adjusted close still blocked but not required for bounded report-only C2 gate,Core/Data
 exact_consensus_trigger_20260708,2026-06-29,exact consensus trigger contract latest row is 2026-06-29,do not substitute route_support>=4 or RS20 as trigger,Core/Data exact trigger materialization after route source fields ready
 layer4_primary80_20260708,2026-06-29,Layer4 primary80 contract latest row is 2026-06-29,Layer0 and RS20 reference are materialized; not selected pool,Core/Data bounded Layer4 refresh
 route_support_max1_20260708,2026-06-29,route_support max1 state-machine latest row is 2026-06-29,do not publish selected top1 until C2 + exact trigger + Layer4 + route_support are same-date,Core/Data after trigger and Layer4 refresh
 selected_stock_adjusted_close,,adjusted close remains blocked,official unadjusted OHLC only for diagnostic/reference,Strategy Center policy or Radar/Data adjusted source route
-0050_return_20d_40d,2026-07-08,,materialized as feature only; cannot alone decide C2 without exact MA60,Core/Data
+0050_return_20d_40d,2026-07-08,,materialized with exact MA60; C2 ready,Core/Data
