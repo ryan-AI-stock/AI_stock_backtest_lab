@@ -1,0 +1,4 @@
+audit_item,result,violation_count,evidence
+selected_stock_return_reconstructed_from_00631L_plus_excess,passed,0,Path returns are computed from selected ticker official unadjusted OHLC rows.
+market_feature_threshold_decided_by_core,passed,0,Core carries market features only; Experiments decides thresholds.
+adjusted_close_fabricated,passed,0,Adjusted close remains blocked and is not fabricated.

@@ -1,0 +1,7 @@
+routing_variant,path_bucket,rows,close_ready_rows,open_ready_rows,adjusted_ready_rows,blocked_rows,unadjusted_ready_share,diagnostic_only
+conservative_hurdle_route,00631L_reference,21,21,21,0,0,1.0,True
+conservative_hurdle_route,ordinary_stock,102,101,101,0,1,0.9901960784313726,True
+dispersion_route,ordinary_stock,123,122,122,0,1,0.991869918699187,True
+hybrid_pullback_base_mega_override,ordinary_stock,123,123,123,0,0,1.0,True
+market_bias_pool_trend_route,ordinary_stock,123,123,123,0,0,1.0,True
+pool_breadth_route,ordinary_stock,123,123,123,0,0,1.0,True

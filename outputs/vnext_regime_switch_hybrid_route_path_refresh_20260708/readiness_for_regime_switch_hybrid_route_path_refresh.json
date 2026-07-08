@@ -1,0 +1,40 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-REGIME-SWITCH-HYBRID-ROUTE-PATH-REFRESH-001",
+  "source_task_id": "TASK-RADAR-DATA-VNEXT-REGIME-SWITCH-ROUTE-SELECTED-STOCK-OHLC-SOURCE-PACKAGE-001",
+  "status": "regime_switch_hybrid_primary_path_ready_comparators_partial_adjusted_close_blocked",
+  "radar_source_status": "regime_switch_selected_stock_unadjusted_ohlc_source_package_partial_adjusted_close_blocked",
+  "diagnostic_only": true,
+  "ordinary_stock_path_rows": 594,
+  "ordinary_stock_unadjusted_ready_rows": 592,
+  "ordinary_stock_blocked_rows": 2,
+  "ordinary_stock_unadjusted_ready_share": 0.9966329966329966,
+  "reference_00631L_rows": 21,
+  "reference_00631L_unadjusted_ready_rows": 21,
+  "primary_hybrid_ready": true,
+  "primary_hybrid_rows": 123,
+  "primary_hybrid_ready_rows": 123,
+  "adjusted_close_ready": false,
+  "formal_cost_model_ready": true,
+  "formal_cost_model_scope": "diagnostic_unit_notional_unadjusted_ohlc_not_portfolio_replay",
+  "ready_for_regime_switch_hybrid_route_diagnostic": true,
+  "ready_for_experiments": true,
+  "ready_for_formal": false,
+  "ready_for_strategy_replay": false,
+  "future_data_violation_count": 0,
+  "blocked_fields": [
+    "adjusted_close_path",
+    "two_comparator_ordinary_stock_ohlc_rows",
+    "formal_portfolio_replay"
+  ],
+  "proxy_fields": [
+    "unadjusted_ohlc_path",
+    "diagnostic_unit_notional_1m_twd_cost_application"
+  ],
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false
+}
