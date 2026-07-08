@@ -1,0 +1,52 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P1-LEGACY-REGIME-UNADJUSTED-PATH-REFRESH-001",
+  "source_task_id": "TASK-RADAR-DATA-VNEXT-P1-LEGACY-REGIME-SELECTED-STOCK-UNADJUSTED-OHLC-SOURCE-PACKAGE-001",
+  "status": "p1_legacy_regime_unadjusted_path_partial_ready_blocked_rows_retained",
+  "radar_source_status": "p1_selected_stock_unadjusted_ohlc_source_package_partial_blocked",
+  "diagnostic_only": true,
+  "requested_period_start": "2015-01-02",
+  "requested_period_end": "2022-12-29",
+  "ordinary_stock_trade_path_rows": 10926,
+  "ordinary_stock_path_ready_rows": 10785,
+  "ordinary_stock_blocked_rows": 141,
+  "ordinary_stock_ready_share": 0.9870950027457441,
+  "reference_00631L_rows": 171,
+  "reference_00631L_ready_rows": 114,
+  "p1_selected_stock_unadjusted_ohlc_path_ready": true,
+  "p1_selected_stock_unadjusted_ohlc_path_full_ready": false,
+  "ready_for_p1_legacy_regime_unadjusted_path_diagnostic": true,
+  "next_day_close_ready": true,
+  "next_day_open_ready": true,
+  "same_week_close_ready": true,
+  "formal_cost_model_ready": true,
+  "formal_cost_model_scope": "diagnostic_unit_notional_unadjusted_ohlc_not_portfolio_replay",
+  "adjusted_close_ready": false,
+  "blocked_rows": 141,
+  "future_data_violation_count": 0,
+  "ready_for_experiments": true,
+  "ready_for_formal": false,
+  "ready_for_strategy_replay": false,
+  "partial_readiness_threshold": 0.98,
+  "primary_variant_ready_checks": {
+    "ordinary_ready_share": 0.9870950027457441,
+    "legacy_rs20_dynamic80_top3_rs20_risk_tiebreak_proxy_ready_share": 0.9878345498783455,
+    "legacy_rs20_dynamic80_top1_rs20_proxy_ready_share": 0.9878345498783455,
+    "regime_switch_hybrid_pullback_base_mega_override_ready_share": 0.9854014598540146
+  },
+  "blocked_fields": [
+    "adjusted_close_path",
+    "141_ordinary_stock_path_rows",
+    "formal_portfolio_replay"
+  ],
+  "proxy_fields": [
+    "unadjusted_ohlc_path",
+    "diagnostic_unit_notional_1m_twd_cost_application"
+  ],
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false
+}

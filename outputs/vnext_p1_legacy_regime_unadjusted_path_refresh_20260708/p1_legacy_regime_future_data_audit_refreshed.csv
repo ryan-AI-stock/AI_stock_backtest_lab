@@ -1,0 +1,5 @@
+audit_item,result,violation_count,evidence
+selected_stock_return_reconstructed_from_00631L_plus_excess,passed,0,Ordinary stock returns are computed from selected ticker official unadjusted OHLC rows.
+00631L_reference_mixed_as_ordinary_stock,passed,0,00631L reference rows remain path_bucket=00631L_reference.
+adjusted_close_fabricated,passed,0,Adjusted close remains blocked and is not fabricated.
+formal_portfolio_replay_executed,passed,0,Core emits row-level path and cost fields only.

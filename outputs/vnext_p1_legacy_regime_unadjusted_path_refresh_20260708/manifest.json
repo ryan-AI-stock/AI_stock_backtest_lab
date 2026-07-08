@@ -1,0 +1,62 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P1-LEGACY-REGIME-UNADJUSTED-PATH-REFRESH-001",
+  "source_task_id": "TASK-RADAR-DATA-VNEXT-P1-LEGACY-REGIME-SELECTED-STOCK-UNADJUSTED-OHLC-SOURCE-PACKAGE-001",
+  "status": "p1_legacy_regime_unadjusted_path_partial_ready_blocked_rows_retained",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_legacy_regime_unadjusted_path_refresh_20260708",
+  "input_core_previous_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_legacy_regime_selected_stock_unadjusted_path_materialization_20260708",
+  "input_radar_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_p1_legacy_regime_selected_stock_unadjusted_ohlc_source_package_20260708",
+  "output_files": [
+    "p1_legacy_regime_unadjusted_trade_path_refreshed.csv",
+    "p1_legacy_regime_unadjusted_path_coverage_by_variant.csv",
+    "p1_legacy_regime_unadjusted_path_coverage_by_year.csv",
+    "p1_legacy_regime_blocked_price_ledger_refreshed.csv",
+    "p1_legacy_regime_cost_model_audit_refreshed.csv",
+    "p1_legacy_regime_future_data_audit_refreshed.csv",
+    "readiness_for_p1_legacy_regime_unadjusted_path_diagnostic.json",
+    "final_summary_zh.md",
+    "manifest.json"
+  ],
+  "diagnostic_only": true,
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "ready_for_strategy_replay": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false,
+  "file_hashes": {
+    "p1_legacy_regime_unadjusted_trade_path_refreshed.csv": {
+      "sha256": "cfa8088a06019db974157ec8a3fa6932f35768850f2abbdd70ef9c43062c4a32",
+      "bytes": 7525910
+    },
+    "p1_legacy_regime_unadjusted_path_coverage_by_variant.csv": {
+      "sha256": "8dbacb1dcb9cd182222308a8fcb7cdb29668b576382f5f68b95e6610849ea6be",
+      "bytes": 4193
+    },
+    "p1_legacy_regime_unadjusted_path_coverage_by_year.csv": {
+      "sha256": "25b0da574c7aa6030acf608b198185246d5f432e791443d42daeb14485fd604a",
+      "bytes": 936
+    },
+    "p1_legacy_regime_blocked_price_ledger_refreshed.csv": {
+      "sha256": "0700571eec026a15f39deafd4a80b90ee30cdba072fcc0a2acf5a497e5d4544d",
+      "bytes": 42077
+    },
+    "p1_legacy_regime_cost_model_audit_refreshed.csv": {
+      "sha256": "7fd7bac44ef481998513f974c99c6c05b20f55c9ddcf0cfadd485f1f47aa8461",
+      "bytes": 858
+    },
+    "p1_legacy_regime_future_data_audit_refreshed.csv": {
+      "sha256": "6096318bab2fe891a34fa686bdced3cb3893d5c3830ade54910431f98dc39a39",
+      "bytes": 493
+    },
+    "readiness_for_p1_legacy_regime_unadjusted_path_diagnostic.json": {
+      "sha256": "014775cc35491e4fc33fbeca7e96f9e41a397b1cec9b82195de67a53b636696e",
+      "bytes": 2233
+    },
+    "final_summary_zh.md": {
+      "sha256": "dc692e6e8b6f240bd1aa4fed0538f61be5df2d3e272d9200dfad98c6bada4168",
+      "bytes": 1058
+    }
+  }
+}
