@@ -1,0 +1,36 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER2-CONTEXT-ONLY-PASS-THROUGH-LAYER3-SLEEVE-READINESS-001",
+  "status": "layer2_context_pass_through_layer3_sleeve_readiness_ready_for_experiments_intake",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer2_context_layer3_sleeve_readiness_20260708",
+  "input_multi_horizon_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer2_soft_score_multi_horizon_evaluation_join_20260708",
+  "input_data_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_dynamic_candidate_pool_data_materialization_20260706",
+  "input_experiments_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-07-06\\backtest-lab-experiments-diagnostic-validation-attribution\\outputs\\vnext_layer2_soft_score_multi_horizon_risk_diagnostic_20260708",
+  "output_files": [
+    "layer2_context_pass_through_candidate_contract.csv",
+    "layer2_context_pass_through_candidate_contract_sample.csv",
+    "layer2_context_field_contract.csv",
+    "layer3_compact_sleeve_feature_readiness_contract.csv",
+    "layer3_compact_sleeve_feature_readiness_contract_sample.csv",
+    "layer3_sleeve_missingness_by_period.csv",
+    "layer2_context_layer3_sleeve_source_quality_matrix.csv",
+    "layer2_context_layer3_sleeve_blocked_proxy_ledger.csv",
+    "layer2_context_layer3_sleeve_future_data_audit.csv",
+    "readiness_for_layer2_context_layer3_sleeve_diagnostic.json",
+    "manifest.json",
+    "final_summary_zh.md"
+  ],
+  "large_local_files_not_tracked": [
+    "layer2_context_pass_through_candidate_contract.csv",
+    "layer3_compact_sleeve_feature_readiness_contract.csv"
+  ],
+  "large_local_file_policy": "full row-level pass-through and sleeve contracts are retained locally; Git tracks samples/readiness/audit only",
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "ready_for_strategy_replay": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false,
+  "diagnostic_only": true
+}

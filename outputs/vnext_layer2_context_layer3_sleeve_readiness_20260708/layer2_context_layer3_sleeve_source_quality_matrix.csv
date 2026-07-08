@@ -1,0 +1,8 @@
+﻿feature_group,fields,source_quality,available_share,policy
+Layer1 quality floor,layer1 b20/b30 pass-through flags,exact_from_layer1_compact_contract,1.0,only eligibility gate in this package
+Layer2 capital context,"rank 20/60, rank change, 4w persistence",exact_or_diagnostic_pit_context,1.0,annotation only
+Layer2 RS context,RS5/10/20/30proxy/60 and exhaustion,pit_rs_context_rs30_proxy,0.9902273482644214,annotation only
+Risk/overheat context,"BIAS, volatility, large-down, blowoff proxy",pit_diagnostic_partial_proxy,0.9919766296013388,warning/penalty context
+Layer3 momentum sleeve,"relative spread widening, stable rise, capital support, overheat penalty",diagnostic_composite_from_pit_features,1.0,feature only
+Layer3 pullback sleeve,"prior strength, correction, MA/BIAS position, cooling, no breakdown",diagnostic_composite_from_pit_features,1.0,feature only
+Forward evaluation,5/10/20/30/40D labels retained,evaluation_metadata_only,0.982081528172176,not live rule

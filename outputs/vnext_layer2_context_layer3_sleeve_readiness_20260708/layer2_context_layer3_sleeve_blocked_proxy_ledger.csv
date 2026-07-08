@@ -1,0 +1,9 @@
+﻿field,status,reason,policy
+Layer2 hard gate,prohibited,Strategy Center accepted Layer2 NO-GO as gate,do not filter rows
+RS30,proxy,exact RS30 unavailable; RS30_proxy uses midpoint of RS20/RS40,diagnostic context only
+large_down_day,diagnostic_proxy,"daily return threshold proxy, not formal policy",warning context only
+blowoff_turnover_without_price_continuation,diagnostic_proxy,"traded-value z-score proxy, not formal trigger",warning context only
+risk_bucket,blocked,no accepted PIT risk_bucket field,do not fabricate
+pullback exact lowpoint,proxy,"uses drawdown/BIAS/MA position context, not an accepted lowpoint model",sleeve feature only
+Layer4 31-pool,not_authorized,scope stops at Layer3 sleeve readiness,no pool assembly
+Layer5 decision,not_authorized,scope stops before daily A/B/fallback decision,no trade decision

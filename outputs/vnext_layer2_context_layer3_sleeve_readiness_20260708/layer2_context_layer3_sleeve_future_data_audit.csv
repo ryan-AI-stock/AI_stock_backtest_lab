@@ -1,0 +1,6 @@
+﻿audit_item,status,future_data_violation_count,note
+Layer2_gate,passed,0,Layer2 context fields do not delete rows
+forward_return_as_rule,passed,0,forward returns retained only as evaluation metadata
+sleeve_features,passed,0,Layer3 sleeve flags use as-of PIT features only
+selector_output,not_applicable,0,"no selector, no score rank output, no Layer4 pool"
+portfolio_replay,not_executed,0,no replay executed
