@@ -2,6 +2,7 @@
 current_holder_state,blocked,No live position-state contract; not fabricated
 incumbent_protection_state,blocked,No live incumbent state contract; not fabricated
 B_switch_rule,blocked,A/B switch explicitly unauthorized
+final_single_stock_live_rule,blocked,Selector candidates are diagnostic only; no live rule authorization
 fallback_00631L_trading_rule,blocked,Fallback reference only; no accepted cash/fallback classifier
 cash_classifier,blocked,No accepted market cash classifier
 risk_bucket,blocked,Formal risk bucket unavailable

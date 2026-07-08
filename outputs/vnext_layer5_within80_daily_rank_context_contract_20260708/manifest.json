@@ -7,6 +7,8 @@
   "output_files": [
     "layer5_within80_daily_rank_context_contract.csv",
     "layer5_within80_daily_rank_context_contract_sample.csv",
+    "layer5_final_single_stock_selector_candidate_contract.csv",
+    "layer5_final_single_stock_selector_candidate_design.csv",
     "layer5_daily_rank_context_design.csv",
     "layer5_topk_context_flags.csv",
     "layer5_within80_coverage_by_period.csv",

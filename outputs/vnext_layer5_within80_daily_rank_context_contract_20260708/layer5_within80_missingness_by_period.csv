@@ -1,6 +1,7 @@
 ﻿period,field,row_count,missing_count,missing_share
 P1,within80_rank,32880,0,0.0
 P1,within80_rank_score,32880,0,0.0
+P1,final_selector_lifecycle_context_score,32880,0,0.0
 P1,pool_selection_score,32880,0,0.0
 P1,layer4_risk_aware_score,32880,0,0.0
 P1,layer4_broad_opportunity_net_score,32880,0,0.0
@@ -32,6 +33,7 @@ P1,forward_excess_vs_00631L_30d,32880,270,0.008211678832116789
 P1,forward_excess_vs_00631L_40d,32880,281,0.008546228710462287
 P2,within80_rank,4080,0,0.0
 P2,within80_rank_score,4080,0,0.0
+P2,final_selector_lifecycle_context_score,4080,0,0.0
 P2,pool_selection_score,4080,0,0.0
 P2,layer4_risk_aware_score,4080,0,0.0
 P2,layer4_broad_opportunity_net_score,4080,0,0.0
@@ -63,6 +65,7 @@ P2,forward_excess_vs_00631L_30d,4080,2,0.0004901960784313725
 P2,forward_excess_vs_00631L_40d,4080,1,0.00024509803921568627
 P2|2024_latest,within80_rank,8240,0,0.0
 P2|2024_latest,within80_rank_score,8240,0,0.0
+P2|2024_latest,final_selector_lifecycle_context_score,8240,0,0.0
 P2|2024_latest,pool_selection_score,8240,0,0.0
 P2|2024_latest,layer4_risk_aware_score,8240,0,0.0
 P2|2024_latest,layer4_broad_opportunity_net_score,8240,0,0.0
@@ -94,6 +97,7 @@ P2|2024_latest,forward_excess_vs_00631L_30d,8240,26,0.0031553398058252425
 P2|2024_latest,forward_excess_vs_00631L_40d,8240,24,0.002912621359223301
 P2|2024_latest|2026YTD,within80_rank,2080,0,0.0
 P2|2024_latest|2026YTD,within80_rank_score,2080,0,0.0
+P2|2024_latest|2026YTD,final_selector_lifecycle_context_score,2080,0,0.0
 P2|2024_latest|2026YTD,pool_selection_score,2080,0,0.0
 P2|2024_latest|2026YTD,layer4_risk_aware_score,2080,0,0.0
 P2|2024_latest|2026YTD,layer4_broad_opportunity_net_score,2080,0,0.0
@@ -125,6 +129,7 @@ P2|2024_latest|2026YTD,forward_excess_vs_00631L_30d,2080,560,0.2692307692307692
 P2|2024_latest|2026YTD,forward_excess_vs_00631L_40d,2080,720,0.34615384615384615
 outside_requested_periods,within80_rank,80,0,0.0
 outside_requested_periods,within80_rank_score,80,0,0.0
+outside_requested_periods,final_selector_lifecycle_context_score,80,0,0.0
 outside_requested_periods,pool_selection_score,80,0,0.0
 outside_requested_periods,layer4_risk_aware_score,80,0,0.0
 outside_requested_periods,layer4_broad_opportunity_net_score,80,0,0.0

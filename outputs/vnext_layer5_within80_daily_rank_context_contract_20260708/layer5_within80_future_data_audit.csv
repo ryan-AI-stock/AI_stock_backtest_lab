@@ -3,4 +3,5 @@ forward_returns_used_in_rank_context_rule,passed,0,top-k/rank context derives fr
 future_return_as_rule,passed,0,future_return_as_rule=false
 ab_switch_rule_output,passed,0,No B switch rule emitted
 layer5_selector_output,passed,0,No Layer5 selector output emitted
+final_selector_action_rule_output,passed,0,Single-stock selector candidates are diagnostic candidates only
 00631L_as_ordinary_stock_member,passed,0,00631L remains fallback/reference metadata only

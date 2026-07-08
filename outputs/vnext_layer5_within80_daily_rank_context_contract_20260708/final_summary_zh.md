@@ -17,7 +17,9 @@
 - 100 extended watchlist and 31 high-confidence subpool are context/reference flags only.
 - rank_context_date_basis=weekly_signal_date_as_layer5_pre_action_context
 - Top1/top2/top3/top5/top10 are diagnostic context groups only.
+- Final single-stock selector candidates are diagnostic candidates only.
 - No A/B switch, no fallback trading rule, no Layer5 action rule.
+- Layer5 final selector 的目標不是保留所有 winner，而是在每個交易日只選一檔時，找出長期勝率/報酬/風險表現最好的決策模式。
 
 ## Coverage
 - rows=47360
@@ -30,6 +32,12 @@
 - top10_rows=5920
 - in_31_high_confidence_reference_rows=18352
 - extended_100_to_80_reentry_recent_4w_rows=12522
+- final_single_stock_selector_candidate_rows=2960
+- final_single_stock_selector_candidate_variant_count=5
+
+## Layer5 Metric Focus
+- Primary: median/mean vs 0050 and 00631L, hit-rate, fail_0050 rate, path-like return proxy if available, downside risk proxy if available, turnover/churn proxy, period stability.
+- Secondary only: top-decile retention / missed winner attribution.
 
 ## Next
 If accepted, hand off to Experiments:

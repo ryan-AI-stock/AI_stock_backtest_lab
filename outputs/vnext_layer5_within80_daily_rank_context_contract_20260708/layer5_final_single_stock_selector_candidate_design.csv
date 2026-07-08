@@ -1,0 +1,6 @@
+﻿selector_candidate_variant,definition,diagnostic_role,boundary
+raw_top1_within80,rank 1 inside Layer4 80 primary pool,single-stock selector diagnostic candidate,not trade decision; not A/B switch
+best_risk_adjusted_top3,highest layer4_risk_aware_score among within80 top3,single-stock selector diagnostic candidate,not trade decision; top-decile retention is secondary context only
+best_risk_adjusted_top5,highest layer4_risk_aware_score among within80 top5,single-stock selector diagnostic candidate,not trade decision
+best_risk_adjusted_top10,highest layer4_risk_aware_score among within80 top10,single-stock selector diagnostic candidate,not trade decision
+best_lifecycle_state_top10,"highest lifecycle context score among top10: strengthening-not-overheated, repair-reacceleration, 31 overlap, 100-to-80 reentry",single-stock selector diagnostic candidate,context-only; no live lifecycle rule

@@ -7,3 +7,4 @@ came_from_100_extended_only_recent_4w,ticker moved from extended-only watchlist 
 layer1/layer2/layer3/layer4 scores,pass-through context fields,diagnostic_context,no hard gate here
 fallback_00631L_reference_context_only,fallback metadata only,reference_context,no fallback trading rule
 current_holder/incumbent fields,blocked until live position-state contract exists,blocked,not fabricated
+final_selector_lifecycle_context_score,diagnostic single-stock selector context score,selector_candidate_context,not live rule
