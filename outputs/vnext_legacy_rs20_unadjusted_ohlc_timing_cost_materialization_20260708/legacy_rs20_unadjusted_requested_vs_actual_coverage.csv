@@ -1,0 +1,3 @@
+period,requested_start,requested_end,actual_start,actual_end,rows,unadjusted_ready_rows,blocked_rows
+legacy_requested,2024-01-02,2026-05-26,2024-01-05,2026-05-22,1476,1464,12
+radar_primary_source_window,2024-01-02,2026-06-05,2024-01-05,2026-05-22,1476,1464,12
