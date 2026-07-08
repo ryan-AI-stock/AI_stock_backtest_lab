@@ -1,0 +1,96 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P1-STATE-HOLD-BASE-EXCEPTION-PATH-CONTRACT-001",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_state_hold_base_exception_path_contract_20260708",
+  "created_at": "2026-07-08T16:29:04.943987+08:00",
+  "status": "p1_state_hold_base_exception_path_contract_ready_diagnostic_only",
+  "artifacts": [
+    {
+      "name": "p1_state_hold_base_exception_contract.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_state_hold_base_exception_path_contract_20260708\\p1_state_hold_base_exception_contract.csv",
+      "sha256": "93ab26f301b83eca2a91e8df81d9b5a49097a0a01e26d7d5f8539d02e0ada12d",
+      "bytes": 477919
+    },
+    {
+      "name": "p1_state_hold_benchmark_path_0050.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_state_hold_base_exception_path_contract_20260708\\p1_state_hold_benchmark_path_0050.csv",
+      "sha256": "72c19d4705b698c751949c3e73c3ec300f0310aa129054e6d147b75a718ce244",
+      "bytes": 521085
+    },
+    {
+      "name": "p1_state_hold_benchmark_path_00631L.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_state_hold_base_exception_path_contract_20260708\\p1_state_hold_benchmark_path_00631L.csv",
+      "sha256": "6fb6c828e8d84887c46b28fefc632c025046ef025f8ff2c56d16f9065c7c5c64",
+      "bytes": 523614
+    },
+    {
+      "name": "p1_base_exception_signal_trace.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_state_hold_base_exception_path_contract_20260708\\p1_base_exception_signal_trace.csv",
+      "sha256": "cc3616335fae6e0d0268ce67aa5520291b0f067b92055388d0da9af2450af970",
+      "bytes": 171004
+    },
+    {
+      "name": "p1_state_hold_coverage_audit.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_state_hold_base_exception_path_contract_20260708\\p1_state_hold_coverage_audit.csv",
+      "sha256": "4ea1a0512b2b4d3dec026958fcc4c8795cd2760a3292f0d315c9074945d0a969",
+      "bytes": 442
+    },
+    {
+      "name": "p1_state_hold_blocked_proxy_audit.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_state_hold_base_exception_path_contract_20260708\\p1_state_hold_blocked_proxy_audit.csv",
+      "sha256": "9cfbeb33066a4bd681a88814ca10c9fef1abb2aee2cda90d3954eed0d1ae09a0",
+      "bytes": 570
+    },
+    {
+      "name": "readiness_for_p1_state_hold_base_exception_path_contract.json",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_state_hold_base_exception_path_contract_20260708\\readiness_for_p1_state_hold_base_exception_path_contract.json",
+      "sha256": "44ceccaeecf194f7f28a83f43c04f8c1d57dc1f1d1c9cf369c2bac293bffceb2",
+      "bytes": 1338
+    },
+    {
+      "name": "final_summary_zh.md",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_state_hold_base_exception_path_contract_20260708\\final_summary_zh.md",
+      "sha256": "a3a6b1166382364c7d7fcc5c07cc2b9fad084cc812f8a0088e4beffda9c2d810",
+      "bytes": 1346
+    }
+  ],
+  "input_paths": {
+    "p1_defensive_policy_trace": "C:\\Users\\zergv\\Documents\\Codex\\2026-07-06\\backtest-lab-experiments-diagnostic-validation-attribution\\outputs\\vnext_p1_defensive_policy_benchmark_comparison_diagnostic_20260708\\p1_defensive_policy_benchmark_policy_trace.csv",
+    "benchmark_features": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_dynamic_candidate_pool_data_materialization_20260706\\benchmark_features.csv",
+    "p1_stock_path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_legacy_regime_unadjusted_path_refresh_20260708\\p1_legacy_regime_unadjusted_trade_path_refreshed.csv"
+  },
+  "readiness": {
+    "task_id": "TASK-BACKTEST-CORE-VNEXT-P1-STATE-HOLD-BASE-EXCEPTION-PATH-CONTRACT-001",
+    "status": "p1_state_hold_base_exception_path_contract_ready_diagnostic_only",
+    "ready_for_p1_base_exception_diagnostic": true,
+    "benchmark_daily_state_hold_paths_ready": true,
+    "base_exception_interval_contract_ready": true,
+    "p1_requested_start": "2015-01-02",
+    "p1_requested_end": "2022-12-29",
+    "p1_actual_0050_start": "2015-01-05",
+    "p1_actual_0050_end": "2022-12-29",
+    "p1_actual_00631L_start": "2015-01-05",
+    "p1_actual_00631L_end": "2022-12-29",
+    "contract_rows": 822,
+    "blocked_contract_rows": 0,
+    "cash_condition_ready": false,
+    "cash_condition_status": "blocked_no_bear_cash_classifier",
+    "state_hold_approximation_used": true,
+    "signal_aligned_proxy_used": false,
+    "future_data_violation_count": 0,
+    "ready_for_formal": false,
+    "ready_for_strategy_replay": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false,
+    "boundary_flags": {
+      "formal_model_changed": false,
+      "trade_decision_changed": false,
+      "active_in_trade_decision": false,
+      "report_changed": false,
+      "portfolio_replay_executed": false,
+      "ready_for_strategy_replay": false,
+      "ready_for_formal": false,
+      "not_live_rule": true,
+      "forward_returns_live_rule_usage": false
+    }
+  }
+}

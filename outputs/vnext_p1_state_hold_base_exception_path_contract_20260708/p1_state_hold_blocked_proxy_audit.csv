@@ -1,0 +1,5 @@
+﻿field_or_component,status,reason,affected_rows
+cash_condition_classifier,blocked,no accepted bear/cash classifier in this contract,822
+state_hold_interval_contract,diagnostic_approximation,interval rows decompose state-hold path for Experiments; benchmark daily buy-hold path is authoritative for base MDD,822
+stock_exception_same_week_path,ready,stock exception path is joined from selected-stock official unadjusted OHLC same-week comparator,0
+adjusted_close_for_stock_exception,blocked,stock exception adjusted close not materialized; unadjusted OHLC only,82

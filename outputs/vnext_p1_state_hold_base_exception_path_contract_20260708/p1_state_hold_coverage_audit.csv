@@ -1,0 +1,6 @@
+﻿artifact,rows,ready_rows,first_date,last_date,coverage_status
+p1_state_hold_benchmark_path_0050,1952,1952,2015-01-05,2022-12-29,ready
+p1_state_hold_benchmark_path_00631L,1956,1956,2015-01-05,2022-12-29,ready
+0050_base_plus_consensus4_stock_exception,411,411,2015-01-09,2022-12-23,ready
+00631L_base_plus_consensus4_stock_exception,411,411,2015-01-09,2022-12-23,ready
+p1_base_exception_signal_trace,411,411,2015-01-09,2022-12-23,ready
