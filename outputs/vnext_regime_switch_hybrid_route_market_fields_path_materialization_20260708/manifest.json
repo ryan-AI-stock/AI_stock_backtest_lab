@@ -1,0 +1,73 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-REGIME-SWITCH-HYBRID-ROUTE-MARKET-FIELDS-PATH-MATERIALIZATION-001",
+  "status": "regime_switch_hybrid_route_market_fields_ready_path_partial_blocked",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_regime_switch_hybrid_route_market_fields_path_materialization_20260708",
+  "input_experiments_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-07-06\\backtest-lab-experiments-diagnostic-validation-attribution\\outputs\\vnext_regime_switch_operating_mode_routing_diagnostic_20260708",
+  "input_radar_price_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_legacy_rs20_selected_stock_price_path_source_package_20260708",
+  "input_benchmark_features": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_dynamic_candidate_pool_data_materialization_20260706\\benchmark_features.csv",
+  "input_layer4_pool": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer4_80_primary_pool_contract_20260708\\layer4_80_primary_pool_contract.csv",
+  "output_files": [
+    "regime_switch_hybrid_route_signal_table.csv",
+    "regime_switch_market_regime_fields.csv",
+    "regime_switch_pool_regime_fields.csv",
+    "regime_switch_hybrid_route_selected_path_readiness.csv",
+    "regime_switch_hybrid_route_timing_cost_audit.csv",
+    "regime_switch_hybrid_route_path_coverage_by_variant.csv",
+    "regime_switch_hybrid_route_missing_price_source_request.csv",
+    "regime_switch_hybrid_route_future_data_audit.csv",
+    "readiness_for_regime_switch_hybrid_route_diagnostic.json",
+    "final_summary_zh.md",
+    "manifest.json"
+  ],
+  "diagnostic_only": true,
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "ready_for_strategy_replay": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false,
+  "file_hashes": {
+    "regime_switch_hybrid_route_signal_table.csv": {
+      "sha256": "90658e3ffb9ade75ccf752f8c09c2b855fce6019c54632662325a14ead01324f",
+      "bytes": 2217425
+    },
+    "regime_switch_market_regime_fields.csv": {
+      "sha256": "9e38338ed244337fc0bc889fc9bbca2999a335f6b672480a37366edd1134c246",
+      "bytes": 1941321
+    },
+    "regime_switch_pool_regime_fields.csv": {
+      "sha256": "3b07c0cf47f7d5a5a7194da80acdc18f83ba46d33eae689aa6a295dafc381ac7",
+      "bytes": 110580
+    },
+    "regime_switch_hybrid_route_selected_path_readiness.csv": {
+      "sha256": "9153e5af76efac38871a91481a66a2e5daf82ca3e9827711371bf64a0f40ed9c",
+      "bytes": 181672
+    },
+    "regime_switch_hybrid_route_timing_cost_audit.csv": {
+      "sha256": "a9843851fd1b49db7ffeeacfb8ef71244a499d8335b0f8f8dabb55b94fe53668",
+      "bytes": 1073
+    },
+    "regime_switch_hybrid_route_path_coverage_by_variant.csv": {
+      "sha256": "cb190b6c06a3eba75a471560d571e2b86f5e2a29d7745dd7e88ff982c848ebc3",
+      "bytes": 647
+    },
+    "regime_switch_hybrid_route_missing_price_source_request.csv": {
+      "sha256": "348c0ff798d496e8ee48263723cf8c1c55a3a15a4678438f899869a081fc29db",
+      "bytes": 23111
+    },
+    "regime_switch_hybrid_route_future_data_audit.csv": {
+      "sha256": "9da8bf66f1f99988b811ae448808d2c8a1b360ab859cfafcce57f1f747209d42",
+      "bytes": 419
+    },
+    "readiness_for_regime_switch_hybrid_route_diagnostic.json": {
+      "sha256": "dbdf3ce0120918770dec8ae37bc846615dfcde1e8e9505033ad37ced025c088d",
+      "bytes": 2089
+    },
+    "final_summary_zh.md": {
+      "sha256": "a6a1d776e93bedff3449df6c41f285e08ae8665d04a5da50bda344d362e4ac08",
+      "bytes": 1372
+    }
+  }
+}

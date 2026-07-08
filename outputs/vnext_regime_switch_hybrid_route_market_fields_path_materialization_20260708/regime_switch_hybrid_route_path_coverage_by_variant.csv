@@ -1,0 +1,6 @@
+routing_variant,rows,ordinary_stock_rows,reference_00631L_rows,next_day_close_ready_rows,next_day_open_ready_rows,adjusted_close_ready_rows,next_day_close_ready_share,next_day_open_ready_share,diagnostic_only
+conservative_hurdle_route,123,102,21,64,64,0,0.5203252032520326,0.5203252032520326,True
+dispersion_route,123,123,0,81,81,0,0.6585365853658537,0.6585365853658537,True
+hybrid_pullback_base_mega_override,123,123,0,72,72,0,0.5853658536585366,0.5853658536585366,True
+market_bias_pool_trend_route,123,123,0,71,71,0,0.5772357723577236,0.5772357723577236,True
+pool_breadth_route,123,123,0,74,74,0,0.6016260162601627,0.6016260162601627,True

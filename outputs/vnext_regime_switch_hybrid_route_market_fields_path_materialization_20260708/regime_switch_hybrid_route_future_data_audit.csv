@@ -1,0 +1,4 @@
+audit_item,result,violation_count,evidence
+route_construction_uses_future_return,passed,0,Route table carries PIT market/pool features; forward-return columns are not used.
+market_feature_threshold_decided_by_core,passed,0,Core materializes slope/BIAS/breakout fields only; no thresholds selected.
+adjusted_close_fabricated,passed,0,Adjusted close is explicitly blocked; unadjusted OHLC path is separately labeled.
