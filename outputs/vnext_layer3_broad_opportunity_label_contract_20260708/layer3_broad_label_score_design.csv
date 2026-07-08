@@ -1,0 +1,7 @@
+﻿score,input_components,role,policy
+momentum_continuation_score,"RS20/30 percentile, RS widening, capital support, 4w persistence, acceleration minus overheat/exhaustion",broad support label,not a filter or selector
+pullback_repair_score,"prior RS strength, current correction, BIAS/MA position, cooling, capital support minus breakdown/capital fade",broad repair label,not exact lowpoint
+overlap_reacceleration_score,prior strength + correction + short-RS reacceleration + capital support minus breakdown/exhaustion,overlap label,labels may overlap
+neutral_quality_liquidity_score,Layer1 b30 pass + liquidity + no risk penalty + not obvious momentum/pullback,background 31-pool context,do not discard neutral candidates
+exhaustion_risk_score,"RS60 high short-RS weakening, overheat, blowoff proxy, large-down proxy, volatility",warning/penalty context,not automatic exclusion
+breakdown_risk_score,"weak RS20/30/60, capital deterioration, large-down proxy, drawdown",warning/penalty context,not automatic exclusion

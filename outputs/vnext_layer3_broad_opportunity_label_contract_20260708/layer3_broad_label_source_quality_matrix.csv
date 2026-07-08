@@ -1,0 +1,8 @@
+﻿feature_group,fields,source_quality,available_share,policy
+base_universe,compact Layer0 active + Layer1 b30 pass-through flag,exact_from_prior_core_contract,1.0,Layer3 labels do not delete rows
+momentum_continuation_score,RS/capital/BIAS/exhaustion PIT components,diagnostic_composite_from_pit_features,1.0,context score only
+pullback_repair_score,prior strength/correction/BIAS/MA/drawdown cooling,diagnostic_composite_proxy_lowpoint,1.0,exact lowpoint blocked
+overlap_reacceleration_score,prior strength + correction + short RS reacceleration,diagnostic_composite_from_pit_features,1.0,overlapping label
+neutral_quality_liquidity_score,Layer1 b30 + liquidity + no major risk context,diagnostic_composite_from_pit_features,1.0,background context
+risk_scores,exhaustion and breakdown risk scores,diagnostic_proxy_partial,1.0,warning/penalty only
+forward_evaluation,5/10/20/30/40D retained for Experiments,evaluation_metadata_only,0.982081528172176,not live rule

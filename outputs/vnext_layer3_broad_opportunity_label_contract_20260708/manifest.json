@@ -1,0 +1,33 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER3-BROAD-OPPORTUNITY-LABEL-CONTEXT-CONTRACT-001",
+  "status": "layer3_broad_opportunity_label_contract_ready_for_experiments_intake",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer3_broad_opportunity_label_contract_20260708",
+  "input_layer3_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer2_context_layer3_sleeve_readiness_20260708",
+  "input_experiments_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-07-06\\backtest-lab-experiments-diagnostic-validation-attribution\\outputs\\vnext_layer3_compact_pass_through_sleeve_diagnostic_20260708",
+  "output_files": [
+    "layer3_broad_opportunity_label_contract.csv",
+    "layer3_broad_opportunity_label_contract_sample.csv",
+    "layer3_broad_label_score_design.csv",
+    "layer3_label_coverage_by_week_period.csv",
+    "layer3_broad_label_missingness_by_period.csv",
+    "layer3_broad_label_source_quality_matrix.csv",
+    "layer3_broad_label_blocked_proxy_ledger.csv",
+    "layer3_broad_label_future_data_audit.csv",
+    "readiness_for_layer3_broad_opportunity_label_diagnostic.json",
+    "manifest.json",
+    "final_summary_zh.md"
+  ],
+  "large_local_files_not_tracked": [
+    "layer3_broad_opportunity_label_contract.csv"
+  ],
+  "large_local_file_policy": "full broad opportunity label contract is retained locally; Git tracks sample/readiness/audit files only",
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "ready_for_strategy_replay": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false,
+  "diagnostic_only": true
+}

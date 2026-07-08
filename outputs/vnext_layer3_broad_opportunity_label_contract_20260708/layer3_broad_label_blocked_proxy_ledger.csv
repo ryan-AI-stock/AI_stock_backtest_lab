@@ -1,0 +1,10 @@
+﻿field,status,reason,policy
+Layer3 hard filter,prohibited,Strategy Center accepted current narrow sleeve no-go,labels only; do not delete rows
+RS30,proxy,exact RS30 unavailable; RS30_proxy uses midpoint of RS20/RS40,diagnostic context only
+risk_bucket,blocked,no accepted PIT risk_bucket field,do not fabricate
+large_down_day,diagnostic_proxy,daily return threshold proxy,warning score context only
+blowoff_turnover,diagnostic_proxy,traded value z-score proxy,warning score context only
+pullback exact lowpoint,proxy,"uses drawdown/BIAS/MA position, not exact lowpoint model",broad repair context only
+forward returns,evaluation_metadata_only,retained for Experiments evaluation,not label construction input
+Layer4 31-pool,not_authorized,scope stops at Layer3 broad labels,no pool assembly
+Layer5 decision,not_authorized,scope stops before daily A/B/fallback decision,no trade decision

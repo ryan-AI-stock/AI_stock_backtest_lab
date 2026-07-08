@@ -1,0 +1,7 @@
+﻿audit_item,status,future_data_violation_count,note
+Layer3_filter,passed,0,Layer3 labels do not delete rows
+forward_return_as_rule,passed,0,forward returns retained only as evaluation metadata and not used in label score formulas
+score_inputs,passed,0,scores use PIT RS/capital/BIAS/MA/drawdown/volatility context
+selector_output,not_applicable,0,no selector or rank output produced
+Layer4_31pool,not_authorized,0,no pool assembly
+portfolio_replay,not_executed,0,no replay executed
