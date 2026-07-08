@@ -1,0 +1,4 @@
+﻿blocked_item,blocked_reason,policy
+selected_stock_adjusted_close,exact historical ex-right date and capital-change adjustment route incomplete,official unadjusted OHLC diagnostic-only; not formal
+cash_bear_classifier,no accepted cash/bear classifier in current P1 modelization contract,do not fabricate cash rule
+formal_replay,diagnostic contract only; adjusted close and formal replay governance not ready,ready_for_formal=false; ready_for_strategy_replay=false
