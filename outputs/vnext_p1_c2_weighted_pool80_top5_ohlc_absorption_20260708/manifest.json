@@ -1,0 +1,126 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P1-C2-WEIGHTED-POOL80-TOP5-OHLC-ABSORPTION-001",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_weighted_pool80_top5_ohlc_absorption_20260708",
+  "inputs": {
+    "core_contract": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_consensus_trigger_weighted_pool80_top5_contract_20260708\\p1_c2_consensus_trigger_weighted_pool80_top5_contract.csv",
+    "radar_patch": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_p1_c2_weighted_pool80_top5_selected_ticker_ohlc_source_fill_20260708\\p1_c2_weighted_pool80_top5_selected_ticker_ohlc_filled_rows.csv",
+    "radar_readiness": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_p1_c2_weighted_pool80_top5_selected_ticker_ohlc_source_fill_20260708\\readiness_for_core_p1_c2_weighted_pool80_top5_ohlc_absorption.json"
+  },
+  "artifacts": [
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_weighted_pool80_top5_ohlc_absorption_20260708\\p1_c2_weighted_pool80_top5_contract_refreshed.csv",
+      "sha256": "6c16299f0c27e7e6aa87f1e8a1cd6539f096cdb7dc23585beedac31e5049a307",
+      "bytes": 493761
+    },
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_weighted_pool80_top5_ohlc_absorption_20260708\\p1_c2_weighted_pool80_top5_ohlc_coverage_refreshed.csv",
+      "sha256": "0974dea42686b3efa8dcd12b7e0ab2e5992b0fc614355d794b88b359a3451748",
+      "bytes": 396
+    },
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_weighted_pool80_top5_ohlc_absorption_20260708\\p1_c2_weighted_pool80_top5_blocked_proxy_audit_refreshed.csv",
+      "sha256": "ecc679407e5a9030173ff4761a776ab877d7db3e4bc7d8cfd0b6044fea71dd98",
+      "bytes": 181
+    },
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_weighted_pool80_top5_ohlc_absorption_20260708\\p1_c2_weighted_pool80_top5_future_data_audit.csv",
+      "sha256": "8282dc7b9375f6409c1468b35f3cd055da8fad35913f3e015bec040c47d8daaf",
+      "bytes": 168
+    },
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_weighted_pool80_top5_ohlc_absorption_20260708\\readiness_for_p1_c2_weighted_pool80_top5_multi_stock_diagnostic.json",
+      "sha256": "5b2f92f9442c071c3e5380870be8683a474c7832c746f5d4e7907ba559f2efda",
+      "bytes": 2830
+    },
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_weighted_pool80_top5_ohlc_absorption_20260708\\final_summary_zh.md",
+      "sha256": "12bc402b90a6bcb5e104d5d6366778b4f8b1e500edd43a1e35465e082a5594d3",
+      "bytes": 1058
+    }
+  ],
+  "readiness": {
+    "task_id": "TASK-BACKTEST-CORE-VNEXT-P1-C2-WEIGHTED-POOL80-TOP5-OHLC-ABSORPTION-001",
+    "status": "weighted_pool80_top5_ohlc_absorbed_ready_unadjusted_diagnostic_adjusted_blocked",
+    "ready_for_p1_c2_weighted_pool80_top5_multi_stock_diagnostic": true,
+    "ready_for_experiments": true,
+    "input_contract_rows": 630,
+    "radar_patch_rows": 601,
+    "official_unadjusted_ohlc_ready_share": 1.0,
+    "official_unadjusted_ohlc_ready_rows": 630,
+    "official_unadjusted_ohlc_blocked_rows": 0,
+    "adjusted_close_ready": false,
+    "transition_cost_fields_ready": true,
+    "future_data_violation_count": 0,
+    "ready_for_formal": false,
+    "ready_for_strategy_replay": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false,
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "coverage_by_variant": [
+      {
+        "score_variant": "balanced",
+        "rows": 105,
+        "signal_dates": 21,
+        "unique_tickers": 54,
+        "official_unadjusted_ohlc_ready_rows": 105,
+        "official_unadjusted_ohlc_ready_share": 1.0,
+        "adjusted_close_ready_rows": 0,
+        "adjusted_close_ready_share": 0.0
+      },
+      {
+        "score_variant": "liquidity_rs",
+        "rows": 105,
+        "signal_dates": 21,
+        "unique_tickers": 48,
+        "official_unadjusted_ohlc_ready_rows": 105,
+        "official_unadjusted_ohlc_ready_share": 1.0,
+        "adjusted_close_ready_rows": 0,
+        "adjusted_close_ready_share": 0.0
+      },
+      {
+        "score_variant": "momentum",
+        "rows": 105,
+        "signal_dates": 21,
+        "unique_tickers": 55,
+        "official_unadjusted_ohlc_ready_rows": 105,
+        "official_unadjusted_ohlc_ready_share": 1.0,
+        "adjusted_close_ready_rows": 0,
+        "adjusted_close_ready_share": 0.0
+      },
+      {
+        "score_variant": "quality_risk",
+        "rows": 105,
+        "signal_dates": 21,
+        "unique_tickers": 55,
+        "official_unadjusted_ohlc_ready_rows": 105,
+        "official_unadjusted_ohlc_ready_share": 1.0,
+        "adjusted_close_ready_rows": 0,
+        "adjusted_close_ready_share": 0.0
+      },
+      {
+        "score_variant": "quality_rs",
+        "rows": 105,
+        "signal_dates": 21,
+        "unique_tickers": 60,
+        "official_unadjusted_ohlc_ready_rows": 105,
+        "official_unadjusted_ohlc_ready_share": 1.0,
+        "adjusted_close_ready_rows": 0,
+        "adjusted_close_ready_share": 0.0
+      },
+      {
+        "score_variant": "route_support",
+        "rows": 105,
+        "signal_dates": 21,
+        "unique_tickers": 62,
+        "official_unadjusted_ohlc_ready_rows": 105,
+        "official_unadjusted_ohlc_ready_share": 1.0,
+        "adjusted_close_ready_rows": 0,
+        "adjusted_close_ready_share": 0.0
+      }
+    ]
+  }
+}

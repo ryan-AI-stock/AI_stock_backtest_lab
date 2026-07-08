@@ -1,0 +1,7 @@
+﻿score_variant,rows,signal_dates,unique_tickers,official_unadjusted_ohlc_ready_rows,official_unadjusted_ohlc_ready_share,adjusted_close_ready_rows,adjusted_close_ready_share
+balanced,105,21,54,105,1.0,0,0.0
+liquidity_rs,105,21,48,105,1.0,0,0.0
+momentum,105,21,55,105,1.0,0,0.0
+quality_risk,105,21,55,105,1.0,0,0.0
+quality_rs,105,21,60,105,1.0,0,0.0
+route_support,105,21,62,105,1.0,0,0.0
