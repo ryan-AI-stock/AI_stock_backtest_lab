@@ -1,0 +1,8 @@
+﻿field,requested_date,field_as_of_date,ready_for_20260708,blocked_reason,next_owner
+layer4_primary80_snapshot,2026-07-08,2026-06-29,False,missing_20260708_vnext_materialized_field_or_source,Core/Data_after_source_anchor
+0050_market_regime_fields,2026-07-08,2026-06-30,False,missing_20260708_vnext_materialized_field_or_source,Core/Data_after_source_anchor
+dynamic80_pool_regime_fields,2026-07-08,2026-06-29,False,missing_20260708_vnext_materialized_field_or_source,Core/Data_after_source_anchor
+exact_consensus_trigger,2026-07-08,2026-06-29,False,missing_20260708_vnext_materialized_field_or_source,Core/Data_after_source_anchor
+route_support_max1_state_machine,2026-07-08,2026-06-29,False,missing_20260708_vnext_materialized_field_or_source,Core/Data_after_source_anchor
+radar_pit_daily_sample_official_ohlcv,2026-07-08,2026-07-02,False,missing_20260708_vnext_materialized_field_or_source,Radar/Data
+formal_daily_20260708_report_anchor_local_file,2026-07-08,,False,formal report reportedly exists but no local Core/DAILY_STOCK artifact or cache found in checked worktrees; need report manifest/cache path or Radar source fill,Radar/Data_or_Strategy_Center_provide_formal_report_artifact_path

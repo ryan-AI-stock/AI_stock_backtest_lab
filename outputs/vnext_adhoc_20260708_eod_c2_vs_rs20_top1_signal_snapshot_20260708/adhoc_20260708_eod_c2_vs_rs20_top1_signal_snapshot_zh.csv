@@ -1,0 +1,2 @@
+﻿as_of_requested_date,as_of_data_date,market_data_ready,c2_gate_pass,consensus_trigger_pass,c2_selected_asset_type,c2_selected_ticker,c2_selected_name,c2_reference_stock_top1_ticker,c2_reference_stock_top1_name,rs20_top1_ticker,rs20_top1_name,rs20_top3_tickers,rs20_reference_top1_ticker,rs20_reference_top1_name,rs20_reference_top3_tickers,same_top1_flag,diagnostic_only,not_live_trade_decision,status_zh
+2026-07-08,2026-06-29,False,False,False,blocked,,,,,,,,2887,台新新光金,2887|8261|2890,,True,True,今日 vNext 欄位尚未 materialize，不能產出 2026-07-08 正式診斷；最新 reference 為 2026-06-29。
