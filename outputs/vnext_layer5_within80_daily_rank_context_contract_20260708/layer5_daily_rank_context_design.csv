@@ -1,0 +1,9 @@
+﻿field_or_group,definition,role,boundary
+rank_context_date,weekly Layer4 signal date used as pre-action context date,context_key,not execution day rule
+within80_rank_score,normalized inverse rank inside 80 primary pool,diagnostic_context,not action rule
+within80_top1/top2/top3/top5/top10,top-k context flags,diagnostic_context,no A/B switch authorization
+in_31_high_confidence_subpool_reference,ticker also appears in 31 reference,reference_context,not primary pool
+came_from_100_extended_only_recent_4w,ticker moved from extended-only watchlist into primary pool recently,reentry_context,not buy rule
+layer1/layer2/layer3/layer4 scores,pass-through context fields,diagnostic_context,no hard gate here
+fallback_00631L_reference_context_only,fallback metadata only,reference_context,no fallback trading rule
+current_holder/incumbent fields,blocked until live position-state contract exists,blocked,not fabricated

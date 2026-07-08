@@ -1,0 +1,6 @@
+﻿period,row_count,weekly_snapshot_count,avg_selected_per_week,min_selected_per_week,max_selected_per_week,top1_rows,top3_rows,top5_rows,top10_rows,in_31_reference_rows,extended_reentry_recent_4w_rows
+P1,32880,411,80.0,80,80,411,1233,2055,4110,12741,8688
+P2,4080,51,80.0,80,80,51,153,255,510,1581,1087
+P2|2024_latest,8240,103,80.0,80,80,103,309,515,1030,3193,2144
+P2|2024_latest|2026YTD,2080,26,80.0,80,80,26,78,130,260,806,584
+outside_requested_periods,80,1,80.0,80,80,1,3,5,10,31,19

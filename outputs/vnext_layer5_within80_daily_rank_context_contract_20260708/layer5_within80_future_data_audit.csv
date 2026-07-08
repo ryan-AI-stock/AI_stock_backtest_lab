@@ -1,0 +1,6 @@
+﻿audit_item,status,violation_count,evidence
+forward_returns_used_in_rank_context_rule,passed,0,top-k/rank context derives from Layer4 pool_rank and PIT context; forward columns are evaluation metadata only
+future_return_as_rule,passed,0,future_return_as_rule=false
+ab_switch_rule_output,passed,0,No B switch rule emitted
+layer5_selector_output,passed,0,No Layer5 selector output emitted
+00631L_as_ordinary_stock_member,passed,0,00631L remains fallback/reference metadata only

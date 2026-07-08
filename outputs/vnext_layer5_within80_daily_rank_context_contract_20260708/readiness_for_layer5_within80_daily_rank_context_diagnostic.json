@@ -1,0 +1,62 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER5-WITHIN80-DAILY-RANK-CONTEXT-CONTRACT-001",
+  "status": "layer5_within80_daily_rank_context_contract_ready_for_experiments_intake",
+  "diagnostic_only": true,
+  "rank_context_date_basis": "weekly_signal_date_as_layer5_pre_action_context",
+  "input_layer4_status": "layer4_80_primary_pool_contract_ready_for_strategy_center_judgment",
+  "input_layer4_experiments_verdict": "PARTIAL_for_Strategy_Center_review_three_tier_architecture_balances_retention_and_bottom_tail",
+  "base_universe": "Layer4_80_primary_pool",
+  "row_count": 47360,
+  "weekly_snapshot_count": 592,
+  "selected_count_min": 80,
+  "selected_count_max": 80,
+  "actual_coverage_start": "2015-01-09",
+  "actual_coverage_end": "2026-06-29",
+  "default_requested_p1": {
+    "requested_start": "2015-01-02",
+    "requested_end": "2022-12-29"
+  },
+  "default_requested_p2": {
+    "requested_start": "2023-01-02",
+    "requested_end": "2026-06-30"
+  },
+  "rows_after_default_requested_p2_end": 0,
+  "top1_rows": 592,
+  "top3_rows": 1776,
+  "top5_rows": 2960,
+  "top10_rows": 5920,
+  "in_31_high_confidence_reference_rows": 18352,
+  "extended_100_to_80_reentry_recent_4w_rows": 12522,
+  "current_holder_fields_status": "blocked_no_live_position_state_contract",
+  "incumbent_fields_status": "blocked_no_live_incumbent_state_contract",
+  "fallback_cash_classifier_status": "blocked_no_accepted_market_cash_classifier",
+  "ready_for_layer5_within80_daily_rank_context_diagnostic": true,
+  "ready_for_experiments_intake": true,
+  "ready_for_layer5_action_rule": false,
+  "ready_for_ab_switch_rule": false,
+  "ready_for_portfolio_like_diagnostic": false,
+  "ready_for_formal": false,
+  "ready_for_strategy_replay": false,
+  "future_data_violation_count": 0,
+  "blocked_fields": [
+    "current_holder_state",
+    "incumbent_protection_state",
+    "B_switch_rule",
+    "cash_classifier",
+    "fallback_00631L_trading_rule",
+    "Layer5_action_rule",
+    "portfolio_replay"
+  ],
+  "proxy_fields": [
+    "RS30_proxy",
+    "large_down_blowoff_proxy",
+    "risk_bucket_proxy_or_blocked"
+  ],
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false
+}

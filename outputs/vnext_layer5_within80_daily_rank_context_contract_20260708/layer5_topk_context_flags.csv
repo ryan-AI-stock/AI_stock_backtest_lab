@@ -1,0 +1,9 @@
+﻿topk_flag,definition,allowed_use,prohibited_use,forward_return_used
+within80_top1_context,within80_rank <= 1,Experiments diagnostic grouping only,"live action, A/B switch, trade decision, daily report output",False
+within80_top2_context,within80_rank <= 2,Experiments diagnostic grouping only,"live action, A/B switch, trade decision, daily report output",False
+within80_top3_context,within80_rank <= 3,Experiments diagnostic grouping only,"live action, A/B switch, trade decision, daily report output",False
+within80_top5_context,within80_rank <= 5,Experiments diagnostic grouping only,"live action, A/B switch, trade decision, daily report output",False
+within80_top10_context,within80_rank <= 10,Experiments diagnostic grouping only,"live action, A/B switch, trade decision, daily report output",False
+within80_top20_context,within80_rank <= 20,Experiments diagnostic grouping only,"live action, A/B switch, trade decision, daily report output",False
+in_31_high_confidence_subpool_reference,same ticker/date also in 31-stock reference subpool,context overlap diagnostic,main pool replacement or formal selector,False
+came_from_100_extended_only_recent_4w,ticker was in 100 extended-only reference during previous 4 weekly snapshots and is now in 80 primary,re-entry context diagnostic,buy/switch rule,False
