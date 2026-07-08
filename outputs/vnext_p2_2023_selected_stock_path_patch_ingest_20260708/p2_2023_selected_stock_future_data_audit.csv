@@ -1,0 +1,4 @@
+﻿audit_item,violation_count,status,note
+future_return_as_rule,0,pass,patch uses selected ticker OHLC rows only; no future return rule construction
+00631L_plus_excess_reconstruction,0,pass,"selected stock returns are computed from ticker OHLC path, not 00631L plus excess"
+silent_fill,0,pass,blank terminal same-week exit rows remain blocked; no inferred exit date was silently filled

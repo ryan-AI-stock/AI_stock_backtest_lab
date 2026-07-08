@@ -1,0 +1,4 @@
+﻿source,path,status,rows,note
+radar_p2_2023_selected_stock_unadjusted_ohlc_rows,C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p2_2023_selected_stock_ohlc_source_gap_fill_20260708\p2_2023_selected_stock_unadjusted_ohlc_rows.csv,ingested,525,official unadjusted OHLC selected-ticker-only source
+core_gap_ledger,C:\Users\zergv\Documents\Codex\2026-05-30\ep05-chat-ai-stock-backtest-lab\outputs\vnext_p2_2023_selected_stock_path_gap_closure_20260708\p2_2023_selected_stock_path_gap_ledger.csv,used_as_source_of_truth,1368,timing-expanded selected ticker/date requests
+same_week_terminal_exit_policy,,blocked_for_2023_12_29_terminal_rows,9,same-week comparator terminal rows lack exit_date in Core ledger; primary next-day close/open paths unaffected
