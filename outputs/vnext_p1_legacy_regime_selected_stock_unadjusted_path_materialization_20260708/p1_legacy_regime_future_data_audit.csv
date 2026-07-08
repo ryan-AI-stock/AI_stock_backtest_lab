@@ -1,0 +1,5 @@
+audit_item,result,violation_count,evidence
+selected_stock_return_reconstructed_from_00631L_plus_excess,passed,0,Core emits source request instead of reconstructing P1 stock returns from 00631L plus excess.
+future_return_as_rule,passed,0,Forward returns are not used to construct signals or requested source rows.
+full_market_mass_download_triggered,passed,0,Source request is selected-ticker/date scoped only.
+adjusted_close_fabricated,passed,0,Adjusted close remains blocked and is not fabricated.

@@ -1,0 +1,4 @@
+timing_variant,entry,exit,status,diagnostic_only
+same_week_close_to_next_rebalance_close_comparator,signal_date close,next weekly signal close,template_ready_stock_path_blocked_until_p1_selected_ohlc_source,True
+next_day_close_entry_fixed_5td_exit,next trading day close,5 trading days after entry close,template_ready_stock_path_blocked_until_p1_selected_ohlc_source,True
+next_day_open_entry_fixed_5td_exit,next trading day open,5 trading days after entry close,template_ready_stock_path_blocked_until_p1_selected_ohlc_source,True
