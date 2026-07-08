@@ -1,0 +1,7 @@
+﻿audit_item,status,future_data_violation_count,note
+pool_assembly_inputs,passed,0,ranking/quota inputs are PIT context fields only
+forward_return_as_rule,passed,0,forward returns retained only for evaluation metadata and not used in pool scoring
+Layer2_Layer3_hard_gate,passed,0,Layer2/Layer3 fields are ranking/context only; base eligibility is Layer1 b30
+00631L_policy,passed,0,"00631L retained as reference/fallback marker only, not ordinary stock member"
+Layer5,not_authorized,0,no A/B/fallback decision output
+portfolio_replay,not_executed,0,no replay executed

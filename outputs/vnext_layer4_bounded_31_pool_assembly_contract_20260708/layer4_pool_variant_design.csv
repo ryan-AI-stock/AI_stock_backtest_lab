@@ -1,0 +1,6 @@
+﻿pool_variant,pool_size,ranking_or_quota_basis,policy
+A_retention_friendly_broad_label_pool,31,two_plus_opportunity_labels + opportunity count + net score,retention-friendly ranking; no strict top-k gate
+B_score_balanced_pool,31,broad net score blend with cap top30 concentration guard,balanced score; max 18 capital-top30 context rows before fill
+C_quota_style_broad_label_pool,31,momentum 8 / pullback 8 / overlap 5 / neutral 10 broad quotas,neutral quality/liquidity retained
+D_risk_aware_pool,31,balanced score with exhaustion/breakdown/large-down/blowoff penalty,"risk reduces rank, does not hard exclude"
+E_theme_dynamic_slot_placeholder_reference,31,theme slot placeholder unavailable; no AI hard quota applied,theme/AI dynamic policy blocked until accepted source

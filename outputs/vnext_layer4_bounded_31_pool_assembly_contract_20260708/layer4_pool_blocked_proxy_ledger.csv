@@ -1,0 +1,10 @@
+﻿field,status,reason,policy
+Layer4 formal pool,not_authorized,bounded diagnostic pool assembly only,not formal-ready
+Layer5 A/B decision,not_authorized,scope stops before daily decision,no trade decision
+portfolio_replay,not_authorized,no replay in Core contract,Experiments event diagnostic only if authorized
+00631L_fallback,reference_only,fallback/reference fields only,not ordinary stock pool member
+AI_theme_dynamic_slots,blocked_placeholder,no accepted dynamic theme slot contract in this package,no AI hard quota
+RS30,proxy,RS30_proxy midpoint of RS20/RS40,diagnostic context only
+risk_bucket,blocked,no accepted PIT risk_bucket,do not fabricate
+large_down_blowoff,diagnostic_proxy,proxy risk context,"rank penalty only, not hard exclusion"
+forward_returns,evaluation_metadata_only,retained for metrics join,not used in assembly scoring

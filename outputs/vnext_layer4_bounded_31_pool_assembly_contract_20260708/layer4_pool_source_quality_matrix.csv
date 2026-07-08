@@ -1,0 +1,7 @@
+﻿feature_group,fields,source_quality,available_share,policy
+base_universe,compact Layer0 active + Layer1 b30,exact_from_prior_core_contract,1.0,only base eligibility
+Layer2_context,"capital, RS, risk context fields",diagnostic_pit_context,0.9902273482644214,pass-through only
+Layer3_broad_labels,broad opportunity scores/tier fields,diagnostic_composite_from_pit_features,1.0,not filters
+Layer4_pool_assembly,31-row bounded diagnostic variants,diagnostic_assembly_from_pit_context,1.0,not formal pool
+AI_theme_slots,theme dynamic slot placeholder,blocked_no_accepted_theme_slot_context,0.0,no AI hard quota
+forward_evaluation,5/10/20/30/40D labels,evaluation_metadata_only,0.982081528172176,not used in assembly

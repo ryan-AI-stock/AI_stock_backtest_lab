@@ -1,0 +1,7 @@
+﻿component,input_fields,role,policy
+layer1_quality_floor,layer1_b30_pass_through_eligible,eligibility base,only base eligibility flag
+layer2_context,"capital support, RS context, warnings/penalties",ranking context,no row deletion
+layer3_broad_labels,momentum/pullback/overlap/neutral scores and tiers,ranking/quota context,labels are not filters
+risk_penalty,exhaustion/breakdown/large-down/blowoff,rank reduction,no one-shot exclusion
+liquidity_investability,traded value ranks and neutral quality/liquidity,tie breaker,diagnostic only
+evaluation_metadata,5/10/20/30/40D forward excess,Experiments evaluation only,not used in pool assembly
