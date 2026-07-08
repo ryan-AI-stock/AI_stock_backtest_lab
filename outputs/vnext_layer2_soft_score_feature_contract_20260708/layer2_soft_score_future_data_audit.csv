@@ -1,0 +1,5 @@
+﻿audit_item,status,future_data_violation_count,note
+soft_score_feature_contract,passed,0,features are as-of snapshot_date PIT fields
+forward_return_as_rule,passed,0,forward returns retained only as evaluation_metadata_only
+selector_output,not_applicable,0,no final score/selector output produced
+portfolio_replay,not_executed,0,no replay executed

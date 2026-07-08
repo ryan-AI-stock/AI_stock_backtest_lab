@@ -1,0 +1,10 @@
+﻿field,status,blocked_or_proxy_reason,policy
+RS30,proxy,exact RS30 unavailable; RS30_proxy uses midpoint of RS20 and RS40,diagnostic only
+large_down_day_count,blocked,not materialized in compact Layer2 PIT contract,do not fabricate
+blowoff_turnover_without_price_continuation,blocked,requires path/price continuation trigger contract,do not fabricate
+risk_bucket,blocked,no accepted PIT risk_bucket field in current compact package,use Layer1 risk pctile only as proxy/context
+market_cap_exact,blocked,exact daily market cap still blocked,not used in soft score
+free_float_market_cap,blocked,free float market cap unavailable,not used in soft score
+BIAS_percentile,exact_or_pit_diagnostic,BIAS percentile from stock_features as-of snapshot_date,risk/overheat context only
+volatility,exact_or_pit_diagnostic,volatility from stock_features as-of snapshot_date,risk context only
+forward_returns,evaluation_metadata_only,retained only for Experiments evaluation,not live rule

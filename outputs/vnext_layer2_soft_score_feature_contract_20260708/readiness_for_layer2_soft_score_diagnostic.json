@@ -1,0 +1,53 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER2-SOFT-SCORE-FEATURE-CONTRACT-READINESS-001",
+  "status": "layer2_soft_score_feature_contract_ready_for_experiments_planning",
+  "diagnostic_only": true,
+  "soft_score_feature_contract_only": true,
+  "suggested_component_design_only": true,
+  "selector_output": false,
+  "input_rs_join_status": "layer2_compact_rs_window_evaluation_join_ready_for_experiments_intake",
+  "rows": 171499,
+  "weekly_snapshot_count": 592,
+  "unique_ticker_count": 1612,
+  "capital_support_available_share": 1.0,
+  "rs20_available_share": 0.9902273482644214,
+  "rs30_exact_available": false,
+  "rs30_proxy_available_share": 0.9902273482644214,
+  "bias20_percentile_available_share": 0.9919766296013388,
+  "volatility_available_share": 0.9902273482644214,
+  "large_down_day_available": false,
+  "blowoff_turnover_available": false,
+  "risk_bucket_available": false,
+  "missed_winner_attribution_context": {
+    "variant": "b30_weighted_cap20_rs20_rs30_top30",
+    "missed_top_decile_rate": 0.8669178897262991,
+    "bad_missed_winner_rate": 0.3109128345916266
+  },
+  "ready_for_layer2_soft_score_bounded_diagnostic": true,
+  "ready_for_experiments_intake": true,
+  "ready_for_portfolio_like_diagnostic": false,
+  "ready_for_formal": false,
+  "ready_for_strategy_replay": false,
+  "portfolio_replay_executed": false,
+  "candidate_forward_return_diagnostic_executed": false,
+  "future_data_violation_count": 0,
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false,
+  "blocked_fields": [
+    "large_down_day_count",
+    "blowoff_turnover_without_price_continuation",
+    "risk_bucket",
+    "exact_market_cap",
+    "free_float_market_cap"
+  ],
+  "proxy_fields": [
+    "RS30_proxy",
+    "BIAS_percentile_risk_context",
+    "volatility_percentile_context"
+  ],
+  "missingness_rows": 50
+}

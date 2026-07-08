@@ -1,0 +1,6 @@
+﻿component,input_features,suggested_role,policy
+capital_support_component,"traded_value_rank_20d/60d percentile, 20d-vs-60d improvement, 4w reasonable-band persistence",positive soft contribution,do not hard-filter top-k; retain score features for Experiments sweep
+relative_strength_component,"RS20/RS30 primary momentum, RS60 background, RS5/10 acceleration",positive soft contribution plus warning flags,RS60 not universal hard gate
+stable_strong_protection_component,"Layer1 pass, capital reasonable, RS stable, multi-week consistency",protect potential winners from single-week top-k miss,candidate feature only
+risk_overheat_penalty_component,"BIAS percentile, volatility percentile, Layer1 risk pctile, RS exhaustion warning",soft penalty context,not automatic exclusion
+watchlist_burst_penalty_context,pure 5D burst without 20D/60D confirmation,watchlist or mild penalty context,not direct elimination

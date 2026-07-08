@@ -1,0 +1,7 @@
+﻿feature_group,fields,source_quality,available_share
+capital_support,"traded_value_rank_20d/60d, rank change, 4w persistence",exact_from_layer0_compact_pit,1.0
+relative_strength,RS5/10/20/40/60 vs 0050,exact_from_stock_features_pit,0.9902273482644214
+rs30_context,RS30_proxy,proxy_midpoint_rs20_rs40,0.9902273482644214
+stable_strong_protection,Layer1 pass + capital reasonable + RS stable + no exhaustion,diagnostic_composite_from_pit_features,1.0
+overheat_risk,"BIAS percentiles, volatility pctile, Layer1 risk pctile",diagnostic_pit_context_partial,0.9919766296013388
+forward_evaluation,20D excess vs 0050/00631L and decile labels,evaluation_metadata_only,0.9856617239750669
