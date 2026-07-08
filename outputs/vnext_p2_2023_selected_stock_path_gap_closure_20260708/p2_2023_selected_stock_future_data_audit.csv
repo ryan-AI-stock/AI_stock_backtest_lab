@@ -1,0 +1,4 @@
+﻿audit_item,violation_count,status,note
+future_return_as_rule,0,pass,ledger uses PIT route signal dates and requested entry/exit dates only; no future returns used as rule
+00631L_plus_excess_reconstruction,0,pass,explicitly prohibited; no selected stock return patch materialized from excess reconstruction
+silent_fill,0,pass,Core did not fabricate missing OHLC; remaining rows handed to Radar/Data
