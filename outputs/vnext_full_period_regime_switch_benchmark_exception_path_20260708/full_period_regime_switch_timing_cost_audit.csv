@@ -1,0 +1,7 @@
+﻿source,timing_variant,rows,ready_rows,blocked_rows,formal_cost_model_ready,cost_model,next_day_open_ready,diagnostic_only,formal_model_changed,trade_decision_changed,active_in_trade_decision,report_changed,portfolio_replay_executed,ready_for_strategy_replay,ready_for_formal,not_live_rule,forward_returns_live_rule_usage
+benchmark_reference_path,buy_hold_reference_separate_do_not_mix_with_policy_path,8,8,0,True,local_ep05_TaiwanCostModel_unit_notional,,True,False,False,False,False,False,False,False,True,False
+benchmark_reference_path,next_day_close_entry_fixed_5td_exit,1776,1772,4,True,local_ep05_TaiwanCostModel_unit_notional,,True,False,False,False,False,False,False,False,True,False
+benchmark_reference_path,next_day_open_entry_fixed_5td_exit,1776,592,1184,True,local_ep05_TaiwanCostModel_unit_notional,False,True,False,False,False,False,False,False,False,True,False
+benchmark_reference_path,same_week_close_to_next_rebalance_close_comparator,1776,1774,2,True,local_ep05_TaiwanCostModel_unit_notional,,True,False,False,False,False,False,False,False,True,False
+stock_route_path,next_day_close_entry_fixed_5td_exit,1004,999,5,True,local_ep05_TaiwanCostModel_unit_notional,,True,False,False,False,False,False,False,False,True,False
+stock_route_path,same_week_close_to_next_rebalance_close_comparator,369,366,3,True,local_ep05_TaiwanCostModel_unit_notional,,True,False,False,False,False,False,False,False,True,False

@@ -1,0 +1,5 @@
+﻿audit_item,violation_count,status,note
+future_return_as_rule,0,pass,forward returns are not used to construct benchmark or stock route paths
+benchmark_buy_hold_mixed_with_signal_aligned_policy,0,pass,buy-hold rows use separate path_type and timing_variant
+00631L_plus_excess_reconstruction_as_primary_stock_path,0,pass,stock paths are joined from selected-ticker official unadjusted OHLC materializations
+route_future_return_used,0,pass,route signal table reports PIT route inputs; no future-return route construction accepted
