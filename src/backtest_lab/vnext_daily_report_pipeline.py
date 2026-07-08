@@ -29,6 +29,7 @@ class VNextReportPaths:
     route_support_max1: Path
     radar_official_ohlcv_manifest: Path
     radar_pit_daily_sample: Path
+    eod_source_scoped_rows: Path | None = None
 
 
 def default_paths(root: Path) -> VNextReportPaths:
@@ -53,6 +54,7 @@ def main() -> None:
     parser.add_argument("--as-of-date", default=date.today().isoformat())
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR))
     parser.add_argument("--publish-drive", action="store_true")
+    parser.add_argument("--eod-source-dir", default="")
     parser.add_argument("--folder-id", default=DEFAULT_FOLDER_ID)
     parser.add_argument("--remote-name", default=REMOTE_REPORT_NAME)
     parser.add_argument("--file-id", default=os.environ.get("VNEXT_DAILY_REPORT_DRIVE_FILE_ID", ""))
@@ -70,6 +72,7 @@ def main() -> None:
         folder_id=args.folder_id,
         remote_name=args.remote_name,
         file_id=args.file_id.strip() or None,
+        eod_source_dir=Path(args.eod_source_dir) if args.eod_source_dir else None,
     )
 
 
@@ -82,9 +85,17 @@ def build_package(
     folder_id: str = DEFAULT_FOLDER_ID,
     remote_name: str = REMOTE_REPORT_NAME,
     file_id: str | None = None,
+    eod_source_dir: Path | None = None,
 ) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     paths = default_paths(root)
+    if eod_source_dir is not None:
+        paths = VNextReportPaths(
+            **{
+                **paths.__dict__,
+                "eod_source_scoped_rows": eod_source_dir / "vnext_adhoc_20260708_scoped_common_stock_etf_rows.csv",
+            }
+        )
     snapshot = build_signal_snapshot(paths, requested_date)
 
     pdf_path = output_dir / "vnext_daily_report_sample_output.pdf"
@@ -104,7 +115,8 @@ def build_package(
         if not publish_drive
         else "pipeline_implemented_drive_publish_attempted",
         "requested_report_date": requested_date,
-        "actual_data_date": snapshot["as_of_data_date"],
+        "actual_data_date": snapshot["data_actual_date"],
+        "vnext_signal_actual_date": snapshot["as_of_data_date"],
         "market_data_ready_for_requested_date": snapshot["market_data_ready"],
         "sample_pdf_ready": pdf_path.exists() and pdf_path.stat().st_size > 0,
         "sample_pdf_basic_validation": "pdf_exists_nonzero_and_pdf_header_checked_by_runner",
@@ -125,7 +137,7 @@ def build_package(
         "future_data_violation_count": 0,
         "ready_for_daily_report_pipeline_review": True,
         "ready_for_live_publish": False,
-        "live_publish_blocker": "Drive publish not executed locally; 2026-07-08 vNext fields are not materialized in local Core package; local Poppler/pypdf visual/text validation tools unavailable.",
+        "live_publish_blocker": "Drive publish not executed locally; requested-date vNext Layer0-Layer4/trigger/score fields are not fully materialized; local Poppler/pypdf visual/text validation tools unavailable.",
     }
     write_json(output_dir / "vnext_daily_report_pipeline_readiness.json", readiness)
 
@@ -164,6 +176,7 @@ def build_package(
 
 def build_signal_snapshot(paths: VNextReportPaths, requested_date: str) -> dict[str, Any]:
     field_dates = {
+        "single_day_eod_source_anchor": max_date(paths.eod_source_scoped_rows, "date") if paths.eod_source_scoped_rows else None,
         "radar_full_sweep_official_ohlcv": max_date(paths.radar_official_ohlcv_manifest, "last_date"),
         "radar_pit_daily_sample_official_ohlcv": max_date(paths.radar_pit_daily_sample, "date"),
         "layer4_primary80_snapshot": max_date(paths.layer4_primary80, "snapshot_date"),
@@ -173,6 +186,9 @@ def build_signal_snapshot(paths: VNextReportPaths, requested_date: str) -> dict[
         "route_support_max1_state_machine": max_date(paths.route_support_max1, "signal_date"),
     }
     requested_presence = {
+        "single_day_eod_source_anchor": has_date(paths.eod_source_scoped_rows, "date", requested_date)
+        if paths.eod_source_scoped_rows
+        else False,
         "radar_pit_daily_sample_official_ohlcv": has_date(paths.radar_pit_daily_sample, "date", requested_date),
         "layer4_primary80_snapshot": has_date(paths.layer4_primary80, "snapshot_date", requested_date),
         "0050_market_regime_fields": has_date(paths.market_regime, "snapshot_date", requested_date),
@@ -193,7 +209,17 @@ def build_signal_snapshot(paths: VNextReportPaths, requested_date: str) -> dict[
         }
         and date_value
     )
-    market_data_ready = all(requested_presence.values())
+    vnext_ready = all(
+        requested_presence[field]
+        for field in [
+            "layer4_primary80_snapshot",
+            "0050_market_regime_fields",
+            "dynamic80_pool_regime_fields",
+            "exact_consensus_trigger",
+            "route_support_max1_state_machine",
+        ]
+    )
+    eod_anchor_ready = bool(requested_presence.get("single_day_eod_source_anchor"))
     max1 = latest_row(paths.route_support_max1, "signal_date")
     market = latest_row(
         paths.market_regime,
@@ -213,7 +239,7 @@ def build_signal_snapshot(paths: VNextReportPaths, requested_date: str) -> dict[
     selected_asset_type = "blocked"
     selected_ticker = None
     selected_name = None
-    if market_data_ready and max1 is not None:
+    if vnext_ready and max1 is not None:
         c2 = as_bool(max1.get("c2_market_health_gate"))
         trigger = as_bool(max1.get("consensus_trigger"))
         selected_asset_type = "stock" if c2 and trigger else "00631L_fallback"
@@ -222,24 +248,27 @@ def build_signal_snapshot(paths: VNextReportPaths, requested_date: str) -> dict[
 
     return {
         "as_of_requested_date": requested_date,
-        "as_of_data_date": requested_date if market_data_ready else common_reference,
-        "market_data_ready": market_data_ready,
+        "as_of_data_date": requested_date if vnext_ready else common_reference,
+        "data_actual_date": requested_date if eod_anchor_ready else (requested_date if vnext_ready else common_reference),
+        "official_eod_anchor_ready": eod_anchor_ready,
+        "market_data_ready": vnext_ready,
         "field_as_of_dates": field_dates,
         "requested_date_field_presence": requested_presence,
-        "regime_label": regime_label(max1, market_data_ready),
-        "selected_branch": selected_branch(max1, market_data_ready),
-        "branch_reason": branch_reason(max1, market_data_ready),
+        "regime_label": regime_label(max1, vnext_ready),
+        "selected_branch": selected_branch(max1, vnext_ready),
+        "branch_reason": branch_reason(max1, vnext_ready),
         "triggered_features": triggered_features(max1, market),
         "selected_asset_type": selected_asset_type,
         "selected_ticker": selected_ticker,
         "selected_name": selected_name,
-        "c2_gate_pass": as_bool(max1.get("c2_market_health_gate")) if max1 is not None and market_data_ready else False,
-        "consensus_trigger_pass": as_bool(max1.get("consensus_trigger")) if max1 is not None and market_data_ready else False,
+        "c2_gate_pass": as_bool(max1.get("c2_market_health_gate")) if max1 is not None and vnext_ready else False,
+        "consensus_trigger_pass": as_bool(max1.get("consensus_trigger")) if max1 is not None and vnext_ready else False,
         "route_support_score": none_if_nan(max1.get("route_support_weighted_score")) if max1 is not None else None,
         "route_support_rank": 1 if max1 is not None and str(max1.get("selected_asset_type")) == "stock" else None,
         "rs20_reference_top3": rs20_top3,
         "rs20_reference_top1": rs20_top3[0] if rs20_top3 else None,
         "latest_0050_market_reference": {} if market is None else series_dict(market),
+        "current_eod_anchor_rows": current_anchor_rows(paths.eod_source_scoped_rows, requested_date),
         "diagnostic_only": True,
         "not_live_trade_decision": True,
     }
@@ -247,6 +276,7 @@ def build_signal_snapshot(paths: VNextReportPaths, requested_date: str) -> dict[
 
 def build_requested_vs_actual_coverage(paths: VNextReportPaths, requested_date: str) -> pd.DataFrame:
     rows = [
+        ("single_day_eod_source_anchor", paths.eod_source_scoped_rows, "date", "source_anchor"),
         ("official_ohlcv_full_sweep", paths.radar_official_ohlcv_manifest, "last_date", "source_anchor"),
         ("official_ohlcv_pit_daily_sample", paths.radar_pit_daily_sample, "date", "source_anchor"),
         ("layer4_primary80_snapshot", paths.layer4_primary80, "snapshot_date", "vnext_materialized_contract"),
@@ -408,7 +438,10 @@ def render_pdf_report(path: Path, snapshot: dict[str, Any]) -> None:
         draw_section(ax, 0.06, 0.52, "RS20 Top3 Reference", rs_lines)
 
         market = snapshot.get("latest_0050_market_reference") or {}
+        anchor = snapshot.get("current_eod_anchor_rows") or {}
         market_lines = [
+            f"2026-07-08 EOD anchor 0050 close: {anchor.get('0050', {}).get('close')} turnover: {anchor.get('0050', {}).get('turnover_value')}",
+            f"2026-07-08 EOD anchor 00631L close: {anchor.get('00631L', {}).get('close')} turnover: {anchor.get('00631L', {}).get('turnover_value')}",
             f"0050 latest field date: {market.get('snapshot_date', '')}",
             f"0050 return 20D / 40D / 60D: {market.get('0050_return_20d')} / {market.get('0050_return_40d')} / {market.get('0050_return_60d')}",
             f"0050 price vs MA60: {market.get('0050_price_vs_ma60')}",
@@ -532,7 +565,8 @@ def write_summary(path: Path, *, snapshot: dict[str, Any], readiness: dict[str, 
 ## 今日資料狀態
 
 - requested date: `{snapshot['as_of_requested_date']}`。
-- actual data date: `{snapshot['as_of_data_date']}`。
+- actual data date: `{snapshot['data_actual_date']}`。
+- vNext signal actual date: `{snapshot['as_of_data_date']}`。
 - market_data_ready_for_requested_date: `{snapshot['market_data_ready']}`。
 - 目前 sample PDF 使用 latest available reference；若要產出 2026-07-08 真正 report，需要先補 vNext 2026-07-08 source/materialization。
 
@@ -559,14 +593,14 @@ def write_summary(path: Path, *, snapshot: dict[str, Any], readiness: dict[str, 
 
 
 def max_date(path: Path, date_col: str) -> str | None:
-    if not path.exists():
+    if path is None or not path.exists():
         return None
     s = pd.read_csv(path, usecols=[date_col])[date_col].astype(str)
     return str(s.max()) if len(s) else None
 
 
 def has_date(path: Path, date_col: str, value: str) -> bool:
-    if not path.exists():
+    if path is None or not path.exists():
         return False
     s = pd.read_csv(path, usecols=[date_col])[date_col].astype(str)
     return bool((s == value).any())
@@ -613,6 +647,29 @@ def latest_rs20_reference(path: Path) -> list[dict[str, Any]]:
                 "source_quality": "reference_only_latest_layer4_rs20_sort_not_full_risk_tiebreak",
             }
         )
+    return out
+
+
+def current_anchor_rows(path: Path | None, requested_date: str) -> dict[str, dict[str, Any]]:
+    if path is None or not path.exists():
+        return {}
+    df = pd.read_csv(path)
+    df = df[df["date"].astype(str) == requested_date]
+    out: dict[str, dict[str, Any]] = {}
+    for ticker in ["0050", "00631L", "2330"]:
+        rows = df[df["ticker"].astype(str) == ticker]
+        if rows.empty:
+            continue
+        row = rows.iloc[0]
+        out[ticker] = {
+            "name": row.get("name"),
+            "close": none_if_nan(row.get("close")),
+            "open": none_if_nan(row.get("open")),
+            "high": none_if_nan(row.get("high")),
+            "low": none_if_nan(row.get("low")),
+            "turnover_value": none_if_nan(row.get("turnover_value")),
+            "source_quality": row.get("source_quality"),
+        }
     return out
 
 

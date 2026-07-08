@@ -1,0 +1,13 @@
+{
+  "folder_id": "1O6Se-HfI7ZDTQ-LWeAO6f8vtvoLcCzIj",
+  "folder_url": "https://drive.google.com/drive/u/0/folders/1O6Se-HfI7ZDTQ-LWeAO6f8vtvoLcCzIj",
+  "remote_name": "AI台股新模型每日收盤報告.pdf",
+  "local_pdf": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_daily_report_20260708_materialization_refresh_20260708\\vnext_daily_report_sample_output.pdf",
+  "local_pdf_exists": true,
+  "publish_attempted": false,
+  "publish_action": "not_attempted",
+  "drive_file_id": "",
+  "overwrite_semantics": "update_by_file_id_or_update_by_name_or_create_once",
+  "uses_existing_backtest_lab_drive_publish_upsert_pdf": true,
+  "blocked_reason": "local readiness run did not request Drive upload"
+}

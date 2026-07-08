@@ -1,0 +1,57 @@
+name: vNext Daily Report
+
+on:
+  workflow_dispatch:
+    inputs:
+      as_of_date:
+        description: "Report date in YYYY-MM-DD. Defaults to shared schedule target date."
+        required: false
+        type: string
+  schedule:
+    - cron: "45 11 * * 1-5"
+
+jobs:
+  vnext-daily-report:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout shared schedule rules
+        uses: actions/checkout@v4
+        with:
+          repository: ryan-AI-stock/AI_stock_schedule_rules
+          path: AI_stock_schedule_rules
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Shared daily schedule gate
+        id: schedule-gate
+        working-directory: AI_stock_schedule_rules
+        run: python -m stock_schedule_rules.gate --profile daily --github-output "$GITHUB_OUTPUT"
+      - name: Install dependencies
+        if: steps.schedule-gate.outputs.should_run == 'true'
+        run: python -m pip install -r requirements.txt
+      - name: Build vNext daily report PDF
+        if: steps.schedule-gate.outputs.should_run == 'true'
+        env:
+          PYTHONPATH: src
+        run: |
+          date="${{ inputs.as_of_date || steps.schedule-gate.outputs.target_date }}"
+          python -m backtest_lab.vnext_daily_report_pipeline --as-of-date "$date" --output-dir outputs/vnext_daily_report_pipeline
+      - name: Publish vNext daily report PDF
+        if: steps.schedule-gate.outputs.should_run == 'true'
+        env:
+          PYTHONPATH: src
+          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+          GOOGLE_OAUTH_REFRESH_TOKEN: ${{ secrets.GOOGLE_OAUTH_REFRESH_TOKEN }}
+          VNEXT_DAILY_REPORT_DRIVE_FILE_ID: ${{ secrets.VNEXT_DAILY_REPORT_DRIVE_FILE_ID || vars.VNEXT_DAILY_REPORT_DRIVE_FILE_ID }}
+        run: |
+          python -m backtest_lab.vnext_daily_report_pipeline \
+            --as-of-date "${{ inputs.as_of_date || steps.schedule-gate.outputs.target_date }}" \
+            --output-dir outputs/vnext_daily_report_pipeline \
+            --publish-drive \
+            --folder-id "1O6Se-HfI7ZDTQ-LWeAO6f8vtvoLcCzIj" \
+            --remote-name "AI台股新模型每日收盤報告.pdf" \
+            --file-id "$VNEXT_DAILY_REPORT_DRIVE_FILE_ID"
