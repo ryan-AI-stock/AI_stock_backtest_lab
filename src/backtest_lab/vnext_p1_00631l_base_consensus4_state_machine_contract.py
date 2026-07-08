@@ -107,7 +107,10 @@ def _signal_trace() -> pd.DataFrame:
 
 def _stock_path_map() -> dict[tuple[str, str], dict[str, Any]]:
     stock = pd.read_csv(P1_STOCK_PATH, low_memory=False)
-    stock = stock.loc[stock["timing_variant"] == "next_day_close_entry_fixed_5td_exit"].copy()
+    stock = stock.loc[
+        (stock["timing_variant"] == "next_day_close_entry_fixed_5td_exit")
+        & (stock["path_bucket"] == "ordinary_stock")
+    ].copy()
     stock["signal_date"] = pd.to_datetime(stock["signal_date"], errors="coerce")
     stock["ticker_norm"] = stock["ticker"].map(_ticker_str)
     stock["ready_sort"] = (~stock["price_path_ready"].fillna(False).astype(bool)).astype(int)

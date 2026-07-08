@@ -1,0 +1,4 @@
+﻿audit_item,violation_count,status,notes
+future_return_as_feature,0,pass,"All classifier inputs are computed from signal-date/as-of benchmark, pool, and state-machine fields; no forward returns are used as features."
+core_threshold_decision,0,pass,Core emits candidate labels/features only; Experiments owns threshold testing.
+cost_governance,0,policy_noted,Future main backtest conclusions must include transaction costs; this feature package does not publish a strategy verdict.

@@ -1,0 +1,12 @@
+﻿artifact,requested_signal_rows,actual_rows,first_signal_date,last_signal_date,ready_rows_core_key,future_data_violation_count
+classifier_contract,411,411,2015-01-09,2022-12-23,411,0
+0050_feature_matrix,411,411,2015-01-09,2022-12-23,411,0
+pool80_feature_matrix,411,411,2015-01-09,2022-12-23,411,0
+exception_alignment,411,411,2015-01-09,2022-12-23,411,0
+field_coverage::0050_bias20,411,411,,,411,0
+field_coverage::0050_bias40,411,411,,,411,0
+field_coverage::0050_bias60,411,408,,,408,0
+field_coverage::0050_bias120,411,395,,,395,0
+field_coverage::pool80_rs20_positive_share,411,411,,,411,0
+field_coverage::pool80_rs60_positive_share,411,411,,,411,0
+field_coverage::exception_has_signal,411,411,,,411,0

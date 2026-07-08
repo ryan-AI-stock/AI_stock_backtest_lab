@@ -1,0 +1,9 @@
+﻿field_group,field_name,status,source_quality,notes
+cost_governance,trading_cost_required_for_future_main_verdict,policy_required_not_feature_field,strategy_center_policy,"Future Experiments main conclusions must include fees, transaction tax, ETF/stock cost difference, and transition cost; no-cost is secondary gross reference only."
+pool80_rs40,pool80_rs40_positive_share / median / top10_median,blocked,not_materialized_in_local_pool_aggregate_source,RS40 pool aggregates are not available in the current Layer4/regime materialized source; do not fabricate from RS20/60.
+pool80_top_group_churn,top10/top20 turnover and consecutive stay share,blocked,requires full weekly pool membership rank history,"Current local source provides aggregate route features, not exact top10/top20 membership sequence for P1."
+pool80_traded_value_concentration,top10/top20 traded-value share,proxy,dynamic80_top50_concentration_proxy_available,Only traded-value breadth and top50 concentration proxy are available; exact top10/top20 share remains blocked.
+pool80_rs_top_median,pool80_rs20_top10_median,proxy,dynamic80_rs20_top_decile_median,"Top decile in an 80-stock pool is about eight names, close to top10 but not exact."
+cash_bear_classifier,cash_condition / bear_classifier,blocked,not_available,This package supports market regime features only; it does not create a cash rule.
+trend_state_labels,uptrend / neutral / weak / drawdown_risk,candidate_label,derived_from_pit_0050_features,"Labels are diagnostic candidates for Experiments threshold testing, not live rules."
+00631L_risk_context,00631L_high_risk_context_candidate,candidate_label,derived_from_pit_00631L_features,Candidate context only; not a fallback/cash/action rule.

@@ -5,8 +5,8 @@
 - ready_for_p1_00631L_base_consensus4_state_machine_diagnostic: `true`
 - state_machine_interval_rows: 412
 - transition_rows: 76
-- gross_total_return_before_cost_proxy: 7.602204
-- net_total_return_after_transition_cost_proxy: 4.920754
+- gross_total_return_before_cost_proxy: 8.810610
+- net_total_return_after_transition_cost_proxy: 5.752480
 - gross_mdd: -0.460414
 - net_mdd: -0.510318
 

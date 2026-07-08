@@ -1,0 +1,103 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P1-MARKET-REGIME-CLASSIFIER-FEATURE-CONTRACT-001",
+  "status": "p1_market_regime_classifier_feature_contract_ready_partial_pool_proxy_fields",
+  "created_at": "2026-07-08T16:58:45.314694+08:00",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_market_regime_classifier_feature_contract_20260708",
+  "inputs": {
+    "benchmark_features": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_dynamic_candidate_pool_data_materialization_20260706\\benchmark_features.csv",
+    "state_machine_contract": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_00631l_base_consensus4_state_machine_contract_20260708\\p1_00631L_base_consensus4_state_machine_contract.csv",
+    "regime_signal_table": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_regime_switch_hybrid_route_market_fields_path_materialization_20260708\\regime_switch_hybrid_route_signal_table.csv"
+  },
+  "artifacts": [
+    {
+      "name": "p1_market_regime_classifier_feature_contract.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_market_regime_classifier_feature_contract_20260708\\p1_market_regime_classifier_feature_contract.csv",
+      "sha256": "53b05221f85fae40ae4268d18b18a28903c4cdfd4380289c0599b0b45d387b43",
+      "rows": 411
+    },
+    {
+      "name": "p1_market_regime_0050_feature_matrix.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_market_regime_classifier_feature_contract_20260708\\p1_market_regime_0050_feature_matrix.csv",
+      "sha256": "6252e49c578fa8484136540f44512e3e344544ae083657560749fdeb372b1424",
+      "rows": 411
+    },
+    {
+      "name": "p1_market_regime_pool80_feature_matrix.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_market_regime_classifier_feature_contract_20260708\\p1_market_regime_pool80_feature_matrix.csv",
+      "sha256": "53f2476be03b2468c181d652f1f020592299ac999a1081ad959a46ec7e4ebf8c",
+      "rows": 411
+    },
+    {
+      "name": "p1_market_regime_exception_alignment.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_market_regime_classifier_feature_contract_20260708\\p1_market_regime_exception_alignment.csv",
+      "sha256": "aa8ba37f59ab6e05252c1a992e52676d99ad6a6ec35ec1fab3626899024f5cbc",
+      "rows": 411
+    },
+    {
+      "name": "p1_market_regime_feature_coverage_audit.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_market_regime_classifier_feature_contract_20260708\\p1_market_regime_feature_coverage_audit.csv",
+      "sha256": "0799811328c35b69d706d4242de55058abb028cd713f48078a6706b7b35eae94",
+      "rows": 11
+    },
+    {
+      "name": "p1_market_regime_blocked_proxy_audit.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_market_regime_classifier_feature_contract_20260708\\p1_market_regime_blocked_proxy_audit.csv",
+      "sha256": "107e1b0ee9efc0963bcfad9bcd52ce6c40c3a5dccbb4c314113d042f3dced1ae",
+      "rows": 8
+    },
+    {
+      "name": "p1_market_regime_future_data_audit.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_market_regime_classifier_feature_contract_20260708\\p1_market_regime_future_data_audit.csv",
+      "sha256": "ebff7c454e0de1169b6078be23888aa61c7262dae47d24ff859056912a5e5c5e",
+      "rows": 3
+    },
+    {
+      "name": "readiness_for_p1_market_regime_classifier_diagnostic.json",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_market_regime_classifier_feature_contract_20260708\\readiness_for_p1_market_regime_classifier_diagnostic.json",
+      "sha256": "0bfe498950a6581bdcd69abe9c561fcaa9223c6cee187a4c1dbc2fcf07d09473",
+      "rows": null
+    },
+    {
+      "name": "final_summary_zh.md",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_market_regime_classifier_feature_contract_20260708\\final_summary_zh.md",
+      "sha256": "9d0807a2a32998a9c7a276d772b6234a88f569d007e1143e23aae752a9bb88d8",
+      "rows": null
+    }
+  ],
+  "flags": {
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "ready_for_strategy_replay": false,
+    "ready_for_formal": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false
+  },
+  "readiness": {
+    "task_id": "TASK-BACKTEST-CORE-VNEXT-P1-MARKET-REGIME-CLASSIFIER-FEATURE-CONTRACT-001",
+    "status": "p1_market_regime_classifier_feature_contract_ready_partial_pool_proxy_fields",
+    "ready_for_p1_market_regime_classifier_diagnostic": true,
+    "ready_for_experiments": true,
+    "ready_for_formal": false,
+    "ready_for_strategy_replay": false,
+    "ready_for_portfolio_like_diagnostic": false,
+    "signal_rows": 411,
+    "market_0050_feature_rows": 411,
+    "pool80_feature_rows": 411,
+    "exception_alignment_rows": 411,
+    "pool80_rs40_exact_available": false,
+    "pool80_top10_top20_churn_available": false,
+    "cash_bear_classifier_available": false,
+    "candidate_trend_labels_are_live_rule": false,
+    "future_data_violation_count": 0,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false,
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false
+  }
+}
