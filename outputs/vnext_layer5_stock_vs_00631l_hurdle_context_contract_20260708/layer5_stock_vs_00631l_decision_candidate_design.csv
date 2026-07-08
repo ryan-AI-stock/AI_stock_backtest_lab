@@ -1,0 +1,8 @@
+﻿decision_candidate_variant,definition,status
+always_stock_incumbent_reentry_baseline,Always use incumbent-aware/reentry-confirmed stock candidate,stock baseline
+stock_if_high_confidence_else_00631L,Use stock only if high-confidence/clean state proxy passes; otherwise 00631L fallback,candidate design only
+stock_if_reentry_confirmed_and_not_high_risk_else_00631L,Use reentry-confirmed stock only if not high-risk/exhaustion; otherwise 00631L,candidate design only
+stock_if_incumbent_still_valid_else_00631L_or_best_confirmed_challenger,Use incumbent-aware stock when incumbent remains valid; otherwise fallback context,candidate design only
+stock_if_31_high_confidence_bonus_and_state_clean_else_00631L,"31 overlap is bonus plus clean-state hurdle, not mandatory filter for pool",candidate design only
+00631L_always_baseline,Always recommend 00631L fallback reference,baseline reference
+0050_reference,0050 comparison reference,reference only

@@ -1,0 +1,9 @@
+﻿field_group,source_quality,contract_role
+incumbent_aware_stock_candidates,diagnostic_path_state_proxy,stock candidate source
+00631L_fallback_candidate,benchmark_exact_or_blocked_by_future_path,fallback candidate/reference
+0050_reference_candidate,benchmark_exact_or_blocked_by_future_path,comparison reference
+benchmark_forward_eval_metadata,evaluation_metadata_only,not rule construction
+benchmark_trailing_context,PIT benchmark context,hurdle context
+cash_bear_classifier,blocked,no cash rule
+real_current_holder_state,blocked,not available
+turnover_cost_model,blocked_placeholder,not accepted

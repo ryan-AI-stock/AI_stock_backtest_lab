@@ -1,0 +1,10 @@
+﻿feature,definition,source_quality
+stock_candidate_score,diagnostic score from incumbent-aware selector candidate,PIT context
+stock_candidate_rank,within80 rank context,PIT context
+stock_candidate_risk_exhaustion_breakdown,risk/exhaustion/breakdown proxy flags,proxy
+stock_candidate_reentry_confirmed_context,100-to-80 reentry context,PIT context
+stock_candidate_incumbent_protection_context,incumbent-aware selector context,diagnostic path proxy
+stock_candidate_31_confidence_bonus_context,31 high-confidence overlap bonus,reference context
+stock_vs_00631L_hurdle_proxy_pass,"score+clean+confirmation proxy, no future return",candidate design only
+0050/00631L BIAS/trend context,benchmark trailing BIAS/return/drawdown at signal date,PIT benchmark context
+cash_bear_classifier_status,cash/bear classifier blocked,blocked

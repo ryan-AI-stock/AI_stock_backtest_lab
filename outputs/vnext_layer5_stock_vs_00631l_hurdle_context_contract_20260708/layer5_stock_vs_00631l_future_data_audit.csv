@@ -1,0 +1,6 @@
+﻿audit_item,status,violation_count,evidence
+future_return_as_rule,passed,0,false for all rows
+forward_return_as_rule,passed,0,false for all rows
+live_rule_output,passed,0,no live rule output
+trade_decision_output,passed,0,no trade decision output
+00631L_ordinary_stock_pool_member,passed,0,00631L fallback/reference only

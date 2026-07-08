@@ -1,0 +1,63 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER5-STOCK-VS-00631L-HURDLE-FALLBACK-CONTEXT-CONTRACT-001",
+  "status": "layer5_stock_vs_00631l_hurdle_context_contract_ready_for_experiments_intake",
+  "diagnostic_only": true,
+  "input_incumbent_status": "layer5_incumbent_aware_selector_candidate_contract_ready_for_experiments_intake",
+  "input_experiments_verdict": "PARTIAL_context_only_churn_reduction_value_but_performance_or_recent_stability_weak",
+  "row_count": 4144,
+  "weekly_snapshot_count": 592,
+  "decision_candidate_variant_count": 7,
+  "decision_candidate_variants": [
+    "0050_reference",
+    "00631L_always_baseline",
+    "always_stock_incumbent_reentry_baseline",
+    "stock_if_31_high_confidence_bonus_and_state_clean_else_00631L",
+    "stock_if_high_confidence_else_00631L",
+    "stock_if_incumbent_still_valid_else_00631L_or_best_confirmed_challenger",
+    "stock_if_reentry_confirmed_and_not_high_risk_else_00631L"
+  ],
+  "stock_exposure_variants": {
+    "0050_reference": 0.0,
+    "00631L_always_baseline": 0.0,
+    "always_stock_incumbent_reentry_baseline": 1.0,
+    "stock_if_31_high_confidence_bonus_and_state_clean_else_00631L": 0.9826689125959198,
+    "stock_if_high_confidence_else_00631L": 0.9826689125959198,
+    "stock_if_incumbent_still_valid_else_00631L_or_best_confirmed_challenger": 0.5549245568934005,
+    "stock_if_reentry_confirmed_and_not_high_risk_else_00631L": 0.7779458875562458
+  },
+  "fallback_00631L_exposure_variants": {
+    "0050_reference": 0.0,
+    "00631L_always_baseline": 1.0,
+    "always_stock_incumbent_reentry_baseline": 0.0,
+    "stock_if_31_high_confidence_bonus_and_state_clean_else_00631L": 0.017331087404080105,
+    "stock_if_high_confidence_else_00631L": 0.017331087404080105,
+    "stock_if_incumbent_still_valid_else_00631L_or_best_confirmed_challenger": 0.4450754431065994,
+    "stock_if_reentry_confirmed_and_not_high_risk_else_00631L": 0.22205411244375423
+  },
+  "ready_for_layer5_stock_vs_00631l_hurdle_diagnostic": true,
+  "ready_for_experiments_intake": true,
+  "ready_for_live_layer5_rule": false,
+  "ready_for_cash_rule": false,
+  "ready_for_portfolio_like_diagnostic": false,
+  "ready_for_formal": false,
+  "ready_for_strategy_replay": false,
+  "future_data_violation_count": 0,
+  "blocked_fields": [
+    "cash_bear_classifier",
+    "fallback_00631L_live_rule",
+    "real_current_holder_state",
+    "turnover_cost_model",
+    "portfolio_replay"
+  ],
+  "proxy_fields": [
+    "stock_vs_00631L_hurdle_proxy_pass",
+    "hypothetical_path_state_proxy"
+  ],
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false
+}

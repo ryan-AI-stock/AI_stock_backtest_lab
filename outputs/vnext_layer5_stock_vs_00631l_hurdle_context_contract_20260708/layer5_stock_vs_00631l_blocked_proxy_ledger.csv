@@ -1,0 +1,8 @@
+﻿field_or_policy,status,reason
+cash_bear_classifier,blocked,This package only supports stock-vs-00631L; no cash rule
+fallback_00631L_live_rule,blocked,"Fallback candidate design only, not live trading rule"
+real_current_holder_state,blocked,Uses hypothetical path-state proxy from incumbent package
+turnover_cost_model,blocked_placeholder,No accepted cost model
+A_B_switch_or_second_stock_allocation,blocked,Not authorized
+stock_vs_00631L_hurdle_proxy_pass,proxy,"Live-feasible context proxy, not formal-ready"
+latest_forward_path,blocked_partial,Latest rows may lack future evaluation path by horizon
