@@ -1,0 +1,100 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P1-C2-TOP5-MULTI-STOCK-EXCEPTION-CANDIDATE-CONTRACT-001",
+  "status": "p1_c2_top5_exception_candidate_contract_ready_path_partial_blocked",
+  "created_at": "2026-07-08T18:54:27.265295+08:00",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_top5_multi_stock_exception_candidate_contract_20260708",
+  "inputs": {
+    "layer4_80_pool": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer4_80_primary_pool_contract_20260708\\layer4_80_primary_pool_contract.csv",
+    "c2_state_machine": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_market_health_consensus4_adjusted_state_machine_contract_20260708\\p1_c2_market_health_consensus4_state_machine_contract.csv",
+    "p1_unadjusted_path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_legacy_regime_unadjusted_path_refresh_20260708\\p1_legacy_regime_unadjusted_trade_path_refreshed.csv"
+  },
+  "artifacts": [
+    {
+      "name": "p1_c2_top5_exception_candidate_contract.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_top5_multi_stock_exception_candidate_contract_20260708\\p1_c2_top5_exception_candidate_contract.csv",
+      "sha256": "6bf2b1f1f4b967b23b1ce316eeaacd3b27ffc0776f2af2abaa6ce4415f59ab01",
+      "rows": 2055
+    },
+    {
+      "name": "p1_c2_top5_exception_candidate_path_contract.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_top5_multi_stock_exception_candidate_contract_20260708\\p1_c2_top5_exception_candidate_path_contract.csv",
+      "sha256": "2fa35b9a3fa17ff99d5c2d254408a87af3cea3046e471045f3aad1f378ae7420",
+      "rows": 2055
+    },
+    {
+      "name": "p1_c2_top5_exception_candidate_missing_path_ledger.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_top5_multi_stock_exception_candidate_contract_20260708\\p1_c2_top5_exception_candidate_missing_path_ledger.csv",
+      "sha256": "0d7f9e7d0387dc3bedf5a52853d08a01632196099fd34569b083b08a9234d780",
+      "rows": 959
+    },
+    {
+      "name": "p1_c2_top5_exception_candidate_transition_cost_design.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_top5_multi_stock_exception_candidate_contract_20260708\\p1_c2_top5_exception_candidate_transition_cost_design.csv",
+      "sha256": "ba03c311aeebe7764e38837bdb6eb04ebb9f33141ba3a134cc6c231d6eefe0d2",
+      "rows": 15
+    },
+    {
+      "name": "p1_c2_top5_exception_candidate_blocked_proxy_audit.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_top5_multi_stock_exception_candidate_contract_20260708\\p1_c2_top5_exception_candidate_blocked_proxy_audit.csv",
+      "sha256": "3c59d317d7b41fe81289de2e04fe41634a9b49118f45ad658a495c048885a03b",
+      "rows": 5
+    },
+    {
+      "name": "p1_c2_top5_exception_candidate_future_data_audit.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_top5_multi_stock_exception_candidate_contract_20260708\\p1_c2_top5_exception_candidate_future_data_audit.csv",
+      "sha256": "0641d913972fb67ae98e63769b7f31bef9ef348978dd1ba9917592dd03b3ce94",
+      "rows": 2
+    },
+    {
+      "name": "readiness_for_p1_c2_top5_multi_stock_exception_candidate_contract.json",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_top5_multi_stock_exception_candidate_contract_20260708\\readiness_for_p1_c2_top5_multi_stock_exception_candidate_contract.json",
+      "sha256": "a45e5885ee312efcc63cba6577a786999843222c1c04d412a4fc595ba1df650c",
+      "rows": null
+    },
+    {
+      "name": "final_summary_zh.md",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_top5_multi_stock_exception_candidate_contract_20260708\\final_summary_zh.md",
+      "sha256": "4f45a99de55795d5dc1d034c92abff353c87b293f4d8d953c80542409c278d85",
+      "rows": null
+    }
+  ],
+  "readiness": {
+    "task_id": "TASK-BACKTEST-CORE-VNEXT-P1-C2-TOP5-MULTI-STOCK-EXCEPTION-CANDIDATE-CONTRACT-001",
+    "status": "p1_c2_top5_exception_candidate_contract_ready_path_partial_blocked",
+    "ready_for_p1_c2_top5_multi_stock_exception_count_diagnostic": false,
+    "candidate_contract_ready": true,
+    "official_ohlc_path_ready": false,
+    "ready_for_radar_top5_selected_candidate_ohlc_source_fill": true,
+    "ready_for_experiments": false,
+    "ready_for_formal": false,
+    "ready_for_strategy_replay": false,
+    "signal_rows": 411,
+    "candidate_rows": 2055,
+    "c2_true_candidate_path_required_rows": 1020,
+    "official_ohlc_ready_rows": 61,
+    "official_ohlc_blocked_rows": 959,
+    "unique_blocked_tickers": 297,
+    "transition_cost_design_ready": true,
+    "adjusted_close_ready": false,
+    "cash_bear_classifier_ready": false,
+    "future_data_violation_count": 0,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false,
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false
+  },
+  "flags": {
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "ready_for_strategy_replay": false,
+    "ready_for_formal": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false
+  }
+}

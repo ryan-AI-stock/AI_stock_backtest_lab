@@ -1,0 +1,23 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P1-C2-CORPORATE-ACTION-SOURCE-PACKAGE-REVIEW-001",
+  "status": "p1_c2_corporate_action_source_review_blocked_no_adjustment_contract",
+  "upstream_radar_task_id": "TASK-RADAR-DATA-VNEXT-P1-C2-CONSENSUS4-SELECTED-STOCK-CORPORATE-ACTION-SOURCE-PACKAGE-001",
+  "ready_for_core_p1_c2_corporate_action_adjustment_contract": false,
+  "ready_for_p1_c2_market_health_consensus4_net_cost_diagnostic": false,
+  "ready_for_experiments": false,
+  "ready_for_formal": false,
+  "ready_for_strategy_replay": false,
+  "corporate_action_event_candidate_rows": 0,
+  "adjustment_factor_source_candidate_rows": 0,
+  "blocked_no_candidate_rows": 16,
+  "can_conclude_no_adjustment_needed": false,
+  "future_data_violation_count": 0,
+  "next_owner": "Strategy Center",
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false,
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false
+}

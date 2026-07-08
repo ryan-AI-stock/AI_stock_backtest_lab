@@ -1,0 +1,6 @@
+﻿field_or_component,status,ready_rows,requested_rows,reason
+top1_to_top5_candidate_rows,ready,2055,2055,Layer4 80 primary pool covers P1 signal dates and provides PIT pool_rank/score.
+consensus4_exact_top2_to_top5,blocked_proxy,0,2055,Existing consensus4 trace has only one exception ticker; top5 candidates use Layer4 high-confidence/risk-aware PIT rank source instead.
+official_ohlc_path_for_c2_true_top5,partial,61,1020,Local selected-stock path source covers only prior selected rows; Layer4 top5 candidate path requires Radar/Data selected-ticker-only OHLC source fill.
+adjusted_close,blocked,0,1020,Adjusted close remains blocked; this contract is official unadjusted OHLC diagnostic-only where path exists.
+cash_bear_classifier,blocked,0,2055,No accepted cash/bear classifier; no cash rule fabricated.

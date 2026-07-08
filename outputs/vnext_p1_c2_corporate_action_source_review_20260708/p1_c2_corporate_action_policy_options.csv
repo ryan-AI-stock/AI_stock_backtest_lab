@@ -1,0 +1,4 @@
+﻿option,owner,status,effect
+stop_adjusted_close_route_keep_blocked,Strategy Center,policy_decision,P1 C2 adjusted net-cost diagnostic remains blocked; unadjusted comparator can remain proxy-only.
+authorize_broader_official_historical_exright_capital_change_route_unlock,Radar/Data,larger_source_acquisition_required,Try to unlock official historical ex-right/dividend/capital-change source beyond MOPS t05st01 bounded windows.
+authorize_licensed_adjusted_close_source,Strategy Center / Radar/Data,requires_source_policy_or_license,Could fill selected-stock adjusted close directly if license/access accepted.

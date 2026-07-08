@@ -1,0 +1,3 @@
+﻿audit_item,violation_count,status,notes
+candidate_rank_source,0,pass,Ranks use Layer4 PIT pool_rank/pool_selection_score; no future return or winner label is used.
+price_path,0,partial_blocked,Missing path rows are explicit; no silent fill and no 00631L+excess reconstruction.

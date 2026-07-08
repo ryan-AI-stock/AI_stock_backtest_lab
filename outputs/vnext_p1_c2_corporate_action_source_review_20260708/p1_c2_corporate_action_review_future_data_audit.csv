@@ -1,0 +1,3 @@
+﻿audit_item,status,violation_count,notes
+corporate_action_no_candidate_inference,blocked,0,No candidate rows from bounded MOPS windows are not enough to infer no adjustment is needed.
+future_data_usage,pass,0,Core review did not calculate adjusted close or use future returns.

@@ -1,0 +1,99 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P1-C2-CORPORATE-ACTION-SOURCE-PACKAGE-REVIEW-001",
+  "status": "p1_c2_corporate_action_source_review_blocked_no_adjustment_contract",
+  "created_at": "2026-07-08T18:56:14.436382+08:00",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_corporate_action_source_review_20260708",
+  "inputs": {
+    "radar_output": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_p1_c2_consensus4_selected_stock_corporate_action_source_package_20260708"
+  },
+  "artifacts": [
+    {
+      "name": "p1_c2_corporate_action_source_review.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_corporate_action_source_review_20260708\\p1_c2_corporate_action_source_review.csv",
+      "sha256": "966fa98ba94e107b0bba3236cfec24c57f9b2fd1462867ea7b5a36e85bc4ac22",
+      "rows": 1
+    },
+    {
+      "name": "p1_c2_corporate_action_source_manifest.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_corporate_action_source_review_20260708\\p1_c2_corporate_action_source_manifest.csv",
+      "sha256": "6c336c7c18db1e2a205c479db229fd365f6aa1332b406d11f873766622251716",
+      "rows": 52
+    },
+    {
+      "name": "p1_c2_corporate_action_blocked_ledger.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_corporate_action_source_review_20260708\\p1_c2_corporate_action_blocked_ledger.csv",
+      "sha256": "fdff59fc0dc8f5be26c023cba2da4f86008dc6f3b630756a2938f842e3bc9695",
+      "rows": 16
+    },
+    {
+      "name": "p1_c2_corporate_action_events.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_corporate_action_source_review_20260708\\p1_c2_corporate_action_events.csv",
+      "sha256": "36163a302da5e3e1923fa2a7d0302dda4a856e85743b19eeed0a8e8cc0623db3",
+      "rows": 0
+    },
+    {
+      "name": "p1_c2_adjustment_factor_source_candidates.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_corporate_action_source_review_20260708\\p1_c2_adjustment_factor_source_candidates.csv",
+      "sha256": "109deca1a7611b9af5ddf78f30ea734aae924991e3b9e598bd79e3c88a19d352",
+      "rows": 0
+    },
+    {
+      "name": "p1_c2_corporate_action_policy_options.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_corporate_action_source_review_20260708\\p1_c2_corporate_action_policy_options.csv",
+      "sha256": "3b8a0ee82499fe56350d81f4c194d000259c15ac7d450a0c003eda192682d3ad",
+      "rows": 3
+    },
+    {
+      "name": "p1_c2_corporate_action_review_future_data_audit.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_corporate_action_source_review_20260708\\p1_c2_corporate_action_review_future_data_audit.csv",
+      "sha256": "74331ebdb58a6975b74e7eb0d1ef5e48c1d26e12ce04c873fbd08a9557422449",
+      "rows": 2
+    },
+    {
+      "name": "readiness_for_p1_c2_corporate_action_source_review.json",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_corporate_action_source_review_20260708\\readiness_for_p1_c2_corporate_action_source_review.json",
+      "sha256": "1fed69ed7b2e47daeab326cbc537d83615c949b6ff513edddb57807ff720780c",
+      "rows": null
+    },
+    {
+      "name": "final_summary_zh.md",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_corporate_action_source_review_20260708\\final_summary_zh.md",
+      "sha256": "a2059abc3388474d9066d58a1c5fc3a8834a81362f2ba79d178adf55dbf750ee",
+      "rows": null
+    }
+  ],
+  "readiness": {
+    "task_id": "TASK-BACKTEST-CORE-VNEXT-P1-C2-CORPORATE-ACTION-SOURCE-PACKAGE-REVIEW-001",
+    "status": "p1_c2_corporate_action_source_review_blocked_no_adjustment_contract",
+    "upstream_radar_task_id": "TASK-RADAR-DATA-VNEXT-P1-C2-CONSENSUS4-SELECTED-STOCK-CORPORATE-ACTION-SOURCE-PACKAGE-001",
+    "ready_for_core_p1_c2_corporate_action_adjustment_contract": false,
+    "ready_for_p1_c2_market_health_consensus4_net_cost_diagnostic": false,
+    "ready_for_experiments": false,
+    "ready_for_formal": false,
+    "ready_for_strategy_replay": false,
+    "corporate_action_event_candidate_rows": 0,
+    "adjustment_factor_source_candidate_rows": 0,
+    "blocked_no_candidate_rows": 16,
+    "can_conclude_no_adjustment_needed": false,
+    "future_data_violation_count": 0,
+    "next_owner": "Strategy Center",
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false,
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false
+  },
+  "flags": {
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "ready_for_strategy_replay": false,
+    "ready_for_formal": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false
+  }
+}
