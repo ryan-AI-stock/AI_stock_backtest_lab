@@ -1,0 +1,91 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-ROUTE-SUPPORT-MAX1-FULL-PERIOD-SAME-BASIS-MODELIZATION-CONTRACT-001",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_route_support_max1_full_period_same_basis_contract_20260708",
+  "inputs": {
+    "layer4_pool": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer4_80_primary_pool_contract_20260708\\layer4_80_primary_pool_contract.csv",
+    "market_fields": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_regime_switch_hybrid_route_market_fields_path_materialization_20260708\\regime_switch_market_regime_fields.csv",
+    "full_benchmark_path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_full_period_regime_switch_benchmark_exception_path_20260708\\full_period_regime_switch_benchmark_reference_path.csv",
+    "full_stock_path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_full_period_regime_switch_benchmark_exception_path_20260708\\full_period_regime_switch_stock_route_path.csv",
+    "p1_max1_contract": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_route_support_max1_modelization_contract_20260708\\p1_c2_route_support_max1_modelization_contract.csv",
+    "p1_weighted_refreshed": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_weighted_pool80_top5_ohlc_absorption_20260708\\p1_c2_weighted_pool80_top5_contract_refreshed.csv"
+  },
+  "artifacts": [
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_route_support_max1_full_period_same_basis_contract_20260708\\route_support_max1_full_period_same_basis_modelization_contract.csv",
+      "sha256": "59427a475802ab58fc17d874c3440c84db37fe21be7a600b80c19d88a5fe1abe",
+      "bytes": 320550
+    },
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_route_support_max1_full_period_same_basis_contract_20260708\\route_support_max1_full_period_transition_trace.csv",
+      "sha256": "a6609f849b7bedd2675ccd0c735659ffdd5f00fb0b4509e9bbf67f7f9419b6dc",
+      "bytes": 12681
+    },
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_route_support_max1_full_period_same_basis_contract_20260708\\route_support_max1_full_period_score_audit.csv",
+      "sha256": "e8dadf0789c49d2da6871907dea01ff161a6bb16bc745d1a8f593e7764ecd116",
+      "bytes": 9477
+    },
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_route_support_max1_full_period_same_basis_contract_20260708\\route_support_max1_full_period_coverage_audit.csv",
+      "sha256": "383978cd45b0efc75caefc79d98f8ada78bf29e2b8f737f36e4f7844c8358013",
+      "bytes": 292
+    },
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_route_support_max1_full_period_same_basis_contract_20260708\\route_support_max1_full_period_cost_audit.csv",
+      "sha256": "090142cf816eea39563c7f4c5bc648defb65a80752aa57ed6b8cbd81c088b149",
+      "bytes": 607
+    },
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_route_support_max1_full_period_same_basis_contract_20260708\\route_support_max1_full_period_blocked_proxy_ledger.csv",
+      "sha256": "85c7a99b66104f8d54ddc38c718a66e3f4b73dc4b30017d561465c140edf20af",
+      "bytes": 709
+    },
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_route_support_max1_full_period_same_basis_contract_20260708\\route_support_max1_full_period_missing_ohlc_ledger.csv",
+      "sha256": "f01a374e9c81e3db89b3a42940c4d6a5447684986a1296e42bf13f196eed6295",
+      "bytes": 5
+    },
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_route_support_max1_full_period_same_basis_contract_20260708\\route_support_max1_full_period_future_data_audit.csv",
+      "sha256": "99faa65643c9fc97291da04da0461a57d9d1b0a6d2f35952b73710d4576cd881",
+      "bytes": 122
+    },
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_route_support_max1_full_period_same_basis_contract_20260708\\readiness_for_route_support_max1_full_period_same_basis_modelization_diagnostic.json",
+      "sha256": "690b306a0b0cddf0c9779c11d9e4e5d73fc955d8e59260cad99596667b1b5b13",
+      "bytes": 1118
+    },
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_route_support_max1_full_period_same_basis_contract_20260708\\final_summary_zh.md",
+      "sha256": "f1bcdb431e62736d001bebecbdaa7c1ed8b6ff8c20bc4a30063042005365ae58",
+      "bytes": 1459
+    }
+  ],
+  "readiness": {
+    "task_id": "TASK-BACKTEST-CORE-VNEXT-ROUTE-SUPPORT-MAX1-FULL-PERIOD-SAME-BASIS-MODELIZATION-CONTRACT-001",
+    "status": "full_period_same_basis_exact_blocked_proxy_contract_materialized",
+    "ready_for_route_support_max1_full_period_same_basis_modelization_diagnostic": false,
+    "ready_for_route_support_max1_full_period_proxy_modelization_review": true,
+    "ready_for_experiments": false,
+    "contract_rows": 592,
+    "stock_exception_rows": 24,
+    "transition_count": 47,
+    "p2_recent_proxy_trigger_stock_rows": 3,
+    "official_unadjusted_ohlc_ready_share": 1.0,
+    "official_unadjusted_ohlc_missing_rows": 0,
+    "adjusted_close_ready": false,
+    "cost_model_ready": true,
+    "comparison_baseline_hooks_ready": true,
+    "cash_bear_classifier_ready": false,
+    "future_data_violation_count": 0,
+    "ready_for_formal": false,
+    "ready_for_strategy_replay": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false,
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false
+  }
+}
