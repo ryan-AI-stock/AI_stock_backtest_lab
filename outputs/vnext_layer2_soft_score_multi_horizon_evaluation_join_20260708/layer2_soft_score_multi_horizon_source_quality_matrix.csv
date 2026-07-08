@@ -1,0 +1,8 @@
+﻿feature_group,source_quality,available_share,note
+forward_5_10_20_30_40d,exact_endpoint_adjusted_close,0.982081528172176,30D computed directly; not 20/40 proxy
+multi_horizon_shape,evaluation_metadata_only_from_forward_excess,1.0,not a live rule input
+large_down_day,diagnostic_price_proxy_threshold_not_formal,1.0,threshold candidate only
+blowoff_turnover,diagnostic_traded_value_proxy_threshold_not_formal,1.0,"proxy, not accepted formal trigger"
+risk_bucket,blocked_no_accepted_pit_risk_bucket,0.0,do not fabricate
+BIAS_volatility,pit_stock_features_diagnostic_context,0.9919766296013388,risk/overheat context only
+RS_exhaustion,pit_rs_window_context,1.0,context only

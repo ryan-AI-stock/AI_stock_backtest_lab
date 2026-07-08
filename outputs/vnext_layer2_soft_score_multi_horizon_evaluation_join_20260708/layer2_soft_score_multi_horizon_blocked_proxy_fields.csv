@@ -1,0 +1,9 @@
+﻿field,status,reason,policy
+30D_forward_excess,exact,computed from adjusted/available close endpoint,evaluation_metadata_only
+multi_horizon_shape,evaluation_metadata_only,derived from forward evaluation metadata,not live rule
+large_down_day_count,diagnostic_proxy,computed from adjusted close daily return <= -5% trailing 20/30D,threshold not formal
+blowoff_turnover_without_price_continuation,diagnostic_proxy,traded_value z20 >= 2.5 and past 5D return <= 0,not accepted formal trigger
+risk_bucket,blocked,no accepted PIT risk bucket field,do not fabricate
+BIAS20_60_percentile,pit_diagnostic_context,from stock_features,overheat context only
+volatility,pit_diagnostic_context,from stock_features,risk context only
+RS60_high_short_RS_weakening,pit_diagnostic_context,from RS window contract,exhaustion context only

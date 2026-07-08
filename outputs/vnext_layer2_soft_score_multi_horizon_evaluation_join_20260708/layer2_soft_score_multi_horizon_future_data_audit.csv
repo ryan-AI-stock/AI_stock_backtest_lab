@@ -1,0 +1,7 @@
+﻿audit_item,status,future_data_violation_count,note
+forward_return_as_rule,passed,0,forward returns are evaluation_metadata_only
+30d_proxy_usage,passed,0,"30D uses exact endpoint close, not 20D/40D proxy"
+multi_horizon_shape_as_rule,passed,0,shape fields are evaluation metadata only
+risk_feature_pit,passed,0,risk proxies use as-of daily history up to snapshot_date
+selector_output,not_applicable,0,no selector output produced
+portfolio_replay,not_executed,0,no replay executed
