@@ -1,0 +1,9 @@
+﻿decision_architecture_variant,definition,status
+stock_allowed_only_when_pool_breadth_positive_else_00631L,Allow stock only when 80-pool breadth is positive; otherwise 00631L metadata,candidate design only
+stock_allowed_when_top10_dispersion_clear_else_00631L,Allow stock when top10 scores show clear dispersion and environment is not weak,candidate design only
+stock_allowed_when_31_confidence_breadth_positive_else_00631L,Allow stock when 31-reference breadth is clean/improving,candidate design only
+stock_allowed_when_reentry_breadth_confirmed_else_00631L,Allow stock when 100->80 reentry breadth is confirmed,candidate design only
+hybrid_stock_eligibility_gate_then_best_incumbent_or_reentry_selector,"Composite stock eligibility gate, then prior best incumbent/reentry candidate",candidate design only
+always_stock_best_previous_baseline,Always use prior best stock-only selector context,baseline only
+00631L_always_baseline,00631L always reference baseline,reference only
+0050_reference,0050 comparison reference,reference only

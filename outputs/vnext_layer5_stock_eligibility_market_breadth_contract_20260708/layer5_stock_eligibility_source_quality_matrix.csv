@@ -1,0 +1,11 @@
+﻿field_group,source_quality,contract_role
+Layer0_to_Layer4_fixed_context,PIT existing Core contracts,base fixed architecture
+Layer4_80_primary_pool,PIT materialized,stock pool breadth
+Layer4_31_reference,reference only,"confidence breadth, not hard gate"
+Layer4_100_extended_watchlist,reference only,reentry breadth context
+Layer5_selector_family_outputs,diagnostic context,stock candidate source
+0050_00631L_benchmark_context,PIT benchmark exact_or_blocked,market context and evaluation
+forward_returns,evaluation_metadata_only,not rule construction
+cash_bear_classifier,blocked,no cash rule
+real_current_holder_state,blocked,hypothetical path state only where present
+00631L_fallback_live_rule,blocked,candidate design only

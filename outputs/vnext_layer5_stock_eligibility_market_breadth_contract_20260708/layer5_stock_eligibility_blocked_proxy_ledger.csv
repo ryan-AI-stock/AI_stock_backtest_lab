@@ -1,0 +1,10 @@
+﻿field_or_policy,status,reason
+cash_bear_classifier,blocked,This package does stock-vs-00631L only; no cash rule
+real_current_holder_state,blocked,No formal live holder state; only diagnostic context can be used
+00631L_fallback_live_rule,blocked,00631L is fallback/reference candidate design only
+A_B_switch_or_second_stock_allocation,blocked,Not authorized
+portfolio_replay,blocked,Not authorized
+weak_stock_environment_flag,diagnostic_proxy,PIT context threshold only
+stock_eligibility_composite_flag,diagnostic_proxy,"Candidate architecture gate only, not formal"
+top10_dispersion_clear_flag,diagnostic_proxy,"Score margin/stdev threshold, not formal"
+latest_forward_path,blocked_partial,Latest rows may lack future evaluation path by horizon

@@ -1,0 +1,33 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER5-STOCK-ELIGIBILITY-MARKET-BREADTH-FINAL-DECISION-ARCHITECTURE-CONTRACT-001",
+  "status": "layer5_stock_eligibility_market_breadth_contract_ready_for_experiments_intake",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer5_stock_eligibility_market_breadth_contract_20260708",
+  "input_within80_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer5_within80_daily_rank_context_contract_20260708",
+  "input_lifecycle_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer5_lifecycle_state_selector_candidate_contract_20260708",
+  "input_hurdle_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer5_stock_vs_00631l_hurdle_context_contract_20260708",
+  "input_benchmark_path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_dynamic_candidate_pool_data_materialization_20260706\\benchmark_features.csv",
+  "input_experiments_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-07-06\\backtest-lab-experiments-diagnostic-validation-attribution\\outputs\\vnext_layer5_fixed_l0_l4_selector_family_sweep_diagnostic_20260708",
+  "output_files": [
+    "layer5_stock_eligibility_market_breadth_contract.csv",
+    "layer5_stock_eligibility_feature_design.csv",
+    "layer5_final_decision_architecture_variant_design.csv",
+    "layer5_stock_eligibility_source_quality_matrix.csv",
+    "layer5_stock_eligibility_coverage_by_period.csv",
+    "layer5_stock_eligibility_missingness_by_period.csv",
+    "layer5_stock_eligibility_blocked_proxy_ledger.csv",
+    "layer5_stock_eligibility_future_data_audit.csv",
+    "layer5_stock_eligibility_requested_vs_actual_coverage.csv",
+    "readiness_for_layer5_stock_eligibility_market_breadth_diagnostic.json",
+    "manifest.json",
+    "final_summary_zh.md"
+  ],
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "ready_for_strategy_replay": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false,
+  "diagnostic_only": true
+}

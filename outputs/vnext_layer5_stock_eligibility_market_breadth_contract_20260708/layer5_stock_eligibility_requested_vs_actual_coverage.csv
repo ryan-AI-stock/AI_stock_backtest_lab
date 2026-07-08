@@ -1,0 +1,5 @@
+﻿period,requested_start,requested_end,actual_contract_start,actual_contract_end,rows_in_requested_period,weekly_snapshots_in_requested_period,rows_before_requested_start,rows_after_requested_end
+P1,2015-01-02,2022-12-29,2015-01-09,2026-06-29,3288,411,0,1448
+P2,2023-01-02,2026-06-30,2015-01-09,2026-06-29,1440,180,3296,0
+2024_latest,2024-01-02,2026-06-30,2015-01-09,2026-06-29,1032,129,3704,0
+2026YTD,2026-01-02,2026-06-30,2015-01-09,2026-06-29,208,26,4528,0

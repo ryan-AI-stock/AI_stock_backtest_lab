@@ -1,0 +1,11 @@
+﻿feature,definition,source_quality
+pool80_positive_rs20_30_share,80-pool share with positive/stable RS20/30,PIT
+pool80_two_plus_labels_share,80-pool share with two_plus opportunity labels,PIT
+pool80_non_exhaustion_share,80-pool share not flagged exhaustion,PIT/proxy
+pool80_non_breakdown_share,80-pool share not flagged breakdown,PIT/proxy
+high31_clean_improving_share,31 reference subpool clean/improving breadth,reference context
+reentry_100_to_80_confirmed_count,100->80 reentry confirmed by recent/context fields,PIT/proxy
+top10_score_margin_top1_vs_top2,top10 dispersion / top1 margin context,PIT
+weak_stock_environment_flag,"broad weakness / risk flags, candidate design only",diagnostic proxy
+0050_00631L_market_context,benchmark BIAS/trend/volatility if available,PIT benchmark context
+forward_evaluation_metadata,5D/10D/20D/30D primary; 40D decay reference,evaluation-only
