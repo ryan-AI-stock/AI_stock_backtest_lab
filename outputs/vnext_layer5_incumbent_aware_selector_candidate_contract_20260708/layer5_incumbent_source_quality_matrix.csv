@@ -1,0 +1,12 @@
+﻿field_group,source_quality,contract_role
+Layer4_80_primary_pool,exact_from_core_contract,base_universe
+within80_rank_context,exact_from_core_contract,rank_context
+hypothetical_diagnostic_path_state,proxy,incumbent-aware state support
+real_current_holder_state,blocked,no live position-state contract
+incumbent_risk_rs_deterioration,diagnostic_proxy,state context
+31_high_confidence_overlap,exact_reference_context,confidence bonus only
+100_to_80_reentry,exact_reference_context,reentry context only
+forward_excess_5d_10d_20d_30d,evaluation_metadata_only,primary eval support
+forward_excess_40d,evaluation_metadata_only,decay reference
+turnover_cost_model,blocked_placeholder,no accepted cost model
+cash_fallback_classifier,blocked,no accepted classifier

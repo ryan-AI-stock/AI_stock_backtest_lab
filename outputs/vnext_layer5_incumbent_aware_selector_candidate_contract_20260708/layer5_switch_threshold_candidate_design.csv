@@ -1,0 +1,6 @@
+﻿candidate_design,definition,status
+hold_unless_score_margin,switch only if challenger score beats incumbent by candidate margin and challenger is not high-risk/exhaustion,candidate_design_only
+challenger_confirmation_2_of_3_proxy,confirmed challenger requires current best challenger observed in recent diagnostic history where available,proxy_candidate_design_only
+incumbent_breakdown_override,allow switch if incumbent exits 80 or has sharp risk/RS deterioration,candidate_design_only
+reentry_confirmation,100-to-80 re-entry candidate needs previous-week re-entry context or 31-reference confirmation where available,proxy_candidate_design_only
+fallback_reference_only,fallback/cash remains blocked until accepted classifier exists,blocked_no_rule

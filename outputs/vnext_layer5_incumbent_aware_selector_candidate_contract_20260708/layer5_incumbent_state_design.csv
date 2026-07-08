@@ -1,0 +1,9 @@
+﻿field,definition,source_quality,boundary
+incumbent_candidate_id,previous selected ticker under hypothetical diagnostic selector path,diagnostic_path_state_proxy,not real current holder
+incumbent_still_in_80,whether previous diagnostic incumbent is still in current Layer4 80 primary pool,diagnostic_path_state_proxy,not live rule
+incumbent_rank_within_80,incumbent rank if still in pool,diagnostic_path_state_proxy,not live rule
+incumbent_score_delta_vs_best_candidate,candidate score minus incumbent hold score,diagnostic_path_state_proxy,no future return
+incumbent_risk_deterioration,risk/exhaustion/breakdown deterioration context,proxy_context,not formal risk model
+incumbent_rs_deterioration,short RS deterioration / exhaustion context,proxy_context,not hard live rule
+consecutive_hold_snapshots_proxy,number of consecutive weekly signals same candidate remains selected,diagnostic_path_state_proxy,not real holding days
+candidate_switch_required_reason,candidate reason code for hold/switch under diagnostic design,diagnostic_reason_code,not trade instruction

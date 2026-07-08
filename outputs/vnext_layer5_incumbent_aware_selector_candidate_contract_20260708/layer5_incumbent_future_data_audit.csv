@@ -1,0 +1,7 @@
+﻿audit_item,status,violation_count,evidence
+forward_returns_used_in_selector_construction,passed,0,selector candidates use current/prior path state and PIT context only
+future_return_as_rule,passed,0,future_return_as_rule=false
+forward_return_as_rule,passed,0,forward_return_as_rule=false
+live_action_rule_output,passed,0,no live action output
+trade_decision_output,passed,0,no trade decision output
+portfolio_like_execution_output,passed,0,no execution output

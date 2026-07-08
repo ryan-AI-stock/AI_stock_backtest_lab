@@ -1,0 +1,72 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER5-INCUMBENT-AWARE-SINGLE-STOCK-DECISION-CANDIDATE-CONTRACT-001",
+  "status": "layer5_incumbent_aware_selector_candidate_contract_ready_for_experiments_intake",
+  "diagnostic_only": true,
+  "input_layer5_status": "layer5_within80_daily_rank_context_contract_ready_for_experiments_intake",
+  "input_experiments_verdict": "NO-GO_single_stock_selector_candidates_not_stable_enough",
+  "base_universe": "Layer4_80_primary_pool",
+  "row_count": 4144,
+  "weekly_snapshot_count": 592,
+  "selector_candidate_variant_count": 7,
+  "selector_candidate_variants": [
+    "confirmed_challenger_selector",
+    "fresh_best_risk_adjusted_top10_baseline",
+    "fresh_top1_baseline",
+    "high_confidence_bonus_selector",
+    "incumbent_protection_selector",
+    "lifecycle_clean_candidate_selector",
+    "reentry_confirmed_selector"
+  ],
+  "hypothetical_path_state_proxy": true,
+  "real_current_holder_state_available": false,
+  "real_current_holder_state_status": "blocked_no_live_position_state_contract",
+  "cash_fallback_classifier_status": "blocked_no_accepted_market_cash_classifier",
+  "turnover_cost_model_status": "blocked_placeholder_no_accepted_cost_model",
+  "avg_switch_rate_proxy_by_variant": {
+    "confirmed_challenger_selector": 0.472599363824399,
+    "fresh_best_risk_adjusted_top10_baseline": 0.715971323250167,
+    "fresh_top1_baseline": 0.715971323250167,
+    "high_confidence_bonus_selector": 0.687395069452038,
+    "incumbent_protection_selector": 0.7062288087991857,
+    "lifecycle_clean_candidate_selector": 0.7282349285609154,
+    "reentry_confirmed_selector": 0.7172433110333039
+  },
+  "avg_consecutive_hold_snapshots_proxy_by_variant": {
+    "confirmed_challenger_selector": 1.8210586223663214,
+    "fresh_best_risk_adjusted_top10_baseline": 1.2854885307644315,
+    "fresh_top1_baseline": 1.2854885307644315,
+    "high_confidence_bonus_selector": 1.4928190228027236,
+    "incumbent_protection_selector": 1.491435925012984,
+    "lifecycle_clean_candidate_selector": 1.4202900019271893,
+    "reentry_confirmed_selector": 1.525071612243072
+  },
+  "ready_for_layer5_incumbent_aware_single_stock_diagnostic": true,
+  "ready_for_experiments_intake": true,
+  "ready_for_live_layer5_action_rule": false,
+  "ready_for_ab_switch_rule": false,
+  "ready_for_portfolio_like_diagnostic": false,
+  "ready_for_formal": false,
+  "ready_for_strategy_replay": false,
+  "future_data_violation_count": 0,
+  "blocked_fields": [
+    "real_current_holder_state",
+    "incumbent_protection_live_rule",
+    "cash_fallback_classifier",
+    "fallback_00631L_trading_rule",
+    "A_B_switch_or_second_stock_allocation",
+    "turnover_cost_model",
+    "portfolio_replay"
+  ],
+  "proxy_fields": [
+    "hypothetical_diagnostic_path_state",
+    "incumbent_risk_deterioration",
+    "RS30_proxy"
+  ],
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false
+}

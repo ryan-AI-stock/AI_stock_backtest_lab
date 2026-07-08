@@ -1,0 +1,8 @@
+﻿selector_candidate_variant,definition,status
+fresh_top1_baseline,raw top1 within80 retained as baseline only,baseline_only
+fresh_best_risk_adjusted_top10_baseline,best risk-aware score among top10 retained as baseline only,baseline_only
+incumbent_protection_selector,hold incumbent unless challenger margin or incumbent deterioration triggers switch,diagnostic_candidate
+confirmed_challenger_selector,requires challenger confirmation proxy before switching unless incumbent deteriorates,diagnostic_candidate
+lifecycle_clean_candidate_selector,top10 lifecycle clean candidate can challenge incumbent with margin,diagnostic_candidate
+reentry_confirmed_selector,100-to-80 re-entry candidate needs confirmation context before switching,diagnostic_candidate
+high_confidence_bonus_selector,"31 high-confidence overlap is score bonus only, not mandatory filter",diagnostic_candidate

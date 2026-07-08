@@ -1,0 +1,10 @@
+﻿field_or_policy,status,reason
+real_current_holder_state,blocked,No live position-state contract; using hypothetical diagnostic path state proxy
+incumbent_protection_live_rule,blocked,Candidate designs only; no live rule
+cash_fallback_classifier,blocked,No accepted market cash classifier
+fallback_00631L_trading_rule,blocked,Fallback/reference only
+A_B_switch_or_second_stock_allocation,blocked,A/B switch and second-stock allocation unauthorized
+turnover_cost_model,blocked_placeholder,No accepted cost model; placeholder only
+incumbent_risk_deterioration,proxy,"Uses risk/exhaustion/breakdown context, not formal risk model"
+RS30_proxy,proxy,Exact RS30 unavailable
+portfolio_replay,blocked,Portfolio/strategy replay unauthorized
