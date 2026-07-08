@@ -1,0 +1,36 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER4-POOL-SIZE-RETENTION-CONSTRAINT-CONTRACT-001",
+  "status": "layer4_pool_size_retention_constraint_contract_ready_for_experiments_intake",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer4_pool_size_retention_constraint_contract_20260708",
+  "input_layer3_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer3_broad_opportunity_label_contract_20260708",
+  "input_previous_layer4_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer4_bounded_31_pool_assembly_contract_20260708",
+  "input_layer4_experiments_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-07-06\\backtest-lab-experiments-diagnostic-validation-attribution\\outputs\\vnext_layer4_bounded_31_pool_assembly_diagnostic_20260708",
+  "output_files": [
+    "layer4_pool_size_sensitivity_contract.csv",
+    "layer4_pool_size_sensitivity_contract_sample.csv",
+    "layer4_pool_size_variant_design.csv",
+    "layer4_retention_constraint_policy.csv",
+    "layer4_pool_weekly_coverage_by_variant.csv",
+    "layer4_pool_size_source_quality_matrix.csv",
+    "layer4_pool_size_missingness_by_period.csv",
+    "layer4_pool_size_blocked_proxy_ledger.csv",
+    "layer4_pool_size_future_data_audit.csv",
+    "readiness_for_layer4_pool_size_retention_constraint_diagnostic.json",
+    "manifest.json",
+    "final_summary_zh.md"
+  ],
+  "large_local_files_not_tracked": [
+    "layer4_pool_size_sensitivity_contract.csv"
+  ],
+  "large_local_file_policy": "full pool-size sensitivity table is retained locally; Git tracks sample/readiness/audit files only",
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "ready_for_strategy_replay": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false,
+  "diagnostic_only": true,
+  "bounded_pool_assembly_only": true
+}

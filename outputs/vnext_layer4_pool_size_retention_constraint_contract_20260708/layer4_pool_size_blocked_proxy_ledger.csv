@@ -1,0 +1,9 @@
+﻿field_or_policy,status,reason
+AI_theme_dynamic_slot_contract,blocked_placeholder,theme/AI dynamic slot data not accepted in this Layer4 package; no hard-coded AI 20 quota
+raw_turnover_share_coverage,blocked,"Layer3 contract carries traded-value ranks, not raw weekly turnover shares"
+risk_bucket,blocked,formal risk bucket unavailable; risk context uses BIAS/volatility/large-down/blowoff proxies
+large_down_day_count_20d_proxy,proxy,diagnostic path-derived PIT proxy; not formal-ready
+blowoff_turnover_without_price_continuation_proxy,proxy,diagnostic PIT proxy; not formal-ready
+RS30_proxy,proxy,exact RS30 unavailable; proxy retained with source-quality label
+Layer5_A_B_decision,blocked,Layer5 explicitly unauthorized
+portfolio_replay,blocked,portfolio/strategy replay unauthorized

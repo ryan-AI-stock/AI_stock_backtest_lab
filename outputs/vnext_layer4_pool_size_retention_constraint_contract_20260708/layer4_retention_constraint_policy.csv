@@ -1,0 +1,19 @@
+﻿pool_size_target,quota_mode,two_plus_opportunity_min,momentum_medium_high_min,pullback_medium_high_min,overlap_medium_high_min,neutral_quality_liquidity_min,low_risk_context_min,single_sleeve_domination_policy,high_exhaustion_breakdown_policy,future_return_used,live_feasible,diagnostic_only
+31,balanced,0,7,6,5,7,0,quota-first fill; score-only fill cannot replace all sleeves before minima are attempted,rank_down_context_only_no_one_cut,False,True,True
+31,retention,16,5,5,5,7,0,quota-first fill; score-only fill cannot replace all sleeves before minima are attempted,rank_down_context_only_no_one_cut,False,True,True
+31,risk_aware,14,5,5,5,7,16,quota-first fill; score-only fill cannot replace all sleeves before minima are attempted,rank_down_context_only_no_one_cut,False,True,True
+40,balanced,0,8,8,6,8,0,quota-first fill; score-only fill cannot replace all sleeves before minima are attempted,rank_down_context_only_no_one_cut,False,True,True
+40,retention,20,7,6,6,9,0,quota-first fill; score-only fill cannot replace all sleeves before minima are attempted,rank_down_context_only_no_one_cut,False,True,True
+40,risk_aware,17,7,6,6,8,20,quota-first fill; score-only fill cannot replace all sleeves before minima are attempted,rank_down_context_only_no_one_cut,False,True,True
+50,balanced,0,10,9,8,10,0,quota-first fill; score-only fill cannot replace all sleeves before minima are attempted,rank_down_context_only_no_one_cut,False,True,True
+50,retention,25,8,8,8,11,0,quota-first fill; score-only fill cannot replace all sleeves before minima are attempted,rank_down_context_only_no_one_cut,False,True,True
+50,risk_aware,21,8,8,8,10,25,quota-first fill; score-only fill cannot replace all sleeves before minima are attempted,rank_down_context_only_no_one_cut,False,True,True
+60,balanced,0,12,11,9,12,0,quota-first fill; score-only fill cannot replace all sleeves before minima are attempted,rank_down_context_only_no_one_cut,False,True,True
+60,retention,30,10,9,9,14,0,quota-first fill; score-only fill cannot replace all sleeves before minima are attempted,rank_down_context_only_no_one_cut,False,True,True
+60,risk_aware,26,10,9,9,12,30,quota-first fill; score-only fill cannot replace all sleeves before minima are attempted,rank_down_context_only_no_one_cut,False,True,True
+80,balanced,0,16,15,12,16,0,quota-first fill; score-only fill cannot replace all sleeves before minima are attempted,rank_down_context_only_no_one_cut,False,True,True
+80,retention,40,13,12,12,18,0,quota-first fill; score-only fill cannot replace all sleeves before minima are attempted,rank_down_context_only_no_one_cut,False,True,True
+80,risk_aware,34,13,12,12,16,40,quota-first fill; score-only fill cannot replace all sleeves before minima are attempted,rank_down_context_only_no_one_cut,False,True,True
+100,balanced,0,20,18,15,20,0,quota-first fill; score-only fill cannot replace all sleeves before minima are attempted,rank_down_context_only_no_one_cut,False,True,True
+100,retention,50,16,15,15,22,0,quota-first fill; score-only fill cannot replace all sleeves before minima are attempted,rank_down_context_only_no_one_cut,False,True,True
+100,risk_aware,42,16,15,15,20,50,quota-first fill; score-only fill cannot replace all sleeves before minima are attempted,rank_down_context_only_no_one_cut,False,True,True

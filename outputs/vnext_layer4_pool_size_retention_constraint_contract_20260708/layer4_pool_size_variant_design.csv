@@ -1,0 +1,19 @@
+﻿layer4_pool_variant,pool_size_target,pool_variant_family,selection_score,retention_constraint_applied,risk_constraint_applied,design_note
+C_quota_size_sensitive_broad_label_quota_31,31,c_quota_style,layer4_c_quota_base_score,False,False,C-quota broad label pool size sensitivity reference; no Layer5 authorization
+C_retention_friendly_retention_constrained_quota_31,31,retention_friendly_c_quota,layer4_retention_constrained_score,True,False,Adds live-feasible minimum representation for two-plus opportunity and neutral-quality labels
+C_risk_aware_retention_constrained_quota_31,31,risk_aware_c_quota,layer4_risk_aware_score,True,True,Risk/exhaustion/breakdown lowers rank; not a hard deletion gate
+C_quota_size_sensitive_broad_label_quota_40,40,c_quota_style,layer4_c_quota_base_score,False,False,C-quota broad label pool size sensitivity reference; no Layer5 authorization
+C_retention_friendly_retention_constrained_quota_40,40,retention_friendly_c_quota,layer4_retention_constrained_score,True,False,Adds live-feasible minimum representation for two-plus opportunity and neutral-quality labels
+C_risk_aware_retention_constrained_quota_40,40,risk_aware_c_quota,layer4_risk_aware_score,True,True,Risk/exhaustion/breakdown lowers rank; not a hard deletion gate
+C_quota_size_sensitive_broad_label_quota_50,50,c_quota_style,layer4_c_quota_base_score,False,False,C-quota broad label pool size sensitivity reference; no Layer5 authorization
+C_retention_friendly_retention_constrained_quota_50,50,retention_friendly_c_quota,layer4_retention_constrained_score,True,False,Adds live-feasible minimum representation for two-plus opportunity and neutral-quality labels
+C_risk_aware_retention_constrained_quota_50,50,risk_aware_c_quota,layer4_risk_aware_score,True,True,Risk/exhaustion/breakdown lowers rank; not a hard deletion gate
+C_quota_size_sensitive_broad_label_quota_60,60,c_quota_style,layer4_c_quota_base_score,False,False,C-quota broad label pool size sensitivity reference; no Layer5 authorization
+C_retention_friendly_retention_constrained_quota_60,60,retention_friendly_c_quota,layer4_retention_constrained_score,True,False,Adds live-feasible minimum representation for two-plus opportunity and neutral-quality labels
+C_risk_aware_retention_constrained_quota_60,60,risk_aware_c_quota,layer4_risk_aware_score,True,True,Risk/exhaustion/breakdown lowers rank; not a hard deletion gate
+C_quota_size_sensitive_broad_label_quota_80,80,c_quota_style,layer4_c_quota_base_score,False,False,C-quota broad label pool size sensitivity reference; no Layer5 authorization
+C_retention_friendly_retention_constrained_quota_80,80,retention_friendly_c_quota,layer4_retention_constrained_score,True,False,Adds live-feasible minimum representation for two-plus opportunity and neutral-quality labels
+C_risk_aware_retention_constrained_quota_80,80,risk_aware_c_quota,layer4_risk_aware_score,True,True,Risk/exhaustion/breakdown lowers rank; not a hard deletion gate
+C_quota_size_sensitive_broad_label_quota_100,100,c_quota_style,layer4_c_quota_base_score,False,False,C-quota broad label pool size sensitivity reference; no Layer5 authorization
+C_retention_friendly_retention_constrained_quota_100,100,retention_friendly_c_quota,layer4_retention_constrained_score,True,False,Adds live-feasible minimum representation for two-plus opportunity and neutral-quality labels
+C_risk_aware_retention_constrained_quota_100,100,risk_aware_c_quota,layer4_risk_aware_score,True,True,Risk/exhaustion/breakdown lowers rank; not a hard deletion gate
