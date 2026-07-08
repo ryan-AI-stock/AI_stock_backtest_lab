@@ -1,0 +1,3 @@
+﻿audit_item,violation_count,status,notes
+future_return_as_feature_or_rule,0,pass,C2 gate uses 0050 above MA60 and 20D/40D returns as of signal date; no future return is used for selection.
+cost_required_for_main_conclusion,0,pass,"Transition cost columns include buy fee, sell fee, securities transaction tax, ETF/stock sell-tax split, and total transition cost."

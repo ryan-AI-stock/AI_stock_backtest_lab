@@ -1,0 +1,5 @@
+﻿field_or_component,status,ready_rows,affected_rows,reason
+selected_stock_adjusted_close,partial,5,21,bounded local adjusted-close attempt used stock_features and existing cache only; missing rows require selected-ticker source fill
+official_unadjusted_ohlc_comparator,ready,21,21,official unadjusted OHLC comparator retained but cannot be packaged as adjusted-close formal path
+cash_condition_bear_classifier,blocked,0,412,no accepted cash/bear classifier; no cash rule fabricated
+cost_model,ready_for_diagnostic_cost,412,412,"EP05 TaiwanCostModel applies buy/sell fee, stock sell tax, ETF sell tax, and transition cost on unit notional; still diagnostic contract not formal replay"

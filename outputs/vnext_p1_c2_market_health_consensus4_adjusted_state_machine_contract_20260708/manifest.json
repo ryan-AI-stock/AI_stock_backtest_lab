@@ -1,0 +1,113 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P1-C2-MARKET-HEALTH-CONSENSUS4-ADJUSTED-STATE-MACHINE-CONTRACT-001",
+  "status": "p1_c2_market_health_consensus4_adjusted_state_machine_partial_adjusted_close_blocked",
+  "created_at": "2026-07-08T17:10:54.356753+08:00",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_market_health_consensus4_adjusted_state_machine_contract_20260708",
+  "inputs": {
+    "p1_state_hold_signal_trace": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_state_hold_base_exception_path_contract_20260708\\p1_base_exception_signal_trace.csv",
+    "p1_market_regime_classifier_contract": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_market_regime_classifier_feature_contract_20260708\\p1_market_regime_classifier_feature_contract.csv",
+    "benchmark_features": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_dynamic_candidate_pool_data_materialization_20260706\\benchmark_features.csv",
+    "stock_features": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_dynamic_candidate_pool_data_materialization_20260706\\stock_features.csv",
+    "p1_unadjusted_stock_path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_legacy_regime_unadjusted_path_refresh_20260708\\p1_legacy_regime_unadjusted_trade_path_refreshed.csv"
+  },
+  "artifacts": [
+    {
+      "name": "p1_c2_market_health_consensus4_state_machine_contract.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_market_health_consensus4_adjusted_state_machine_contract_20260708\\p1_c2_market_health_consensus4_state_machine_contract.csv",
+      "sha256": "23fb09e1e8dc1d8aa3835e82c8e9e19005e10703c24618fb823ce673d2cd8fbe",
+      "rows": 412
+    },
+    {
+      "name": "p1_c2_market_health_consensus4_transition_trace.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_market_health_consensus4_adjusted_state_machine_contract_20260708\\p1_c2_market_health_consensus4_transition_trace.csv",
+      "sha256": "5228e837e4950b67e8357194d7994ba53c3d511e9285a37d45f739a024e85a8d",
+      "rows": 41
+    },
+    {
+      "name": "p1_c2_market_health_consensus4_adjusted_price_coverage.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_market_health_consensus4_adjusted_state_machine_contract_20260708\\p1_c2_market_health_consensus4_adjusted_price_coverage.csv",
+      "sha256": "8fa15c0fc23e24f16aed8c0c65d3cfe3c25543d845462427531fb5d91d705bd7",
+      "rows": 21
+    },
+    {
+      "name": "p1_c2_market_health_consensus4_cost_audit.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_market_health_consensus4_adjusted_state_machine_contract_20260708\\p1_c2_market_health_consensus4_cost_audit.csv",
+      "sha256": "879a0d45b22a1f7c64ed7432167370397000cc5185ad99d6973351b9005ab30e",
+      "rows": 4
+    },
+    {
+      "name": "p1_c2_market_health_consensus4_blocked_proxy_audit.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_market_health_consensus4_adjusted_state_machine_contract_20260708\\p1_c2_market_health_consensus4_blocked_proxy_audit.csv",
+      "sha256": "478858258a29e813e46a063a1fa59406f14fd7048fee659a175c87cf89f1fdcc",
+      "rows": 4
+    },
+    {
+      "name": "p1_c2_market_health_consensus4_adjusted_source_attempts.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_market_health_consensus4_adjusted_state_machine_contract_20260708\\p1_c2_market_health_consensus4_adjusted_source_attempts.csv",
+      "sha256": "dc13105b6bed149f85e8276cf022bcbc7219578a0113771b166f25178f302eb5",
+      "rows": 19
+    },
+    {
+      "name": "p1_c2_market_health_consensus4_future_data_audit.csv",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_market_health_consensus4_adjusted_state_machine_contract_20260708\\p1_c2_market_health_consensus4_future_data_audit.csv",
+      "sha256": "a040a4a14a4b7c7c0d6770a716b01643fd64d4fb9708e2c663bcd840af8e1a9f",
+      "rows": 2
+    },
+    {
+      "name": "readiness_for_p1_c2_market_health_consensus4_diagnostic.json",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_market_health_consensus4_adjusted_state_machine_contract_20260708\\readiness_for_p1_c2_market_health_consensus4_diagnostic.json",
+      "sha256": "caa9d226fac6bed695d8582bda3ebcfde3ed7969e290badc3d0cca851a50a409",
+      "rows": null
+    },
+    {
+      "name": "final_summary_zh.md",
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_market_health_consensus4_adjusted_state_machine_contract_20260708\\final_summary_zh.md",
+      "sha256": "d8ea5a15f8e4b4ea76483a4ab679c19fa06dbbfaa0de05dc7e8b43e4abeb8268",
+      "rows": null
+    }
+  ],
+  "readiness": {
+    "task_id": "TASK-BACKTEST-CORE-VNEXT-P1-C2-MARKET-HEALTH-CONSENSUS4-ADJUSTED-STATE-MACHINE-CONTRACT-001",
+    "status": "p1_c2_market_health_consensus4_adjusted_state_machine_partial_adjusted_close_blocked",
+    "ready_for_p1_c2_market_health_consensus4_net_cost_diagnostic": false,
+    "ready_for_unadjusted_ohlc_comparator_diagnostic": true,
+    "ready_for_experiments": false,
+    "selected_stock_adjusted_close_ready_share": 0.23809523809523808,
+    "selected_stock_adjusted_ready_rows": 5,
+    "selected_stock_adjusted_remaining_blocked_rows": 16,
+    "selected_stock_exception_interval_rows": 21,
+    "unadjusted_ohlc_comparator_ready_share": 1.0,
+    "unadjusted_ohlc_comparator_ready_rows": 21,
+    "state_machine_interval_rows": 412,
+    "transition_rows": 41,
+    "c2_exception_allowed_rows": 21,
+    "formal_cost_model_ready": true,
+    "cost_model_version": "taiwan_standard_fee_tax_v1",
+    "cost_model_includes_fee_tax_etf_stock_split": true,
+    "ready_for_radar_selected_stock_adjusted_close_source_fill": true,
+    "radar_next_task_suggestion": "TASK-RADAR-DATA-VNEXT-P1-C2-CONSENSUS4-SELECTED-STOCK-ADJUSTED-CLOSE-SOURCE-FILL-001",
+    "net_total_return_after_transition_cost_adjusted_path_if_complete": null,
+    "net_total_return_after_transition_cost_unadjusted_comparator": 6.587850387220257,
+    "ready_for_formal": false,
+    "ready_for_strategy_replay": false,
+    "future_data_violation_count": 0,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false,
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false
+  },
+  "flags": {
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "ready_for_strategy_replay": false,
+    "ready_for_formal": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false
+  }
+}
