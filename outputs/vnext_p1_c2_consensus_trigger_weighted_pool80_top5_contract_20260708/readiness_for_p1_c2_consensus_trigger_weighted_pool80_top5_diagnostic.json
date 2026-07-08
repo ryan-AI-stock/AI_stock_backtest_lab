@@ -1,0 +1,86 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P1-C2-CONSENSUS-TRIGGER-WEIGHTED-POOL80-TOP5-CONTRACT-001",
+  "status": "weighted_pool80_top5_contract_partial_ohlc_blocked",
+  "ready_for_p1_c2_weighted_pool80_top5_multi_stock_diagnostic": false,
+  "ready_for_experiments": false,
+  "eligible_signal_dates": 21,
+  "score_variant_count": 6,
+  "contract_rows": 630,
+  "official_unadjusted_ohlc_ready_share": 0.046031746031746035,
+  "official_unadjusted_ohlc_ready_rows": 29,
+  "official_unadjusted_ohlc_blocked_rows": 601,
+  "adjusted_close_ready": false,
+  "transition_cost_fields_ready": true,
+  "future_data_violation_count": 0,
+  "ready_for_formal": false,
+  "ready_for_strategy_replay": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false,
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "coverage_by_variant": [
+    {
+      "score_variant": "balanced",
+      "rows": 105,
+      "signal_dates": 21,
+      "unique_tickers": 54,
+      "official_unadjusted_ohlc_ready_rows": 2,
+      "official_unadjusted_ohlc_ready_share": 0.01904761904761905,
+      "adjusted_close_ready_rows": 0,
+      "adjusted_close_ready_share": 0.0
+    },
+    {
+      "score_variant": "liquidity_rs",
+      "rows": 105,
+      "signal_dates": 21,
+      "unique_tickers": 48,
+      "official_unadjusted_ohlc_ready_rows": 2,
+      "official_unadjusted_ohlc_ready_share": 0.01904761904761905,
+      "adjusted_close_ready_rows": 0,
+      "adjusted_close_ready_share": 0.0
+    },
+    {
+      "score_variant": "momentum",
+      "rows": 105,
+      "signal_dates": 21,
+      "unique_tickers": 55,
+      "official_unadjusted_ohlc_ready_rows": 1,
+      "official_unadjusted_ohlc_ready_share": 0.009523809523809525,
+      "adjusted_close_ready_rows": 0,
+      "adjusted_close_ready_share": 0.0
+    },
+    {
+      "score_variant": "quality_risk",
+      "rows": 105,
+      "signal_dates": 21,
+      "unique_tickers": 55,
+      "official_unadjusted_ohlc_ready_rows": 1,
+      "official_unadjusted_ohlc_ready_share": 0.009523809523809525,
+      "adjusted_close_ready_rows": 0,
+      "adjusted_close_ready_share": 0.0
+    },
+    {
+      "score_variant": "quality_rs",
+      "rows": 105,
+      "signal_dates": 21,
+      "unique_tickers": 60,
+      "official_unadjusted_ohlc_ready_rows": 1,
+      "official_unadjusted_ohlc_ready_share": 0.009523809523809525,
+      "adjusted_close_ready_rows": 0,
+      "adjusted_close_ready_share": 0.0
+    },
+    {
+      "score_variant": "route_support",
+      "rows": 105,
+      "signal_dates": 21,
+      "unique_tickers": 62,
+      "official_unadjusted_ohlc_ready_rows": 22,
+      "official_unadjusted_ohlc_ready_share": 0.20952380952380953,
+      "adjusted_close_ready_rows": 0,
+      "adjusted_close_ready_share": 0.0
+    }
+  ]
+}
