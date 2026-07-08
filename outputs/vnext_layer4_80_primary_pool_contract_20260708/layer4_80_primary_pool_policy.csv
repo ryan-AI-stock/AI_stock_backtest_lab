@@ -1,0 +1,5 @@
+﻿policy_item,pool_size,variant,role,reason,p2_top_decile_retention_avg,p2_missed_material_winner_rate_avg,p2_bottom_decile_removal_avg,reference_only
+primary_pool,80,C_risk_aware_retention_constrained_quota_80,Layer4 weekly primary candidate pool,Strategy Center accepted 80 as balance between bottom-tail removal and winner retention; not Layer5 authorization,0.6247369152269509,0.3752630847730491,0.3796029564071939,False
+extended_watchlist,100,C_risk_aware_retention_constrained_quota_100,extended/watchlist reference,"Higher winner retention but weaker bottom-tail removal; reference only, not primary pool",0.801634119927426,0.1983658800725741,0.1953792033642639,True
+high_confidence_subpool,31,C_risk_aware_retention_constrained_quota_31,high-confidence subpool reference,31-stock pool is too narrow as primary; retained only for confidence/context reference,0.211181036021426,0.788818963978574,0.7787639178832726,True
+theme_ai_dynamic_slot,,,blocked placeholder,No hard-coded AI 20 quota; dynamic slot remains placeholder until accepted theme contract exists,,,,True

@@ -1,0 +1,8 @@
+﻿field_or_policy,status,reason
+AI_theme_dynamic_slot_contract,blocked_placeholder,No accepted dynamic theme/AI slot contract; no hard-coded AI 20
+risk_bucket,blocked,Formal risk bucket unavailable
+RS30_proxy,proxy,Exact RS30 unavailable
+large_down_day_proxy,proxy,Diagnostic proxy only
+blowoff_turnover_proxy,proxy,Diagnostic proxy only
+Layer5_decision,blocked,Layer5 not authorized
+portfolio_replay,blocked,Replay not authorized

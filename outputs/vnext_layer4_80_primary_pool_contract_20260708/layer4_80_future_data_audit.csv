@@ -1,0 +1,5 @@
+﻿audit_item,status,violation_count,evidence
+forward_returns_used_in_pool_rule,passed,0,80 primary contract is extracted from PIT pool assembly scores; forward columns are evaluation metadata only
+future_return_as_rule,passed,0,future_return_as_rule=false
+00631L_as_ordinary_stock_member,passed,0,00631L remains fallback/reference metadata only
+layer5_selector_output,passed,0,Layer5 selector output is not produced
