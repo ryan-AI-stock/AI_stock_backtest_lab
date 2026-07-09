@@ -1,0 +1,26 @@
+{
+  "task": "TASK-BACKTEST-CORE-VNEXT-20260708-RS20-BIAS60-RISK-ADJUSTED-CANDIDATE-FEATURE-CONTRACT-001",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_20260708_rs20_bias60_risk_adjusted_candidate_feature_contract_20260709",
+  "source_signal_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_adhoc_20260708_eod_signal_materialization_refresh_20260708",
+  "source_low_base_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer4_low_base_score_contract_20260709",
+  "artifacts": [
+    "rs20_bias60_risk_adjusted_candidate_feature_contract.csv",
+    "rs20_bias60_top3_audit_support.csv",
+    "rs20_bias60_alternative_candidate_support.csv",
+    "requested_vs_actual_coverage.csv",
+    "blocked_proxy_audit.csv",
+    "future_data_audit.csv",
+    "readiness_for_rs20_bias60_risk_adjusted_candidate_diagnostic.json",
+    "final_summary_zh.md"
+  ],
+  "created_at": "2026-07-09T01:07:29.251313+00:00",
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "ready_for_strategy_replay": false,
+  "ready_for_formal": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false
+}

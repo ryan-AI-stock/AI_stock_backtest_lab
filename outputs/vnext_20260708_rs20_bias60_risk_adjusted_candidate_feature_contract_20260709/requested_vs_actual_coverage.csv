@@ -1,0 +1,7 @@
+﻿field,requested,actual,ready,rows,path
+as_of_date,2026-07-08,2026-07-08,True,,
+layer0_active_candidate_scope,2026-07-08,2026-07-08,True,299.0,C:\Users\zergv\Documents\Codex\2026-05-30\ep05-chat-ai-stock-backtest-lab\outputs\vnext_adhoc_20260708_eod_signal_materialization_refresh_20260708
+rs20_bias60_feature_contract,2026-07-08,2026-07-08,True,1952.0,C:\Users\zergv\Documents\Codex\2026-05-30\ep05-chat-ai-stock-backtest-lab\outputs\vnext_layer4_low_base_score_contract_20260709
+layer4_primary80_same_date,2026-07-08,2026-06-29,False,0.0,
+route_support_same_date,2026-07-08,2026-06-29,False,0.0,
+selected_stock_adjusted_close,2026-07-08,,False,0.0,

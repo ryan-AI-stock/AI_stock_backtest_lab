@@ -1,0 +1,8 @@
+﻿field,field_as_of_date,status,policy
+layer4_primary80_same_date,2026-06-29,blocked,use Layer0 active/candidate feature table only; do not claim selected pool
+route_support_same_date,2026-06-29,blocked,route_support score/flags blank; no proxy threshold substitution
+layer1_quality_same_date,2026-06-29,proxy,latest ticker-level Layer1 quality context only; not formal
+bias60_stock_specific_percentile,2026-07-08,proxy,derived from rolling zscore normal-CDF proxy; label as proxy
+volatility_percentile,2026-07-08,proxy,cross-sectional percentile at same date; not stock-specific history percentile
+bias120,,blocked,not materialized in same-date contract
+selected_stock_adjusted_close,,blocked,do not fabricate adjusted close
