@@ -1,5 +1,4 @@
-﻿signal_date,entry_date,exit_date,score_variant,ticker,name,market,timing_variant,required_price_fields,blocked_item,blocked_reason,next_owner
-2018-03-16,2018-03-19,2018-03-26,low_base_risk_aware,8464,億豐,TWSE,next_day_close_entry_fixed_5td_exit,"entry_open,entry_close,exit_close",selected_stock_official_unadjusted_ohlc_path,new low_base integrated top1 not covered by prior selected-ticker OHLC path package,Radar/Data bounded selected-ticker-only OHLC gap fill if Strategy Center wants this variant tested
-,,,all,,,,,,selected_stock_adjusted_close,historical adjusted-close route remains blocked; official unadjusted OHLC is diagnostic-only,Strategy Center policy or Radar/Data adjusted-close source route
-,,,all,,,,,,cash_bear_classifier,no accepted cash/bear classifier; default base remains 00631L,Strategy Center/Core if cash branch is authorized later
-,,,all,,,,,,low_base_hard_filter,explicitly not allowed; low_base is component only,none
+﻿signal_date,score_variant,ticker,name,blocked_item,blocked_reason,next_owner
+,all,,,selected_stock_adjusted_close,historical adjusted-close route remains blocked; official unadjusted OHLC is diagnostic-only,Strategy Center policy or Radar/Data adjusted-close source route
+,all,,,cash_bear_classifier,no accepted cash/bear classifier; default base remains 00631L,Strategy Center/Core if cash branch is authorized later
+,all,,,low_base_hard_filter,explicitly not allowed; low_base is component only,none

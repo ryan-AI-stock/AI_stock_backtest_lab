@@ -1,2 +1,1 @@
-﻿signal_date,entry_date,exit_date,score_variant,ticker,name,market,timing_variant,required_price_fields,blocked_item,blocked_reason,next_owner
-2018-03-16,2018-03-19,2018-03-26,low_base_risk_aware,8464,億豐,TWSE,next_day_close_entry_fixed_5td_exit,"entry_open,entry_close,exit_close",selected_stock_official_unadjusted_ohlc_path,new low_base integrated top1 not covered by prior selected-ticker OHLC path package,Radar/Data bounded selected-ticker-only OHLC gap fill if Strategy Center wants this variant tested
+﻿

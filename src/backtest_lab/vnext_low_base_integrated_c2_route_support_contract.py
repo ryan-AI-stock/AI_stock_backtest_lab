@@ -31,6 +31,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 WEIGHTED_ABSORPTION_DIR = REPO_ROOT / "outputs" / "vnext_p1_c2_weighted_pool80_top5_ohlc_absorption_20260708"
 LOW_BASE_DIR = REPO_ROOT / "outputs" / "vnext_layer4_low_base_score_contract_20260709"
 OUTPUT_DIR = REPO_ROOT / "outputs" / "vnext_low_base_integrated_c2_route_support_contract_20260709"
+RADAR_GAP_FILL_DIR = Path(
+    "C:/Users/zergv/Documents/Codex/2026-05-23/ai-stock-rotation-radar-https-docs/outputs/"
+    "radar_vnext_low_base_integrated_c2_route_support_selected_stock_ohlc_gap_fill_20260709"
+)
 
 TASK_ID = "TASK-BACKTEST-CORE-VNEXT-LOW-BASE-INTEGRATED-C2-ROUTE-SUPPORT-CONTRACT-001"
 DIAGNOSTIC_NOTIONAL = 1_000_000
@@ -91,15 +95,40 @@ def _clip01(series: pd.Series) -> pd.Series:
 
 
 def _load_path_candidates() -> pd.DataFrame:
+    frames = []
     absorbed = WEIGHTED_ABSORPTION_DIR / "p1_c2_weighted_pool80_top5_contract_refreshed.csv"
     if absorbed.exists():
         df = pd.read_csv(absorbed, low_memory=False, dtype={"ticker": str})
         df["signal_date"] = pd.to_datetime(df["signal_date"], errors="coerce").dt.strftime("%Y-%m-%d")
         df["ticker"] = df["ticker"].map(_ticker)
-        return df.sort_values(["signal_date", "ticker", "score_variant", "candidate_rank"]).drop_duplicates(
-            ["signal_date", "ticker"]
-        )
-    return _path_map()
+        frames.append(df)
+    else:
+        frames.append(_path_map())
+
+    radar_patch = RADAR_GAP_FILL_DIR / "low_base_integrated_selected_ticker_ohlc_filled_rows.csv"
+    if radar_patch.exists():
+        patch = pd.read_csv(radar_patch, low_memory=False, dtype={"ticker": str})
+        patch["signal_date"] = pd.to_datetime(patch["signal_date"], errors="coerce").dt.strftime("%Y-%m-%d")
+        for col in ["entry_date", "exit_date"]:
+            patch[col] = pd.to_datetime(patch[col], errors="coerce").dt.strftime("%Y-%m-%d")
+        patch["ticker"] = patch["ticker"].map(_ticker)
+        patch["gross_return_unadjusted"] = pd.to_numeric(patch["exit_close"], errors="coerce") / pd.to_numeric(
+            patch["entry_close"], errors="coerce"
+        ) - 1.0
+        patch["entry_source_route"] = patch.get("source_route", "")
+        patch["exit_source_route"] = patch.get("source_route", "")
+        patch["entry_adjustment_policy"] = patch.get("adjustment_policy", "unadjusted_ohlcv; adjusted_close_blocked_not_fabricated")
+        patch["exit_adjustment_policy"] = patch.get("adjustment_policy", "unadjusted_ohlcv; adjusted_close_blocked_not_fabricated")
+        patch["source_quality"] = patch.get("source_quality", "official_unadjusted_ohlcv_selected_ticker_month")
+        patch["official_unadjusted_ohlc_path_ready"] = patch.get("official_ohlc_path_ready", True)
+        patch["path_patch_priority"] = 1
+        frames.append(patch)
+
+    out = pd.concat(frames, ignore_index=True, sort=False)
+    out["path_patch_priority"] = pd.to_numeric(out.get("path_patch_priority", 0), errors="coerce").fillna(0)
+    return out.sort_values(["signal_date", "ticker", "path_patch_priority"], ascending=[True, True, False]).drop_duplicates(
+        ["signal_date", "ticker"]
+    )
 
 
 def _build_low_base_components(components: pd.DataFrame) -> pd.DataFrame:
