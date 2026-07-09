@@ -1,0 +1,5 @@
+﻿field_or_component,status,impact,next_owner,formal_model_changed,trade_decision_changed,active_in_trade_decision,report_changed,portfolio_replay_executed,ready_for_strategy_replay,ready_for_formal,not_live_rule,forward_returns_live_rule_usage
+selected_stock_adjusted_close,blocked,stock branch uses official unadjusted OHLC diagnostic path; not formal adjusted-close path,Radar/Data only if Strategy Center authorizes adjusted-close route,False,False,False,False,False,False,False,True,False
+cash_bear_classifier,blocked,bear_guard_flag/cash_guard_flag are false placeholders with blocked source quality,Core/Data or Strategy Center later,False,False,False,False,False,False,False,True,False
+RS20_top3,reference_only,not used as selected branch in R6 unified contract,Strategy Center,False,False,False,False,False,False,False,True,False
+low_base,excluded,not used in main weight per Strategy Center decision,Strategy Center,False,False,False,False,False,False,False,True,False
