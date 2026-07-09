@@ -1,0 +1,16 @@
+{
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_daily_pdf_report_pipeline_readiness_no_publish_20260709",
+  "artifacts": [
+    "vnext_daily_report_pipeline_readiness.json",
+    "vnext_daily_report_drive_publish_audit.json",
+    "vnext_daily_report_sample_output.pdf",
+    "vnext_daily_report_requested_vs_actual_coverage.csv",
+    "vnext_daily_report_blocked_proxy_audit.csv",
+    "vnext_daily_report_workflow_draft.yml",
+    "final_summary_zh.md"
+  ],
+  "created_at": "2026-07-09T00:59:49.876510+00:00",
+  "report_changed": true,
+  "formal_model_changed": false,
+  "trade_decision_changed": false
+}

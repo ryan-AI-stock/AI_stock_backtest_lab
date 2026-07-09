@@ -18,6 +18,7 @@ from backtest_lab.drive_publish import DEFAULT_FOLDER_ID, upsert_pdf
 
 REMOTE_REPORT_NAME = "AI台股新模型每日收盤報告.pdf"
 DEFAULT_OUTPUT_DIR = Path("outputs/vnext_daily_report_pipeline_readiness_20260708")
+TASK_ID = "TASK-BACKTEST-CORE-VNEXT-DAILY-PDF-REPORT-PIPELINE-READINESS-NO-PUBLISH-001"
 
 
 @dataclass(frozen=True)
@@ -31,6 +32,7 @@ class VNextReportPaths:
     radar_pit_daily_sample: Path
     eod_source_scoped_rows: Path | None = None
     signal_refresh_dir: Path | None = None
+    low_base_dir: Path | None = None
 
 
 def default_paths(root: Path) -> VNextReportPaths:
@@ -57,6 +59,7 @@ def main() -> None:
     parser.add_argument("--publish-drive", action="store_true")
     parser.add_argument("--eod-source-dir", default="")
     parser.add_argument("--signal-refresh-dir", default="")
+    parser.add_argument("--low-base-dir", default="")
     parser.add_argument("--folder-id", default=DEFAULT_FOLDER_ID)
     parser.add_argument("--remote-name", default=REMOTE_REPORT_NAME)
     parser.add_argument("--file-id", default=os.environ.get("VNEXT_DAILY_REPORT_DRIVE_FILE_ID", ""))
@@ -76,6 +79,7 @@ def main() -> None:
         file_id=args.file_id.strip() or None,
         eod_source_dir=Path(args.eod_source_dir) if args.eod_source_dir else None,
         signal_refresh_dir=Path(args.signal_refresh_dir) if args.signal_refresh_dir else None,
+        low_base_dir=Path(args.low_base_dir) if args.low_base_dir else None,
     )
 
 
@@ -90,6 +94,7 @@ def build_package(
     file_id: str | None = None,
     eod_source_dir: Path | None = None,
     signal_refresh_dir: Path | None = None,
+    low_base_dir: Path | None = None,
 ) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     paths = default_paths(root)
@@ -107,7 +112,15 @@ def build_package(
                 "signal_refresh_dir": signal_refresh_dir,
             }
         )
+    if low_base_dir is not None:
+        paths = VNextReportPaths(
+            **{
+                **paths.__dict__,
+                "low_base_dir": low_base_dir,
+            }
+        )
     snapshot = build_signal_snapshot(paths, requested_date)
+    attach_low_base_summary(snapshot, paths.low_base_dir)
 
     pdf_path = output_dir / "vnext_daily_report_sample_output.pdf"
     render_pdf_report(pdf_path, snapshot)
@@ -121,7 +134,7 @@ def build_package(
     blocked.to_csv(blocked_path, index=False, encoding="utf-8-sig")
 
     readiness = {
-        "task": "TASK-BACKTEST-CORE-VNEXT-DAILY-PDF-REPORT-PIPELINE-FROM-SCHEDULE-RULES-001",
+        "task": TASK_ID,
         "status": "pipeline_implemented_local_sample_ready_drive_publish_not_executed"
         if not publish_drive
         else "pipeline_implemented_drive_publish_attempted",
@@ -311,7 +324,52 @@ def build_requested_vs_actual_coverage(paths: VNextReportPaths, requested_date: 
                 "path": str(path),
             }
         )
+    if paths.low_base_dir is not None:
+        readiness_path = paths.low_base_dir / "readiness_for_layer4_low_base_score_diagnostic.json"
+        readiness = load_json_if_exists(readiness_path)
+        out.append(
+            {
+                "field": "layer4_low_base_score_contract",
+                "category": "vnext_materialized_contract",
+                "requested_date": requested_date,
+                "actual_latest_date": readiness.get("as_of_date", "") if readiness else "",
+                "requested_date_ready": bool(readiness and readiness.get("as_of_date") == requested_date),
+                "path": str(paths.low_base_dir),
+            }
+        )
     return pd.DataFrame(out)
+
+
+def attach_low_base_summary(snapshot: dict[str, Any], low_base_dir: Path | None) -> None:
+    snapshot["low_base_score_status"] = "not_ready"
+    snapshot["low_base_layer4_exact_ready"] = False
+    snapshot["low_base_top10_balanced"] = []
+    snapshot["low_base_overlap_audit_ready"] = False
+    if low_base_dir is None:
+        return
+    readiness = load_json_if_exists(low_base_dir / "readiness_for_layer4_low_base_score_diagnostic.json")
+    top10_path = low_base_dir / "layer4_low_base_20260708_top10_sample.csv"
+    snapshot["low_base_overlap_audit_ready"] = (low_base_dir / "existing_low_base_overlap_audit.csv").exists()
+    if not readiness:
+        snapshot["low_base_score_status"] = "blocked_missing_readiness"
+        return
+    snapshot["low_base_layer4_exact_ready"] = bool(readiness.get("layer4_primary80_as_of_date_ready"))
+    if snapshot["low_base_layer4_exact_ready"]:
+        snapshot["low_base_score_status"] = "ready_component_not_selected_rule"
+    else:
+        snapshot["low_base_score_status"] = "reference_only_layer4_primary80_blocked"
+    if top10_path.exists():
+        top10 = pd.read_csv(top10_path, dtype={"ticker": str})
+        rows = top10[top10["score_variant"].eq("balanced")].sort_values("low_base_rank").head(10)
+        snapshot["low_base_top10_balanced"] = [
+            {
+                "rank": int(row["low_base_rank"]),
+                "ticker": str(row["ticker"]),
+                "name": row.get("name", ""),
+                "score": none_if_nan(row.get("low_base_score")),
+            }
+            for _, row in rows.iterrows()
+        ]
 
 
 def load_signal_refresh_snapshot(signal_refresh_dir: Path | None, requested_date: str) -> dict[str, Any] | None:
@@ -451,6 +509,13 @@ def build_blocked_proxy_audit(snapshot: dict[str, Any], coverage: pd.DataFrame) 
                 "proxy_policy": "basic PDF header and nonzero-size validation only",
                 "next_owner": "Core/Data environment dependency or Strategy Center manual visual review",
             },
+            {
+                "field": "low_base_score",
+                "field_as_of_date": snapshot["as_of_data_date"],
+                "blocked_reason": snapshot.get("low_base_score_status", "not_ready"),
+                "proxy_policy": "reference/component only; not selected rule and not a hard filter",
+                "next_owner": "Experiments only after exact Layer4 primary80 panel is materialized",
+            },
         ]
     )
     return pd.DataFrame(rows)
@@ -560,10 +625,51 @@ def render_pdf_report(path: Path, snapshot: dict[str, Any]) -> None:
             "本報告是 vNext 新模型 report pipeline 樣本，不是自動下單或正式交易規則。",
             "若 requested date 欄位未齊，只能顯示 latest available reference，不能包裝成今日 selected。",
             "Adjusted close / cash-bear classifier / formal-ready 仍保留 blocker。",
+            f"Low base score: {snapshot.get('low_base_score_status', 'not_ready')}，只作 component/reference，不作 hard filter。",
             "所有後續主要績效結論必須使用 net after transaction cost；gross/no-cost 只能 secondary。",
         ]
         draw_section(ax, 0.06, 0.165, "風險與邊界", risk_lines)
         ax.text(0.06, 0.06, "formal_model_changed=false · trade_decision_changed=false · report_changed=true · not_live_rule=true", color="#65717c", fontsize=8.5, transform=ax.transAxes)
+        pdf.savefig(fig)
+        plt.close(fig)
+
+        low_base_rows = snapshot.get("low_base_top10_balanced") or []
+        fig = plt.figure(figsize=(8.27, 11.69), facecolor="#f5f7fa")
+        ax = fig.add_axes((0, 0, 1, 1))
+        ax.axis("off")
+        ax.add_patch(plt.Rectangle((0, 0.89), 1, 0.11, color="#14212b", transform=ax.transAxes))
+        ax.text(0.06, 0.945, "Low Base Score Reference", color="white", fontsize=18, fontweight="bold", transform=ax.transAxes)
+        ax.text(
+            0.06,
+            0.91,
+            "component / overlap audit only · not selected rule · no hard filter",
+            color="#c8d5df",
+            fontsize=10.5,
+            transform=ax.transAxes,
+        )
+        status_lines = [
+            f"status: {snapshot.get('low_base_score_status', 'not_ready')}",
+            f"exact Layer4 primary80 ready: {snapshot.get('low_base_layer4_exact_ready', False)}",
+            f"overlap audit ready: {snapshot.get('low_base_overlap_audit_ready', False)}",
+            "placement: Layer4 ranking component; BIAS/RS/risk reuse Layer2, pullback semantics stays Layer3.",
+        ]
+        draw_section(ax, 0.06, 0.82, "定位", status_lines)
+        if low_base_rows:
+            rows = [
+                f"{item['rank']}. {item['ticker']} {item['name']} score={item['score']:.4f}"
+                for item in low_base_rows
+                if item.get("score") is not None
+            ]
+        else:
+            rows = ["low_base top10 尚未可重建。"]
+        draw_section(ax, 0.06, 0.64, "Balanced Top10 Reference", rows)
+        overlap_lines = [
+            "既有 BIAS / overheat / RS / pullback / risk 欄位不重複砍股票。",
+            "low_base 補的是低基期位置 + 未過熱 + RS改善 + 成交改善的可比較分數。",
+            "若未來要作 selected rule，必須由 Experiments 先做 net-after-cost diagnostic。",
+        ]
+        draw_section(ax, 0.06, 0.31, "Overlap Policy", overlap_lines)
+        ax.text(0.06, 0.08, "report-only local sample · Drive publish not attempted", color="#65717c", fontsize=8.5, transform=ax.transAxes)
         pdf.savefig(fig)
         plt.close(fig)
 
@@ -678,6 +784,8 @@ def write_summary(path: Path, *, snapshot: dict[str, Any], readiness: dict[str, 
 - selected_branch: `{snapshot['selected_branch']}`。
 - branch_reason: `{snapshot['branch_reason']}`。
 - 若 `market_data_ready_for_requested_date=false`，代表今日主推薦尚未可發布成 selected signal；reference-only 欄位不可包裝成交易建議。
+- low_base_score status: `{snapshot.get('low_base_score_status', 'not_ready')}`。
+- low_base_score 只作 Layer4 component / reference；不可包裝成 selected rule 或 hard filter。
 
 ## 報告口徑
 
@@ -833,6 +941,12 @@ def as_bool(value: Any) -> bool | None:
 
 def none_if_nan(value: Any) -> Any:
     return None if pd.isna(value) else float(value) if isinstance(value, (int, float)) else value
+
+
+def load_json_if_exists(path: Path) -> dict[str, Any] | None:
+    if not path.exists():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def series_dict(series: pd.Series) -> dict[str, Any]:

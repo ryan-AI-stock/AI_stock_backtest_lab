@@ -1,0 +1,5 @@
+﻿candidate_layer,fit,reason,decision
+Layer2 soft scoring,partial,"RS improvement, BIAS health, volatility and overheat are soft context fields already living near Layer2.",reuse Layer2 fields; do not create duplicate Layer2 gate
+Layer3 opportunity label,partial,"pullback_repair / reacceleration belongs to Layer3 labels, especially if the semantics is prior strength then repair.",do not move full low_base_score here; keep pullback semantics in Layer3
+Layer4 ranking component,primary,"low_base_score is best used after Layer0-Layer3 have preserved candidates, as a bonus/penalty/tie-break component inside the 80-pool ranking.",recommended placement; no hard deletion
+Layer5 selected rule,not_ready,No diagnostic evidence yet that low_base alone should drive the daily selected asset.,blocked unless Experiments later validates and Strategy Center authorizes

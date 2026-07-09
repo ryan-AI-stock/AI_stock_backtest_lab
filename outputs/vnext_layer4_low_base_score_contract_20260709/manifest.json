@@ -1,0 +1,20 @@
+{
+  "task": "TASK-BACKTEST-CORE-VNEXT-LAYER4-LOW-BASE-SCORE-CONTRACT-001",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer4_low_base_score_contract_20260709",
+  "artifacts": [
+    "layer4_low_base_score_component_matrix.csv",
+    "layer4_low_base_score_variant_definitions.csv",
+    "layer4_low_base_20260708_top10_sample.csv",
+    "existing_low_base_overlap_audit.csv",
+    "layer4_low_base_layer_placement_decision.csv",
+    "layer4_low_base_blocked_proxy_audit.csv",
+    "layer4_low_base_coverage_audit.csv",
+    "layer4_low_base_future_data_audit.csv",
+    "readiness_for_layer4_low_base_score_diagnostic.json",
+    "final_summary_zh.md"
+  ],
+  "created_at": "2026-07-09T00:58:37.934259+00:00",
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "report_changed": false
+}

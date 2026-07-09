@@ -1,0 +1,5 @@
+﻿field,status,reason,policy
+exact_layer4_primary80_20260708,blocked,Layer4 primary80 contract latest date is 2026-06-29,"2026-07-08 low_base top10 is reference sample, not selected rule"
+quality_support,proxy,uses latest available Layer1 quality context by ticker from 2026-06-29 Layer4 contract,allowed as diagnostic proxy; not formal
+adjusted_close,blocked,current 2026-07-08 source is official unadjusted OHLCV,do not promote to formal without accepted adjusted source
+stock_specific_bias_score,ready_proxy,uses ticker-specific rolling 252D z-score from PIT-observable close history,diagnostic scoring component only
