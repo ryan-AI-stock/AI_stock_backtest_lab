@@ -1,0 +1,8 @@
+﻿item,count,ready
+weekly_signal_rows,411,True
+path_ready_rows_after_absorption,405,False
+path_blocked_rows_after_absorption,6,False
+radar_filled_rows,351,True
+radar_blocked_rows,6,True
+old_rs20_source_rows,411,True
+00631L_0050_buyhold_reference_rows,2,True
