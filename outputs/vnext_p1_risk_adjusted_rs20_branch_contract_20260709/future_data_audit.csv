@@ -1,0 +1,4 @@
+﻿audit_item,used,future_data_violation_count
+future_return_used_in_new_rs20_score,False,0
+future_winner_or_hindsight_max_used,False,0
+forward_eval_columns_used_for_selection,False,0

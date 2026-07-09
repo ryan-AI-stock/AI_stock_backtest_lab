@@ -1,0 +1,7 @@
+﻿item,requested,actual,ready
+requested_period,2015-01-02~2022-12-29,2015-01-09~2022-12-23,True
+layer4_primary80_p1_weekly_rows,411*80,32880,True
+new_risk_adjusted_rs20_signal_rows,411,411,True
+old_rs20_existing_path_rows,411,411,True
+new_rs20_existing_selected_path_ready_rows,411,54,False
+00631L_0050_buy_hold_reference_rows,2,2,True
