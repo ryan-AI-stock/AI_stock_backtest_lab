@@ -1,0 +1,179 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LOW-BASE-INTEGRATED-C2-ROUTE-SUPPORT-CONTRACT-001",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_low_base_integrated_c2_route_support_contract_20260709",
+  "inputs": {
+    "layer4_pool": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer4_80_primary_pool_contract_20260708\\layer4_80_primary_pool_contract.csv",
+    "weighted_pool80_absorbed_contract": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_weighted_pool80_top5_ohlc_absorption_20260708\\p1_c2_weighted_pool80_top5_contract_refreshed.csv",
+    "low_base_overlap_audit": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_layer4_low_base_score_contract_20260709\\existing_low_base_overlap_audit.csv",
+    "state_hold_benchmark_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_state_hold_base_exception_path_contract_20260708",
+    "transition_cost_design": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_c2_top5_ohlc_absorption_and_exright_review_20260708\\p1_c2_top5_exception_candidate_transition_cost_design.csv"
+  },
+  "artifacts": [
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_low_base_integrated_c2_route_support_contract_20260709\\low_base_integrated_c2_route_support_contract.csv",
+      "sha256": "49dcc45da41a3ddd0f1866bf54dc963a56c92eda90802e9f613eeedb487e6d58",
+      "bytes": 798177
+    },
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_low_base_integrated_c2_route_support_contract_20260709\\low_base_integrated_variant_selection_map.csv",
+      "sha256": "0c61716f161910ac4281aa4f713b1afb3e9fd404e7ef7b13769887cae06c08e1",
+      "bytes": 115160
+    },
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_low_base_integrated_c2_route_support_contract_20260709\\low_base_integrated_score_components.csv",
+      "sha256": "3a3b8709a24d74479f9381338b3f2b4a986afa57f35b5bbb4c1e4019a7db6d5f",
+      "bytes": 6069092
+    },
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_low_base_integrated_c2_route_support_contract_20260709\\low_base_integrated_ohlc_readiness.csv",
+      "sha256": "e170717b087803829e978e3010da2f3c852a2c4e004b529ea8bd57d94409a3ed",
+      "bytes": 751
+    },
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_low_base_integrated_c2_route_support_contract_20260709\\requested_vs_actual_coverage.csv",
+      "sha256": "e170717b087803829e978e3010da2f3c852a2c4e004b529ea8bd57d94409a3ed",
+      "bytes": 751
+    },
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_low_base_integrated_c2_route_support_contract_20260709\\blocked_proxy_audit.csv",
+      "sha256": "d4d73c58c5913e03c8abc83a6d764d7e5cf8a9fd2424c3cf63dc4d4d4e55b3cf",
+      "bytes": 960
+    },
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_low_base_integrated_c2_route_support_contract_20260709\\low_base_integrated_selected_ticker_ohlc_gap_ledger.csv",
+      "sha256": "c4fc0c909b2bd92dea76e6c326418d008ccce38e8a5b842d2d0a87d46f352d68",
+      "bytes": 517
+    },
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_low_base_integrated_c2_route_support_contract_20260709\\future_data_audit.csv",
+      "sha256": "d3eef16e85b26145cf826b89883ee7f233ce85cf98dda413b4d7b1e66b4cdb85",
+      "bytes": 255
+    },
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_low_base_integrated_c2_route_support_contract_20260709\\low_base_integrated_variant_definitions.csv",
+      "sha256": "d9e8cf761fa9ac67c5453bfad6c37cc1636750a63d91bb20dc80f994c7c6e26a",
+      "bytes": 1679
+    },
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_low_base_integrated_c2_route_support_contract_20260709\\low_base_integrated_transition_trace.csv",
+      "sha256": "3fbe43e019b96f7fca5ae818b10bbad5c0fcb81fc8e5a1972840606ed63c6470",
+      "bytes": 58251
+    },
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_low_base_integrated_c2_route_support_contract_20260709\\low_base_integrated_transition_cost_audit.csv",
+      "sha256": "d561c16831cb933a735b624731a64e8f17d2bc1474bf745f27c57a0eeb5b5166",
+      "bytes": 2754
+    },
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_low_base_integrated_c2_route_support_contract_20260709\\readiness_for_low_base_integrated_experiments.json",
+      "sha256": "3a09d2296a41c209ed3909ef2060e244c67a877e079b4920b40638f87a924256",
+      "bytes": 3661
+    },
+    {
+      "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_low_base_integrated_c2_route_support_contract_20260709\\final_summary_zh.md",
+      "sha256": "e87a5f4521d04cbc9c7814502c24332e2d67a576641a531bda1a226411785e10",
+      "bytes": 2265
+    }
+  ],
+  "readiness": {
+    "task_id": "TASK-BACKTEST-CORE-VNEXT-LOW-BASE-INTEGRATED-C2-ROUTE-SUPPORT-CONTRACT-001",
+    "status": "low_base_integrated_c2_route_support_contract_partial_ohlc_blocked",
+    "period_requested": "P1 2015-01-02 to 2022-12-29",
+    "variant_count": 5,
+    "eligible_signal_dates": 21,
+    "selected_stock_rows": 105,
+    "official_unadjusted_ohlc_ready_share": 0.9904761904761905,
+    "official_unadjusted_ohlc_ready_rows": 104,
+    "official_unadjusted_ohlc_blocked_rows": 1,
+    "transition_cost_fields_ready": true,
+    "cost_model_ready": true,
+    "cost_model_version": "taiwan_standard_fee_tax_v1",
+    "adjusted_close_ready": false,
+    "low_base_hard_filter_added": false,
+    "ready_for_low_base_integrated_experiments": false,
+    "ready_for_experiments": false,
+    "ready_for_radar_selected_ohlc_gap_fill": true,
+    "future_data_violation_count": 0,
+    "ready_for_formal": false,
+    "ready_for_strategy_replay": false,
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false,
+    "coverage_by_variant": [
+      {
+        "score_variant": "baseline_route_support",
+        "requested_period": "P1 2015-01-02 to 2022-12-29",
+        "actual_signal_start": "2015-01-09",
+        "actual_signal_end": "2022-12-23",
+        "eligible_stock_signal_dates": 21,
+        "selected_unique_tickers": 20,
+        "selected_stock_rows": 21,
+        "official_unadjusted_ohlc_ready_rows": 21,
+        "official_unadjusted_ohlc_ready_share": 1.0,
+        "state_contract_rows": 411,
+        "state_stock_rows": 21
+      },
+      {
+        "score_variant": "low_base_balanced",
+        "requested_period": "P1 2015-01-02 to 2022-12-29",
+        "actual_signal_start": "2015-01-09",
+        "actual_signal_end": "2022-12-23",
+        "eligible_stock_signal_dates": 21,
+        "selected_unique_tickers": 20,
+        "selected_stock_rows": 21,
+        "official_unadjusted_ohlc_ready_rows": 21,
+        "official_unadjusted_ohlc_ready_share": 1.0,
+        "state_contract_rows": 411,
+        "state_stock_rows": 21
+      },
+      {
+        "score_variant": "low_base_risk_aware",
+        "requested_period": "P1 2015-01-02 to 2022-12-29",
+        "actual_signal_start": "2015-01-09",
+        "actual_signal_end": "2022-12-23",
+        "eligible_stock_signal_dates": 21,
+        "selected_unique_tickers": 19,
+        "selected_stock_rows": 21,
+        "official_unadjusted_ohlc_ready_rows": 20,
+        "official_unadjusted_ohlc_ready_share": 0.9523809523809523,
+        "state_contract_rows": 411,
+        "state_stock_rows": 21
+      },
+      {
+        "score_variant": "low_base_quality",
+        "requested_period": "P1 2015-01-02 to 2022-12-29",
+        "actual_signal_start": "2015-01-09",
+        "actual_signal_end": "2022-12-23",
+        "eligible_stock_signal_dates": 21,
+        "selected_unique_tickers": 20,
+        "selected_stock_rows": 21,
+        "official_unadjusted_ohlc_ready_rows": 21,
+        "official_unadjusted_ohlc_ready_share": 1.0,
+        "state_contract_rows": 411,
+        "state_stock_rows": 21
+      },
+      {
+        "score_variant": "low_base_pullback_reacceleration",
+        "requested_period": "P1 2015-01-02 to 2022-12-29",
+        "actual_signal_start": "2015-01-09",
+        "actual_signal_end": "2022-12-23",
+        "eligible_stock_signal_dates": 21,
+        "selected_unique_tickers": 17,
+        "selected_stock_rows": 21,
+        "official_unadjusted_ohlc_ready_rows": 21,
+        "official_unadjusted_ohlc_ready_share": 1.0,
+        "state_contract_rows": 411,
+        "state_stock_rows": 21
+      }
+    ]
+  },
+  "created_at": "2026-07-09T02:19:51.637610+00:00",
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false
+}

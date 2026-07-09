@@ -1,0 +1,6 @@
+﻿score_variant,requested_period,actual_signal_start,actual_signal_end,eligible_stock_signal_dates,selected_unique_tickers,selected_stock_rows,official_unadjusted_ohlc_ready_rows,official_unadjusted_ohlc_ready_share,state_contract_rows,state_stock_rows
+baseline_route_support,P1 2015-01-02 to 2022-12-29,2015-01-09,2022-12-23,21,20,21,21,1.0,411,21
+low_base_balanced,P1 2015-01-02 to 2022-12-29,2015-01-09,2022-12-23,21,20,21,21,1.0,411,21
+low_base_risk_aware,P1 2015-01-02 to 2022-12-29,2015-01-09,2022-12-23,21,19,21,20,0.9523809523809523,411,21
+low_base_quality,P1 2015-01-02 to 2022-12-29,2015-01-09,2022-12-23,21,20,21,21,1.0,411,21
+low_base_pullback_reacceleration,P1 2015-01-02 to 2022-12-29,2015-01-09,2022-12-23,21,17,21,21,1.0,411,21
