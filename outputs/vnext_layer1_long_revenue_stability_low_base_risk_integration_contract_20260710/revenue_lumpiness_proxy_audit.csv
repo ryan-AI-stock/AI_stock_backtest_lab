@@ -1,0 +1,3 @@
+﻿proxy_field,status,ready_rows,blocked_rows,definition,limitation
+revenue_lumpiness_score,proxy_ready,80,0.0,top3_month_revenue_share_last36m_65pct + monthly_revenue_cv_last36m_35pct,does not prove project-based business model; flags lumpy monthly revenue shape only
+project_based_revenue_risk_proxy,diagnostic_proxy,80,,lumpiness_score>=0.45 or recent_spike_without_long_history_flag,not industry/business-model verified

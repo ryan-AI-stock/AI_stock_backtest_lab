@@ -1,0 +1,63 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER1-LONG-REVENUE-STABILITY-AND-LOW-BASE-RISK-INTEGRATION-CONTRACT-001",
+  "status": "complete_feature_contract_proxy_partial",
+  "output_dir": "outputs\\vnext_layer1_long_revenue_stability_low_base_risk_integration_contract_20260710",
+  "artifacts": [
+    {
+      "path": "outputs\\vnext_layer1_long_revenue_stability_low_base_risk_integration_contract_20260710\\layer1_long_revenue_stability_feature_contract.csv",
+      "sha256": "bd5af3d5c1e1abab6b159482cf890ff6d292466bcfe10553c2ed23aa4e0b3606",
+      "bytes": 65047
+    },
+    {
+      "path": "outputs\\vnext_layer1_long_revenue_stability_low_base_risk_integration_contract_20260710\\low_base_risk_integration_feature_map.csv",
+      "sha256": "ac371719b2656f23ebc7c62f14c9d62ef6d3fcb2737b1b7da06f5f8472dc3076",
+      "bytes": 1300
+    },
+    {
+      "path": "outputs\\vnext_layer1_long_revenue_stability_low_base_risk_integration_contract_20260710\\revenue_stability_missingness_by_period.csv",
+      "sha256": "4fb5a94cafcfbf09e754f69a977aa40b0df6c496a001feec35698cac2cecdb79",
+      "bytes": 405
+    },
+    {
+      "path": "outputs\\vnext_layer1_long_revenue_stability_low_base_risk_integration_contract_20260710\\revenue_lumpiness_proxy_audit.csv",
+      "sha256": "42a3e210a789f3776ecd9b5ecc3b3f39a655941c3f32d3c081c0a95d9073cc95",
+      "bytes": 427
+    },
+    {
+      "path": "outputs\\vnext_layer1_long_revenue_stability_low_base_risk_integration_contract_20260710\\shinfox_6806_feature_sanity_check.csv",
+      "sha256": "539c19f7ee1124d490ccf70b2dccd76f82efffeed147f889597f4d3c7bb64209",
+      "bytes": 124
+    },
+    {
+      "path": "outputs\\vnext_layer1_long_revenue_stability_low_base_risk_integration_contract_20260710\\requested_vs_actual_coverage.csv",
+      "sha256": "8edeccfa098c60f9a14db2dcec5f2ea533ea846639c9bcc537a77edc33cf7ad0",
+      "bytes": 320
+    },
+    {
+      "path": "outputs\\vnext_layer1_long_revenue_stability_low_base_risk_integration_contract_20260710\\future_data_audit.csv",
+      "sha256": "e25371c407cd9a0c196bf14afae00811511b91ca505a680cc22d5f110ece7e0a",
+      "bytes": 253
+    },
+    {
+      "path": "outputs\\vnext_layer1_long_revenue_stability_low_base_risk_integration_contract_20260710\\readiness_for_experiments.json",
+      "sha256": "9a1eb77544e9564a6e5e819bf8305cf3291fec12be73e16e018ac5e25c173319",
+      "bytes": 1103
+    },
+    {
+      "path": "outputs\\vnext_layer1_long_revenue_stability_low_base_risk_integration_contract_20260710\\final_summary_zh.md",
+      "sha256": "e1df8faf3329a6fb6dbf5f8cf1c8505317a5d33021363a2dc9e7d6a6fd843d42",
+      "bytes": 1116
+    }
+  ],
+  "flags": {
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "ready_for_strategy_replay": false,
+    "ready_for_formal": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false
+  }
+}

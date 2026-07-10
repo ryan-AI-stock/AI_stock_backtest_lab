@@ -1,0 +1,8 @@
+﻿feature,source_or_component,recommended_layer,integration_action,note,existing_overlap_source_rows,prior_layer_placement_source_rows
+price_low_base_percentile,price_position_low_base,Layer2/Layer4 ranking context,reuse_existing_as_bonus,stock price location within own range; never hard filter,7,4
+bias60_percentile_zscore,bias60_zscore_252d / BIAS60_percentile,Layer2 risk/overheat context,reuse_existing_penalty,ticker-specific overheat control; raw BIAS threshold is not enough,7,4
+valuation_low_base_proxy,PE/PB/PS unavailable,blocked/proxy,blocked,valuation source not accepted in this contract,7,4
+revenue_base_context,long_revenue_stability_feature_contract,Layer1 quality context + Layer4 scoring support,new_context_not_hard_filter,separate recovery from short-term low-base illusion,7,4
+margin_recovery_context,gross_margin/operating_margin partial,Layer1 quality context,proxy_or_blocked,requires refreshed quarterly profitability source for broad use,7,4
+overheat_penalty_context,overheat_veto_flag / volatility,Layer2/Layer4 risk context,keep_existing_as_penalty,low-base bonus cannot offset obvious overheat/high volatility,7,4
+low_base_as_bonus_cap,policy,Layer4 ranking component,cap_bonus_only,max small bonus/tie-break; no independent route and no hard selected rule,7,4
