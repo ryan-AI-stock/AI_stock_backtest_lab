@@ -15,6 +15,10 @@ RADAR_DIR = Path(
     r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs"
     r"\radar_vnext_daily_prospective_corporate_action_market_calendar_source_package_20260710"
 )
+TPEX_RADAR_DIR = Path(
+    r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs"
+    r"\radar_vnext_daily_prospective_tpex_current_corporate_action_calendar_capture_20260710"
+)
 OUTPUT_DIR = REPO_ROOT / "outputs" / "vnext_daily_prospective_corporate_action_market_calendar_absorption_20260710"
 
 FLAGS = {
@@ -49,12 +53,32 @@ def main() -> None:
     radar_readiness = json.loads(
         (RADAR_DIR / "readiness_for_core_daily_prospective_market_calendar_absorption.json").read_text(encoding="utf-8")
     )
+    tpex_readiness = json.loads(
+        (TPEX_RADAR_DIR / "readiness_for_core_tpex_current_calendar_absorption.json").read_text(encoding="utf-8")
+    )
     guard_readiness = json.loads(
         (CONTRACT_DIR / "readiness_for_daily_prospective_corporate_action_event_guard.json").read_text(encoding="utf-8")
     )
     calendar = pd.read_csv(RADAR_DIR / "daily_prospective_market_calendar_canonical_rows.csv", dtype={"ticker": str}, low_memory=False)
+    tpex_calendar = pd.read_csv(
+        TPEX_RADAR_DIR / "tpex_current_market_calendar_canonical_rows.csv", dtype={"ticker": str}, low_memory=False
+    )
+    tpex_calendar = tpex_calendar.rename(columns={"stock_ratio_per_1000": "stock_ratio"})
+    for column in calendar.columns:
+        if column not in tpex_calendar.columns:
+            tpex_calendar[column] = pd.NA
+    for column in tpex_calendar.columns:
+        if column not in calendar.columns:
+            calendar[column] = pd.NA
+    twse_row_count = len(calendar)
+    tpex_row_count = len(tpex_calendar)
+    calendar = pd.concat([calendar, tpex_calendar[calendar.columns]], ignore_index=True, sort=False)
     blocked_source = pd.read_csv(RADAR_DIR / "daily_prospective_market_calendar_blocked_ledger.csv", low_memory=False)
     source_manifest = pd.read_csv(RADAR_DIR / "daily_prospective_market_calendar_source_manifest.csv", low_memory=False)
+    tpex_blocked_source = pd.read_csv(TPEX_RADAR_DIR / "tpex_current_market_calendar_blocked_ledger.csv", low_memory=False)
+    tpex_source_manifest = pd.read_csv(TPEX_RADAR_DIR / "tpex_current_market_calendar_source_manifest.csv", low_memory=False)
+    blocked_source = pd.concat([blocked_source, tpex_blocked_source], ignore_index=True, sort=False)
+    source_manifest = pd.concat([source_manifest, tpex_source_manifest], ignore_index=True, sort=False)
     calendar["effective_date"] = pd.to_datetime(calendar["effective_date"], errors="coerce")
     calendar["calendar_discovery_ready"] = True
     calendar["market_available_at_ready"] = pd.to_datetime(calendar["market_available_at"], errors="coerce").notna()
@@ -76,7 +100,7 @@ def main() -> None:
             "retention_policy": "retain snapshots covering at least 252 trading sessions; operational buffer may use 400 calendar days",
             "historical_backfill_allowed": False,
             "historical_adjusted_close_escalation_reopened": False,
-            "current_status": "day_1_TWSE_seed_only",
+            "current_status": "day_1_TWSE_TPEx_seed_market_available_at_blocked",
         },
         {
             "cache_stage": "affected_ticker_detail",
@@ -103,23 +127,25 @@ def main() -> None:
     query_storage = pd.DataFrame([
         {
             "audit_scope": "observed_Radar_package",
-            "market_level_queries": radar_readiness["coverage"]["market_level_queries"],
-            "TWSE_calendar_rows": len(calendar),
-            "TPEx_calendar_rows": 0,
+            "market_level_queries": radar_readiness["coverage"]["market_level_queries"] + tpex_readiness["coverage"]["market_level_queries"],
+            "TWSE_calendar_rows": twse_row_count,
+            "TPEx_calendar_rows": tpex_row_count,
             "affected_ticker_detail_queries": radar_readiness["coverage"]["affected_ticker_detail_queries"],
-            "observed_raw_bytes": radar_readiness["coverage"]["observed_raw_bytes"],
-            "route_error_count": radar_readiness["coverage"]["route_error_count"],
+            "observed_raw_bytes": radar_readiness["coverage"]["observed_raw_bytes"] + tpex_readiness["coverage"]["observed_raw_bytes"],
+            "route_error_count": radar_readiness["coverage"]["route_error_count"] + tpex_readiness["coverage"]["route_error_count"],
             "query_semantics": "one batch per market source; zero per-ticker query before score-universe intersection",
         }
     ]).assign(future_data_violation_count=0)
     readiness = {
         "task_id": TASK_ID,
-        "status": "TWSE_current_calendar_absorbed_TPEx_and_retained_history_blocked",
-        "TWSE_current_calendar_rows_absorbed": len(calendar),
+        "status": "TWSE_TPEx_current_calendars_absorbed_PIT_availability_and_retained_history_blocked",
+        "TWSE_current_calendar_rows_absorbed": twse_row_count,
         "TWSE_current_calendar_candidate_discovery_ready": True,
-        "TWSE_market_available_at_ready_rows": int(calendar["market_available_at_ready"].sum()),
-        "TWSE_analysis_price_factor_ready_rows": int(calendar["analysis_price_factor_ready"].sum()),
-        "TPEx_current_calendar_rows_absorbed": 0,
+        "TWSE_market_available_at_ready_rows": int(calendar.loc[calendar["market"].eq("TWSE"), "market_available_at_ready"].sum()),
+        "TWSE_analysis_price_factor_ready_rows": int(calendar.loc[calendar["market"].eq("TWSE"), "analysis_price_factor_ready"].sum()),
+        "TPEx_current_calendar_rows_absorbed": tpex_row_count,
+        "TPEx_current_calendar_candidate_discovery_ready": True,
+        "TPEx_market_available_at_ready_rows": int(calendar.loc[calendar["market"].eq("TPEx"), "market_available_at_ready"].sum()),
         "TPEx_current_calendar_ready": False,
         "retained_252session_calendar_history_ready": False,
         "forward_daily_cache_retention_contract_ready": True,
@@ -135,11 +161,11 @@ def main() -> None:
         "ready_for_strategy_replay": False,
         "ready_for_daily_trade_decision": False,
         "future_data_violation_count": 0,
-        "next_owner": "Radar/Data bounded TPEx current browser-equivalent calendar capture; Core later joins same-day scoring universe",
+        "next_owner": "Core daily Layer2/Layer4 same-day score-universe intersection; detail only for calendar hits",
         **FLAGS,
     }
     blocked = pd.DataFrame([
-        {"item": "TPEx_current_market_calendar", "status": "blocked", "detail": "Public page identified but direct replay returned 404; no TPEx rows materialized.", "next_owner": "Radar/Data browser-equivalent bounded current capture"},
+        {"item": "TPEx_market_available_at", "status": "blocked", "detail": "10 current rows absorbed, but the calculation table has no issuer announcement timestamp; retrieval time is not substituted.", "next_owner": "Core intersection then bounded detail source if hit"},
         {"item": "retained_252session_calendar_history", "status": "blocked_bootstrap", "detail": "Current snapshot cannot backfill history; build prospectively by daily cache retention.", "next_owner": "Core daily pipeline over time"},
         {"item": "market_available_at", "status": "detail_required", "detail": "Retrieval time is metadata only; issuer announcement timestamp is required after score-universe hit.", "next_owner": "Radar/Data bounded detail query after Core intersection"},
         {"item": "price_scoring_universe_intersection", "status": "not_run", "detail": "No same-day scoring ticker set was supplied; detail query count correctly remains zero.", "next_owner": "Core daily Layer2/Layer4 materialization"},
@@ -152,7 +178,7 @@ def main() -> None:
         {"audit_item": "detail_queries", "future_data_used": False, "detail": "No ticker detail queried before score-universe intersection.", "future_data_violation_count": 0},
     ])
     paths = [
-        _write(calendar, "daily_prospective_TWSE_calendar_absorbed.csv"),
+        _write(calendar, "daily_prospective_TWSE_TPEx_calendar_absorbed.csv"),
         _write(intersection, "daily_prospective_score_universe_intersection_detail_query_contract.csv"),
         _write(retention, "daily_prospective_calendar_forward_cache_retention_contract.csv"),
         _write(query_storage, "daily_prospective_calendar_observed_query_storage_audit.csv"),
@@ -166,23 +192,24 @@ def main() -> None:
     summary_path = OUTPUT_DIR / "final_summary_zh.md"
     summary_path.write_text(
         "# Daily Prospective Corporate-action Calendar Absorption\n\n"
-        f"- TWSE current calendar absorbed: {len(calendar)} rows; one TWSE batch, no per-TOP250 ticker history queries.\n"
+        f"- TWSE current calendar absorbed: {twse_row_count} rows; TPEx current calendar absorbed: {tpex_row_count} rows.\n"
         "- Calendar rows are candidate discovery only: market_available_at and complete event terms require detail after scoring-universe intersection.\n"
         "- affected ticker detail queries remain 0 because no current scoring-universe intersection was supplied.\n"
-        "- TPEx current rows remain blocked; retained 252-session history must accumulate prospectively from daily snapshots.\n"
+        "- TPEx rows are available for candidate discovery, but market_available_at remains blocked; retained 252-session history must accumulate prospectively.\n"
         "- Current snapshot is not used as historical coverage and does not reopen adjusted-close escalation.\n"
         "- raw execution and event-adjusted analysis price semantics remain separate.\n\n"
-        "結論：TWSE partial candidate discovery ready；all-market daily guard、PIT detail、252-session retained history與selected exact audit尚未ready。\n",
+        "結論：TWSE/TPEx current candidate discovery ready；all-market PIT guard、252-session retained history與selected exact audit尚未ready。\n",
         encoding="utf-8",
     )
     manifest = {
         "task_id": TASK_ID,
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "output_dir": str(OUTPUT_DIR),
-        "source_inputs": {"Core_guard_contract": str(CONTRACT_DIR), "Radar_calendar": str(RADAR_DIR)},
+        "source_inputs": {"Core_guard_contract": str(CONTRACT_DIR), "Radar_TWSE_calendar": str(RADAR_DIR), "Radar_TPEx_calendar": str(TPEX_RADAR_DIR)},
         "files": [{"path": p.name, "sha256": _sha256(p)} for p in [*paths, readiness_path, summary_path]],
         "readiness": readiness,
         "Radar_readiness": radar_readiness,
+        "TPEx_Radar_readiness": tpex_readiness,
         "guard_readiness": guard_readiness,
     }
     (OUTPUT_DIR / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
