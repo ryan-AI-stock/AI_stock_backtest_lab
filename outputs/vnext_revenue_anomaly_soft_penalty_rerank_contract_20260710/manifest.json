@@ -1,0 +1,63 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-REVENUE-ANOMALY-SOFT-PENALTY-RERANK-CONTRACT-001",
+  "status": "complete_revenue_anomaly_soft_penalty_rerank_contract",
+  "output_dir": "outputs\\vnext_revenue_anomaly_soft_penalty_rerank_contract_20260710",
+  "artifacts": [
+    {
+      "path": "outputs\\vnext_revenue_anomaly_soft_penalty_rerank_contract_20260710\\revenue_anomaly_soft_penalty_rerank_contract.csv",
+      "sha256": "06ee9cbdd74114fa77d53b13eff2e10e8db79991ca2a9c391106f63b520630d6",
+      "bytes": 1407811
+    },
+    {
+      "path": "outputs\\vnext_revenue_anomaly_soft_penalty_rerank_contract_20260710\\revenue_anomaly_soft_penalty_candidate_topn.csv",
+      "sha256": "b6809c75ba28b32f0d2aacb226cb23cfda6b0a263e1c56725e21a35f0ed61231",
+      "bytes": 4453742
+    },
+    {
+      "path": "outputs\\vnext_revenue_anomaly_soft_penalty_rerank_contract_20260710\\revenue_anomaly_soft_penalty_variant_policy.csv",
+      "sha256": "cb34515830b61ea054f7644b7390877173544dca20ef61979d3681e07b55a9c8",
+      "bytes": 505
+    },
+    {
+      "path": "outputs\\vnext_revenue_anomaly_soft_penalty_rerank_contract_20260710\\revenue_anomaly_soft_penalty_requested_vs_actual_coverage.csv",
+      "sha256": "dca00570bb9020cf0fbb166ce1c1bf81ab5f694bfa206c128dbf08e10a5fd3f2",
+      "bytes": 288
+    },
+    {
+      "path": "outputs\\vnext_revenue_anomaly_soft_penalty_rerank_contract_20260710\\revenue_anomaly_soft_penalty_selected_ohlc_gap_ledger.csv",
+      "sha256": "514ea0390b845c082efcbd2ff2c2f59b446f94e2b8a023e6fa95dc490815b946",
+      "bytes": 24675
+    },
+    {
+      "path": "outputs\\vnext_revenue_anomaly_soft_penalty_rerank_contract_20260710\\revenue_anomaly_soft_penalty_blocked_proxy_audit.csv",
+      "sha256": "ecab6a9bfff226776194fb3f4c7dec66c1179b4f677400189a3419c5f9928782",
+      "bytes": 496
+    },
+    {
+      "path": "outputs\\vnext_revenue_anomaly_soft_penalty_rerank_contract_20260710\\revenue_anomaly_soft_penalty_future_data_audit.csv",
+      "sha256": "78aa11c79592ced850276a7446acbace4664c0ab9c3574a456e9937204744c00",
+      "bytes": 128
+    },
+    {
+      "path": "outputs\\vnext_revenue_anomaly_soft_penalty_rerank_contract_20260710\\readiness_for_revenue_anomaly_soft_penalty_rerank.json",
+      "sha256": "9f13a5e8fc50b0da3d2a46d3a1bb9c1e40d30c32538390f5f762e58fe1f07f41",
+      "bytes": 893
+    },
+    {
+      "path": "outputs\\vnext_revenue_anomaly_soft_penalty_rerank_contract_20260710\\final_summary_zh.md",
+      "sha256": "3732513212d37b8561cd18879effce98f9eee42cbf9f3c0b7f4f07391926871f",
+      "bytes": 654
+    }
+  ],
+  "flags": {
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "ready_for_strategy_replay": false,
+    "ready_for_formal": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false
+  }
+}

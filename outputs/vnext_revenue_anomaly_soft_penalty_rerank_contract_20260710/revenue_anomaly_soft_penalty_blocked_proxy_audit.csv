@@ -1,0 +1,5 @@
+﻿field,status,evidence,policy
+reranked_selected_stock_ohlc_path,blocked_partial,gap_rows=92,Do not run exact net-cost diagnostic until bounded OHLC gap fill is absorbed.
+adjusted_close,blocked,selected_stock_adjusted_close remains blocked in upstream,"diagnostic unadjusted OHLC only, not formal."
+business_model_keyword_proxy,deprecated_not_used,not used in scoring,No industry/business keyword risk basis.
+hard_exclude,not_allowed,all variants are rerank/substitute only,No hard delete.

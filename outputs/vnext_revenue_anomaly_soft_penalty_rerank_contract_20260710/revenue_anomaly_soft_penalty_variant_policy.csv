@@ -1,0 +1,6 @@
+﻿variant,policy,hard_exclude
+baseline_no_revenue_penalty,preserve original route_support/R6 selected result,False
+mild_revenue_penalty,baseline_score - 0.15 * revenue_anomaly_penalty_score,False
+balanced_revenue_penalty,baseline_score - 0.30 * revenue_anomaly_penalty_score,False
+strict_revenue_penalty,baseline_score - 0.50 * revenue_anomaly_penalty_score,False
+anomaly_veto_only_when_alternative_available,switch only when original has worse anomaly penalty and cleaner alternative exists,False

@@ -1,0 +1,6 @@
+﻿period,contract_rows,selected_result_changed_rows,unique_signal_dates,ohlc_gap_rows,candidate_topn_rows,future_data_violation_count
+P1,2055,65,411,65,4127,0
+P2,895,27,179,27,1797,0
+2024-latest,640,21,128,21,1285,0
+2026YTD,125,12,25,12,252,0
+full_integrated,2955,92,591,92,5934,0
