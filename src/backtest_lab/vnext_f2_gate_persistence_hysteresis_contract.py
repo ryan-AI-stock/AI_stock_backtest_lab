@@ -23,6 +23,7 @@ PRICE_SOURCES = [
     RADAR_ROOT / "radar_vnext_weekly_r6_single_position_reconstructed_p2_selected_stock_daily_ohlc_gap_fill_20260710" / "reconstructed_weekly_r6_p2_selected_stock_daily_ohlc_filled_rows.csv",
     RADAR_ROOT / "radar_vnext_regime_switch_route_selected_stock_ohlc_source_package_20260708" / "regime_switch_selected_ohlc_rows.csv",
     RADAR_ROOT / "radar_vnext_p2_2023_selected_stock_ohlc_source_gap_fill_20260708" / "p2_2023_selected_stock_unadjusted_ohlc_rows.csv",
+    RADAR_ROOT / "radar_vnext_f2_gate_persistence_hysteresis_selected_stock_daily_ohlc_gap_fill_20260710" / "f2_gate_persistence_selected_stock_daily_ohlc_filled_rows.csv",
 ]
 
 TASK_ID = "TASK-BACKTEST-CORE-VNEXT-F2-GATE-PERSISTENCE-HYSTERESIS-INCUMBENT-PROTECTION-CONTRACT-001"
@@ -203,10 +204,17 @@ def _materialize_states(raw: pd.DataFrame, matrix: dict[tuple[pd.Timestamp, str]
     return pd.DataFrame(output)
 
 
-def _attach_prices(state: pd.DataFrame, prices: pd.DataFrame) -> pd.DataFrame:
+def _attach_prices(state: pd.DataFrame, prices: pd.DataFrame, raw_f: pd.DataFrame) -> pd.DataFrame:
     out = state.copy()
     benchmark = _benchmark_price_map().copy()
     benchmark["date"] = pd.to_datetime(benchmark["date"], errors="coerce")
+    f_base = raw_f[raw_f["selected_asset_type_after"].eq("etf")].copy()
+    f_entry = f_base[["next_trading_day_execution_date", "entry_close"]].rename(columns={"entry_close": "price"})
+    f_entry["date"] = f_entry["next_trading_day_execution_date"]
+    f_exit = f_base[["next_trading_day_after_execution_date", "exit_close"]].rename(columns={"next_trading_day_after_execution_date": "date", "exit_close": "price"})
+    f_base_prices = pd.concat([f_entry[["date", "price"]], f_exit[["date", "price"]]], ignore_index=True).dropna().drop_duplicates("date", keep="last")
+    f_base_prices["benchmark_source_quality"] = "absorbed_daily_F_00631L_base_path_fallback_diagnostic"
+    benchmark = pd.concat([benchmark[["date", "price", "benchmark_source_quality"]], f_base_prices], ignore_index=True).drop_duplicates("date", keep="first")
     entry_b = benchmark[["date", "price", "benchmark_source_quality"]].rename(columns={"date": "next_trading_day_execution_date", "price": "base_entry_close", "benchmark_source_quality": "base_entry_source_quality"})
     exit_b = benchmark[["date", "price", "benchmark_source_quality"]].rename(columns={"date": "next_trading_day_after_execution_date", "price": "base_exit_close", "benchmark_source_quality": "base_exit_source_quality"})
     out = out.merge(entry_b, on="next_trading_day_execution_date", how="left").merge(exit_b, on="next_trading_day_after_execution_date", how="left")
@@ -231,20 +239,20 @@ def _attach_prices(state: pd.DataFrame, prices: pd.DataFrame) -> pd.DataFrame:
 
 
 def _gap_ledger(state: pd.DataFrame) -> pd.DataFrame:
-    missing = state[state["selected_asset_type_after"].eq("stock") & ~state["daily_path_ready"]]
+    missing = state[~state["daily_path_ready"]]
     rows = []
     for row in missing.itertuples(index=False):
         for date, required_as in [(row.next_trading_day_execution_date, "entry_close"), (row.next_trading_day_after_execution_date, "following_daily_close")]:
             if pd.notna(date):
-                rows.append({"f2_variant": row.f2_variant, "ticker": row.selected_ticker_after, "price_date": date, "required_as": required_as, "signal_date": row.signal_date, "transition_type": row.transition_type})
+                rows.append({"f2_variant": row.f2_variant, "ticker": row.selected_ticker_after, "asset_type": row.selected_asset_type_after, "price_date": date, "required_as": required_as, "signal_date": row.signal_date, "transition_type": row.transition_type})
     if not rows:
-        return pd.DataFrame(columns=["ticker", "price_date", "required_as", "impacted_variants", "impacted_signal_dates", "source_requirement", "next_owner"])
-    gap = pd.DataFrame(rows).groupby(["ticker", "price_date"], as_index=False).agg(
+        return pd.DataFrame(columns=["ticker", "asset_type", "price_date", "required_as", "impacted_variants", "impacted_signal_dates", "source_requirement", "next_owner"])
+    gap = pd.DataFrame(rows).groupby(["ticker", "asset_type", "price_date"], as_index=False).agg(
         required_as=("required_as", lambda x: "|".join(sorted(set(x)))), impacted_variants=("f2_variant", lambda x: "|".join(sorted(set(x)))),
         impacted_signal_dates=("signal_date", lambda x: "|".join(sorted(set(pd.Series(x).dt.strftime("%Y-%m-%d"))))),
     )
-    gap["source_requirement"] = "selected_ticker_only official unadjusted daily OHLC; no 00631L+excess reconstruction"
-    gap["next_owner"] = "Radar/Data bounded F2 selected-stock daily OHLC gap fill"
+    gap["source_requirement"] = np.where(gap["asset_type"].eq("stock"), "selected_ticker_only official unadjusted daily OHLC; no 00631L+excess reconstruction", "official 00631L daily close benchmark route; no date substitution")
+    gap["next_owner"] = np.where(gap["asset_type"].eq("stock"), "Radar/Data bounded F2 selected-stock daily OHLC gap fill", "Radar/Data bounded F2 00631L benchmark date gap fill")
     return gap
 
 
@@ -311,19 +319,21 @@ def main() -> None:
     raw, matrix = _load_raw_f(), _matrix_map()
     state = _materialize_states(raw, matrix)
     prices, price_audit = _load_prices()
-    state = _attach_prices(state, prices)
+    state = _attach_prices(state, prices, raw)
     gaps = _gap_ledger(state)
+    stock_gaps = gaps[gaps["asset_type"].eq("stock")] if len(gaps) else gaps
+    benchmark_gaps = gaps[gaps["asset_type"].eq("etf")] if len(gaps) else gaps
     coverage = _coverage(state, gaps)
     p1 = coverage[coverage["period"].eq("P1")]["daily_path_ready_share"].min()
     p2 = coverage[coverage["period"].eq("P2")]["daily_path_ready_share"].min()
-    rechain_ready = len(gaps) == 0 and p1 == 1.0 and p2 == 1.0
+    rechain_ready = bool(len(gaps) == 0 and p1 == 1.0 and p2 == 1.0)
     if rechain_ready:
         episodes, rechain_paths, rechain_transitions, rechain_metrics = _episodes_and_rechains(state)
     else:
         episodes, rechain_paths, rechain_transitions, rechain_metrics = pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
     readiness = {
         "task_id": TASK_ID, "status": "F2_gate_persistence_hysteresis_ready_unadjusted_diagnostic" if rechain_ready else "F2_gate_persistence_hysteresis_partial_selected_stock_daily_ohlc_gap",
-        "variant_count": len(VARIANTS), "P1_daily_path_ready_share_min": float(p1), "P2_daily_path_ready_share_min": float(p2), "stock_price_gap_rows": int(len(gaps)),
+        "variant_count": len(VARIANTS), "P1_daily_path_ready_share_min": float(p1), "P2_daily_path_ready_share_min": float(p2), "stock_price_gap_rows": int(len(stock_gaps)), "benchmark_00631L_gap_rows": int(len(benchmark_gaps)),
         "hard_deterioration_action_source": "existing_weekly_PIT_composite_two_or_more_deterioration_contexts", "route_score_drop_action_threshold": "blocked_not_invented", "layer4_exit_action": "context_only_not_standalone_exit",
         "exact_episode_rechain_ready": rechain_ready, "EP05_transaction_cost_hooks_ready": True, "selected_stock_adjusted_close_ready": False, "cash_bear_classifier_ready": False,
         "ready_for_experiments": rechain_ready, "ready_for_formal": False, "ready_for_strategy_replay": False, "future_data_violation_count": 0, **FLAGS,
@@ -335,7 +345,10 @@ def main() -> None:
         {"item": "cash_bear_classifier", "status": "blocked", "detail": "No cash rule created.", "next_owner": "Strategy Center/Core Data later"},
     ])
     output_paths = [
-        _write(state, "f2_gate_persistence_daily_state_contract.csv"), _write(gaps, "f2_gate_persistence_selected_stock_daily_ohlc_gap_ledger.csv"),
+        _write(state, "f2_gate_persistence_daily_state_contract.csv"),
+        _write(gaps, "f2_gate_persistence_price_gap_ledger.csv"),
+        _write(stock_gaps, "f2_gate_persistence_selected_stock_daily_ohlc_gap_ledger.csv"),
+        _write(benchmark_gaps, "f2_gate_persistence_00631L_benchmark_gap_ledger.csv"),
         _write(coverage, "f2_gate_persistence_requested_vs_actual_coverage.csv"), _write(price_audit, "f2_gate_persistence_official_price_source_audit.csv"),
         _write(episodes, "f2_gate_persistence_exact_episode_ids_rank_audit.csv"), _write(rechain_paths, "f2_gate_persistence_exact_rechain_daily_paths.csv"),
         _write(rechain_transitions, "f2_gate_persistence_exact_rechain_transition_trace.csv"), _write(rechain_metrics, "f2_gate_persistence_exact_rechain_metrics.csv"),
