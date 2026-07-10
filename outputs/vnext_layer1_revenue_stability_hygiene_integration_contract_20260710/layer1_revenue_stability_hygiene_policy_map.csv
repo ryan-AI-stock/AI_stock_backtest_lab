@@ -1,0 +1,12 @@
+﻿field,layer_destination,integration_action,policy_note
+revenue_stability_context_score,Layer1 quality score,soft_bonus_or_soft_penalty,可納入 Layer1 quality context；不單獨決定買賣。
+revenue_lumpiness_penalty_score,Layer1 risk context + Layer4 risk context,soft_penalty,營收過度集中或波動時降低衛生分數；不得 hard exclude。
+recent_spike_review_flag,daily report / review flag,display_only_or_soft_warning,近期爆增但長期歷史不足，保留人工 review flag。
+project_revenue_proxy_review_flag,daily report / Layer4 risk context,proxy_warning,只能說 project/lumpy revenue proxy，不可宣稱辨識真實商業模式。
+low_base_context_label,Layer2/Layer4 context,tie_break_context,low-base 只作位置/風險 context，不回主權重。
+low_base_tiebreak_cap,Layer4 scoring,cap_bonus_to_3pct,低基期最多小幅 tie-break；不可單獨讓股票入選。
+overheat_penalty_modifier,Layer2/Layer4 risk penalty,modifier,low-base 不得抵消明顯過熱/高波動/高風險。
+hygiene_warning_text_for_report,daily report,display_only,日報只顯示風險提醒，不產生交易指令。
+valuation PE/PB/PS,blocked,blocked,估值 source 未接受，不進排序。
+exact quarterly revenue YoY,blocked/proxy,blocked_exact_proxy_available,目前 quarterly revenue YoY 仍是 monthly rolling 3M proxy。
+margin recovery exact source,blocked/proxy,blocked_exact,毛利率/營益率恢復需要 refreshed quarterly source。

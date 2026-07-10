@@ -1,0 +1,6 @@
+﻿snapshot_date,ticker,name,revenue_stability_context_score,revenue_lumpiness_penalty_score,recent_spike_review_flag,project_revenue_proxy_review_flag,low_base_context_label,overheat_penalty_modifier,hygiene_warning_text_for_report,diagnostic_only
+2026-06-29,2347,聯強,0.6562733200571489,0.433055311321066,True,True,context_only_not_main_weight,1.147284,近期營收暴增但長期穩定性需人工 review；營收形態偏 lumpy/project-based proxy，僅作風險提醒,True
+2026-06-29,4931,新盛力,0.679422593428077,0.4604543648112751,True,True,lumpy_or_spike_review_context,1.154134,近期營收暴增但長期穩定性需人工 review；營收形態偏 lumpy/project-based proxy，僅作風險提醒；營收集中度偏高，Layer4 排序應納入軟扣分,True
+2026-06-29,8926,台汽電,0.4809242171484062,0.47946831599680906,False,True,lumpy_or_spike_review_context,1.158887,營收形態偏 lumpy/project-based proxy，僅作風險提醒；營收集中度偏高，Layer4 排序應納入軟扣分,True
+2026-06-29,3006,晶豪科,0.638909657866858,0.5193078657191734,True,True,lumpy_or_spike_review_context,1.168847,近期營收暴增但長期穩定性需人工 review；營收形態偏 lumpy/project-based proxy，僅作風險提醒；營收集中度偏高，Layer4 排序應納入軟扣分,True
+2026-06-29,5351,鈺創,0.5743939794298702,0.5594931181481194,True,True,lumpy_or_spike_review_context,1.178894,近期營收暴增但長期穩定性需人工 review；營收形態偏 lumpy/project-based proxy，僅作風險提醒；營收集中度偏高，Layer4 排序應納入軟扣分,True

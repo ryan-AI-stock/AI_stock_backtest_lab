@@ -1,0 +1,2 @@
+﻿requested_scope,actual_scope,requested_asof,actual_asof,source_rows,integration_rows,review_soft_penalty_candidate_count,strategy_center_review_tickers_present_count,future_data_violation_count
+latest Layer4 primary80 + Strategy Center requested risk proxy names,latest Layer4 primary80 hygiene integration; requested review tickers included if present else noted,2026-06-29,2026-06-29,80,80,5,5,0

@@ -1,0 +1,58 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-LAYER1-REVENUE-STABILITY-HYGIENE-INTEGRATION-CONTRACT-001",
+  "status": "complete_hygiene_integration_contract",
+  "output_dir": "outputs\\vnext_layer1_revenue_stability_hygiene_integration_contract_20260710",
+  "artifacts": [
+    {
+      "path": "outputs\\vnext_layer1_revenue_stability_hygiene_integration_contract_20260710\\layer1_revenue_stability_hygiene_integration_contract.csv",
+      "sha256": "82eeb0f447ec0efb3af7009a0d3395f3854612e3de42df08c0a68349b1b94d5e",
+      "bytes": 38736
+    },
+    {
+      "path": "outputs\\vnext_layer1_revenue_stability_hygiene_integration_contract_20260710\\layer1_revenue_stability_hygiene_policy_map.csv",
+      "sha256": "e6beda7887dbef37cad3339686da46fb6e877c9211803cc004782f1aa1e4e47d",
+      "bytes": 1484
+    },
+    {
+      "path": "outputs\\vnext_layer1_revenue_stability_hygiene_integration_contract_20260710\\layer4_primary80_hygiene_flagged_candidates.csv",
+      "sha256": "fae68a4f1cdf91a5cec4eaa21f95af94604e39b4f2ddc2c31fa51dbca4c0813d",
+      "bytes": 4025
+    },
+    {
+      "path": "outputs\\vnext_layer1_revenue_stability_hygiene_integration_contract_20260710\\daily_report_hygiene_field_sample.csv",
+      "sha256": "05916ee3b92d8d712948e1968797722102571e7e4a6eba6c332588f1c72d65c8",
+      "bytes": 1604
+    },
+    {
+      "path": "outputs\\vnext_layer1_revenue_stability_hygiene_integration_contract_20260710\\blocked_proxy_audit.csv",
+      "sha256": "f81e58ca1ad90527d01f2b8f7ec9135841e179c7ba0a6407820214f7be16b47b",
+      "bytes": 810
+    },
+    {
+      "path": "outputs\\vnext_layer1_revenue_stability_hygiene_integration_contract_20260710\\requested_vs_actual_coverage.csv",
+      "sha256": "a21cede0b5691a5907020e5377c24b58598b4102397809aefe420ccea11f1fd9",
+      "bytes": 403
+    },
+    {
+      "path": "outputs\\vnext_layer1_revenue_stability_hygiene_integration_contract_20260710\\readiness_for_experiments.json",
+      "sha256": "441d0eb65ba79a9e7c710b41147e8d832910daf71f7e066316a72a57b587bff0",
+      "bytes": 1056
+    },
+    {
+      "path": "outputs\\vnext_layer1_revenue_stability_hygiene_integration_contract_20260710\\final_summary_zh.md",
+      "sha256": "4c8aec832507ad5e931dd04766f20f1f5b0fe080f5ae2812bd0c9e4240bd8b3a",
+      "bytes": 1199
+    }
+  ],
+  "flags": {
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "ready_for_strategy_replay": false,
+    "ready_for_formal": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false
+  }
+}

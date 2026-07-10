@@ -1,0 +1,7 @@
+﻿field,status,evidence,policy
+valuation_PE_PB_PS,blocked,No accepted valuation source in this contract.,Do not use valuation low-base proxy.
+exact_quarterly_revenue_yoy,proxy_only,Current source is monthly rolling 3M proxy.,Do not label statement-exact.
+margin_recovery_exact_source,blocked_partial,Quarterly gross/operating margin source not refreshed here.,Only use if later Core refreshes accepted quarterly source.
+project_based_revenue_risk_proxy,proxy_only,Monthly revenue lumpiness/spike shape.,Do not claim true project-based business model detection.
+6806_shinfox,blocked_pending_radar,6806 monthly revenue rows unavailable in source contract.,Keep blocked note; do not wait in this task.
+hard_exclusion,not_allowed,Strategy Center requested soft hygiene integration only.,No row is removed.
