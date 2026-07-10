@@ -19,6 +19,10 @@ TPEX_RADAR_DIR = Path(
     r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs"
     r"\radar_vnext_daily_prospective_tpex_current_corporate_action_calendar_capture_20260710"
 )
+TPEX_FORWARD_DIR = Path(
+    r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs"
+    r"\radar_vnext_daily_prospective_corporate_action_tpex_calendar_source_fill_20260710"
+)
 OUTPUT_DIR = REPO_ROOT / "outputs" / "vnext_daily_prospective_corporate_action_market_calendar_absorption_20260710"
 
 FLAGS = {
@@ -56,6 +60,10 @@ def main() -> None:
     tpex_readiness = json.loads(
         (TPEX_RADAR_DIR / "readiness_for_core_tpex_current_calendar_absorption.json").read_text(encoding="utf-8")
     )
+    tpex_forward_readiness = json.loads(
+        (TPEX_FORWARD_DIR / "readiness_for_core_tpex_forward_calendar_source_fill.json").read_text(encoding="utf-8")
+    )
+    tpex_forward_design = pd.read_csv(TPEX_FORWARD_DIR / "tpex_forward_cache_design.csv", low_memory=False)
     guard_readiness = json.loads(
         (CONTRACT_DIR / "readiness_for_daily_prospective_corporate_action_event_guard.json").read_text(encoding="utf-8")
     )
@@ -149,6 +157,7 @@ def main() -> None:
         "TPEx_current_calendar_ready": False,
         "retained_252session_calendar_history_ready": False,
         "forward_daily_cache_retention_contract_ready": True,
+        "TPEx_forward_cache_contract_absorbed": True,
         "current_price_scoring_universe_intersection_ready": False,
         "affected_ticker_detail_queries_executed": 0,
         "selected_ticker_exact_audit_ready": False,
@@ -181,6 +190,7 @@ def main() -> None:
         _write(calendar, "daily_prospective_TWSE_TPEx_calendar_absorbed.csv"),
         _write(intersection, "daily_prospective_score_universe_intersection_detail_query_contract.csv"),
         _write(retention, "daily_prospective_calendar_forward_cache_retention_contract.csv"),
+        _write(tpex_forward_design, "daily_prospective_TPEx_forward_cache_contract_absorbed.csv"),
         _write(query_storage, "daily_prospective_calendar_observed_query_storage_audit.csv"),
         _write(source_manifest, "daily_prospective_calendar_source_manifest_absorbed.csv"),
         _write(blocked_source, "daily_prospective_calendar_radar_blocked_ledger_absorbed.csv"),
@@ -205,11 +215,12 @@ def main() -> None:
         "task_id": TASK_ID,
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "output_dir": str(OUTPUT_DIR),
-        "source_inputs": {"Core_guard_contract": str(CONTRACT_DIR), "Radar_TWSE_calendar": str(RADAR_DIR), "Radar_TPEx_calendar": str(TPEX_RADAR_DIR)},
+        "source_inputs": {"Core_guard_contract": str(CONTRACT_DIR), "Radar_TWSE_calendar": str(RADAR_DIR), "Radar_TPEx_calendar": str(TPEX_RADAR_DIR), "Radar_TPEx_forward_cache": str(TPEX_FORWARD_DIR)},
         "files": [{"path": p.name, "sha256": _sha256(p)} for p in [*paths, readiness_path, summary_path]],
         "readiness": readiness,
         "Radar_readiness": radar_readiness,
         "TPEx_Radar_readiness": tpex_readiness,
+        "TPEx_forward_Radar_readiness": tpex_forward_readiness,
         "guard_readiness": guard_readiness,
     }
     (OUTPUT_DIR / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
