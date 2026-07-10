@@ -23,6 +23,7 @@ OFFICIAL_PRICE_SOURCES = [
     RADAR_ROOT / "radar_vnext_daily_incumbent_challenger_selected_stock_daily_ohlc_gap_fill_20260710" / "daily_incumbent_challenger_selected_stock_daily_unadjusted_ohlc_rows.csv",
     RADAR_ROOT / "radar_vnext_regime_switch_route_selected_stock_ohlc_source_package_20260708" / "regime_switch_selected_ohlc_rows.csv",
     RADAR_ROOT / "radar_vnext_p2_2023_selected_stock_ohlc_source_gap_fill_20260708" / "p2_2023_selected_stock_unadjusted_ohlc_rows.csv",
+    RADAR_ROOT / "radar_vnext_weekly_r6_single_position_reconstructed_p2_selected_stock_daily_ohlc_gap_fill_20260710" / "reconstructed_weekly_r6_p2_selected_stock_daily_ohlc_filled_rows.csv",
 ]
 
 TASK_ID = "TASK-BACKTEST-CORE-VNEXT-WEEKLY-R6-SINGLE-POSITION-STATE-BOUNDARY-RECONSTRUCTION-CONTRACT-001"
@@ -189,11 +190,22 @@ def _attach_prices(state: pd.DataFrame, prices: pd.DataFrame) -> pd.DataFrame:
     out["gross_daily_return"] = pd.to_numeric(out["exit_close"], errors="coerce") / pd.to_numeric(out["entry_close"], errors="coerce") - 1.0
     out["net_daily_return_after_transition_cost"] = out["gross_daily_return"] - pd.to_numeric(out["transition_cost_rate_hook"], errors="coerce").fillna(0.0)
     out["daily_path_ready"] = out["gross_daily_return"].notna()
+    out["terminal_mark_date"] = out["next_trading_day_execution_date"]
+    out["terminal_mark_available"] = out["entry_close"].notna()
+    out["terminal_path_row_excluded_from_metric"] = out["next_trading_day_after_execution_date"].isna()
     out["selected_stock_adjusted_close_ready"] = ~stock
     out["execution_basis"] = "weekly_signal_close__next_trading_day_close_execution__unique_daily_state_mark"
     for period, (start, end) in PERIODS.items():
+        within_execution = (
+            (out["signal_date"] >= pd.Timestamp(start)) & (out["signal_date"] <= pd.Timestamp(end))
+            & (out["next_trading_day_execution_date"] <= pd.Timestamp(end))
+        )
+        out[f"metric_candidate_{period}"] = (
+            within_execution & ~out["terminal_path_row_excluded_from_metric"]
+            & (out["next_trading_day_after_execution_date"] <= pd.Timestamp(end))
+        )
         out[f"metric_eligible_{period}"] = (
-            (out["signal_date"] >= pd.Timestamp(start)) & (out["next_trading_day_after_execution_date"] <= pd.Timestamp(end)) & out["daily_path_ready"]
+            out[f"metric_candidate_{period}"] & out["daily_path_ready"]
         )
     return out
 
@@ -247,12 +259,14 @@ def _coverage(state: pd.DataFrame, gaps: pd.DataFrame) -> pd.DataFrame:
     for period, (start, end) in PERIODS.items():
         sub = state[(state["signal_date"] >= pd.Timestamp(start)) & (state["signal_date"] <= pd.Timestamp(end))]
         metric = sub[sub[f"metric_eligible_{period}"]]
+        candidate = sub[sub[f"metric_candidate_{period}"]]
         stock = sub[sub["selected_asset_type_after"].eq("stock")]
         rows.append({
             "period": period, "requested_start": start, "requested_end": end,
             "actual_start": metric["signal_date"].min() if len(metric) else pd.NaT,
             "actual_end": metric["signal_date"].max() if len(metric) else pd.NaT,
-            "daily_state_rows": int(len(sub)), "metric_ready_rows": int(len(metric)), "daily_path_ready_share": float(metric.shape[0] / sub.shape[0]) if len(sub) else 0.0,
+            "daily_state_rows": int(len(sub)), "metric_candidate_rows": int(len(candidate)), "metric_ready_rows": int(len(metric)), "daily_path_ready_share": float(metric.shape[0] / candidate.shape[0]) if len(candidate) else 1.0,
+            "period_execution_boundary_rows_excluded": int(len(sub) - len(candidate)), "terminal_mark_rows_excluded": int(sub["terminal_path_row_excluded_from_metric"].sum()),
             "stock_state_rows": int(len(stock)), "stock_official_unadjusted_ready_share": float(stock["official_unadjusted_daily_ohlc_ready"].mean()) if len(stock) else 1.0,
             "unresolved_stock_price_gap_rows": int(len(gaps[(gaps["price_date"] >= pd.Timestamp(start)) & (gaps["price_date"] <= pd.Timestamp(end))])) if len(gaps) else 0,
             **FLAGS,
@@ -265,6 +279,24 @@ def _future_audit() -> pd.DataFrame:
         {"audit_item": "weekly_signal_target", "future_return_used_as_rule": False, "detail": "Uses original weekly R6 signal close targets only; old interval outcomes are reference-only.", "future_data_violation_count": 0},
         {"audit_item": "daily_mark_path", "future_return_used_as_rule": False, "detail": "Next-day closes are evaluation-only after the state decision.", "future_data_violation_count": 0},
     ])
+
+
+def _net_path_metrics_hook(state: pd.DataFrame) -> pd.DataFrame:
+    rows = []
+    for period, (start, end) in PERIODS.items():
+        sub = state[state[f"metric_eligible_{period}"]].copy().sort_values("signal_date")
+        equity = (1 + pd.to_numeric(sub["net_daily_return_after_transition_cost"], errors="coerce").fillna(0.0)).cumprod()
+        drawdown = equity / equity.cummax() - 1.0 if len(equity) else pd.Series(dtype=float)
+        rows.append({
+            "period": period, "requested_start": start, "requested_end": end,
+            "actual_start": sub["signal_date"].min() if len(sub) else pd.NaT, "actual_end": sub["signal_date"].max() if len(sub) else pd.NaT,
+            "net_total_return_after_transition_cost_hook": float(equity.iloc[-1] - 1.0) if len(equity) else np.nan,
+            "net_MDD_hook": float(drawdown.min()) if len(drawdown) else np.nan,
+            "transition_count": int(sub["transition_type"].ne("hold_same").sum()),
+            "gross_reference_only": False, "execution_basis": "single_position_weekly_signal_close_next_trading_day_close_execution",
+            "historical_overlapping_R6_used_as_primary": False, "diagnostic_only": True, **FLAGS,
+        })
+    return pd.DataFrame(rows)
 
 
 def _summary(readiness: dict[str, Any]) -> str:
@@ -290,6 +322,7 @@ def main() -> None:
     collision = _overlap_resolution(signals, state)
     coverage = _coverage(state, gaps)
     future = _future_audit()
+    metrics = _net_path_metrics_hook(state)
     p1_share = float(coverage.loc[coverage["period"].eq("P1"), "daily_path_ready_share"].iloc[0])
     p2_share = float(coverage.loc[coverage["period"].eq("P2"), "daily_path_ready_share"].iloc[0])
     ready = bool(len(gaps) == 0 and p1_share == 1.0 and p2_share == 1.0)
@@ -301,7 +334,7 @@ def main() -> None:
         "collision_resolution_rows": int(len(collision)),
         "p1_original_overlapping_interval_rows_resolved": int(collision["period_label"].eq("P1").sum()) if len(collision) else 0,
         "p2_original_overlapping_interval_rows_resolved": int(collision["period_label"].eq("P2").sum()) if len(collision) else 0,
-        "single_position_state_path_ready": bool(state["daily_path_ready"].all()),
+        "single_position_state_path_ready": bool((state["daily_path_ready"] | (state["terminal_path_row_excluded_from_metric"] & state["terminal_mark_available"])).all()),
         "p1_daily_path_ready_share": p1_share,
         "p2_daily_path_ready_share": p2_share,
         "stock_price_gap_rows": int(len(gaps)),
@@ -330,6 +363,7 @@ def main() -> None:
         _write(source_audit, "reconstructed_weekly_r6_official_price_source_audit.csv"),
         _write(blocked, "reconstructed_weekly_r6_blocked_proxy_audit.csv"),
         _write(future, "reconstructed_weekly_r6_future_data_audit.csv"),
+        _write(metrics, "reconstructed_weekly_r6_net_path_metrics_hook.csv"),
         _write(pd.DataFrame([{"reference_name": "historical_overlapping_R6", "reference_status": "deprecated_path_like_only", "reported_P1_net_return": 6.4644, "reported_P1_MDD": -0.4880, "primary_comparison_allowed": False}]), "historical_overlapping_r6_reference_deprecation.csv"),
     ]
     readiness_path = OUTPUT_DIR / "readiness_for_reconstructed_weekly_r6_single_position_diagnostic.json"
