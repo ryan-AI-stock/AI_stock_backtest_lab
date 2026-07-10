@@ -1,0 +1,53 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-R6-REPORT-ONLY-DAILY-EOD-REFRESH-AND-DRIVE-OVERWRITE-CONTRACT-001",
+  "status": "complete_contract_ready_no_publish",
+  "output_dir": "outputs\\vnext_r6_report_only_daily_eod_refresh_drive_overwrite_contract_20260710",
+  "artifacts": [
+    {
+      "path": "outputs\\vnext_r6_report_only_daily_eod_refresh_drive_overwrite_contract_20260710\\r6_report_only_latest_eod_report_row_contract.csv",
+      "sha256": "6dd6eccf48f881efeb6cb5c6b3c48fb3831d703f67493c2f9742bec5de469f58",
+      "bytes": 1742
+    },
+    {
+      "path": "outputs\\vnext_r6_report_only_daily_eod_refresh_drive_overwrite_contract_20260710\\r6_report_only_drive_overwrite_policy_contract.csv",
+      "sha256": "3af2989cd38af7ab6b06e130b260ea6cd2abb11619a042cbb0863871d16c852c",
+      "bytes": 927
+    },
+    {
+      "path": "outputs\\vnext_r6_report_only_daily_eod_refresh_drive_overwrite_contract_20260710\\r6_report_only_schedule_rules_integration_contract.csv",
+      "sha256": "785a276e0143cef576b4e18254831c046b782ec8fbe8d6d9b5ed487eca427b85",
+      "bytes": 1200
+    },
+    {
+      "path": "outputs\\vnext_r6_report_only_daily_eod_refresh_drive_overwrite_contract_20260710\\r6_report_only_blocked_proxy_audit.csv",
+      "sha256": "6ff7c40f731db94da47e1c96d8d3d0f3f730d05f24a90ac43d1ff7e6dc4414ad",
+      "bytes": 1013
+    },
+    {
+      "path": "outputs\\vnext_r6_report_only_daily_eod_refresh_drive_overwrite_contract_20260710\\r6_report_only_model_status_note.csv",
+      "sha256": "bde5fe0d7dff1b13c74e431fa72d48c44a310fd3012f4f1d2a8c2838a3c7dd96",
+      "bytes": 774
+    },
+    {
+      "path": "outputs\\vnext_r6_report_only_daily_eod_refresh_drive_overwrite_contract_20260710\\readiness_for_r6_report_only_daily_eod_refresh_drive_overwrite_contract.json",
+      "sha256": "3610262e3c996882fb6b1b57f24da2123d0b6a752725d321b456988d13ffb293",
+      "bytes": 1819
+    },
+    {
+      "path": "outputs\\vnext_r6_report_only_daily_eod_refresh_drive_overwrite_contract_20260710\\final_summary_zh.md",
+      "sha256": "ff23959a325811b784c81cf1f9434436a7ca68e5f1df9359cd9ee839e8114df1",
+      "bytes": 938
+    }
+  ],
+  "flags": {
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "ready_for_strategy_replay": false,
+    "ready_for_formal": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false
+  }
+}

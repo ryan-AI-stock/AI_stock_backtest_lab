@@ -1,0 +1,10 @@
+﻿item,value,note,status
+trading_day_gate,required,Use AI_stock_schedule_rules trading day gate before running EOD report.,draft_only
+run_timing,required,Run after Taiwan market close and after official EOD source availability.,draft_only
+manual_rerun_semantics,required,Manual rerun must preserve requested_date and record actual_report_date / actual_signal_date / fallback_reason.,draft_only
+requested_date,2026-07-10,The date requested by schedule/manual rerun.,materialized_latest_row_contract
+actual_report_date,2026-07-10,Date this report-only row contract was generated.,materialized_latest_row_contract
+actual_signal_date,2026-06-26,Latest model signal date used; may lag requested_date.,materialized_latest_row_contract
+fallback_reason,latest_available_unified_contract_row_used;daily_eod_refresh_materialization_not_executed_in_this_contract,Required whenever actual_signal_date differs from requested_date.,materialized_latest_row_contract
+failure_policy,no_silent_date_substitution,"If EOD fields are missing, write blocked/proxy audit instead of pretending requested date is ready.",required
+production_status,not_integrated,No workflow/schedule changed in this task.,blocked

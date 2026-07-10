@@ -1,0 +1,3 @@
+﻿component,status,policy,main_weight_change,source,source_detected_files
+R6 unified,PARTIAL_R6_UNIFIED_REVIEW_CANDIDATE_NOT_FORMAL,"current regime switch review candidate; diagnostic/report-only, not formal.",none,,
+Layer1 revenue horizon,PARTIAL only,"monthly + TTM revenue has tiny P1 improvement; keep as soft context / attribution, do not increase main Layer1 weight.",none,C:\Users\zergv\Documents\Codex\2026-07-06\backtest-lab-experiments-diagnostic-validation-attribution\outputs\vnext_layer1_revenue_horizon_extension_diagnostic_20260710,final_summary_zh.md;layer1_revenue_horizon_coverage.csv;layer1_revenue_horizon_field_definitions_zh.csv;layer1_revenue_horizon_p1_primary_comparison.csv;layer1_revenue_horizon_variant_metrics.csv;manifest.json;summary.json
