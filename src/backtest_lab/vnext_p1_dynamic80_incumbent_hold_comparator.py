@@ -15,6 +15,7 @@ TASK_ID = "TASK-BACKTEST-CORE-VNEXT-P1-DYNAMIC80-INCUMBENT-HOLD-COMPARATOR-CONTR
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUTPUT = REPO_ROOT / "outputs" / "vnext_p1_dynamic80_incumbent_hold_comparator_contract_20260710"
 R6_STATE = REPO_ROOT / "outputs/vnext_weekly_r6_single_position_state_boundary_reconstruction_contract_20260710/reconstructed_weekly_r6_single_position_daily_state_rows.csv"
+RADAR_INCUMBENT_OHLC = Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p1_dynamic80_incumbent_hold_selected_stock_daily_ohlc_gap_fill_20260710\p1_dynamic80_incumbent_hold_selected_stock_daily_unadjusted_ohlc_rows.csv")
 P1_START, P1_END = pd.Timestamp("2015-01-02"), pd.Timestamp("2022-12-29")
 VARIANTS = (
     "I1_replacement_only_hold",
@@ -132,6 +133,15 @@ def _expand_daily(weekly: pd.DataFrame) -> pd.DataFrame:
 
 def _attach_prices(daily: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     prices, _ = r6_source._load_official_prices()
+    radar = pd.read_csv(RADAR_INCUMBENT_OHLC, dtype={"ticker": str}, low_memory=False)
+    radar = radar.rename(columns={"date": "date"})
+    radar["ticker"] = radar.ticker.astype(str).str.replace(r"\.0$", "", regex=True)
+    radar["date"] = pd.to_datetime(radar.date, errors="coerce")
+    radar["close"] = pd.to_numeric(radar.close, errors="coerce")
+    radar["source_quality"] = radar.get("source_quality", "official_unadjusted_OHLC")
+    radar["source_route"] = radar.get("source_route", "Radar_incumbent_hold_fill")
+    radar["adjustment_policy"] = radar.get("adjustment_policy", "unadjusted;adjusted_close_blocked")
+    prices = pd.concat([prices, radar[["ticker", "date", "close", "source_quality", "source_route", "adjustment_policy"]]], ignore_index=True).drop_duplicates(["ticker", "date"], keep="last")
     entry = prices.rename(columns={"ticker": "target_ticker", "date": "next_trading_day_execution_date", "close": "entry_close"})
     exit_ = prices.rename(columns={"ticker": "target_ticker", "date": "next_trading_day_after_execution_date", "close": "exit_close"})
     out = daily.merge(entry[["target_ticker", "next_trading_day_execution_date", "entry_close"]], on=["target_ticker", "next_trading_day_execution_date"], how="left")
