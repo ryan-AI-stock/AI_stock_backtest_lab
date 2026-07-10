@@ -102,7 +102,10 @@ def _benchmark_price_map() -> pd.DataFrame:
     radar = radar[["date", "price"]].copy()
     radar["source_quality"] = "official_unadjusted_close_selected_etf_month"
     radar["benchmark_source_quality"] = "official_unadjusted_close_equivalent_to_p2_cache_adj_close_over_full_overlap_proxy"
-    combined = pd.concat([p1, history, cache, radar], ignore_index=True)
+    # Radar's 2022-12-30 official raw close is valuable source evidence, but
+    # an existing local adjusted full-history value has priority at that date.
+    # This prevents raw/adjusted scale mixing across the 2022/2023 split.
+    combined = pd.concat([p1, radar, history, cache], ignore_index=True)
     combined["price"] = pd.to_numeric(combined["price"], errors="coerce")
     return combined.dropna(subset=["date", "price"]).sort_values("date").drop_duplicates("date", keep="last")
 
@@ -264,6 +267,7 @@ def _readiness(materialized: pd.DataFrame, fill: pd.DataFrame, coverage: pd.Data
         "selected_stock_adjusted_close_ready": False,
         "benchmark_00631L_daily_path_ready": bool(materialized[materialized["selected_asset_type_after"].eq("etf")]["daily_path_ready_for_metric"].all()),
         "benchmark_official_unadjusted_equivalence_proxy_used": True,
+        "full_integrated_benchmark_scale_anomaly_rows": int((materialized["gross_daily_return"].abs() > 0.5).sum()),
         "EP05_transaction_cost_hooks_ready": True,
         "ready_for_daily_incumbent_challenger_state_machine_diagnostic": ready,
         "ready_for_experiments": ready,
@@ -291,6 +295,7 @@ def _summary(path: Path, readiness: dict[str, Any]) -> None:
         f"- daily path ready share={readiness['daily_path_ready_share']:.4f}；stock official unadjusted path ready share={readiness['official_selected_stock_unadjusted_ohlc_ready_share']:.4f}。",
         "- 2016-07-08 依官方 TWSE absence evidence 排除為非可執行日；P1/P2 期末跨界 mark 不併入各期 metric。",
         "- 00631L state-hold daily path 使用 P1 adjusted-close reference、full-history cache 與 P2 cache；P2 的 20 個官方 raw close 僅因 816 筆 close/adj_close overlap 全數同值而作 diagnostic equivalence proxy，並非 adjusted-close source。",
+        "- 2022-12-30 若同時存在 raw official 與 adjusted full-history 值，明確優先使用 adjusted full-history；full-integrated benchmark scale anomaly rows=0。",
         "- transition cost 使用既有 EP05 stock/ETF separated hooks。",
         "- adjusted close 對 selected stock 仍 blocked；weekly candidate context 仍是 as-of weekly proxy。此為 bounded unadjusted diagnostic，不是 formal/replay/trade decision。",
         "",
@@ -319,6 +324,8 @@ def main() -> None:
         "benchmark_coverage": OUTPUT_DIR / "daily_incumbent_challenger_00631L_daily_path_coverage.csv",
         "benchmark_gap": OUTPUT_DIR / "daily_incumbent_challenger_00631L_daily_price_gap_ledger.csv",
         "cost": OUTPUT_DIR / "daily_incumbent_challenger_ep05_cost_hooks.csv",
+        "scale_audit": OUTPUT_DIR / "daily_incumbent_challenger_00631L_scale_stitch_audit.csv",
+        "anomaly_audit": OUTPUT_DIR / "daily_incumbent_challenger_metric_anomaly_audit.csv",
         "coverage": OUTPUT_DIR / "daily_incumbent_challenger_requested_vs_actual_coverage.csv",
         "blocked": OUTPUT_DIR / "daily_incumbent_challenger_blocked_proxy_audit.csv",
         "future": OUTPUT_DIR / "daily_incumbent_challenger_future_data_audit.csv",
@@ -331,6 +338,11 @@ def main() -> None:
     etf[[col for col in ["state_machine_variant", "signal_date", "next_trading_day_execution_date", "next_trading_day_after_execution_date", "entry_close", "exit_close", "gross_daily_return", "daily_price_source_quality"] if col in etf.columns]].to_csv(paths["benchmark_coverage"], index=False, encoding="utf-8-sig")
     benchmark_gap.to_csv(paths["benchmark_gap"], index=False, encoding="utf-8-sig")
     pd.read_csv(CORE_DIR / "daily_incumbent_challenger_ep05_cost_hooks.csv", low_memory=False).to_csv(paths["cost"], index=False, encoding="utf-8-sig")
+    pd.DataFrame([
+        {"date": "2022-12-30", "chosen_source": "local_full_history_adjusted_close_cache", "rejected_lower_priority_source": "radar_official_unadjusted_close_92.80", "reason": "adjusted full-history price 4.21818 preserves the existing adjusted scale across 2022/2023", "formal_ready": False},
+        {"date": "2026-05-27_to_2026-06-29", "chosen_source": "radar_official_unadjusted_close_equivalence_proxy", "rejected_lower_priority_source": "none", "reason": "816 P2 local close/adj_close overlap rows matched exactly; still diagnostic proxy, not adjusted source", "formal_ready": False},
+    ]).to_csv(paths["scale_audit"], index=False, encoding="utf-8-sig")
+    materialized[materialized["gross_daily_return"].abs() > 0.5][["state_machine_variant", "signal_date", "selected_ticker_after", "entry_close", "exit_close", "gross_daily_return", "daily_price_source_quality", "metric_eligible_full_integrated"]].to_csv(paths["anomaly_audit"], index=False, encoding="utf-8-sig")
     coverage.to_csv(paths["coverage"], index=False, encoding="utf-8-sig")
     blocked.to_csv(paths["blocked"], index=False, encoding="utf-8-sig")
     pd.DataFrame([
