@@ -13,6 +13,8 @@
 - ready_for_report_only_pdf_generation=true
 - ready_for_drive_overwrite=false
 - ready_for_schedule_integration=false
+- Drive target：https://drive.google.com/drive/u/0/folders/16SmfPgMMIs7MWteeX1h2EkhSIEaGvpHn
+- Drive filename：vNext台股AI模型訊號追蹤_每日報告.pdf
 - selected_stock_adjusted_close remains blocked。
 - cash_bear_classifier remains blocked；不可杜撰空手規則。
 - RS20 top3 reference-only enforced。

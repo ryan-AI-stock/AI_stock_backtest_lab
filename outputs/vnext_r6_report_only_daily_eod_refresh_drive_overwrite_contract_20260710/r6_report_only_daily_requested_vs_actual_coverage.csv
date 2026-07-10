@@ -1,0 +1,2 @@
+﻿requested_date,actual_report_date,actual_signal_date,data_asof_date,requested_equals_actual_signal,fallback_reason,data_readiness,report_only,no_silent_date_substitution
+2026-07-10,2026-07-10,2026-06-26,2026-06-26,False,latest_available_unified_contract_row_used;daily_eod_refresh_materialization_not_executed_in_this_contract,ready_unadjusted_diagnostic,True,True

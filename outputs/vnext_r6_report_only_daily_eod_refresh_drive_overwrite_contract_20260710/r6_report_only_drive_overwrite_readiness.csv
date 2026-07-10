@@ -1,0 +1,11 @@
+﻿field,value,status,note
+target_folder_id,16SmfPgMMIs7MWteeX1h2EkhSIEaGvpHn,configured,Use this single folder only; do not create dated folders.
+target_folder_url,https://drive.google.com/drive/u/0/folders/16SmfPgMMIs7MWteeX1h2EkhSIEaGvpHn,configured,Strategy Center provided target Drive folder.
+target_filename,vNext台股AI模型訊號追蹤_每日報告.pdf,configured,Fixed human-readable name; overwrite same file each trading day.
+filename_reason,report-only signal tracking wording,configured,Avoids implying formal live trade decision while remaining understandable.
+overwrite_semantics,prefer_file_id_update_then_update_by_name_else_create_once,draft,Use file-id if configured; otherwise find same name in folder and update; create only if no existing file.
+no_new_dated_folder,true,required,Daily report must not create a folder per date.
+publish_authorization,blocked_until_strategy_center_authorizes,blocked,This task does not upload to Drive.
+credential_policy,reuse_existing_drive_publish_auth,draft,Use existing backtest_lab.drive_publish auth/env conventions.
+remote_mimetype,application/pdf,configured,Only PDF overwrite is in scope.
+drive_write_this_task,false,required,No Drive write performed.

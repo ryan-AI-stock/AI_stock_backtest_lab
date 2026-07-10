@@ -1,0 +1,10 @@
+﻿item,status,evidence,note
+selected_stock_adjusted_close,blocked,selected_stock_adjusted_close_ready=false,Allowed for report-only warning; blocks formal/replay.
+cash_bear_classifier,blocked,cash_bear_classifier_ready=false,No live cash rule can be fabricated.
+rs20_top3_reference_only,enforced,True,RS20 top3 remains reference-only unless regime switch formally authorizes it.
+drive_upload,not_executed,16SmfPgMMIs7MWteeX1h2EkhSIEaGvpHn,No Drive write in this task.
+drive_target_filename,configured_not_uploaded,vNext台股AI模型訊號追蹤_每日報告.pdf,Fixed report-only filename for future overwrite.
+schedule_rules_integration,not_integrated,draft only,No workflow or production schedule changed.
+daily_eod_refresh_execution,not_executed_in_this_contract,latest_available_unified_contract_row_used;daily_eod_refresh_materialization_not_executed_in_this_contract,This contract specifies refresh semantics but does not acquire new EOD data.
+formal_status,not_formal,ready_for_formal=false,Report-only pipeline must not be packaged as formal-ready.
+trade_decision,not_live_decision,trade_decision_changed=false,No live trade instruction.

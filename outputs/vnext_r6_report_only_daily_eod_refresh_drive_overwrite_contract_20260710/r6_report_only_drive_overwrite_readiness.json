@@ -1,0 +1,14 @@
+{
+  "target_folder_id": "16SmfPgMMIs7MWteeX1h2EkhSIEaGvpHn",
+  "target_folder_url": "https://drive.google.com/drive/u/0/folders/16SmfPgMMIs7MWteeX1h2EkhSIEaGvpHn",
+  "target_filename": "vNext台股AI模型訊號追蹤_每日報告.pdf",
+  "overwrite_semantics": "prefer_file_id_update_then_update_by_name_else_create_once",
+  "no_new_dated_folder": true,
+  "drive_write_this_task": false,
+  "ready_for_drive_overwrite": false,
+  "blocked_reason": "Strategy Center has not authorized Drive write; schedule/publish is contract-only in this task.",
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false
+}

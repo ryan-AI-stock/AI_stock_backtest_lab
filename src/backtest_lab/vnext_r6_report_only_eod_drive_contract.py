@@ -26,8 +26,9 @@ DEFAULT_LAYER1_REVENUE = Path(
     "C:/Users/zergv/Documents/Codex/2026-07-06/backtest-lab-experiments-diagnostic-validation-attribution/"
     "outputs/vnext_layer1_revenue_horizon_extension_diagnostic_20260710"
 )
-DRIVE_FOLDER_ID = "1O6Se-HfI7ZDTQ-LWeAO6f8vtvoLcCzIj"
-DRIVE_FILENAME = "AI台股新模型每日收盤報告.pdf"
+DRIVE_FOLDER_ID = "16SmfPgMMIs7MWteeX1h2EkhSIEaGvpHn"
+DRIVE_FOLDER_URL = f"https://drive.google.com/drive/u/0/folders/{DRIVE_FOLDER_ID}"
+DRIVE_FILENAME = "vNext台股AI模型訊號追蹤_每日報告.pdf"
 
 
 def main() -> None:
@@ -50,19 +51,25 @@ def main() -> None:
     experiments = read_json(Path(args.experiments_dir) / "r6_unified_diagnostic_summary.json")
 
     latest_row = build_latest_eod_row(draft_latest, draft_readiness, args.report_date, args.requested_date)
-    latest_path = output_dir / "r6_report_only_latest_eod_report_row_contract.csv"
+    latest_path = output_dir / "r6_report_only_daily_row_latest.csv"
     pd.DataFrame([latest_row]).to_csv(latest_path, index=False, encoding="utf-8-sig")
 
     drive_policy = build_drive_overwrite_policy_contract()
-    drive_path = output_dir / "r6_report_only_drive_overwrite_policy_contract.csv"
+    drive_path = output_dir / "r6_report_only_drive_overwrite_readiness.csv"
     drive_policy.to_csv(drive_path, index=False, encoding="utf-8-sig")
+    drive_json_path = output_dir / "r6_report_only_drive_overwrite_readiness.json"
+    write_json(drive_json_path, build_drive_readiness_payload())
 
     schedule_contract = build_schedule_rules_integration_contract(latest_row)
     schedule_path = output_dir / "r6_report_only_schedule_rules_integration_contract.csv"
     schedule_contract.to_csv(schedule_path, index=False, encoding="utf-8-sig")
 
+    coverage = build_requested_vs_actual_coverage(latest_row)
+    coverage_path = output_dir / "r6_report_only_daily_requested_vs_actual_coverage.csv"
+    coverage.to_csv(coverage_path, index=False, encoding="utf-8-sig")
+
     blocked = build_blocked_proxy_audit(latest_row)
-    blocked_path = output_dir / "r6_report_only_blocked_proxy_audit.csv"
+    blocked_path = output_dir / "r6_report_only_daily_blocked_proxy_audit.csv"
     blocked.to_csv(blocked_path, index=False, encoding="utf-8-sig")
 
     model_note = build_model_status_note(experiments, args.layer1_revenue_dir)
@@ -70,8 +77,11 @@ def main() -> None:
     model_note.to_csv(model_note_path, index=False, encoding="utf-8-sig")
 
     readiness = build_readiness(latest_row, draft_readiness, experiments)
-    readiness_path = output_dir / "readiness_for_r6_report_only_daily_eod_refresh_drive_overwrite_contract.json"
+    readiness_path = output_dir / "readiness_for_r6_report_only_daily_eod_refresh.json"
     write_json(readiness_path, readiness)
+
+    html_path = output_dir / "r6_report_only_daily_sample.html"
+    html_path.write_text(build_html_sample(latest_row, readiness), encoding="utf-8")
 
     summary_path = output_dir / "final_summary_zh.md"
     summary_path.write_text(build_summary(latest_row, readiness), encoding="utf-8")
@@ -79,10 +89,13 @@ def main() -> None:
     artifacts = [
         latest_path,
         drive_path,
+        drive_json_path,
         schedule_path,
+        coverage_path,
         blocked_path,
         model_note_path,
         readiness_path,
+        html_path,
         summary_path,
     ]
     manifest_path = output_dir / "manifest.json"
@@ -115,6 +128,7 @@ def build_latest_eod_row(
     return {
         "task": TASK_ID,
         "report_date": report_date,
+        "signal_date": actual_signal_date,
         "requested_date": requested_date,
         "actual_report_date": actual_report_date,
         "actual_signal_date": actual_signal_date,
@@ -162,7 +176,9 @@ def bool_field(value: Any) -> bool:
 def build_drive_overwrite_policy_contract() -> pd.DataFrame:
     rows = [
         policy_row("target_folder_id", DRIVE_FOLDER_ID, "configured", "Use this single folder only; do not create dated folders."),
+        policy_row("target_folder_url", DRIVE_FOLDER_URL, "configured", "Strategy Center provided target Drive folder."),
         policy_row("target_filename", DRIVE_FILENAME, "configured", "Fixed human-readable name; overwrite same file each trading day."),
+        policy_row("filename_reason", "report-only signal tracking wording", "configured", "Avoids implying formal live trade decision while remaining understandable."),
         policy_row("overwrite_semantics", "prefer_file_id_update_then_update_by_name_else_create_once", "draft", "Use file-id if configured; otherwise find same name in folder and update; create only if no existing file."),
         policy_row("no_new_dated_folder", "true", "required", "Daily report must not create a folder per date."),
         policy_row("publish_authorization", "blocked_until_strategy_center_authorizes", "blocked", "This task does not upload to Drive."),
@@ -171,6 +187,23 @@ def build_drive_overwrite_policy_contract() -> pd.DataFrame:
         policy_row("drive_write_this_task", "false", "required", "No Drive write performed."),
     ]
     return pd.DataFrame(rows)
+
+
+def build_drive_readiness_payload() -> dict[str, Any]:
+    return {
+        "target_folder_id": DRIVE_FOLDER_ID,
+        "target_folder_url": DRIVE_FOLDER_URL,
+        "target_filename": DRIVE_FILENAME,
+        "overwrite_semantics": "prefer_file_id_update_then_update_by_name_else_create_once",
+        "no_new_dated_folder": True,
+        "drive_write_this_task": False,
+        "ready_for_drive_overwrite": False,
+        "blocked_reason": "Strategy Center has not authorized Drive write; schedule/publish is contract-only in this task.",
+        "formal_model_changed": False,
+        "trade_decision_changed": False,
+        "active_in_trade_decision": False,
+        "report_changed": False,
+    }
 
 
 def build_schedule_rules_integration_contract(latest_row: dict[str, Any]) -> pd.DataFrame:
@@ -184,6 +217,23 @@ def build_schedule_rules_integration_contract(latest_row: dict[str, Any]) -> pd.
         schedule_row("fallback_reason", latest_row["fallback_reason"], "Required whenever actual_signal_date differs from requested_date.", "materialized_latest_row_contract"),
         schedule_row("failure_policy", "no_silent_date_substitution", "If EOD fields are missing, write blocked/proxy audit instead of pretending requested date is ready.", "required"),
         schedule_row("production_status", "not_integrated", "No workflow/schedule changed in this task.", "blocked"),
+    ]
+    return pd.DataFrame(rows)
+
+
+def build_requested_vs_actual_coverage(latest_row: dict[str, Any]) -> pd.DataFrame:
+    rows = [
+        {
+            "requested_date": latest_row["requested_date"],
+            "actual_report_date": latest_row["actual_report_date"],
+            "actual_signal_date": latest_row["actual_signal_date"],
+            "data_asof_date": latest_row["data_asof_date"],
+            "requested_equals_actual_signal": latest_row["requested_date"] == latest_row["actual_signal_date"],
+            "fallback_reason": latest_row["fallback_reason"],
+            "data_readiness": latest_row["data_readiness"],
+            "report_only": True,
+            "no_silent_date_substitution": True,
+        }
     ]
     return pd.DataFrame(rows)
 
@@ -202,6 +252,7 @@ def build_blocked_proxy_audit(latest_row: dict[str, Any]) -> pd.DataFrame:
         audit_row("cash_bear_classifier", "blocked", "cash_bear_classifier_ready=false", "No live cash rule can be fabricated."),
         audit_row("rs20_top3_reference_only", "enforced", str(latest_row["rs20_reference_only"]), "RS20 top3 remains reference-only unless regime switch formally authorizes it."),
         audit_row("drive_upload", "not_executed", DRIVE_FOLDER_ID, "No Drive write in this task."),
+        audit_row("drive_target_filename", "configured_not_uploaded", DRIVE_FILENAME, "Fixed report-only filename for future overwrite."),
         audit_row("schedule_rules_integration", "not_integrated", "draft only", "No workflow or production schedule changed."),
         audit_row("daily_eod_refresh_execution", "not_executed_in_this_contract", latest_row["fallback_reason"], "This contract specifies refresh semantics but does not acquire new EOD data."),
         audit_row("formal_status", "not_formal", "ready_for_formal=false", "Report-only pipeline must not be packaged as formal-ready."),
@@ -253,6 +304,7 @@ def build_readiness(
         "report_date": latest_row["report_date"],
         "requested_date": latest_row["requested_date"],
         "actual_report_date": latest_row["actual_report_date"],
+        "signal_date": latest_row["signal_date"],
         "actual_signal_date": latest_row["actual_signal_date"],
         "data_asof_date": latest_row["data_asof_date"],
         "fallback_reason": latest_row["fallback_reason"],
@@ -261,6 +313,7 @@ def build_readiness(
         "ready_for_drive_overwrite": False,
         "ready_for_schedule_integration": False,
         "drive_folder_id": DRIVE_FOLDER_ID,
+        "drive_folder_url": DRIVE_FOLDER_URL,
         "drive_filename": DRIVE_FILENAME,
         "drive_overwrite_policy_ready": True,
         "schedule_rules_integration_contract_ready": True,
@@ -270,6 +323,7 @@ def build_readiness(
         "rs20_top3_reference_only_enforced": True,
         "report_only": True,
         "ready_for_daily_report_review": True,
+        "daily_report_ready": False,
         "ready_for_formal": False,
         "ready_for_strategy_replay": False,
         "formal_model_changed": False,
@@ -284,6 +338,62 @@ def build_readiness(
         "experiments_verdict": experiments.get("verdict", experiments.get("status", "")),
         "next_owner_recommendation": "Strategy Center review; after authorization Core can wire Drive overwrite and schedule integration.",
     }
+
+
+def build_html_sample(latest_row: dict[str, Any], readiness: dict[str, Any]) -> str:
+    def row(label: str, value: Any) -> str:
+        return f"<tr><th>{escape_html(label)}</th><td>{escape_html(value)}</td></tr>"
+
+    rows = "\n".join(
+        [
+            row("report_date", latest_row["report_date"]),
+            row("requested_date", latest_row["requested_date"]),
+            row("actual_signal_date", latest_row["actual_signal_date"]),
+            row("data_asof_date", latest_row["data_asof_date"]),
+            row("regime_label", latest_row["regime_label"]),
+            row("selected_branch", latest_row["selected_branch"]),
+            row("selected", f"{latest_row['selected_ticker']} {latest_row['selected_name']}"),
+            row("C2 / consensus / R6", f"{latest_row['c2_pass_flag']} / {latest_row['consensus_trigger_flag']} / {latest_row['r6_override_flag']}"),
+            row("RS20 top3", "reference-only"),
+            row("daily_report_ready", readiness["daily_report_ready"]),
+            row("drive_overwrite_ready", readiness["ready_for_drive_overwrite"]),
+            row("diagnostic_warning", latest_row["diagnostic_warning"]),
+        ]
+    )
+    return f"""<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <title>vNext R6 report-only daily sample</title>
+  <style>
+    body {{ font-family: "Microsoft JhengHei", Arial, sans-serif; margin: 32px; color: #17212a; }}
+    .banner {{ background: #17212a; color: white; padding: 18px 22px; border-radius: 8px; }}
+    table {{ border-collapse: collapse; margin-top: 20px; width: 100%; }}
+    th, td {{ border: 1px solid #d9e0e5; padding: 10px; text-align: left; vertical-align: top; }}
+    th {{ width: 240px; background: #f4f6f8; }}
+    .warn {{ margin-top: 18px; color: #9a3412; }}
+  </style>
+</head>
+<body>
+  <div class="banner">
+    <h1>vNext 台股 AI 模型訊號追蹤（日報樣稿）</h1>
+    <div>Report-only / diagnostic. Not formal. Not a live trade decision.</div>
+  </div>
+  <table>{rows}</table>
+  <p class="warn">selected_stock_adjusted_close 與 cash/bear classifier 仍 blocked；RS20 top3 僅 reference-only。</p>
+</body>
+</html>
+"""
+
+
+def escape_html(value: Any) -> str:
+    return (
+        str(value)
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+    )
 
 
 def build_summary(latest_row: dict[str, Any], readiness: dict[str, Any]) -> str:
@@ -304,6 +414,8 @@ def build_summary(latest_row: dict[str, Any], readiness: dict[str, Any]) -> str:
             f"- ready_for_report_only_pdf_generation={str(readiness['ready_for_report_only_pdf_generation']).lower()}",
             f"- ready_for_drive_overwrite={str(readiness['ready_for_drive_overwrite']).lower()}",
             f"- ready_for_schedule_integration={str(readiness['ready_for_schedule_integration']).lower()}",
+            f"- Drive target：{DRIVE_FOLDER_URL}",
+            f"- Drive filename：{DRIVE_FILENAME}",
             "- selected_stock_adjusted_close remains blocked。",
             "- cash_bear_classifier remains blocked；不可杜撰空手規則。",
             "- RS20 top3 reference-only enforced。",

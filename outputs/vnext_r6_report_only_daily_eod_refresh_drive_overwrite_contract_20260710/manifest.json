@@ -4,14 +4,19 @@
   "output_dir": "outputs\\vnext_r6_report_only_daily_eod_refresh_drive_overwrite_contract_20260710",
   "artifacts": [
     {
-      "path": "outputs\\vnext_r6_report_only_daily_eod_refresh_drive_overwrite_contract_20260710\\r6_report_only_latest_eod_report_row_contract.csv",
-      "sha256": "6dd6eccf48f881efeb6cb5c6b3c48fb3831d703f67493c2f9742bec5de469f58",
-      "bytes": 1742
+      "path": "outputs\\vnext_r6_report_only_daily_eod_refresh_drive_overwrite_contract_20260710\\r6_report_only_daily_row_latest.csv",
+      "sha256": "55021e6a38df74691687fc59f638aaf6d83ddbcbe346acb508149771abd82b1d",
+      "bytes": 1765
     },
     {
-      "path": "outputs\\vnext_r6_report_only_daily_eod_refresh_drive_overwrite_contract_20260710\\r6_report_only_drive_overwrite_policy_contract.csv",
-      "sha256": "3af2989cd38af7ab6b06e130b260ea6cd2abb11619a042cbb0863871d16c852c",
-      "bytes": 927
+      "path": "outputs\\vnext_r6_report_only_daily_eod_refresh_drive_overwrite_contract_20260710\\r6_report_only_drive_overwrite_readiness.csv",
+      "sha256": "d85b42663cddac5bf8c825635031e4d21aa81cfaf03f57fb406e1cd815614adf",
+      "bytes": 1228
+    },
+    {
+      "path": "outputs\\vnext_r6_report_only_daily_eod_refresh_drive_overwrite_contract_20260710\\r6_report_only_drive_overwrite_readiness.json",
+      "sha256": "6b16203713519a675071ea23a11e6db99d31208fdb531de733bdfc1f586042af",
+      "bytes": 691
     },
     {
       "path": "outputs\\vnext_r6_report_only_daily_eod_refresh_drive_overwrite_contract_20260710\\r6_report_only_schedule_rules_integration_contract.csv",
@@ -19,9 +24,14 @@
       "bytes": 1200
     },
     {
-      "path": "outputs\\vnext_r6_report_only_daily_eod_refresh_drive_overwrite_contract_20260710\\r6_report_only_blocked_proxy_audit.csv",
-      "sha256": "6ff7c40f731db94da47e1c96d8d3d0f3f730d05f24a90ac43d1ff7e6dc4414ad",
-      "bytes": 1013
+      "path": "outputs\\vnext_r6_report_only_daily_eod_refresh_drive_overwrite_contract_20260710\\r6_report_only_daily_requested_vs_actual_coverage.csv",
+      "sha256": "8f23f0872fc3931dc4df04e410760c3759bdd393a0105113e9aee9ce7b7a13ff",
+      "bytes": 370
+    },
+    {
+      "path": "outputs\\vnext_r6_report_only_daily_eod_refresh_drive_overwrite_contract_20260710\\r6_report_only_daily_blocked_proxy_audit.csv",
+      "sha256": "f6cfa255713e74eaa1c3f0680e7c21f3b14bac2f8d3ccd15d992eb0aa3d9f31d",
+      "bytes": 1158
     },
     {
       "path": "outputs\\vnext_r6_report_only_daily_eod_refresh_drive_overwrite_contract_20260710\\r6_report_only_model_status_note.csv",
@@ -29,14 +39,19 @@
       "bytes": 774
     },
     {
-      "path": "outputs\\vnext_r6_report_only_daily_eod_refresh_drive_overwrite_contract_20260710\\readiness_for_r6_report_only_daily_eod_refresh_drive_overwrite_contract.json",
-      "sha256": "3610262e3c996882fb6b1b57f24da2123d0b6a752725d321b456988d13ffb293",
-      "bytes": 1819
+      "path": "outputs\\vnext_r6_report_only_daily_eod_refresh_drive_overwrite_contract_20260710\\readiness_for_r6_report_only_daily_eod_refresh.json",
+      "sha256": "9ee5ab7169d894480844cf850d6bedd1d7298206a8e09f4d19c2331ebe157856",
+      "bytes": 1995
+    },
+    {
+      "path": "outputs\\vnext_r6_report_only_daily_eod_refresh_drive_overwrite_contract_20260710\\r6_report_only_daily_sample.html",
+      "sha256": "2ec2e7cfce3a228683867f5cf8f1367ca1d7d006b3bc6a1f36e4642c7d8bb51e",
+      "bytes": 1722
     },
     {
       "path": "outputs\\vnext_r6_report_only_daily_eod_refresh_drive_overwrite_contract_20260710\\final_summary_zh.md",
-      "sha256": "ff23959a325811b784c81cf1f9434436a7ca68e5f1df9359cd9ee839e8114df1",
-      "bytes": 938
+      "sha256": "0145a1a5a66b9d1196363c427114a8cd6d7c0f191140cef0e3f8a5193e10e957",
+      "bytes": 1102
     }
   ],
   "flags": {
