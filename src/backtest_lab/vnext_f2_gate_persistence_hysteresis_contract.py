@@ -242,8 +242,11 @@ def _gap_ledger(state: pd.DataFrame) -> pd.DataFrame:
     missing = state[~state["daily_path_ready"]]
     rows = []
     for row in missing.itertuples(index=False):
-        for date, required_as in [(row.next_trading_day_execution_date, "entry_close"), (row.next_trading_day_after_execution_date, "following_daily_close")]:
-            if pd.notna(date):
+        for date, required_as, value in [
+            (row.next_trading_day_execution_date, "entry_close", row.entry_close),
+            (row.next_trading_day_after_execution_date, "following_daily_close", row.exit_close),
+        ]:
+            if pd.notna(date) and pd.isna(value):
                 rows.append({"f2_variant": row.f2_variant, "ticker": row.selected_ticker_after, "asset_type": row.selected_asset_type_after, "price_date": date, "required_as": required_as, "signal_date": row.signal_date, "transition_type": row.transition_type})
     if not rows:
         return pd.DataFrame(columns=["ticker", "asset_type", "price_date", "required_as", "impacted_variants", "impacted_signal_dates", "source_requirement", "next_owner"])
