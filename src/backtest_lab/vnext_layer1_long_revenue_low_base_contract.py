@@ -17,6 +17,10 @@ DEFAULT_MONTHLY_REVENUE_DIR = Path(
 )
 DEFAULT_LAYER4_POOL = Path("outputs/vnext_layer4_80_primary_pool_contract_20260708/layer4_80_primary_pool_contract.csv")
 DEFAULT_LOW_BASE_DIR = Path("outputs/vnext_layer4_low_base_score_contract_20260709")
+DEFAULT_6806_SOURCE_DIR = Path(
+    "C:/Users/zergv/Documents/Codex/2026-05-23/ai-stock-rotation-radar-https-docs/outputs/"
+    "radar_vnext_6806_shinfox_long_revenue_stability_source_package_20260710"
+)
 SHINFOX_TICKER = "6806"
 
 
@@ -25,18 +29,21 @@ def main() -> None:
     parser.add_argument("--monthly-revenue-dir", default=str(DEFAULT_MONTHLY_REVENUE_DIR))
     parser.add_argument("--layer4-pool", default=str(DEFAULT_LAYER4_POOL))
     parser.add_argument("--low-base-dir", default=str(DEFAULT_LOW_BASE_DIR))
+    parser.add_argument("--shinfox-source-dir", default=str(DEFAULT_6806_SOURCE_DIR))
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT))
     args = parser.parse_args()
 
     monthly_dir = Path(args.monthly_revenue_dir)
     layer4_pool_path = Path(args.layer4_pool)
     low_base_dir = Path(args.low_base_dir)
+    shinfox_source_dir = Path(args.shinfox_source_dir)
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     layer4_latest, asof_date = load_latest_layer4_primary80(layer4_pool_path)
     scoped_tickers = sorted(set(layer4_latest["ticker"].astype(str)) | {SHINFOX_TICKER})
     revenue = load_monthly_revenue(monthly_dir, scoped_tickers=scoped_tickers, asof_date=asof_date)
+    revenue = append_shinfox_revenue_source(revenue, shinfox_source_dir, asof_date=asof_date)
     features = build_revenue_features(revenue, asof_date=asof_date)
     contract = build_feature_contract(layer4_latest, features, asof_date)
     contract_path = output_dir / "layer1_long_revenue_stability_feature_contract.csv"
@@ -54,7 +61,7 @@ def main() -> None:
     lumpiness_path = output_dir / "revenue_lumpiness_proxy_audit.csv"
     lumpiness_audit.to_csv(lumpiness_path, index=False, encoding="utf-8-sig")
 
-    sanity = build_shinfox_sanity_check(features, revenue, asof_date)
+    sanity = build_shinfox_sanity_check(features, revenue, shinfox_source_dir, asof_date)
     sanity_path = output_dir / "shinfox_6806_feature_sanity_check.csv"
     sanity.to_csv(sanity_path, index=False, encoding="utf-8-sig")
 
@@ -142,6 +149,27 @@ def load_monthly_revenue(monthly_dir: Path, *, scoped_tickers: list[str], asof_d
         & revenue["revenue_value"].notna()
     ].copy()
     return revenue.sort_values(["ticker", "period"])
+
+
+def append_shinfox_revenue_source(revenue: pd.DataFrame, source_dir: Path, *, asof_date: str) -> pd.DataFrame:
+    source_path = source_dir / "6806_monthly_revenue_rows.csv"
+    if not source_path.exists():
+        return revenue
+    shinfox = pd.read_csv(source_path, dtype={"ticker": str})
+    shinfox["available_date"] = pd.to_datetime(shinfox["available_date"], errors="coerce")
+    shinfox["period"] = pd.PeriodIndex(shinfox["revenue_year_month"].astype(str), freq="M")
+    shinfox["revenue_value"] = pd.to_numeric(shinfox["revenue_value"], errors="coerce")
+    shinfox = shinfox[
+        shinfox["pit_usable"].astype(str).str.lower().eq("true")
+        & shinfox["available_date"].le(pd.Timestamp(asof_date))
+        & shinfox["revenue_value"].notna()
+    ].copy()
+    if shinfox.empty:
+        return revenue
+    if revenue.empty:
+        return shinfox.sort_values(["ticker", "period"])
+    revenue = revenue[~revenue["ticker"].astype(str).eq(SHINFOX_TICKER)].copy()
+    return pd.concat([revenue, shinfox], ignore_index=True, sort=False).sort_values(["ticker", "period"])
 
 
 def build_revenue_features(revenue: pd.DataFrame, *, asof_date: str) -> pd.DataFrame:
@@ -421,7 +449,8 @@ def build_lumpiness_proxy_audit(contract: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def build_shinfox_sanity_check(features: pd.DataFrame, revenue: pd.DataFrame, asof_date: str) -> pd.DataFrame:
+def build_shinfox_sanity_check(features: pd.DataFrame, revenue: pd.DataFrame, source_dir: Path, asof_date: str) -> pd.DataFrame:
+    missing_months = read_shinfox_missing_months(source_dir)
     feature = features[features["ticker"].eq(SHINFOX_TICKER)].copy()
     if feature.empty:
         return pd.DataFrame(
@@ -431,6 +460,7 @@ def build_shinfox_sanity_check(features: pd.DataFrame, revenue: pd.DataFrame, as
                     "name": "森崴能源",
                     "asof_date": asof_date,
                     "status": "blocked_no_monthly_revenue_rows",
+                    "missing_months": missing_months,
                     "sanity_check": "cannot evaluate",
                 }
             ]
@@ -445,10 +475,34 @@ def build_shinfox_sanity_check(features: pd.DataFrame, revenue: pd.DataFrame, as
             "name": row.get("name", "森崴能源"),
             "asof_date": asof_date,
             "last12_month_revenue_total": last12_total,
+            "missing_months": missing_months,
+            "source_market_code": "pub",
+            "source_route_note": "MOPS official pub monthly revenue route; not standard sii listed-company route",
+            "project_style_evidence_note": extract_project_style_note(shinfox_revenue),
             "sanity_check": "flags project/lumpy risk if lumpiness or recent spike proxy is true; not an investment judgment",
         }
     )
     return pd.DataFrame([row])
+
+
+def read_shinfox_missing_months(source_dir: Path) -> str:
+    missing_path = source_dir / "6806_monthly_revenue_missing_months.csv"
+    if not missing_path.exists():
+        return ""
+    missing = pd.read_csv(missing_path, dtype=str)
+    if missing.empty or "revenue_year_month" not in missing.columns:
+        return ""
+    return ";".join(missing["revenue_year_month"].dropna().astype(str).tolist())
+
+
+def extract_project_style_note(shinfox_revenue: pd.DataFrame) -> str:
+    notes = shinfox_revenue.get("notes")
+    if notes is None:
+        return ""
+    for note in notes.dropna().astype(str):
+        if "工程" in note or "認列收入" in note or "離岸" in note:
+            return note[:180]
+    return ""
 
 
 def build_requested_vs_actual_coverage(revenue: pd.DataFrame, contract: pd.DataFrame, asof_date: str) -> pd.DataFrame:

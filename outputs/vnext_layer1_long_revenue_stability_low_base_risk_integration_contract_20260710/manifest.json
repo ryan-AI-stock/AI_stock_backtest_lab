@@ -25,8 +25,8 @@
     },
     {
       "path": "outputs\\vnext_layer1_long_revenue_stability_low_base_risk_integration_contract_20260710\\shinfox_6806_feature_sanity_check.csv",
-      "sha256": "539c19f7ee1124d490ccf70b2dccd76f82efffeed147f889597f4d3c7bb64209",
-      "bytes": 124
+      "sha256": "6d900e691aad4a7098aa4c77c3ab4b36adb769d7accd4b9a992b9c77f644626a",
+      "bytes": 1531
     },
     {
       "path": "outputs\\vnext_layer1_long_revenue_stability_low_base_risk_integration_contract_20260710\\requested_vs_actual_coverage.csv",
@@ -40,13 +40,13 @@
     },
     {
       "path": "outputs\\vnext_layer1_long_revenue_stability_low_base_risk_integration_contract_20260710\\readiness_for_experiments.json",
-      "sha256": "9a1eb77544e9564a6e5e819bf8305cf3291fec12be73e16e018ac5e25c173319",
-      "bytes": 1103
+      "sha256": "6064e9baa1cfbb9c9ab7b31993fb7c143d3d2303d88dc5fe1998a61793ec6c67",
+      "bytes": 1083
     },
     {
       "path": "outputs\\vnext_layer1_long_revenue_stability_low_base_risk_integration_contract_20260710\\final_summary_zh.md",
-      "sha256": "e1df8faf3329a6fb6dbf5f8cf1c8505317a5d33021363a2dc9e7d6a6fd843d42",
-      "bytes": 1116
+      "sha256": "bd20d745b3a4c712ce9c7e426e64acbccf8c074358dd33869b93cd53730fc1bd",
+      "bytes": 1124
     }
   ],
   "flags": {

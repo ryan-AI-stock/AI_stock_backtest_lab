@@ -10,10 +10,10 @@
 
 ## 6806 森崴能源 sanity check
 
-- status=blocked_no_monthly_revenue_rows
-- revenue_lumpiness_score=
-- recent_spike_without_long_history_flag=
-- project_based_revenue_risk_proxy=
+- status=ready_proxy
+- revenue_lumpiness_score=0.2867231662208861
+- recent_spike_without_long_history_flag=False
+- project_based_revenue_risk_proxy=False
 - 這只是 feature sanity check，不是投資判斷。
 
 ## Layer placement

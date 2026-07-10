@@ -12,7 +12,7 @@
   "quarterly_revenue_yoy_source_quality": "proxy_from_monthly_revenue_rolling_3m",
   "valuation_low_base_proxy_ready": false,
   "valuation_low_base_proxy_blocked_reason": "PE/PB/PS accepted source not materialized in this contract",
-  "shinfox_6806_sanity_status": "blocked_no_monthly_revenue_rows",
+  "shinfox_6806_sanity_status": "ready_proxy",
   "formal_model_changed": false,
   "trade_decision_changed": false,
   "active_in_trade_decision": false,
