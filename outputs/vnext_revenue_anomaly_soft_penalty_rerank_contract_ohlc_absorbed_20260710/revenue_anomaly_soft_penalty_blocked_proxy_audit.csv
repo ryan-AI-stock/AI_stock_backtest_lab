@@ -1,0 +1,4 @@
+﻿field_or_policy,status,proxy_or_blocked_reason,impact
+selected_stock_adjusted_close,blocked,No accepted selected-stock adjusted close source; official unadjusted OHLC remains diagnostic-only.,not formal-ready; does not block bounded Experiments diagnostic
+cash_bear_classifier,blocked,No accepted cash/bear classifier in this contract.,no cash rule; fallback/cash not fabricated
+business_model_or_industry_keyword_risk_basis,not_used,Revenue anomaly rerank uses monthly revenue time-series fields only.,business_model_keyword_proxy_used_as_risk_basis=false; industry_classification_used_as_risk_basis=false

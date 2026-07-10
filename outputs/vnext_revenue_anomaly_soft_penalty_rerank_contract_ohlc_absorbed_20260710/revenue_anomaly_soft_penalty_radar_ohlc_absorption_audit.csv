@@ -1,0 +1,5 @@
+﻿audit_item,value,status,note
+radar_filled_rows,92,absorbed,selected-ticker official unadjusted OHLC; no 00631L excess reconstruction
+radar_blocked_rows,0,clear,Radar/Data row-level blocked ledger
+timing_inferred_rows,18,proxy_timing_audited,Core gap ledger had blank timing on these rows; Radar inferred next trading day/fixed 5TD from official trading calendar
+remaining_gap_rows,0,clear,must be zero before Experiments net-after-cost diagnostic

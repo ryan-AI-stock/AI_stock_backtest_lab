@@ -1,0 +1,4 @@
+﻿audit_item,violation_count,status,note
+future_return_used_for_rerank,0,pass,rerank uses PIT candidate scores and revenue anomaly fields only
+radar_source_future_data_violation,0,pass,Radar/Data source package reports no future-data violation
+contract_future_data_violation,0,pass,Core contract reports no future-data violation

@@ -1,0 +1,2 @@
+﻿requested_scope,contract_rows,changed_selected_rows,radar_filled_rows_absorbed,remaining_ohlc_gap_rows,official_unadjusted_ohlc_ready_share,selected_stock_adjusted_close_ready,actual_coverage
+P1/P2/2024-latest/2026YTD/full integrated route_support/R6 rerank,2955,92,92,0,1.0,False,official unadjusted OHLC path ready for reranked selected rows; adjusted close remains blocked

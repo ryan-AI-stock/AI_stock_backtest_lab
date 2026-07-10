@@ -1,0 +1,56 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-REVENUE-ANOMALY-SOFT-PENALTY-RERANK-OHLC-ABSORPTION-001",
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_revenue_anomaly_soft_penalty_rerank_contract_ohlc_absorbed_20260710",
+  "files": [
+    {
+      "path": "outputs\\vnext_revenue_anomaly_soft_penalty_rerank_contract_ohlc_absorbed_20260710\\revenue_anomaly_soft_penalty_rerank_contract_ohlc_absorbed.csv",
+      "sha256": "a6c141a2b2a47c6a0d1d6728317c62631b00e9e5b86f35d16bc7c5119e646649",
+      "bytes": 1560408
+    },
+    {
+      "path": "outputs\\vnext_revenue_anomaly_soft_penalty_rerank_contract_ohlc_absorbed_20260710\\revenue_anomaly_soft_penalty_candidate_topn.csv",
+      "sha256": "4554629ce5c60b1184d127b4f2b6652d925db8ed5a59456d179bb6660ac76f29",
+      "bytes": 4395652
+    },
+    {
+      "path": "outputs\\vnext_revenue_anomaly_soft_penalty_rerank_contract_ohlc_absorbed_20260710\\revenue_anomaly_soft_penalty_variant_policy.csv",
+      "sha256": "cb34515830b61ea054f7644b7390877173544dca20ef61979d3681e07b55a9c8",
+      "bytes": 505
+    },
+    {
+      "path": "outputs\\vnext_revenue_anomaly_soft_penalty_rerank_contract_ohlc_absorbed_20260710\\revenue_anomaly_soft_penalty_requested_vs_actual_coverage.csv",
+      "sha256": "bcc572b273ec205c71a80df9696cd73e7b59e9e7f03c80f3d463f9d0804e8c98",
+      "bytes": 381
+    },
+    {
+      "path": "outputs\\vnext_revenue_anomaly_soft_penalty_rerank_contract_ohlc_absorbed_20260710\\revenue_anomaly_soft_penalty_selected_ohlc_remaining_gap_ledger.csv",
+      "sha256": "faf55d32abb96de4e6dd19871f95fa745ebcff0f93e8da6716517960e7763d92",
+      "bytes": 164
+    },
+    {
+      "path": "outputs\\vnext_revenue_anomaly_soft_penalty_rerank_contract_ohlc_absorbed_20260710\\revenue_anomaly_soft_penalty_radar_ohlc_absorption_audit.csv",
+      "sha256": "7ba483673e22102c287e93bf03c2ac64a4cec6e786af75ce2ec08576c1d1a7d4",
+      "bytes": 455
+    },
+    {
+      "path": "outputs\\vnext_revenue_anomaly_soft_penalty_rerank_contract_ohlc_absorbed_20260710\\revenue_anomaly_soft_penalty_blocked_proxy_audit.csv",
+      "sha256": "72f42acf9f75d7ca99d7c77cd238358385b6e58ef3c69c2524d4a97360d08906",
+      "bytes": 614
+    },
+    {
+      "path": "outputs\\vnext_revenue_anomaly_soft_penalty_rerank_contract_ohlc_absorbed_20260710\\revenue_anomaly_soft_penalty_future_data_audit.csv",
+      "sha256": "a6a5d510f1e47a84a425fc1ec4bea8d226b35dc81c7dda96dd8d9ba07b83e8dc",
+      "bytes": 334
+    },
+    {
+      "path": "outputs\\vnext_revenue_anomaly_soft_penalty_rerank_contract_ohlc_absorbed_20260710\\readiness_for_revenue_anomaly_soft_penalty_rerank.json",
+      "sha256": "dbb4bab3bc507365dad8defa8eb3565094cc49a5d56e567bc3b2821ff9cd6ef1",
+      "bytes": 1058
+    },
+    {
+      "path": "outputs\\vnext_revenue_anomaly_soft_penalty_rerank_contract_ohlc_absorbed_20260710\\final_summary_zh.md",
+      "sha256": "a4feaec58292eaf83538c0a5d41ba434f8d9d5ca7692b27a0d14e3f3b2a6bd15",
+      "bytes": 662
+    }
+  ]
+}
