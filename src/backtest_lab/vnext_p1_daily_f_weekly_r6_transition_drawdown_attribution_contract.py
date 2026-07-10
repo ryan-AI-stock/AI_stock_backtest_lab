@@ -17,6 +17,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DAILY_DIR = REPO_ROOT / "outputs" / "vnext_daily_incumbent_challenger_state_machine_contract_ohlc_absorbed_20260710"
 R6_DIR = REPO_ROOT / "outputs" / "vnext_r6_guard_first_market_bias_override_unified_contract_20260709"
 RADAR_R6_OHLC = Path("C:/Users/zergv/Documents/Codex/2026-05-23/ai-stock-rotation-radar-https-docs/outputs/radar_vnext_regime_switch_route_selected_stock_ohlc_source_package_20260708/regime_switch_selected_ohlc_rows.csv")
+RADAR_R6_DAILY_FILL = Path("C:/Users/zergv/Documents/Codex/2026-05-23/ai-stock-rotation-radar-https-docs/outputs/radar_vnext_p1_weekly_r6_selected_stock_daily_ohlc_attribution_gap_fill_20260710/p1_weekly_r6_selected_stock_daily_ohlc_filled_rows.csv")
 OUTPUT_DIR = REPO_ROOT / "outputs" / "vnext_p1_daily_f_weekly_r6_transition_drawdown_attribution_contract_20260710"
 
 TASK_ID = "TASK-BACKTEST-CORE-VNEXT-P1-DAILY-F-VS-WEEKLY-R6-TRANSITION-DRAWDOWN-ATTRIBUTION-CONTRACT-001"
@@ -224,13 +225,26 @@ def _load_r6() -> pd.DataFrame:
     return _p1(r6)
 
 
-def _r6_daily_alignment(daily_f: pd.DataFrame, r6: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+def _load_r6_daily_fill() -> pd.DataFrame:
+    if not RADAR_R6_DAILY_FILL.exists():
+        return pd.DataFrame(columns=["ticker", "price_date", "close", "source_quality", "source_route", "official_unadjusted_ohlc_ready", "adjustment_policy"])
+    filled = pd.read_csv(RADAR_R6_DAILY_FILL, low_memory=False, dtype={"ticker": str})
+    filled["ticker"] = filled["ticker"].map(_ticker)
+    filled["price_date"] = pd.to_datetime(filled["price_date"], errors="coerce")
+    filled["close"] = pd.to_numeric(filled["close"], errors="coerce")
+    filled["official_unadjusted_ohlc_ready"] = filled["official_unadjusted_ohlc_ready"].map(_bool)
+    return filled.sort_values(["ticker", "price_date"]).drop_duplicates(["ticker", "price_date"], keep="last")
+
+
+def _r6_daily_alignment(daily_f: pd.DataFrame, r6: pd.DataFrame, fill: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     base = daily_f[daily_f["metric_eligible_P1"].map(_bool)].copy().sort_values("signal_date")
     r6_state = r6.sort_values("signal_date").copy()
+    r6_state["weekly_r6_source_signal_date"] = r6_state["signal_date"]
     keep = [
         "signal_date", "next_signal_date", "selected_ticker", "selected_ticker_name", "selected_asset_type", "selected_branch",
         "regime_label", "entry_date", "exit_date", "transition_action", "transition_cost_rate", "source_quality",
         "official_selected_stock_ohlc_ready", "path_ready", "selected_stock_adjusted_close_ready",
+        "weekly_r6_source_signal_date", "gross_interval_return", "net_interval_return_after_transition_cost",
     ]
     aligned = pd.merge_asof(
         base.sort_values("signal_date"), r6_state[[col for col in keep if col in r6_state.columns]].sort_values("signal_date"),
@@ -239,21 +253,61 @@ def _r6_daily_alignment(daily_f: pd.DataFrame, r6: pd.DataFrame) -> tuple[pd.Dat
     aligned = aligned.rename(columns={
         "selected_ticker": "weekly_r6_ticker", "selected_asset_type": "weekly_r6_asset_type", "selected_branch": "weekly_r6_branch",
         "entry_date": "weekly_r6_interval_entry_date", "exit_date": "weekly_r6_interval_exit_date", "source_quality": "weekly_r6_source_quality",
+        "gross_interval_return": "weekly_r6_contract_gross_interval_return", "net_interval_return_after_transition_cost": "weekly_r6_contract_net_interval_return",
     })
+    # The R6 contract starts at its first weekly snapshot. Before that point its
+    # documented default is the same 00631L state-hold base, not a missing state.
+    aligned["weekly_r6_ticker"] = aligned["weekly_r6_ticker"].fillna("00631L").map(_ticker)
+    aligned["weekly_r6_asset_type"] = aligned["weekly_r6_asset_type"].fillna("etf")
+    aligned["weekly_r6_branch"] = aligned["weekly_r6_branch"].fillna("route_support_default_before_first_weekly_snapshot")
+    prices = _benchmark_price_map().copy()
+    prices["date"] = pd.to_datetime(prices["date"], errors="coerce")
+    base_entry = prices[["date", "price", "benchmark_source_quality"]].rename(columns={"date": "next_trading_day_execution_date", "price": "r6_base_entry_close", "benchmark_source_quality": "r6_base_entry_source_quality"})
+    base_exit = prices[["date", "price", "benchmark_source_quality"]].rename(columns={"date": "next_trading_day_after_execution_date", "price": "r6_base_exit_close", "benchmark_source_quality": "r6_base_exit_source_quality"})
+    aligned = aligned.merge(base_entry, on="next_trading_day_execution_date", how="left").merge(base_exit, on="next_trading_day_after_execution_date", how="left")
+    stock_entry = fill[["ticker", "price_date", "close", "source_quality", "source_route", "official_unadjusted_ohlc_ready", "adjustment_policy"]].rename(
+        columns={"ticker": "weekly_r6_ticker", "price_date": "next_trading_day_execution_date", "close": "r6_stock_entry_close", "source_quality": "r6_stock_entry_source_quality", "source_route": "r6_stock_entry_source_route", "official_unadjusted_ohlc_ready": "r6_stock_entry_ready", "adjustment_policy": "r6_stock_adjustment_policy"}
+    )
+    stock_exit = fill[["ticker", "price_date", "close", "source_quality", "source_route", "official_unadjusted_ohlc_ready", "adjustment_policy"]].rename(
+        columns={"ticker": "weekly_r6_ticker", "price_date": "next_trading_day_after_execution_date", "close": "r6_stock_exit_close", "source_quality": "r6_stock_exit_source_quality", "source_route": "r6_stock_exit_source_route", "official_unadjusted_ohlc_ready": "r6_stock_exit_ready", "adjustment_policy": "r6_stock_exit_adjustment_policy"}
+    )
+    aligned = aligned.merge(stock_entry, on=["weekly_r6_ticker", "next_trading_day_execution_date"], how="left")
+    aligned = aligned.merge(stock_exit, on=["weekly_r6_ticker", "next_trading_day_after_execution_date"], how="left")
+    stock_mask = aligned["weekly_r6_asset_type"].eq("stock")
+    aligned["weekly_r6_entry_close"] = np.where(stock_mask, aligned["r6_stock_entry_close"], aligned["r6_base_entry_close"])
+    aligned["weekly_r6_exit_close"] = np.where(stock_mask, aligned["r6_stock_exit_close"], aligned["r6_base_exit_close"])
+    aligned["weekly_r6_daily_price_source_quality"] = np.where(stock_mask, aligned["r6_stock_entry_source_quality"], aligned["r6_base_entry_source_quality"])
+    aligned["weekly_r6_daily_gross_return"] = pd.to_numeric(aligned["weekly_r6_exit_close"], errors="coerce") / pd.to_numeric(aligned["weekly_r6_entry_close"], errors="coerce") - 1.0
+    previous = aligned.shift(1)
+    prior_ticker = previous["weekly_r6_ticker"].fillna("00631L")
+    prior_type = previous["weekly_r6_asset_type"].fillna("etf")
+    change = aligned["weekly_r6_ticker"].ne(prior_ticker) | aligned["weekly_r6_asset_type"].ne(prior_type)
+    aligned["weekly_r6_transition_type"] = np.select(
+        [~change, prior_type.eq("etf") & stock_mask, prior_type.eq("stock") & aligned["weekly_r6_asset_type"].eq("etf")],
+        ["hold_same", "base_to_stock", "stock_to_base"], default="stock_to_stock",
+    )
+    cost_map = {"hold_same": 0.0, "base_to_stock": 0.00385, "stock_to_base": 0.00585, "stock_to_stock": 0.00585}
+    aligned["weekly_r6_transition_cost_rate_hook"] = aligned["weekly_r6_transition_type"].map(cost_map)
+    aligned["weekly_r6_net_daily_return_after_transition_cost"] = aligned["weekly_r6_daily_gross_return"] - aligned["weekly_r6_transition_cost_rate_hook"]
+    aligned["weekly_r6_daily_path_ready"] = aligned["weekly_r6_daily_gross_return"].notna()
     aligned["same_asset_ticker_flag"] = (
         aligned["selected_ticker_after"].eq(aligned["weekly_r6_ticker"].fillna(""))
         & aligned["selected_asset_type_after"].eq(aligned["weekly_r6_asset_type"].fillna(""))
     )
     aligned["daily_r6_mark_status"] = np.where(
-        aligned["weekly_r6_asset_type"].eq("etf"), "base_00631L_daily_mark_available",
-        "blocked_pending_selected_stock_daily_ohlc",
+        aligned["weekly_r6_daily_path_ready"],
+        np.where(stock_mask, "official_unadjusted_stock_daily_mark_ready", "base_00631L_daily_mark_available"),
+        "blocked_missing_required_daily_mark",
     )
     ledger = _r6_stock_daily_gap_ledger(aligned)
     return aligned, ledger
 
 
 def _r6_stock_daily_gap_ledger(aligned: pd.DataFrame) -> pd.DataFrame:
-    stock = aligned[aligned["weekly_r6_asset_type"].eq("stock")].copy()
+    stock = aligned[
+        aligned["weekly_r6_asset_type"].eq("stock")
+        & ~aligned["weekly_r6_daily_path_ready"].fillna(False)
+    ].copy()
     if stock.empty:
         return pd.DataFrame()
     stock["ticker"] = stock["weekly_r6_ticker"].map(_ticker)
@@ -353,25 +407,115 @@ def _drawdown_events(rechain: pd.DataFrame, alignment: pd.DataFrame) -> pd.DataF
     for peak, trough, recovery_date in sorted(events_raw, key=lambda item: item[1]["equity"] / item[0]["equity"] - 1.0)[:10]:
         within = path[(path["signal_date"] >= peak["signal_date"]) & (path["signal_date"] <= trough["signal_date"])]
         r6 = alignment[alignment["signal_date"].isin(within["signal_date"])].copy()
-        r6_stock_blocked = int(r6["daily_r6_mark_status"].eq("blocked_pending_selected_stock_daily_ohlc").sum())
+        r6_stock_blocked = int((~r6["weekly_r6_daily_path_ready"].fillna(False).astype(bool)).sum())
+        r6_return_ready = bool(len(r6)) and bool(r6["weekly_r6_daily_path_ready"].fillna(False).all())
+        r6_segment_return = float((1 + pd.to_numeric(r6["weekly_r6_net_daily_return_after_transition_cost"], errors="coerce")).prod() - 1) if r6_return_ready else np.nan
+        f_segment_return = float((1 + pd.to_numeric(within["rechain_leg_actual_net_return"], errors="coerce")).prod() - 1)
         events.append({
             "event_rank": len(events) + 1,
             "peak_date": peak["signal_date"], "trough_date": trough["signal_date"], "recovery_date": recovery_date,
             "recovered_within_P1": bool(pd.notna(recovery_date)), "daily_f_peak_asset": peak["selected_ticker_after"],
             "daily_f_trough_asset": trough["selected_ticker_after"], "daily_f_peak_asset_type": peak["selected_asset_type_after"],
             "daily_f_trough_asset_type": trough["selected_asset_type_after"], "daily_f_drawdown": trough["equity"] / peak["equity"] - 1.0,
-            "daily_f_peak_to_trough_return": trough.equity / peak["equity"] - 1.0,
+            "daily_f_peak_to_trough_return": f_segment_return,
             "daily_f_transition_rows_in_segment": int(within["transition_type"].ne("hold_same").sum()),
             "daily_f_gate_transition_rows_in_segment": int((within["gate_on_flag"] | within["gate_off_flag"]).sum()),
             "daily_f_stock_to_stock_rows_in_segment": int(within["transition_type"].eq("stock_to_stock").sum()),
             "daily_f_two_day_confirmation_rows_in_segment": int(within["two_day_confirmation_flag"].sum()),
             "weekly_r6_assets_seen": "|".join(sorted(set(r6["weekly_r6_ticker"].dropna().astype(str)))),
             "same_asset_day_share": float(r6["same_asset_ticker_flag"].mean()) if len(r6) else np.nan,
-            "weekly_r6_daily_return_difference_status": "blocked_pending_r6_stock_daily_marks" if r6_stock_blocked else "available_from_aligned_daily_marks",
+            "weekly_r6_peak_to_trough_net_return": r6_segment_return,
+            "daily_f_minus_weekly_r6_return_difference": f_segment_return - r6_segment_return if r6_return_ready else np.nan,
+            "weekly_r6_daily_return_difference_status": "available_from_aligned_daily_marks" if r6_return_ready else "blocked_missing_r6_daily_marks",
             "weekly_r6_stock_daily_mark_blocked_rows": r6_stock_blocked,
             "transition_timing_difference_note": "Daily F executes next trading day after close; weekly R6 state is forward-filled from its weekly signal until the next weekly snapshot.",
         })
     return pd.DataFrame(events)
+
+
+def _weekly_r6_drawdown_events(alignment: pd.DataFrame) -> pd.DataFrame:
+    path = alignment.sort_values("signal_date").copy()
+    path["weekly_r6_equity"] = (1 + pd.to_numeric(path["weekly_r6_net_daily_return_after_transition_cost"], errors="coerce").fillna(0)).cumprod()
+    events_raw: list[tuple[pd.Series, pd.Series, pd.Timestamp]] = []
+    peak = path.iloc[0]
+    trough = peak
+    in_drawdown = False
+    for _, row in path.iloc[1:].iterrows():
+        if not in_drawdown:
+            if row["weekly_r6_equity"] >= peak["weekly_r6_equity"]:
+                peak, trough = row, row
+            else:
+                in_drawdown, trough = True, row
+        else:
+            if row["weekly_r6_equity"] < trough["weekly_r6_equity"]:
+                trough = row
+            if row["weekly_r6_equity"] >= peak["weekly_r6_equity"]:
+                events_raw.append((peak, trough, row["signal_date"]))
+                peak, trough, in_drawdown = row, row, False
+    if in_drawdown:
+        events_raw.append((peak, trough, pd.NaT))
+    rows = []
+    for peak, trough, recovery in sorted(events_raw, key=lambda item: item[1]["weekly_r6_equity"] / item[0]["weekly_r6_equity"] - 1.0)[:10]:
+        segment = path[(path["signal_date"] >= peak["signal_date"]) & (path["signal_date"] <= trough["signal_date"])]
+        rows.append({
+            "event_rank": len(rows) + 1, "peak_date": peak["signal_date"], "trough_date": trough["signal_date"], "recovery_date": recovery,
+            "recovered_within_P1": bool(pd.notna(recovery)), "weekly_r6_peak_asset": peak["weekly_r6_ticker"],
+            "weekly_r6_trough_asset": trough["weekly_r6_ticker"], "weekly_r6_drawdown": trough["weekly_r6_equity"] / peak["weekly_r6_equity"] - 1.0,
+            "weekly_r6_peak_to_trough_net_return": float((1 + pd.to_numeric(segment["weekly_r6_net_daily_return_after_transition_cost"], errors="coerce")).prod() - 1),
+            "weekly_r6_transition_rows_in_segment": int(segment["weekly_r6_transition_type"].ne("hold_same").sum()),
+            "daily_f_assets_seen": "|".join(sorted(set(segment["selected_ticker_after"].dropna().astype(str)))),
+            "same_asset_day_share": float(segment["same_asset_ticker_flag"].mean()) if len(segment) else np.nan,
+            "daily_path_source_quality": "00631L_adjusted_reference_for_base; official_unadjusted_ohlc_for_selected_R6_stock",
+        })
+    return pd.DataFrame(rows)
+
+
+def _weekly_r6_interval_reconciliation(alignment: pd.DataFrame) -> pd.DataFrame:
+    use = alignment[alignment["weekly_r6_source_signal_date"].notna()].copy()
+    keys = [
+        "weekly_r6_source_signal_date", "weekly_r6_ticker", "weekly_r6_asset_type", "weekly_r6_branch",
+        "weekly_r6_interval_entry_date", "weekly_r6_interval_exit_date", "weekly_r6_contract_gross_interval_return",
+        "weekly_r6_contract_net_interval_return",
+    ]
+    rows = []
+    for values, group in use.groupby(keys, dropna=False):
+        record = dict(zip(keys, values))
+        record["daily_mark_rows"] = int(len(group))
+        record["daily_mark_path_ready_share"] = float(group["weekly_r6_daily_path_ready"].fillna(False).mean())
+        record["daily_mark_gross_compound_return"] = float((1 + pd.to_numeric(group["weekly_r6_daily_gross_return"], errors="coerce")).prod() - 1)
+        record["daily_mark_net_compound_return"] = float((1 + pd.to_numeric(group["weekly_r6_net_daily_return_after_transition_cost"], errors="coerce")).prod() - 1)
+        contract_net = pd.to_numeric(pd.Series([record["weekly_r6_contract_net_interval_return"]]), errors="coerce").iloc[0]
+        record["daily_mark_minus_contract_net_return"] = record["daily_mark_net_compound_return"] - contract_net if pd.notna(contract_net) else np.nan
+        record["transition_cost_rate_sum_daily"] = float(pd.to_numeric(group["weekly_r6_transition_cost_rate_hook"], errors="coerce").sum())
+        difference = record["daily_mark_minus_contract_net_return"]
+        record["reconciliation_material_mismatch_flag"] = bool(pd.notna(difference) and abs(difference) > 0.001)
+        record["reconciliation_status"] = (
+            "matched" if pd.notna(contract_net) and abs(difference) <= 1e-6
+            else "minor_cost_compounding_difference" if pd.notna(difference) and abs(difference) <= 0.001
+            else "material_interval_to_daily_basis_difference"
+        )
+        rows.append(record)
+    return pd.DataFrame(rows).sort_values("weekly_r6_source_signal_date")
+
+
+def _weekly_r6_interval_overlap_audit(r6: pd.DataFrame) -> pd.DataFrame:
+    source = r6.dropna(subset=["entry_date", "exit_date"]).sort_values("signal_date").copy()
+    rows = []
+    for left in source.itertuples(index=False):
+        later = source[(source["signal_date"] > left.signal_date) & (source["entry_date"] < left.exit_date) & (source["exit_date"] > left.entry_date)]
+        for right in later.itertuples(index=False):
+            if _ticker(left.selected_ticker) == _ticker(right.selected_ticker) and left.selected_asset_type == right.selected_asset_type:
+                continue
+            rows.append({
+                "left_signal_date": left.signal_date, "left_ticker": _ticker(left.selected_ticker), "left_asset_type": left.selected_asset_type,
+                "left_entry_date": left.entry_date, "left_exit_date": left.exit_date, "left_transition_action": left.transition_action,
+                "right_signal_date": right.signal_date, "right_ticker": _ticker(right.selected_ticker), "right_asset_type": right.selected_asset_type,
+                "right_entry_date": right.entry_date, "right_exit_date": right.exit_date, "right_transition_action": right.transition_action,
+                "overlap_start": max(left.entry_date, right.entry_date), "overlap_end": min(left.exit_date, right.exit_date),
+                "semantic_issue": "weekly_interval_contract_has_overlapping_different_asset_intervals; cannot be treated as a unique daily state-hold path without an explicit state-boundary policy",
+                "next_owner": "Strategy Center/Core Data state-boundary policy decision",
+            })
+    return pd.DataFrame(rows)
 
 
 def _f2_evidence_map(summary: pd.DataFrame) -> pd.DataFrame:
@@ -388,7 +532,7 @@ def _f2_evidence_map(summary: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def _coverage(score: pd.DataFrame, r6_gap: pd.DataFrame, rechain: pd.DataFrame) -> pd.DataFrame:
+def _coverage(score: pd.DataFrame, r6_gap: pd.DataFrame, rechain: pd.DataFrame, alignment: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame([{
         "period": "P1", "requested_start": "2015-01-02", "requested_end": "2022-12-29",
         "daily_f_metric_rows": int(score["metric_eligible_P1"].map(_bool).sum()),
@@ -396,15 +540,19 @@ def _coverage(score: pd.DataFrame, r6_gap: pd.DataFrame, rechain: pd.DataFrame) 
         "daily_f_rechain_leg_rows": int(len(rechain)),
         "daily_f_rechain_base_marks_ready_share": float(rechain["base_00631L_gross_daily_return"].notna().mean()) if len(rechain) else 0.0,
         "weekly_r6_stock_daily_mark_gap_rows": int(len(r6_gap)),
+        "weekly_r6_daily_state_rows": int(len(alignment)),
+        "weekly_r6_daily_path_ready_share": float(alignment["weekly_r6_daily_path_ready"].fillna(False).mean()) if len(alignment) else 0.0,
         "daily_f_source_quality": "official_selected_stock_unadjusted_ohlc_plus_00631L_adjusted_reference_proxy_path",
         "weekly_r6_daily_stock_path_status": "blocked_pending_bounded_radar_selected_ticker_daily_ohlc_fill" if len(r6_gap) else "ready",
         **FLAGS,
     }])
 
 
-def _blocked(r6_gap: pd.DataFrame) -> pd.DataFrame:
+def _blocked(r6_gap: pd.DataFrame, alignment: pd.DataFrame, overlap: pd.DataFrame) -> pd.DataFrame:
+    r6_ready = bool(len(alignment)) and bool(alignment["weekly_r6_daily_path_ready"].fillna(False).all())
     rows = [
-        {"item": "weekly_r6_selected_stock_daily_marks", "status": "blocked_pending_bounded_gap_fill" if len(r6_gap) else "ready", "detail": "Weekly R6 has interval-level official OHLC, but aligned daily drawdown attribution requires daily close marks for its selected stock intervals.", "next_owner": "Radar/Data" if len(r6_gap) else "none"},
+        {"item": "weekly_r6_selected_stock_daily_marks", "status": "ready" if r6_ready else "blocked_pending_bounded_gap_fill", "detail": "Weekly R6 daily state uses official unadjusted stock OHLC for selected stock intervals and the accepted 00631L benchmark reference path.", "next_owner": "none" if r6_ready else "Radar/Data"},
+        {"item": "weekly_r6_interval_state_boundary", "status": "blocked_semantic_overlap" if len(overlap) else "ready", "detail": "The weekly R6 interval contract contains overlapping different-asset intervals. A unique daily state-hold reconstruction requires an explicit boundary policy; daily marks alone do not resolve it.", "next_owner": "Strategy Center/Core Data state-boundary policy decision" if len(overlap) else "none"},
         {"item": "selected_stock_adjusted_close", "status": "blocked", "detail": "Official unadjusted OHLC is diagnostic-only. No selected-stock adjusted close is fabricated.", "next_owner": "Strategy Center/Radar Data if trusted adjusted route is authorized"},
         {"item": "cash_bear_classifier", "status": "blocked", "detail": "No cash rule is created.", "next_owner": "Strategy Center/Core Data later"},
         {"item": "revenue_anomaly", "status": "report_only", "detail": "Revenue anomaly remains warning/confidence context and is not a rerank input.", "next_owner": "none"},
@@ -420,21 +568,29 @@ def _future_audit() -> pd.DataFrame:
     ])
 
 
-def _readiness(r6_gap: pd.DataFrame, score: pd.DataFrame, rechain: pd.DataFrame) -> dict[str, Any]:
-    exact_r6_daily = len(r6_gap) == 0
+def _readiness(r6_gap: pd.DataFrame, score: pd.DataFrame, rechain: pd.DataFrame, alignment: pd.DataFrame, reconciliation: pd.DataFrame, overlap: pd.DataFrame) -> dict[str, Any]:
+    exact_r6_daily = len(r6_gap) == 0 and bool(len(alignment)) and bool(alignment["weekly_r6_daily_path_ready"].fillna(False).all())
+    reconciliation_mismatch_rows = int(reconciliation["reconciliation_material_mismatch_flag"].fillna(False).sum()) if len(reconciliation) else 0
     return {
         "task_id": TASK_ID,
-        "status": "partial_daily_f_transition_rechain_ready_weekly_r6_daily_mark_gap_pending" if not exact_r6_daily else "ready_for_p1_daily_f_weekly_r6_transition_drawdown_attribution_diagnostic",
+        "status": (
+            "partial_daily_f_transition_rechain_ready_weekly_r6_daily_mark_gap_pending" if not exact_r6_daily
+            else "blocked_weekly_r6_interval_to_daily_execution_basis_reconciliation_required" if reconciliation_mismatch_rows or len(overlap)
+            else "ready_for_p1_daily_f_weekly_r6_transition_drawdown_attribution_diagnostic"
+        ),
         "daily_f_score_transition_attribution_ready": bool(len(score)),
         "daily_f_exact_rechain_input_ready": bool(len(rechain)) and bool(rechain["base_00631L_gross_daily_return"].notna().all()),
         "weekly_r6_daily_state_alignment_ready": True,
         "weekly_r6_exact_daily_stock_mark_ready": exact_r6_daily,
+        "weekly_r6_daily_path_ready_share": float(alignment["weekly_r6_daily_path_ready"].fillna(False).mean()) if len(alignment) else 0.0,
+        "weekly_r6_interval_to_daily_reconciliation_mismatch_rows": reconciliation_mismatch_rows,
+        "weekly_r6_overlapping_different_asset_interval_rows": int(len(overlap)),
         "weekly_r6_selected_stock_daily_mark_gap_rows": int(len(r6_gap)),
         "official_daily_f_selected_stock_unadjusted_ohlc_ready": True,
         "EP05_transaction_cost_hooks_ready": True,
         "selected_stock_adjusted_close_ready": False,
         "cash_bear_classifier_ready": False,
-        "ready_for_experiments": bool(len(score)) and bool(len(rechain)) and exact_r6_daily,
+        "ready_for_experiments": bool(len(score)) and bool(len(rechain)) and exact_r6_daily and reconciliation_mismatch_rows == 0 and len(overlap) == 0,
         "ready_for_radar_data_gap_fill": not exact_r6_daily,
         "ready_for_formal": False,
         "ready_for_strategy_replay": False,
@@ -451,7 +607,8 @@ def _summary(readiness: dict[str, Any], transition: pd.DataFrame) -> str:
         "",
         f"P1 F 非 hold transition rows：{int(transition['transition_rows'].sum()) if len(transition) else 0}。門檻只應控制 stock_to_stock；gate_on/gate_off 不應被錯誤當成 challenger-edge 門檻問題。",
         "",
-        "週頻 R6 的週區間路徑可對齊，但逐日 stock mark 尚待 selected-ticker-only 官方 unadjusted OHLC 補料；在此之前不能聲稱已完成精確的 daily F vs weekly R6 逐日回撤差異。",
+        "週頻 R6 selected-stock 的逐日官方 unadjusted OHLC 已吸收；但原週區間 contract 存在不同資產區間重疊與 material interval-to-daily return mismatch，因此不能把目前 reconstructed daily R6 path 當作原 R6 同口徑 verdict。",
+        f"Material reconciliation mismatch rows={readiness['weekly_r6_interval_to_daily_reconciliation_mismatch_rows']}；overlapping different-asset interval rows={readiness['weekly_r6_overlapping_different_asset_interval_rows']}。需由 Strategy Center/Core 明確定義週頻 state boundary，才可重跑同口徑 F vs R6 attribution。",
         "",
         f"ready_for_experiments={readiness['ready_for_experiments']}；selected_stock_adjusted_close_ready=false；cash_bear_classifier_ready=false；future_data_violation_count=0。",
         "",
@@ -471,18 +628,22 @@ def main() -> None:
     transition = _transition_summary(score)
     daily_f = _p1(daily[daily["state_machine_variant"].eq(F_VARIANT)])
     r6 = _load_r6()
-    alignment, r6_gap = _r6_daily_alignment(daily_f, r6)
+    r6_fill = _load_r6_daily_fill()
+    alignment, r6_gap = _r6_daily_alignment(daily_f, r6, r6_fill)
     rechain, episodes = _f_rechain_contract(daily_f)
     rechain = rechain.merge(
         score[["signal_date", "gate_on_flag", "gate_off_flag", "two_day_confirmation_flag"]],
         on="signal_date", how="left", validate="one_to_one",
     )
     drawdowns = _drawdown_events(rechain, alignment)
+    r6_drawdowns = _weekly_r6_drawdown_events(alignment)
     f2_map = _f2_evidence_map(transition)
-    coverage = _coverage(score, r6_gap, rechain)
-    blocked = _blocked(r6_gap)
+    coverage = _coverage(score, r6_gap, rechain, alignment)
     future = _future_audit()
-    readiness = _readiness(r6_gap, score, rechain)
+    reconciliation = _weekly_r6_interval_reconciliation(alignment)
+    overlap = _weekly_r6_interval_overlap_audit(r6)
+    blocked = _blocked(r6_gap, alignment, overlap)
+    readiness = _readiness(r6_gap, score, rechain, alignment, reconciliation, overlap)
 
     paths = [
         _write_csv(score, "p1_daily_f_score_transition_attribution.csv"),
@@ -490,10 +651,14 @@ def main() -> None:
         _write_csv(pair_equivalence, "p1_daily_f_variant_decision_equivalence.csv"),
         _write_csv(transition, "p1_daily_f_transition_cause_summary.csv"),
         _write_csv(alignment, "p1_weekly_r6_daily_state_alignment.csv"),
+        _write_csv(alignment[[col for col in ["signal_date", "next_trading_day_execution_date", "next_trading_day_after_execution_date", "weekly_r6_ticker", "weekly_r6_asset_type", "weekly_r6_branch", "weekly_r6_transition_type", "weekly_r6_transition_cost_rate_hook", "weekly_r6_entry_close", "weekly_r6_exit_close", "weekly_r6_daily_gross_return", "weekly_r6_net_daily_return_after_transition_cost", "weekly_r6_daily_path_ready", "weekly_r6_daily_price_source_quality", "selected_stock_adjusted_close_ready"] if col in alignment.columns]], "p1_weekly_r6_daily_state_hold_path.csv"),
         _write_csv(r6_gap, "p1_weekly_r6_daily_path_gap_ledger.csv"),
         _write_csv(rechain, "p1_daily_f_rechain_daily_leg_contract.csv"),
         _write_csv(episodes, "p1_daily_f_exact_episode_contribution_contract.csv"),
         _write_csv(drawdowns, "p1_daily_f_drawdown_top10.csv"),
+        _write_csv(r6_drawdowns, "p1_weekly_r6_drawdown_top10.csv"),
+        _write_csv(reconciliation, "p1_weekly_r6_interval_to_daily_reconciliation_audit.csv"),
+        _write_csv(overlap, "p1_weekly_r6_interval_state_boundary_overlap_audit.csv"),
         _write_csv(f2_map, "p1_daily_f_weekly_r6_f2_evidence_map.csv"),
         _write_csv(coverage, "p1_daily_f_weekly_r6_requested_vs_actual_coverage.csv"),
         _write_csv(blocked, "p1_daily_f_weekly_r6_blocked_proxy_audit.csv"),
@@ -513,6 +678,7 @@ def main() -> None:
             "daily_f_state": str(DAILY_DIR / "daily_incumbent_challenger_state_machine_contract_ohlc_absorbed.csv"),
             "weekly_r6": str(R6_DIR / "r6_guard_first_market_bias_override_unified_contract.csv"),
             "existing_r6_ohlc_probe": str(RADAR_R6_OHLC),
+            "radar_r6_daily_fill": str(RADAR_R6_DAILY_FILL),
         },
     }
     (OUTPUT_DIR / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
