@@ -1,0 +1,7 @@
+﻿field,status,evidence,policy
+business_model_truth,blocked,No accepted full business-description taxonomy or annual report parser.,Do not claim true project-based business model detection.
+company_description_latest_layer4_primary80,blocked_partial,No bounded company description package for the full latest primary80 in this task.,Keyword proxy unavailable rows remain monthly-shape only.
+annual_report_text,blocked,No scoped annual report text source materialized.,Can be a future Radar/Data bounded source task if Strategy Center wants it.
+mops_material_info_full_market,not_requested,Task explicitly avoids full-market scrape.,Do not expand source acquisition here.
+6806_2026_06_monthly_revenue,blocked,MOPS bounded source package reports 2026-06 unavailable at capture time.,Not needed for this proxy contract; single-month refresh only if Strategy requires current-month claim.
+hard_exclusion,not_allowed,Strategy Center requested review flag / soft penalty only.,No ticker is removed.

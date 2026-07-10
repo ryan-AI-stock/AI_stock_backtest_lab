@@ -1,0 +1,63 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-PROJECT-BASED-BUSINESS-MODEL-RISK-PROXY-CONTRACT-001",
+  "status": "complete_project_based_business_model_risk_proxy_contract",
+  "output_dir": "outputs\\vnext_project_based_business_model_risk_proxy_contract_20260710",
+  "artifacts": [
+    {
+      "path": "outputs\\vnext_project_based_business_model_risk_proxy_contract_20260710\\project_based_business_model_risk_proxy_contract.csv",
+      "sha256": "6c27f2985da76a3c705f74a7b331ddc8484304b80007670590ced5311ca1a0c4",
+      "bytes": 47090
+    },
+    {
+      "path": "outputs\\vnext_project_based_business_model_risk_proxy_contract_20260710\\project_risk_proxy_policy_map.csv",
+      "sha256": "8e62319c5ddc7d53baed64d1fa03ecb80bbb085aa507e352ce6c1eb94527b3eb",
+      "bytes": 1094
+    },
+    {
+      "path": "outputs\\vnext_project_based_business_model_risk_proxy_contract_20260710\\project_risk_keyword_source_audit.csv",
+      "sha256": "ea4f76ba33d9ec46a86e695db575d24861371b95c5855ed1af383146ce867cdc",
+      "bytes": 12516
+    },
+    {
+      "path": "outputs\\vnext_project_based_business_model_risk_proxy_contract_20260710\\project_risk_scoped_candidate_flags.csv",
+      "sha256": "41420fffa40bbbd55036495a33fc3dfbfdcf184a159baa5d41c9f2c4abd91c04",
+      "bytes": 2900
+    },
+    {
+      "path": "outputs\\vnext_project_based_business_model_risk_proxy_contract_20260710\\shinfox_6806_project_risk_sanity_check.csv",
+      "sha256": "bc3147258f4f92228009fba251b331825aa7dc396c0dcd7a4713b7ac8653d20b",
+      "bytes": 2410
+    },
+    {
+      "path": "outputs\\vnext_project_based_business_model_risk_proxy_contract_20260710\\blocked_proxy_audit.csv",
+      "sha256": "305fc6f5331f41dd538076c95d03007fa57f8709212ca962e7082da81dbf377f",
+      "bytes": 1001
+    },
+    {
+      "path": "outputs\\vnext_project_based_business_model_risk_proxy_contract_20260710\\requested_vs_actual_coverage.csv",
+      "sha256": "e85ef810f0e83d86b80f06568ba49192058b18e9496f0baddede6b78a1f0b095",
+      "bytes": 338
+    },
+    {
+      "path": "outputs\\vnext_project_based_business_model_risk_proxy_contract_20260710\\readiness_for_experiments.json",
+      "sha256": "b204fa66020a97d626925b182093b88e493690ffe201ac20d7b3918bfd1791f6",
+      "bytes": 855
+    },
+    {
+      "path": "outputs\\vnext_project_based_business_model_risk_proxy_contract_20260710\\final_summary_zh.md",
+      "sha256": "b6f14b7148fd978d1ef9ea6b9c2b8ce87afccef29e6a35fc99b4baeddc6e8e9c",
+      "bytes": 1501
+    }
+  ],
+  "flags": {
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "ready_for_strategy_replay": false,
+    "ready_for_formal": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false
+  }
+}

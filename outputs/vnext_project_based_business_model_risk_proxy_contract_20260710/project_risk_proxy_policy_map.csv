@@ -1,0 +1,8 @@
+﻿field,layer_destination,integration_action,policy_note
+project_revenue_business_model_proxy,Layer1/Layer4,soft_review_flag,keyword 或 keyword+營收形狀 proxy 才提高風險提醒；不得 hard exclude。
+contract_project_keyword_proxy,Layer1 report context,proxy_evidence,只表示 bounded source 出現工程/統包/EPC/案場/專案等字樣，不等於真實商業模式分類。
+revenue_lumpiness_business_risk_label,Layer1/Layer4,soft_penalty_context,高 lumpiness + 低長期穩定性才加重提醒；單獨高 lumpiness 不重罰。
+long_revenue_stability_context,Layer1 quality context,soft_penalty_or_context,長期營收穩定性低時降低候選 hygiene 信心，不作 alpha。
+project_risk_review_flag,daily report / review,display_or_soft_penalty,報告顯示與 downstream diagnostic 使用；不得直接剔除。
+project_risk_report_text,daily report,display_only,白話警示文字；不產生交易指令。
+proxy_confidence_level,all downstream,governance,區分 keyword_only、shape_only、keyword_plus_shape；避免把 proxy 包裝成 business truth。
