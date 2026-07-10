@@ -1,0 +1,7 @@
+﻿period,contract_rows,stock_selected_rows,stock_rows_with_anomaly_context,stock_rows_missing_anomaly_context,abnormal_revenue_review_stock_rows,fallback_or_etf_rows,future_data_violation_count
+P1,411,21,21,0,6,390,0
+P2,179,10,10,0,0,169,0
+2024-latest,128,7,7,0,0,121,0
+2026YTD,25,4,4,0,0,21,0
+full_integrated,591,31,31,0,6,560,0
+source_anomaly_contract,81,,,,13,,0

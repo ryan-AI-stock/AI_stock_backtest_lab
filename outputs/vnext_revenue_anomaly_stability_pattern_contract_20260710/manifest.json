@@ -5,8 +5,8 @@
   "artifacts": [
     {
       "path": "outputs\\vnext_revenue_anomaly_stability_pattern_contract_20260710\\revenue_anomaly_stability_pattern_contract.csv",
-      "sha256": "aa57e2fa18d5dd03f7d39a5b7d9d3f592463225ac36f21142c96d1ecbd2c12ef",
-      "bytes": 62454
+      "sha256": "288b6389d8ff4fc56c4f73e5cf0dbdbbea1860164a17495d2435bd56412991f1",
+      "bytes": 62558
     },
     {
       "path": "outputs\\vnext_revenue_anomaly_stability_pattern_contract_20260710\\revenue_anomaly_policy_map.csv",
@@ -15,13 +15,13 @@
     },
     {
       "path": "outputs\\vnext_revenue_anomaly_stability_pattern_contract_20260710\\revenue_anomaly_scoped_candidate_flags.csv",
-      "sha256": "c325341397be348c8d7301ed72baac623efa18d9bbf72e21bce5389244838cd8",
-      "bytes": 4600
+      "sha256": "402b3182d98e4f9882a2127ed38b8c0613ac51b461907ec8d1a0097bd4d5d771",
+      "bytes": 4704
     },
     {
       "path": "outputs\\vnext_revenue_anomaly_stability_pattern_contract_20260710\\shinfox_6806_revenue_anomaly_sanity_check.csv",
-      "sha256": "5b7e74912d9ff29fdb6fc9883c98b288a33bcde76bc151a2400d858fa700dbc0",
-      "bytes": 1845
+      "sha256": "307b1204296e4abef9557c668271b05073629364635312d499afa4b64c287bc1",
+      "bytes": 1897
     },
     {
       "path": "outputs\\vnext_revenue_anomaly_stability_pattern_contract_20260710\\blocked_proxy_audit.csv",

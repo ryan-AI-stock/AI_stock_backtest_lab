@@ -1,0 +1,58 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-REVENUE-ANOMALY-INTEGRATED-ROUTE-SUPPORT-R6-CONTRACT-001",
+  "status": "complete_revenue_anomaly_integrated_route_support_r6_contract",
+  "output_dir": "outputs\\vnext_revenue_anomaly_integrated_route_support_r6_contract_20260710",
+  "artifacts": [
+    {
+      "path": "outputs\\vnext_revenue_anomaly_integrated_route_support_r6_contract_20260710\\revenue_anomaly_integrated_route_support_r6_contract.csv",
+      "sha256": "9c4ea734b6043e8e0de064a377764ed8ce59a25395ebad0b1bf56ae3b56ba5c9",
+      "bytes": 654091
+    },
+    {
+      "path": "outputs\\vnext_revenue_anomaly_integrated_route_support_r6_contract_20260710\\revenue_anomaly_integration_policy_map.csv",
+      "sha256": "cb0fda07233f01794ad72adb4edade41b530daa31afd120888a62acf9a12c1f4",
+      "bytes": 977
+    },
+    {
+      "path": "outputs\\vnext_revenue_anomaly_integrated_route_support_r6_contract_20260710\\revenue_anomaly_daily_report_hook_sample.csv",
+      "sha256": "c29b50ebe7b9c35942e7d67733f032c9231c1fedafb86a537650fa31cc4c6fcb",
+      "bytes": 2250
+    },
+    {
+      "path": "outputs\\vnext_revenue_anomaly_integrated_route_support_r6_contract_20260710\\revenue_anomaly_integrated_requested_vs_actual_coverage.csv",
+      "sha256": "ba0e3a587abab10c3a3cbe0e2a5a7d162ae816335fa4d3dd17c452730039a0c4",
+      "bytes": 374
+    },
+    {
+      "path": "outputs\\vnext_revenue_anomaly_integrated_route_support_r6_contract_20260710\\revenue_anomaly_integrated_blocked_proxy_audit.csv",
+      "sha256": "0b64896815b01b9ccf2d93ea2b48659a221e0c25f468b138d6b9caade19babda",
+      "bytes": 701
+    },
+    {
+      "path": "outputs\\vnext_revenue_anomaly_integrated_route_support_r6_contract_20260710\\revenue_anomaly_integrated_future_data_audit.csv",
+      "sha256": "d1b2cd8523ec12137ed8b57aeb43578794d1cde75eca785900eaed96cb35c683",
+      "bytes": 357
+    },
+    {
+      "path": "outputs\\vnext_revenue_anomaly_integrated_route_support_r6_contract_20260710\\readiness_for_revenue_anomaly_integrated_experiments.json",
+      "sha256": "b5d6b05ed93cbc1e4e05c05f0995808592221ecd26d524bdae00e129aefe1f49",
+      "bytes": 1106
+    },
+    {
+      "path": "outputs\\vnext_revenue_anomaly_integrated_route_support_r6_contract_20260710\\final_summary_zh.md",
+      "sha256": "71fe9698be1323c15e3d5dbbc2b895e1c689fed7bed7387d73fb0beb47e4f972",
+      "bytes": 1059
+    }
+  ],
+  "flags": {
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "ready_for_strategy_replay": false,
+    "ready_for_formal": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false
+  }
+}

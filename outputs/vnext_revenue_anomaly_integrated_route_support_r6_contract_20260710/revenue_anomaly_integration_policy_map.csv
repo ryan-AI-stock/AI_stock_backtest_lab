@@ -1,0 +1,8 @@
+﻿field,layer_destination,integration_action,policy_note
+abnormal_revenue_review_flag,route_support/R6,soft_penalty_only,不得 hard exclude，不改 selected result；交 Experiments 評估扣分後是否改善風險。
+revenue_anomaly_penalty_score,route_support score context,confidence_downgrade,0-1 soft penalty candidate；不當 standalone alpha。
+revenue_hygiene_confidence_level,daily report / diagnostics,display_and_grouping,日報與 diagnostic 分組使用。
+report_revenue_anomaly_warning,daily report hook,display_only,report-only warning，不產生交易指令。
+business_model_keyword_proxy,deprecated,not_used,不得使用工程/EPC/產業/商業模式 keyword 作風險依據。
+selected_stock_adjusted_close_ready,readiness,preserve_status,沿用 R6 contract 狀態；不包裝成 formal-ready。
+cash_bear_classifier_ready,readiness,preserve_blocker,cash/bear classifier blocked 不阻擋本 diagnostic contract，但不可產生 cash rule。

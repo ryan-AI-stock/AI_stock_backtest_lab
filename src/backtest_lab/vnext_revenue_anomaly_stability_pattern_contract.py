@@ -385,6 +385,10 @@ def anomaly_report_text(row: pd.Series) -> str:
         messages.append("成長連續性不足")
     if pd.to_numeric(row.get("revenue_lumpiness_score"), errors="coerce") >= 0.28:
         messages.append("營收集中度偏高")
+    if pd.to_numeric(row.get("revenue_concentration_ratio_top3_12m"), errors="coerce") >= 0.55:
+        messages.append("最近 12 個月營收過度集中在少數月份")
+    if pd.to_numeric(row.get("revenue_reversion_risk_score"), errors="coerce") >= 0.55:
+        messages.append("營收暴增後回落風險偏高")
     if pd.to_numeric(row.get("ttm_vs_recent_growth_gap"), errors="coerce") >= 0.8:
         messages.append("短期成長與 TTM/長期趨勢落差大")
     if bool(row.get("low_base_distortion_flag", False)):

@@ -1,0 +1,6 @@
+﻿field,status,evidence,policy
+selected_stock_revenue_anomaly_context,ready,missing_selected_stock_rows=0,Missing rows cannot be silently filled.
+selected_stock_adjusted_close_ready,blocked_or_partial,preserved from R6 unified contract,Not formal-ready if adjusted close remains blocked/diagnostic-only.
+cash_bear_classifier_ready,blocked,preserved bear_cash_guard_source_quality,Do not fabricate cash rule.
+business_model_keyword_proxy,deprecated_not_used,Strategy Center corrected direction to pure revenue anomaly.,Do not use industry/business keywords as risk basis.
+hard_exclusion,not_allowed,Revenue anomaly is soft penalty/report hook only.,No row removed and selected result unchanged.
