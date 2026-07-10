@@ -25,6 +25,9 @@ CACHE_00631L = REPO_ROOT / "backtest_cache" / "00631L_TW.csv"
 
 TASK_ID = "TASK-BACKTEST-CORE-VNEXT-DAILY-INCUMBENT-CHALLENGER-STATE-MACHINE-CONTRACT-001"
 PRIMARY_TIMING = "signal_day_close_next_trading_day_execution"
+# Radar/Data official TWSE absence evidence confirms 2016-07-08 has no 00631L
+# or MI_INDEX row. It is not eligible as a daily execution/mark calendar date.
+MARKET_CALENDAR_EXCLUDED_DATES = {"2016-07-08"}
 PERIODS = {
     "P1": ("2015-01-02", "2022-12-29"),
     "P2": ("2023-01-02", "2026-06-30"),
@@ -108,6 +111,7 @@ def _load_market_daily() -> pd.DataFrame:
     market["signal_date"] = pd.to_datetime(market["snapshot_date"], errors="coerce")
     market = market.dropna(subset=["signal_date"]).sort_values("signal_date")
     market = market[(market["signal_date"] >= pd.Timestamp(PERIODS["P1"][0])) & (market["signal_date"] <= pd.Timestamp("2026-06-29"))].copy()
+    market = market[~market["signal_date"].dt.strftime("%Y-%m-%d").isin(MARKET_CALENDAR_EXCLUDED_DATES)].copy()
     market["next_trading_day_execution_date"] = market["signal_date"].shift(-1)
     market = market.dropna(subset=["next_trading_day_execution_date"]).copy()
     market["c2_pass_daily"] = (

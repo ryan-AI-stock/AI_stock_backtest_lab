@@ -12,9 +12,11 @@ import pandas as pd
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CORE_DIR = REPO_ROOT / "outputs" / "vnext_daily_incumbent_challenger_state_machine_contract_20260710"
 RADAR_DIR = Path("C:/Users/zergv/Documents/Codex/2026-05-23/ai-stock-rotation-radar-https-docs/outputs/radar_vnext_daily_incumbent_challenger_selected_stock_daily_ohlc_gap_fill_20260710")
+RADAR_BENCHMARK_DIR = Path("C:/Users/zergv/Documents/Codex/2026-05-23/ai-stock-rotation-radar-https-docs/outputs/radar_vnext_daily_incumbent_challenger_00631l_benchmark_price_gap_fill_20260710")
 OUTPUT_DIR = REPO_ROOT / "outputs" / "vnext_daily_incumbent_challenger_state_machine_contract_ohlc_absorbed_20260710"
 P1_BENCHMARK = REPO_ROOT / "outputs" / "vnext_p1_state_hold_base_exception_path_contract_20260708" / "p1_state_hold_benchmark_path_00631L.csv"
 CACHE_00631L = REPO_ROOT / "backtest_cache" / "00631L_TW.csv"
+FULL_HISTORY_00631L = REPO_ROOT / "backtest_cache" / "ad_hoc_00631l_full_history" / "00631L_TW.csv"
 
 TASK_ID = "TASK-BACKTEST-CORE-VNEXT-DAILY-INCUMBENT-CHALLENGER-OHLC-ABSORPTION-001"
 FLAGS = {
@@ -79,12 +81,28 @@ def _benchmark_price_map() -> pd.DataFrame:
     p1 = _date(p1.rename(columns={"trade_date": "date", "adjusted_close": "price"}), "date")
     p1 = p1[["date", "price", "source_quality"]].copy()
     p1["benchmark_source_quality"] = "p1_state_hold_adjusted_close_reference"
-    cache = pd.read_csv(CACHE_00631L, low_memory=False)
-    cache = _date(cache.rename(columns={"adj_close": "price"}), "date")
+    cache_raw = pd.read_csv(CACHE_00631L, low_memory=False)
+    cache = _date(cache_raw.rename(columns={"adj_close": "price"}), "date")
     cache = cache[["date", "price"]].copy()
     cache["source_quality"] = "local_00631L_adjusted_close_cache"
     cache["benchmark_source_quality"] = "p2_local_adjusted_close_cache_diagnostic"
-    combined = pd.concat([p1, cache], ignore_index=True)
+    history = pd.read_csv(FULL_HISTORY_00631L, low_memory=False)
+    history = _date(history.rename(columns={"adj_close": "price"}), "date")
+    history = history[["date", "price"]].copy()
+    history["source_quality"] = "local_00631L_full_history_adjusted_close_cache"
+    history["benchmark_source_quality"] = "local_full_history_adjusted_close_cache"
+    # The current P2 cache proves close == adj_close on all 816 overlapping
+    # rows, allowing bounded official close rows to extend this diagnostic path.
+    close = pd.to_numeric(cache_raw["close"], errors="coerce")
+    adj = pd.to_numeric(cache_raw["adj_close"], errors="coerce")
+    if not (close.sub(adj).abs().fillna(0) <= 1e-8).all():
+        raise ValueError("00631L P2 cache close/adj_close equivalence check failed")
+    radar = pd.read_csv(RADAR_BENCHMARK_DIR / "daily_incumbent_challenger_00631L_benchmark_price_filled_rows.csv", low_memory=False)
+    radar = _date(radar.rename(columns={"price_date": "date", "close": "price"}), "date")
+    radar = radar[["date", "price"]].copy()
+    radar["source_quality"] = "official_unadjusted_close_selected_etf_month"
+    radar["benchmark_source_quality"] = "official_unadjusted_close_equivalent_to_p2_cache_adj_close_over_full_overlap_proxy"
+    combined = pd.concat([p1, history, cache, radar], ignore_index=True)
     combined["price"] = pd.to_numeric(combined["price"], errors="coerce")
     return combined.dropna(subset=["date", "price"]).sort_values("date").drop_duplicates("date", keep="last")
 
@@ -136,6 +154,19 @@ def _materialize(state: pd.DataFrame, stock: pd.DataFrame, etf: pd.DataFrame) ->
     materialized["daily_path_ready"] = materialized["gross_daily_return"].notna()
     materialized["terminal_path_row_excluded_from_metric"] = materialized["next_trading_day_after_execution_date"].isna()
     materialized["daily_path_ready_for_metric"] = materialized["daily_path_ready"] | materialized["terminal_path_row_excluded_from_metric"]
+    execution_end = pd.to_datetime(materialized["next_trading_day_after_execution_date"], errors="coerce")
+    signal = pd.to_datetime(materialized["signal_date"], errors="coerce")
+    period_windows = {
+        "P1": ("2015-01-02", "2022-12-29"),
+        "P2": ("2023-01-02", "2026-06-30"),
+        "2024_latest": ("2024-01-02", "2026-06-30"),
+        "2026YTD": ("2026-01-02", "2026-06-30"),
+        "full_integrated": ("2015-01-02", "2026-06-30"),
+    }
+    for period, (start, end) in period_windows.items():
+        materialized[f"metric_eligible_{period}"] = (
+            (signal >= pd.Timestamp(start)) & (execution_end <= pd.Timestamp(end)) & materialized["daily_path_ready"]
+        )
     materialized["selected_stock_adjusted_close_ready"] = materialized["selected_asset_type_after"].eq("etf")
     materialized["execution_basis"] = "signal_day_close__next_trading_day_close_entry__following_trading_day_close_mark"
     materialized["diagnostic_only"] = True
@@ -156,17 +187,20 @@ def _coverage(materialized: pd.DataFrame) -> pd.DataFrame:
     dates = pd.to_datetime(materialized["signal_date"])
     for period, (start, end) in periods.items():
         sub = materialized[(dates >= pd.Timestamp(start)) & (dates <= pd.Timestamp(end))]
+        eligible_col = "metric_eligible_full_integrated" if period == "full_integrated" else f"metric_eligible_{period}"
+        metric = sub[sub[eligible_col]].copy()
         stock = sub[sub["selected_asset_type_after"].eq("stock")]
         rows.append({
             "period": period,
             "requested_start": start,
             "requested_end": end,
-            "actual_start": sub["signal_date"].min() if len(sub) else "",
-            "actual_end": sub["signal_date"].max() if len(sub) else "",
+            "actual_start": metric["signal_date"].min() if len(metric) else "",
+            "actual_end": metric["signal_date"].max() if len(metric) else "",
             "daily_state_rows": int(len(sub)),
-            "daily_path_ready_rows": int(sub["daily_path_ready_for_metric"].sum()),
-            "daily_path_ready_share": float(sub["daily_path_ready_for_metric"].mean()) if len(sub) else 0.0,
+            "daily_path_ready_rows": int(len(metric)),
+            "daily_path_ready_share": float(len(metric) / len(sub)) if len(sub) else 0.0,
             "terminal_path_rows_excluded_from_metric": int(sub["terminal_path_row_excluded_from_metric"].sum()),
+            "period_boundary_rows_excluded_from_metric": int((~sub[eligible_col] & ~sub["terminal_path_row_excluded_from_metric"]).sum()),
             "stock_rows": int(len(stock)),
             "stock_official_unadjusted_ready_rows": int(stock["official_unadjusted_daily_ohlc_ready"].fillna(False).astype(bool).sum()),
             "stock_official_unadjusted_ready_share": float(stock["official_unadjusted_daily_ohlc_ready"].fillna(False).astype(bool).mean()) if len(stock) else 1.0,
@@ -183,6 +217,7 @@ def _blocked(materialized: pd.DataFrame, fill: pd.DataFrame) -> pd.DataFrame:
         rows.append({"item": "daily_execution_price", "status": "blocked", "state_machine_variant": row.state_machine_variant, "signal_date": row.signal_date, "ticker": row.selected_ticker_after, "detail": "entry or following-day close missing after absorption", "next_owner": "Radar/Data bounded correction"})
     rows.extend([
         {"item": "selected_stock_adjusted_close", "status": "blocked", "state_machine_variant": "all", "signal_date": "", "ticker": "", "detail": "official unadjusted OHLC only; no adjusted close fabricated", "next_owner": "Strategy Center/Radar Data if trusted adjusted route authorized"},
+        {"item": "00631L_p2_official_close_equivalence", "status": "diagnostic_proxy", "state_machine_variant": "all", "signal_date": "", "ticker": "00631L", "detail": "20 official unadjusted close rows extend P2 only after all 816 local close-vs-adj_close overlap rows matched exactly; not an adjusted-close source", "next_owner": "Strategy Center/Radar Data if formal adjusted source is required"},
         {"item": "cash_bear_classifier", "status": "blocked", "state_machine_variant": "all", "signal_date": "", "ticker": "", "detail": "no cash rule created", "next_owner": "Strategy Center/Core Data later"},
         {"item": "candidate_context_frequency", "status": "weekly_asof_proxy", "state_machine_variant": "all", "signal_date": "", "ticker": "", "detail": "Layer0-4 candidate fields use latest weekly snapshot; daily market C2/R6 is separately recomputed", "next_owner": "Core/Data if daily Layer0-4 materialization later authorized"},
     ])
@@ -228,6 +263,7 @@ def _readiness(materialized: pd.DataFrame, fill: pd.DataFrame, coverage: pd.Data
         "official_selected_stock_unadjusted_ohlc_ready_share": float(stock["official_unadjusted_daily_ohlc_ready"].fillna(False).astype(bool).mean()) if len(stock) else 1.0,
         "selected_stock_adjusted_close_ready": False,
         "benchmark_00631L_daily_path_ready": bool(materialized[materialized["selected_asset_type_after"].eq("etf")]["daily_path_ready_for_metric"].all()),
+        "benchmark_official_unadjusted_equivalence_proxy_used": True,
         "EP05_transaction_cost_hooks_ready": True,
         "ready_for_daily_incumbent_challenger_state_machine_diagnostic": ready,
         "ready_for_experiments": ready,
@@ -253,7 +289,9 @@ def _summary(path: Path, readiness: dict[str, Any]) -> None:
         "",
         f"- Radar/Data 的 {readiness['radar_filled_rows_absorbed']} 條 selected-ticker official unadjusted daily OHLC 已完成 key-level absorption。",
         f"- daily path ready share={readiness['daily_path_ready_share']:.4f}；stock official unadjusted path ready share={readiness['official_selected_stock_unadjusted_ohlc_ready_share']:.4f}。",
-        "- 00631L state-hold daily path 以 P1 adjusted-close reference + P2 local adjusted-close cache join；transition cost 使用既有 EP05 stock/ETF separated hooks。",
+        "- 2016-07-08 依官方 TWSE absence evidence 排除為非可執行日；P1/P2 期末跨界 mark 不併入各期 metric。",
+        "- 00631L state-hold daily path 使用 P1 adjusted-close reference、full-history cache 與 P2 cache；P2 的 20 個官方 raw close 僅因 816 筆 close/adj_close overlap 全數同值而作 diagnostic equivalence proxy，並非 adjusted-close source。",
+        "- transition cost 使用既有 EP05 stock/ETF separated hooks。",
         "- adjusted close 對 selected stock 仍 blocked；weekly candidate context 仍是 as-of weekly proxy。此為 bounded unadjusted diagnostic，不是 formal/replay/trade decision。",
         "",
         next_step,
@@ -304,7 +342,7 @@ def main() -> None:
     manifest = {
         "task_id": TASK_ID,
         "output_dir": str(OUTPUT_DIR),
-        "inputs": {"core_daily_state": str(CORE_DIR), "radar_daily_stock_ohlc": str(RADAR_DIR), "p1_00631L_path": str(P1_BENCHMARK), "p2_00631L_cache": str(CACHE_00631L)},
+        "inputs": {"core_daily_state": str(CORE_DIR), "radar_daily_stock_ohlc": str(RADAR_DIR), "radar_00631L_fill": str(RADAR_BENCHMARK_DIR), "p1_00631L_path": str(P1_BENCHMARK), "p2_00631L_cache": str(CACHE_00631L), "full_history_00631L_cache": str(FULL_HISTORY_00631L)},
         "artifacts": [{"path": str(path), "sha256": _sha256(path), "bytes": path.stat().st_size} for key, path in paths.items() if key != "manifest"],
         "readiness": readiness,
         "created_at": datetime.now(timezone.utc).isoformat(),
