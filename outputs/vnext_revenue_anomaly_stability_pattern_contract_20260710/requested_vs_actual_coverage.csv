@@ -1,0 +1,2 @@
+﻿requested_scope,actual_scope,contract_rows,latest_primary80_rows,sanity_case_rows,monthly_revenue_ticker_count,abnormal_revenue_review_flag_count,future_data_violation_count
+latest Layer4 primary80 plus 6806 sanity case,latest Layer4 primary80 plus 6806 sanity case using PIT monthly revenue rows,81,80,1,81,13,0

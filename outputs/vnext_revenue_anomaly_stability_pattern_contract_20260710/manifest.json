@@ -1,0 +1,63 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-REVENUE-ANOMALY-STABILITY-PATTERN-CONTRACT-001",
+  "status": "complete_revenue_anomaly_stability_pattern_contract",
+  "output_dir": "outputs\\vnext_revenue_anomaly_stability_pattern_contract_20260710",
+  "artifacts": [
+    {
+      "path": "outputs\\vnext_revenue_anomaly_stability_pattern_contract_20260710\\revenue_anomaly_stability_pattern_contract.csv",
+      "sha256": "aa57e2fa18d5dd03f7d39a5b7d9d3f592463225ac36f21142c96d1ecbd2c12ef",
+      "bytes": 62454
+    },
+    {
+      "path": "outputs\\vnext_revenue_anomaly_stability_pattern_contract_20260710\\revenue_anomaly_policy_map.csv",
+      "sha256": "fb6851544551faa3ae0dbcffb34a92b099ab91385bd7e1e62494bdeca958a8a6",
+      "bytes": 1408
+    },
+    {
+      "path": "outputs\\vnext_revenue_anomaly_stability_pattern_contract_20260710\\revenue_anomaly_scoped_candidate_flags.csv",
+      "sha256": "c325341397be348c8d7301ed72baac623efa18d9bbf72e21bce5389244838cd8",
+      "bytes": 4600
+    },
+    {
+      "path": "outputs\\vnext_revenue_anomaly_stability_pattern_contract_20260710\\shinfox_6806_revenue_anomaly_sanity_check.csv",
+      "sha256": "5b7e74912d9ff29fdb6fc9883c98b288a33bcde76bc151a2400d858fa700dbc0",
+      "bytes": 1845
+    },
+    {
+      "path": "outputs\\vnext_revenue_anomaly_stability_pattern_contract_20260710\\blocked_proxy_audit.csv",
+      "sha256": "b87cf7b4531d5e65d3a87353d4caa82f7cbb7a6cd0e9df7a67cea1d8a67c76fb",
+      "bytes": 732
+    },
+    {
+      "path": "outputs\\vnext_revenue_anomaly_stability_pattern_contract_20260710\\requested_vs_actual_coverage.csv",
+      "sha256": "543c149b27168b142901cd17b4480593c16ccab94572a0d7cb556d75efe74124",
+      "bytes": 318
+    },
+    {
+      "path": "outputs\\vnext_revenue_anomaly_stability_pattern_contract_20260710\\future_data_audit.csv",
+      "sha256": "a94d90c7f49f47d95e8f38190b47a1fb9338682588783cdfe60b294902aa6746",
+      "bytes": 262
+    },
+    {
+      "path": "outputs\\vnext_revenue_anomaly_stability_pattern_contract_20260710\\readiness_for_experiments.json",
+      "sha256": "a9b700efca88f7f7fd8a3601b85b53cff2b9a16351f15d9d242f5de004814169",
+      "bytes": 809
+    },
+    {
+      "path": "outputs\\vnext_revenue_anomaly_stability_pattern_contract_20260710\\final_summary_zh.md",
+      "sha256": "a525e41fad97665bb85a1bdcb666d332ee057b3f2380f57776ddba700ae0fea9",
+      "bytes": 1490
+    }
+  ],
+  "flags": {
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "ready_for_strategy_replay": false,
+    "ready_for_formal": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false
+  }
+}

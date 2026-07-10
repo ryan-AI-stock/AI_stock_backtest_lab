@@ -1,0 +1,6 @@
+﻿field,status,evidence,policy
+business_model_keyword_proxy,deprecated_not_used,Strategy Center corrected task direction.,工程/EPC/專案/案場/離岸風電/建置型收入不可作風險主依據。
+industry_classification,not_used,This contract is pure revenue time-series anomaly pattern.,Do not use industry as risk basis.
+formal_business_model_detection,blocked_not_required,No accepted business model detector.,Do not claim business-model truth.
+6806_2026_06_monthly_revenue,blocked,MOPS bounded source package reports 2026-06 unavailable at capture time.,Not needed unless Strategy requires current-month claim.
+hard_exclusion,not_allowed,Strategy Center requested review / soft penalty only.,No ticker is removed.

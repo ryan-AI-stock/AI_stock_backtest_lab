@@ -1,0 +1,11 @@
+﻿field,layer_destination,integration_action,policy_note
+revenue_spike_anomaly_score,Layer1 candidate hygiene / Layer4 confidence,soft_review,近期 1M/3M/6M 營收暴增相對自身歷史分布；不作 hard exclude。
+revenue_lumpiness_score,Layer1/Layer4 risk context,soft_penalty_context,營收集中在少數月份/季度時降低信心。
+revenue_concentration_ratio_top1_12m,Layer1/Layer4 risk context,soft_penalty_context,最近 12 個月單月占比過高時列 review。
+revenue_concentration_ratio_top3_12m,Layer1/Layer4 risk context,soft_penalty_context,最近 12 個月前三大月份占比過高時列 review。
+revenue_growth_persistence_score,Layer1 quality context,soft_confidence,成長是否連續維持；低 persistence 只下修信心。
+revenue_reversion_risk_score,Layer4 confidence downgrade,soft_penalty_context,歷史 spike 後快速回落或當前 spike persistence 不足時列風險。
+low_base_distortion_flag,Layer1 hygiene,review_flag,YoY 高可能只是去年同期低基期，不能當成硬篩。
+ttm_vs_recent_growth_gap,Layer1 hygiene,review_flag,短期很強但 TTM/3Y/5Y 未同步改善時列 review。
+abnormal_revenue_review_flag,report / Layer4 confidence,review_soft_penalty_only,綜合異常營收型態，僅作 review / soft penalty。
+industry/business keyword,deprecated,not_used,不再用工程/EPC/專案/產業或商業模式作風險依據。
