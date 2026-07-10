@@ -24,6 +24,7 @@ PRICE_SOURCES = [
     RADAR_ROOT / "radar_vnext_regime_switch_route_selected_stock_ohlc_source_package_20260708" / "regime_switch_selected_ohlc_rows.csv",
     RADAR_ROOT / "radar_vnext_p2_2023_selected_stock_ohlc_source_gap_fill_20260708" / "p2_2023_selected_stock_unadjusted_ohlc_rows.csv",
     RADAR_ROOT / "radar_vnext_f2_gate_persistence_hysteresis_selected_stock_daily_ohlc_gap_fill_20260710" / "f2_gate_persistence_selected_stock_daily_ohlc_filled_rows.csv",
+    RADAR_ROOT / "radar_vnext_f2_gate_persistence_00631l_benchmark_date_gap_fill_20260710" / "f2_gate_persistence_00631L_benchmark_price_filled_rows.csv",
 ]
 
 TASK_ID = "TASK-BACKTEST-CORE-VNEXT-F2-GATE-PERSISTENCE-HYSTERESIS-INCUMBENT-PROTECTION-CONTRACT-001"
@@ -208,13 +209,17 @@ def _attach_prices(state: pd.DataFrame, prices: pd.DataFrame, raw_f: pd.DataFram
     out = state.copy()
     benchmark = _benchmark_price_map().copy()
     benchmark["date"] = pd.to_datetime(benchmark["date"], errors="coerce")
+    etf_prices = prices[prices["ticker"].eq("00631L")][["date", "close", "source_quality"]].rename(
+        columns={"close": "price", "source_quality": "benchmark_source_quality"}
+    )
+    benchmark = pd.concat([benchmark[["date", "price", "benchmark_source_quality"]], etf_prices], ignore_index=True)
     f_base = raw_f[raw_f["selected_asset_type_after"].eq("etf")].copy()
     f_entry = f_base[["next_trading_day_execution_date", "entry_close"]].rename(columns={"entry_close": "price"})
     f_entry["date"] = f_entry["next_trading_day_execution_date"]
     f_exit = f_base[["next_trading_day_after_execution_date", "exit_close"]].rename(columns={"next_trading_day_after_execution_date": "date", "exit_close": "price"})
     f_base_prices = pd.concat([f_entry[["date", "price"]], f_exit[["date", "price"]]], ignore_index=True).dropna().drop_duplicates("date", keep="last")
     f_base_prices["benchmark_source_quality"] = "absorbed_daily_F_00631L_base_path_fallback_diagnostic"
-    benchmark = pd.concat([benchmark[["date", "price", "benchmark_source_quality"]], f_base_prices], ignore_index=True).drop_duplicates("date", keep="first")
+    benchmark = pd.concat([benchmark, f_base_prices], ignore_index=True).drop_duplicates("date", keep="first")
     entry_b = benchmark[["date", "price", "benchmark_source_quality"]].rename(columns={"date": "next_trading_day_execution_date", "price": "base_entry_close", "benchmark_source_quality": "base_entry_source_quality"})
     exit_b = benchmark[["date", "price", "benchmark_source_quality"]].rename(columns={"date": "next_trading_day_after_execution_date", "price": "base_exit_close", "benchmark_source_quality": "base_exit_source_quality"})
     out = out.merge(entry_b, on="next_trading_day_execution_date", how="left").merge(exit_b, on="next_trading_day_after_execution_date", how="left")
@@ -338,7 +343,7 @@ def main() -> None:
         "task_id": TASK_ID, "status": "F2_gate_persistence_hysteresis_ready_unadjusted_diagnostic" if rechain_ready else "F2_gate_persistence_hysteresis_partial_selected_stock_daily_ohlc_gap",
         "variant_count": len(VARIANTS), "P1_daily_path_ready_share_min": float(p1), "P2_daily_path_ready_share_min": float(p2), "stock_price_gap_rows": int(len(stock_gaps)), "benchmark_00631L_gap_rows": int(len(benchmark_gaps)),
         "hard_deterioration_action_source": "existing_weekly_PIT_composite_two_or_more_deterioration_contexts", "route_score_drop_action_threshold": "blocked_not_invented", "layer4_exit_action": "context_only_not_standalone_exit",
-        "exact_episode_rechain_ready": rechain_ready, "EP05_transaction_cost_hooks_ready": True, "selected_stock_adjusted_close_ready": False, "cash_bear_classifier_ready": False,
+        "exact_episode_rechain_ready": rechain_ready, "exact_episode_rechain_period": "P1_primary" if rechain_ready else "blocked_until_price_path_ready", "EP05_transaction_cost_hooks_ready": True, "selected_stock_adjusted_close_ready": False, "cash_bear_classifier_ready": False,
         "ready_for_experiments": rechain_ready, "ready_for_formal": False, "ready_for_strategy_replay": False, "future_data_violation_count": 0, **FLAGS,
     }
     blocked = pd.DataFrame([
@@ -360,7 +365,21 @@ def main() -> None:
     readiness_path = OUTPUT_DIR / "readiness_for_f2_gate_persistence_hysteresis_diagnostic.json"
     readiness_path.write_text(json.dumps(readiness, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     summary_path = OUTPUT_DIR / "final_summary_zh.md"
-    summary_path.write_text("# F2 Gate Persistence / Hysteresis Contract\n\nF2 tests only five bounded gate persistence variants. It does not revive score-edge grid tuning. Hard deterioration is the existing PIT weekly composite; revenue anomaly is report-only and RS20 top3 reference-only.\n\nready_for_experiments=" + str(readiness["ready_for_experiments"]) + "; selected_stock_adjusted_close_ready=false; cash_bear_classifier_ready=false; future_data_violation_count=0.\n", encoding="utf-8")
+    summary_path.write_text(
+        "# F2 Gate Persistence / Hysteresis Contract\n\n"
+        "本 contract 只測五個 bounded gate persistence / hysteresis 變體，沒有重新開啟 score-edge grid。\n\n"
+        f"- P1 daily path coverage: {readiness['P1_daily_path_ready_share_min']:.1%}; P2: {readiness['P2_daily_path_ready_share_min']:.1%}\n"
+        f"- selected-stock official unadjusted OHLC gaps: {readiness['stock_price_gap_rows']}\n"
+        f"- 00631L benchmark gaps: {readiness['benchmark_00631L_gap_rows']}\n"
+        f"- exact remove-best 1/3/5 rechain: {readiness['exact_episode_rechain_ready']}（P1 primary）\n"
+        "- execution: signal-day close decision -> next-trading-day close; daily mark-to-market; EP05 stock/ETF transition cost hooks\n"
+        "- hard deterioration: existing PIT weekly composite only；route score drop threshold 未自行新增\n"
+        "- revenue anomaly: report-only；RS20 top3: reference-only；cash/bear classifier: blocked\n\n"
+        f"ready_for_experiments={readiness['ready_for_experiments']}; selected_stock_adjusted_close_ready=false; "
+        "cash_bear_classifier_ready=false; future_data_violation_count=0.\n"
+        "本輸出為 diagnostic-only，不是 formal、replay、daily report 或 live trade rule。\n",
+        encoding="utf-8",
+    )
     manifest = {"task_id": TASK_ID, "generated_at_utc": datetime.now(timezone.utc).isoformat(), "output_dir": str(OUTPUT_DIR), "files": [{"path": p.name, "sha256": _sha256(p)} for p in [*output_paths, readiness_path, summary_path]], "readiness": readiness, "source_inputs": {"raw_daily_F": str(RAW_F), "price_sources": [str(x) for x in PRICE_SOURCES]}}
     (OUTPUT_DIR / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(readiness, ensure_ascii=False, indent=2))
