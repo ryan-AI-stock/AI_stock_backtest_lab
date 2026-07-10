@@ -1,0 +1,10 @@
+﻿item,status,evidence,note
+drive_folder_id_path_config,configured_not_published,1O6Se-HfI7ZDTQ-LWeAO6f8vtvoLcCzIj,Folder id recorded only; no Drive write in this task.
+drive_remote_filename,configured_not_published,AI台股新模型每日收盤報告.pdf,Filename policy draft only.
+drive_overwrite_semantics,design_required,update_by_name_or_create_once,Need implementation/verification before production.
+schedule_rules_integration_point,blocked_not_integrated,AI_stock_schedule_rules reuse point not wired,Strategy Center authorization required.
+exact_latest_daily_data_update_source,blocked_for_production,2026-06-26,"This sample uses latest available unified contract row, not a live EOD refresh pipeline."
+selected_stock_adjusted_close,blocked,adjusted_close_ready=false,Do not promote to formal-ready.
+cash_bear_classifier,blocked,no accepted classifier,cash/bear path must remain blocked/proxy.
+pdf_overwrite_execution,not_executed,local sample only,No Google Drive upload/update.
+report_wording_review,draft_ready_needs_review,report-only warning included,Strategy Center should approve public wording.

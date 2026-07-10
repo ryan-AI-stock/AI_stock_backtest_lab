@@ -1,0 +1,8 @@
+﻿item,status,evidence,note
+selected_stock_adjusted_close,blocked,selected_stock_adjusted_close_ready=false,Official unadjusted diagnostic path exists; adjusted close is not fabricated.
+cash_bear_classifier,blocked,cash/bear classifier not accepted,cash_blocked must not be converted into a live cash rule.
+drive_publish,blocked_not_requested,1O6Se-HfI7ZDTQ-LWeAO6f8vtvoLcCzIj,No Drive write in report-only draft task.
+schedule_integration,blocked_not_authorized,not integrated,No production scheduler change.
+formal_model,blocked_by_policy,formal_model_changed=false,"Diagnostic/report-only candidate, not formal."
+trade_decision,blocked_by_policy,trade_decision_changed=false,No live trade instruction.
+latest_eod_refresh,sample_only,2026-06-26,PDF sample uses latest row in unified contract.

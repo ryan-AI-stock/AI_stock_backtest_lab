@@ -1,0 +1,58 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-R6-DAILY-REPORT-ONLY-CONTRACT-PDF-PIPELINE-DRAFT-001",
+  "status": "complete_report_only_draft",
+  "output_dir": "outputs\\vnext_r6_daily_report_only_contract_20260710",
+  "inputs": {
+    "core_unified_contract_dir": "outputs\\vnext_r6_guard_first_market_bias_override_unified_contract_20260709",
+    "experiments_diagnostic_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-07-06\\backtest-lab-experiments-diagnostic-validation-attribution\\outputs\\vnext_r6_guard_first_market_bias_override_unified_diagnostic_20260710"
+  },
+  "artifacts": [
+    {
+      "path": "outputs\\vnext_r6_daily_report_only_contract_20260710\\r6_daily_report_only_contract_schema.json",
+      "sha256": "effaf6e7bc4f8bd273b2fb211520fcc46e83fc2c9c3957a84609b4ac069b9bf7",
+      "bytes": 4512
+    },
+    {
+      "path": "outputs\\vnext_r6_daily_report_only_contract_20260710\\r6_daily_report_latest_row.csv",
+      "sha256": "2d860cf7132292492827e4503145386adc25b817426a3f3b446661f252e832a7",
+      "bytes": 1400
+    },
+    {
+      "path": "outputs\\vnext_r6_daily_report_only_contract_20260710\\r6_daily_report_publish_readiness_audit.csv",
+      "sha256": "a99dfdae8a77cf40e2fdab3645c684d72ccef5a94515a116c5d77bed3c65b0f5",
+      "bytes": 1124
+    },
+    {
+      "path": "outputs\\vnext_r6_daily_report_only_contract_20260710\\r6_daily_report_blocked_proxy_audit.csv",
+      "sha256": "75f4ec5197a7c5fd89876eb29cef179cf42da27c71ec18ce111cfed3477b39f5",
+      "bytes": 804
+    },
+    {
+      "path": "outputs\\vnext_r6_daily_report_only_contract_20260710\\r6_daily_report_sample.pdf",
+      "sha256": "d203f0c514b41616d04d4e48901e1d0332468a864f533e04539bbd48e0cca5aa",
+      "bytes": 4331
+    },
+    {
+      "path": "outputs\\vnext_r6_daily_report_only_contract_20260710\\readiness_for_r6_daily_report_only_contract.json",
+      "sha256": "2c6eb05bc64fb0b9de83f376607e5a00d0add171099ccfe68d65f059756a1607",
+      "bytes": 1620
+    },
+    {
+      "path": "outputs\\vnext_r6_daily_report_only_contract_20260710\\final_summary_zh.md",
+      "sha256": "a8d7d7e2630128d100b9968b80fa3bb018db3205de98a9c3ca73948a91e8f2a9",
+      "bytes": 891
+    }
+  ],
+  "flags": {
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "report_only_draft_created": true,
+    "portfolio_replay_executed": false,
+    "ready_for_strategy_replay": false,
+    "ready_for_formal": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false
+  }
+}

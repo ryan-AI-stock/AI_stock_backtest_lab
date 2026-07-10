@@ -1,0 +1,156 @@
+{
+  "task": "TASK-BACKTEST-CORE-VNEXT-R6-DAILY-REPORT-ONLY-CONTRACT-PDF-PIPELINE-DRAFT-001",
+  "status": "report_only_contract_schema_draft",
+  "description": "R6 vNext daily report-only row schema. This schema is for local PDF/readiness draft only.",
+  "fields": [
+    {
+      "name": "report_date",
+      "type": "string",
+      "source": "daily_report_runner",
+      "required": true,
+      "description": "PDF report date."
+    },
+    {
+      "name": "signal_date",
+      "type": "string",
+      "source": "r6_unified_contract",
+      "required": true,
+      "description": "Model signal date used by the row."
+    },
+    {
+      "name": "data_asof_date",
+      "type": "string",
+      "source": "r6_unified_contract",
+      "required": true,
+      "description": "Data as-of date; currently same as signal_date."
+    },
+    {
+      "name": "selected_primary_asset_type",
+      "type": "enum",
+      "source": "derived",
+      "required": true,
+      "description": "stock / 00631L / cash_blocked."
+    },
+    {
+      "name": "selected_ticker",
+      "type": "string",
+      "source": "r6_unified_contract",
+      "required": true,
+      "description": "Selected ticker or fallback reference ticker."
+    },
+    {
+      "name": "selected_name",
+      "type": "string",
+      "source": "r6_unified_contract",
+      "required": false,
+      "description": "Ticker display name if available."
+    },
+    {
+      "name": "selected_branch",
+      "type": "string",
+      "source": "r6_unified_contract",
+      "required": true,
+      "description": "route_support / R6 override / fallback branch label."
+    },
+    {
+      "name": "regime_label",
+      "type": "string",
+      "source": "r6_unified_contract",
+      "required": true,
+      "description": "Human-readable regime label."
+    },
+    {
+      "name": "branch_reason",
+      "type": "string",
+      "source": "r6_unified_contract",
+      "required": true,
+      "description": "Why this branch was chosen."
+    },
+    {
+      "name": "triggered_features",
+      "type": "string",
+      "source": "r6_unified_contract",
+      "required": true,
+      "description": "PIT feature trace; no future returns."
+    },
+    {
+      "name": "c2_pass_flag",
+      "type": "boolean",
+      "source": "r6_unified_contract",
+      "required": true,
+      "description": "C2 market health flag."
+    },
+    {
+      "name": "consensus_trigger_flag",
+      "type": "boolean",
+      "source": "r6_unified_contract",
+      "required": true,
+      "description": "Consensus trigger flag."
+    },
+    {
+      "name": "r6_override_flag",
+      "type": "boolean",
+      "source": "r6_unified_contract",
+      "required": true,
+      "description": "R6 breakout+breadth override flag."
+    },
+    {
+      "name": "p1_risk_veto_flag",
+      "type": "boolean",
+      "source": "r6_unified_contract",
+      "required": true,
+      "description": "P1-like risk veto flag."
+    },
+    {
+      "name": "fallback_asset",
+      "type": "string",
+      "source": "r6_unified_contract",
+      "required": false,
+      "description": "Fallback asset when stock branch is not active."
+    },
+    {
+      "name": "rs20_top3_reference_tickers",
+      "type": "string",
+      "source": "r6_unified_contract",
+      "required": false,
+      "description": "Reference-only RS20 top3 tickers."
+    },
+    {
+      "name": "data_readiness",
+      "type": "string",
+      "source": "r6_unified_contract",
+      "required": true,
+      "description": "ready / proxy / blocked label."
+    },
+    {
+      "name": "blocked_reason",
+      "type": "string",
+      "source": "derived",
+      "required": true,
+      "description": "Production blockers and report-only caveats."
+    },
+    {
+      "name": "cost_model_status",
+      "type": "string",
+      "source": "derived",
+      "required": true,
+      "description": "Transaction-cost status for report wording."
+    },
+    {
+      "name": "diagnostic_warning",
+      "type": "string",
+      "source": "derived",
+      "required": true,
+      "description": "Report-only warning."
+    }
+  ],
+  "policy": {
+    "report_only": true,
+    "no_drive_write": true,
+    "no_schedule_integration": true,
+    "no_live_trade_instruction": true,
+    "selected_stock_adjusted_close_remains_blocked": true,
+    "cash_bear_classifier_remains_blocked": true,
+    "forward_returns_live_rule_usage": false
+  }
+}
