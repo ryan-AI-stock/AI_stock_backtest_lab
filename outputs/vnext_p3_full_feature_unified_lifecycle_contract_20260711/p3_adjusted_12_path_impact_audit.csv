@@ -1,13 +1,12 @@
 ﻿ticker,membership_rows,primary80_rows,watchlist_reference_rows,affected_signal_dates,layer5_shortlist_rows,challenger_rows,incumbent_rows,selected_rows,selected_path_impact,proof
-1704,1,0,1,1,0,0,0,0,False,never primary80; watchlist reference_only cannot initiate selection; lifecycle Layer5 not yet materialized
-2311,1,0,1,1,0,0,0,0,False,never primary80; watchlist reference_only cannot initiate selection; lifecycle Layer5 not yet materialized
-2325,1,0,1,1,0,0,0,0,False,never primary80; watchlist reference_only cannot initiate selection; lifecycle Layer5 not yet materialized
-2448,1,0,1,1,0,0,0,0,False,never primary80; watchlist reference_only cannot initiate selection; lifecycle Layer5 not yet materialized
-2456,1,0,1,1,0,0,0,0,False,never primary80; watchlist reference_only cannot initiate selection; lifecycle Layer5 not yet materialized
-2809,13,0,13,13,0,0,0,0,False,never primary80; watchlist reference_only cannot initiate selection; lifecycle Layer5 not yet materialized
-2823,1,0,1,1,0,0,0,0,False,never primary80; watchlist reference_only cannot initiate selection; lifecycle Layer5 not yet materialized
-2888,55,0,55,55,0,0,0,0,False,never primary80; watchlist reference_only cannot initiate selection; lifecycle Layer5 not yet materialized
-3698,1,0,1,1,0,0,0,0,False,never primary80; watchlist reference_only cannot initiate selection; lifecycle Layer5 not yet materialized
-5264,1,0,1,1,0,0,0,0,False,never primary80; watchlist reference_only cannot initiate selection; lifecycle Layer5 not yet materialized
-6288,5,0,5,5,0,0,0,0,False,never primary80; watchlist reference_only cannot initiate selection; lifecycle Layer5 not yet materialized
-6806,26,0,26,26,0,0,0,0,False,never primary80; watchlist reference_only cannot initiate selection; lifecycle Layer5 not yet materialized
+2311,1,1,0,1,not_materialized,potentially_affected,potentially_affected,unknown_before_frozen_selector,potential,exact primary80 membership confirmed; no silent exclusion allowed
+2325,1,1,0,1,not_materialized,potentially_affected,potentially_affected,unknown_before_frozen_selector,potential,exact primary80 membership confirmed; no silent exclusion allowed
+2448,1,1,0,1,not_materialized,potentially_affected,potentially_affected,unknown_before_frozen_selector,potential,exact primary80 membership confirmed; no silent exclusion allowed
+2456,1,1,0,1,not_materialized,potentially_affected,potentially_affected,unknown_before_frozen_selector,potential,exact primary80 membership confirmed; no silent exclusion allowed
+2809,10,10,0,10,not_materialized,potentially_affected,potentially_affected,unknown_before_frozen_selector,potential,exact primary80 membership confirmed; no silent exclusion allowed
+2823,1,1,0,1,not_materialized,potentially_affected,potentially_affected,unknown_before_frozen_selector,potential,exact primary80 membership confirmed; no silent exclusion allowed
+2888,42,42,0,42,not_materialized,potentially_affected,potentially_affected,unknown_before_frozen_selector,potential,exact primary80 membership confirmed; no silent exclusion allowed
+3698,1,1,0,1,not_materialized,potentially_affected,potentially_affected,unknown_before_frozen_selector,potential,exact primary80 membership confirmed; no silent exclusion allowed
+5264,1,1,0,1,not_materialized,potentially_affected,potentially_affected,unknown_before_frozen_selector,potential,exact primary80 membership confirmed; no silent exclusion allowed
+6288,4,4,0,4,not_materialized,potentially_affected,potentially_affected,unknown_before_frozen_selector,potential,exact primary80 membership confirmed; no silent exclusion allowed
+6806,24,24,0,24,not_materialized,potentially_affected,potentially_affected,unknown_before_frozen_selector,potential,exact primary80 membership confirmed; no silent exclusion allowed

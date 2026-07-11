@@ -1,0 +1,4 @@
+﻿missing_class,rows,silent_fill_allowed,feature_semantics
+official_zero_or_not_applicable,4333,False,availability_flag_only_not_zero_or_negative_score
+source_gap,0,False,availability_flag_only_not_zero_or_negative_score
+adjusted_price_blocked,2250,False,availability_flag_only_not_zero_or_negative_score

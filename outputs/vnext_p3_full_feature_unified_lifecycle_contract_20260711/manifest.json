@@ -5,6 +5,8 @@
   "source_commit": "d2e9071",
   "gap_patch_source": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_p3_gap_convergence_open_day_acceptance_20260711",
   "gap_patch_commit": "9a803ca",
+  "exact_primary80_source": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_p3_exact_primary80_full_feature_source_scope_repair_20260711",
+  "exact_primary80_commit": "6120840",
   "source_readiness": {
     "task_id": "TASK-RADAR-DATA-VNEXT-P3-RECENT-FULL-FEATURE-DATA-READINESS-AND-ACQUISITION-001",
     "status": "p3_partial_readiness_contract_mandatory_gaps_remain",
@@ -73,6 +75,47 @@
     "not_live_rule": true,
     "forward_returns_live_rule_usage": false
   },
+  "exact_primary80_readiness": {
+    "task_id": "TASK-RADAR-DATA-VNEXT-P3-EXACT-PRIMARY80-FULL-FEATURE-SOURCE-SCOPE-REPAIR-001",
+    "status": "exact_primary80_source_scope_repaired_partial_corporate_action_completeness_blocked",
+    "source": "Core exact layer4 primary80 membership plus reused Radar compact and bounded official/trusted source repair",
+    "coverage": {
+      "price": "partial",
+      "institutional": "partial",
+      "margin_short": "partial",
+      "securities_lending": "partial",
+      "foreign_ownership": "partial",
+      "adjusted_analysis": "partial",
+      "corporate_action_guard": "partial_event_inventory_no_no_event_completeness_proof"
+    },
+    "primary80_membership_rows": 12320,
+    "primary80_snapshot_count": 154,
+    "primary80_unique_tickers": 701,
+    "membership_exact_actual_start": "2023-07-14",
+    "membership_exact_actual_end": "2026-06-29",
+    "core_adjusted_12_no_path_impact_proof_consistent_with_exact_primary80_contract": false,
+    "adjusted_12_exact_primary80_snapshot_rows": 87,
+    "adjusted_12_exact_primary80_tickers": 11,
+    "adjusted_12_watchlist_blockers_reprobed": true,
+    "adjusted_12_reprobe_reason": "Core no-path proof contradicted the assigned exact primary80 source-of-truth; bounded attempts returned no trusted adjusted history and are not repeated again",
+    "adjusted_analysis_fully_blocked_tickers": 11,
+    "adjusted_analysis_partial_tickers": 285,
+    "corporate_action_event_inventory_ready": true,
+    "corporate_action_no_event_completeness_ready": false,
+    "future_data_violation_count": 0,
+    "ready_for_core_p3_exact_primary80_source_absorption": true,
+    "ready_for_core_p3_full_feature_unified_lifecycle_contract": false,
+    "ready_for_experiments": false,
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "ready_for_strategy_replay": false,
+    "ready_for_formal": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false
+  },
   "readiness": {
     "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-FULL-FEATURE-UNIFIED-LIFECYCLE-CONTRACT-001",
     "status": "partial_readiness_mandatory_gaps_remain",
@@ -81,19 +124,27 @@
     "requested_end": "2026-07-10",
     "gap_patch_hash_mismatch_count": 0,
     "gap_patch_absorbed": true,
-    "actual_market_end": "2026-07-09",
+    "actual_market_start": "2023-07-14",
+    "actual_market_end": "2026-06-29",
     "P3_replaces_P1": false,
     "official_raw_execution_OHLCV_ready": true,
     "adjusted_analysis_accepted_tickers": 764,
     "adjusted_analysis_blocked_tickers": 12,
     "official_adjusted_ready": false,
-    "adjusted_12_primary80_rows": 0,
-    "adjusted_12_watchlist_reference_rows": 107,
-    "adjusted_12_selected_path_impact": false,
-    "adjusted_12_no_path_impact_proof_ready": true,
-    "Radar_source_scope_primary80_rows": 0,
-    "Radar_source_scope_watchlist_rows": 15400,
-    "Radar_compact_scope_correct_for_primary80": false,
+    "prior_adjusted_12_no_path_proof_status": "superseded_incorrect_watchlist_scope",
+    "adjusted_blocked_primary80_tickers": 11,
+    "adjusted_blocked_primary80_rows": 87,
+    "adjusted_blocked_selected_path_impact": "potential_unknown_before_selector",
+    "Radar_source_scope_primary80_rows": 12320,
+    "Radar_source_scope_watchlist_rows": 0,
+    "Radar_compact_scope_correct_for_primary80": true,
+    "trusted_adjustment_factor_method_ready": true,
+    "adjusted_HLC_method_ready_research_only": true,
+    "corporate_action_no_event_completeness_ready": false,
+    "close_feature_complete_snapshots": 87,
+    "full_lifecycle_complete_snapshots": 0,
+    "total_exact_snapshots": 154,
+    "full_lifecycle_complete_snapshot_share": 0.0,
     "TDCC_full_P3_ready": false,
     "TDCC_P3_2_AB_only": true,
     "TAIFEX_original_accepted_dates": 615,
@@ -132,7 +183,7 @@
     },
     {
       "name": "final_summary_zh.md",
-      "sha256": "f4f0059e4297bdce2f3db0573acb76e0e5ee0ab8a3dce8c09787a0d50b19b1e2"
+      "sha256": "651b75bcac1ab5599dde3140b16a073a80cd9f272cdfbcb054fa7b784086022a"
     },
     {
       "name": "future_data_audit.csv",
@@ -152,15 +203,19 @@
     },
     {
       "name": "p3_adjusted_12_membership_path_impact_rows.csv",
-      "sha256": "1d15ce806399e5e20e6e9811a649d92737c2740af03bec558b1381deeeb92a3c"
+      "sha256": "89b8e82e6b4e321a2d3cb4921d07ff9006e7218b160546cf1051a6e9742eb82f"
     },
     {
       "name": "p3_adjusted_12_no_path_impact_proof.csv",
-      "sha256": "a3cabcb2ee008a6e6e038e6c2c5e1b54d2808da3cf99741b7c1dd4005ccd65f3"
+      "sha256": "e452771260e57dcb18242fec935f711819c840c1a29d194044efeb8ccc94b0f7"
     },
     {
       "name": "p3_adjusted_12_path_impact_audit.csv",
-      "sha256": "9f465ae7a2c91e677f349e339c13d79e2986dabee6f9b2db13a928fda9fa4d91"
+      "sha256": "15fdf238915ed96a2f7d1a8e78e5627e47d3d6041cb97891b2589fb59af6a0c1"
+    },
+    {
+      "name": "p3_adjusted_OHLC_factor_method_audit.csv",
+      "sha256": "6d5c3d8e230bb97b8195f97d971d4de7160e2fee883f64fe83837a9488633207"
     },
     {
       "name": "p3_analysis_execution_price_separation_contract.csv",
@@ -169,6 +224,18 @@
     {
       "name": "p3_chip_proxy_semantics_contract.csv",
       "sha256": "99e32f4cf184517801b1531ce05895dd1e18205242ddb9e2deee7f3d3718ba64"
+    },
+    {
+      "name": "p3_exact_complete_snapshot_subset_contract.csv",
+      "sha256": "36406bfbab0fc9f8e8e0ad440c2f8a461dc890ace1a8bc5dc31431ab90d021d1"
+    },
+    {
+      "name": "p3_exact_primary80_snapshot_completeness_audit.csv",
+      "sha256": "6d8e7671cd5971c1c0ecba5ff8339b3f6db6eb99f6d945ea247b4c7cd754e61d"
+    },
+    {
+      "name": "p3_exact_primary80_unified_PIT_feature_matrix_readiness_rows.csv",
+      "sha256": "e818bc8a6be823b17f12efdc798857f9a2f8b380f39f292cc1c8ac080321c570"
     },
     {
       "name": "p3_full_feature_blocked_family_ledger.csv",
@@ -196,7 +263,15 @@
     },
     {
       "name": "p3_primary80_source_scope_blocker_audit.csv",
-      "sha256": "d616c2f189dbd985cb390e0b1199138b0d2680c6f88ce1f9e71d0280b59858bc"
+      "sha256": "7f31f158a374f9330a87e07297fe5add8ae454786b4d7a24cf0efdb048ed55e6"
+    },
+    {
+      "name": "p3_source_missingness_classification_summary.csv",
+      "sha256": "9cd79230305488bf52ebfd44cc42e530cfdb67955407ed085dc92105f36daebb"
+    },
+    {
+      "name": "p3_source_missingness_classified_ledger.csv",
+      "sha256": "21444a6602a7291776d5eb7c3d89d61008d3098b2c0c8252948c1a1860c9fe65"
     },
     {
       "name": "p3_TAIFEX_110_gap_absorption_audit.csv",
@@ -216,7 +291,7 @@
     },
     {
       "name": "p3_unified_PIT_feature_matrix_readiness.csv",
-      "sha256": "7a322762a7ea621f19a1bb112df748fc45c90686f6615cdd97a835a75e2b1803"
+      "sha256": "3c98079790fb218bd6829d1579d4a385febebf210edfac43684c45c0f66a4cc1"
     },
     {
       "name": "p3_universe_membership_coverage_audit.csv",
@@ -224,7 +299,7 @@
     },
     {
       "name": "readiness_for_p3_full_feature_unified_lifecycle_contract.json",
-      "sha256": "a16e375d6f26448e704ab2545eb5d89361d33bf9bd38aad84977e4d6f0047712"
+      "sha256": "f7d3f68308fb75f255f483864ebdfde514e572d77d3606f985cd897e83a31e2e"
     }
   ]
 }
