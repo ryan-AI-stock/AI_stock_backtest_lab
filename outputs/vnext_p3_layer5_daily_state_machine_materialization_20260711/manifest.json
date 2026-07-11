@@ -21,6 +21,12 @@
     "daily_feature_blocks_ready": false,
     "daily_state_rows_ready": false,
     "daily_action_rows_ready": false,
+    "market_controller_source_ready": false,
+    "market_controller_source_blockers": [
+      "full_market_traded_value",
+      "full_market_margin_balance",
+      "SOX"
+    ],
     "ready_for_phase_a_event_validation": false,
     "ready_for_phase_b_unique_position_path": false,
     "ready_for_experiments": false,
@@ -46,7 +52,7 @@
     },
     {
       "name": "p3_layer5_daily_blocked_ledger.csv",
-      "sha256": "6b0cc1c26c27e00f26faf5e2366ab17c865f34c7db21f181c7b62317bb2a2dc8"
+      "sha256": "0e972f02026d8361705bf819fbd8243be637d14218e9a77170144a0bc395b7ac"
     },
     {
       "name": "p3_layer5_daily_candidate_materialization.csv",
@@ -65,8 +71,12 @@
       "sha256": "5d27a57a2ce03210342596e445507e8f44109435a1c472dc58f3992d84160e38"
     },
     {
+      "name": "p3_layer5_daily_market_source_gate_audit.csv",
+      "sha256": "35edce55ab89fdf1bceb44fc53f96bee2c5e8c20a04c0d4af529250cd83ce0bb"
+    },
+    {
       "name": "p3_layer5_daily_readiness.json",
-      "sha256": "480b0d7c642003a87b3cca47da93eac4b51889a0cff06c05025d6e23b179c3f0"
+      "sha256": "2e87d26d9ebfe2780630cbcaa5863394d6c62b1dfb6a0078bd6fc8243502c34f"
     },
     {
       "name": "p3_layer5_daily_requested_vs_actual_coverage.csv",

@@ -109,9 +109,25 @@ def run(output: Path = OUTPUT) -> Path:
         {"blocker": "daily_RS_MA_BIAS_KD_not_materialized", "scope": "all daily candidate rows", "silent_fill": False},
         {"blocker": "daily_chip_5_10_20D_rollups_not_materialized", "scope": "applicable rows", "silent_fill": False},
         {"blocker": "daily_market_three_group_state_not_materialized", "scope": "all decision dates", "silent_fill": False},
+        {"blocker": "full_market_traded_value_source_missing", "scope": "market capital/risk group", "silent_fill": False},
+        {"blocker": "full_market_margin_balance_source_missing", "scope": "market capital/risk group", "silent_fill": False},
+        {"blocker": "SOX_source_missing", "scope": "external group", "silent_fill": False},
         {"blocker": "2025_08_01_adjusted_provider_partial", "scope": "ticker-level", "silent_fill": False},
     ]
     pd.DataFrame(blockers).to_csv(output / "p3_layer5_daily_blocked_ledger.csv", index=False, encoding="utf-8-sig")
+    market_source_audit = [
+        {"market_field": "0050_adjusted_HLC", "local_source": "backtest_cache/stock_pool_observations/0050_TW.csv", "status": "ready", "can_substitute": False},
+        {"market_field": "TAIEX", "local_source": "backtest_cache/taiex_yfinance/^TWII.csv", "status": "ready_trusted_nonofficial", "can_substitute": False},
+        {"market_field": "primary80_breadth", "local_source": "daily candidate adjusted features", "status": "blocked_until_daily_technical_compute", "can_substitute": False},
+        {"market_field": "full_market_traded_value", "local_source": "", "status": "source_missing", "can_substitute": False},
+        {"market_field": "full_market_margin_balance", "local_source": "", "status": "source_missing", "can_substitute": False},
+        {"market_field": "TAIFEX_foreign_OI", "local_source": "Radar P3 taifex compact", "status": "ready", "can_substitute": False},
+        {"market_field": "Nasdaq", "local_source": "Radar P3 global_market compact", "status": "ready", "can_substitute": False},
+        {"market_field": "SOX", "local_source": "", "status": "source_missing", "can_substitute": False},
+        {"market_field": "VIX", "local_source": "Radar P3 global_market compact", "status": "ready", "can_substitute": False},
+        {"market_field": "USD_TWD", "local_source": "Radar P3 global_market compact", "status": "ready", "can_substitute": False},
+    ]
+    pd.DataFrame(market_source_audit).to_csv(output / "p3_layer5_daily_market_source_gate_audit.csv", index=False, encoding="utf-8-sig")
     pd.DataFrame([{"audit": "membership_effective_strictly_after_snapshot", "violation_count": int((daily.membership_effective_date <= daily.membership_snapshot_date).sum())},
                   {"audit": "execution_strictly_after_decision", "violation_count": int((daily.next_execution_date.notna() & (daily.next_execution_date <= daily.decision_date)).sum())},
                   {"audit": "future_return_used_as_rule", "violation_count": int(daily.future_return_used_as_rule.sum())}]).to_csv(output / "future_data_audit.csv", index=False, encoding="utf-8-sig")
@@ -121,6 +137,8 @@ def run(output: Path = OUTPUT) -> Path:
                  "daily_candidate_count_median": float(coverage.candidate_count.median()), "daily_candidate_count_max": int(coverage.candidate_count.max()),
                  "daily_price_core_ready_rows": int(daily.price_core_valid.sum()), "daily_membership_timing_ready": True,
                  "daily_feature_blocks_ready": False, "daily_state_rows_ready": False, "daily_action_rows_ready": False,
+                 "market_controller_source_ready": False,
+                 "market_controller_source_blockers": ["full_market_traded_value", "full_market_margin_balance", "SOX"],
                  "ready_for_phase_a_event_validation": False, "ready_for_phase_b_unique_position_path": False, "ready_for_experiments": False,
                  "future_data_violation_count": 0, "formal_model_changed": False, "trade_decision_changed": False, "active_in_trade_decision": False,
                  "report_changed": False, "portfolio_replay_executed": False, "ready_for_strategy_replay": False, "ready_for_formal": False,
