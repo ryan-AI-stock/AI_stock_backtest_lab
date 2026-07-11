@@ -1,0 +1,16 @@
+﻿field,block,contract_semantics,materialized
+signal_date,identity,PIT weekly close,False
+ticker,identity,Layer4 primary80 frozen universe,False
+raw_execution_close,execution,official raw OHLCV,False
+event_adjusted_analysis_close,analysis,trusted nonofficial adjusted OHLC,False
+KD_MA_BIAS_RS_block,lifecycle,requires adjusted analysis coverage and warmup,False
+institutional_flow_block,capital,requires market-complete PIT rows,False
+margin_short_lending_block,risk,requires market-complete PIT rows,False
+TDCC_holder_structure_block,capital,blocked,False
+market_TAIFEX_OI_block,regime,blocked,False
+lifecycle_state,state,not materialized until all minimum blocks ready,False
+incumbent_ticker,decision,hold valid incumbent,False
+challenger_ticker,decision,multi-block risk-adjusted challenger,False
+decision,decision,hold/switch/cash; cash only confirmed risk or invalid no replacement,False
+next_execution_date,execution,next official trading close,False
+transaction_cost,cost,EP05 stock/cash transition cost,False

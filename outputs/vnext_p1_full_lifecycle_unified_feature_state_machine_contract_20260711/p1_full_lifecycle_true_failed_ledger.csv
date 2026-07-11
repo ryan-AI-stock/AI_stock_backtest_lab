@@ -1,0 +1,11 @@
+﻿family,date,final_verdict,source_stage,reason,source_url
+twse_margin_short,2016-12-20,true_failed,residual_audit,JSONDecodeError,https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?date=20161220&selectType=ALL&response=json
+twse_margin_short,2017-01-02,true_failed,residual_audit,JSONDecodeError,https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?date=20170102&selectType=ALL&response=json
+twse_margin_short,2020-08-13,true_failed,residual_audit,JSONDecodeError,https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?date=20200813&selectType=ALL&response=json
+twse_three_institutional,2016-04-05,true_failed,residual_audit,JSONDecodeError,https://www.twse.com.tw/rwd/zh/fund/T86?date=20160405&selectType=ALLBUT0999&response=json
+twse_three_institutional,2016-09-15,true_failed,residual_audit,JSONDecodeError,https://www.twse.com.tw/rwd/zh/fund/T86?date=20160915&selectType=ALLBUT0999&response=json
+twse_three_institutional,2016-09-28,true_failed,residual_audit,JSONDecodeError,https://www.twse.com.tw/rwd/zh/fund/T86?date=20160928&selectType=ALLBUT0999&response=json
+twse_three_institutional,2017-01-25,true_failed,residual_audit,JSONDecodeError,https://www.twse.com.tw/rwd/zh/fund/T86?date=20170125&selectType=ALLBUT0999&response=json
+twse_three_institutional,2017-05-29,true_failed,residual_audit,JSONDecodeError,https://www.twse.com.tw/rwd/zh/fund/T86?date=20170529&selectType=ALLBUT0999&response=json
+twse_three_institutional,2017-07-05,true_failed,residual_audit,JSONDecodeError,https://www.twse.com.tw/rwd/zh/fund/T86?date=20170705&selectType=ALLBUT0999&response=json
+twse_three_institutional,2019-06-06,true_failed,residual_audit,JSONDecodeError,https://www.twse.com.tw/rwd/zh/fund/T86?date=20190606&selectType=ALLBUT0999&response=json

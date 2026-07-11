@@ -1,0 +1,3 @@
+﻿family,compact_rows_written_readable,unique_date_ticker_rows_readable,duplicate_rows_to_deduplicate_at_ingest,corrupt_gzip_file_count,corrupt_gzip_files,dedup_key,ingest_action,silent_fill_allowed
+twse_three_institutional,412430,409259,3171,0,,date+ticker,deduplicate_date_ticker,False
+twse_margin_short,405470,401746,3724,1,TWSE_2017.csv.gz:error,date+ticker,exclude_corrupt_file_then_deduplicate_date_ticker,False

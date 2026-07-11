@@ -1,0 +1,124 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P1-FULL-LIFECYCLE-UNIFIED-FEATURE-STATE-MACHINE-CONTRACT-001",
+  "runner": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\src\\backtest_lab\\vnext_p1_full_lifecycle_unified_feature_state_machine_contract.py",
+  "source_radar": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_p1_full_lifecycle_minimum_data_acquisition_20260710",
+  "source_readiness": {
+    "task_id": "TASK-RADAR-DATA-VNEXT-P1-FULL-LIFECYCLE-MINIMUM-DATA-ACQUISITION-001",
+    "status": "research_grade_lifecycle_source_package_partial_structural_blockers",
+    "price_raw_execution_status": "accepted_compact_completed",
+    "twse_chip_coverage": [
+      {
+        "family": "twse_margin_short",
+        "requested_market_dates": 2162,
+        "accepted_dates": 2024,
+        "no_rows_dates": 135,
+        "true_failed_dates": 3,
+        "accepted_share": 0.9361702128,
+        "requested_vs_actual": "partial"
+      },
+      {
+        "family": "twse_three_institutional",
+        "requested_market_dates": 2162,
+        "accepted_dates": 2029,
+        "no_rows_dates": 126,
+        "true_failed_dates": 7,
+        "accepted_share": 0.9384828862,
+        "requested_vs_actual": "partial"
+      }
+    ],
+    "twse_compact_stream_corruption_file_count": 1,
+    "tpex_margin_accepted_dates": 2029,
+    "tpex_institutional_accepted_dates": 56,
+    "adjusted_analysis_trusted_accepted_tickers": 913,
+    "adjusted_analysis_blocked_tickers": 63,
+    "tdcc_historical_status": "blocked_official_current_only_free_route_not_verified",
+    "taifex_p1_status": "blocked_official_retention_limited_free_route_not_verified",
+    "ready_for_core_full_lifecycle_feature_matrix": false,
+    "ready_for_experiments": false,
+    "ready_for_formal": false,
+    "ready_for_strategy_replay": false,
+    "future_data_violation_count": 0,
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false
+  },
+  "readiness": {
+    "task_id": "TASK-BACKTEST-CORE-VNEXT-P1-FULL-LIFECYCLE-UNIFIED-FEATURE-STATE-MACHINE-CONTRACT-001",
+    "status": "blocked_for_complete_unified_feature_state_machine_materialization",
+    "radar_source_package_absorbed": true,
+    "compact_ingest_policy_ready": true,
+    "corrupt_TWSE_2017_margin_file_excluded": true,
+    "true_failed_rows": 10,
+    "no_rows_silently_filled": false,
+    "official_raw_execution_OHLCV_ready": true,
+    "trusted_nonofficial_adjusted_analysis_accepted_tickers": 913,
+    "trusted_nonofficial_adjusted_analysis_blocked_tickers": 63,
+    "TPEx_institutional_ready": false,
+    "TDCC_P1_ready": false,
+    "TAIFEX_P1_ready": false,
+    "ready_for_core_full_lifecycle_feature_matrix": false,
+    "ready_for_unified_state_machine_materialization": false,
+    "ready_for_experiments": false,
+    "automatic_handoff_stopped": true,
+    "future_data_violation_count": 0,
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "ready_for_strategy_replay": false,
+    "ready_for_formal": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false
+  },
+  "files": [
+    {
+      "name": "current_step.txt",
+      "sha256": "02c7c7066029dfed62063535007c0cd819a6843b8ed7df9523322e97e7e03637"
+    },
+    {
+      "name": "final_summary_zh.md",
+      "sha256": "9b1cca6628dad90c6259533a1e68b7600a52463ab0c75f8ed26a46d5ea543da6"
+    },
+    {
+      "name": "future_data_audit.csv",
+      "sha256": "9a205599dd1f250245aec4b3379807320191917070d8b01657e7fc88459da0bd"
+    },
+    {
+      "name": "p1_full_lifecycle_blocked_proxy_audit.csv",
+      "sha256": "48341f23e6abbba58f673e675a44f828307ac1e202e649726a6596a240e92589"
+    },
+    {
+      "name": "p1_full_lifecycle_compact_dedup_exclusion_audit.csv",
+      "sha256": "e994943ec402228d0c866cc746136d39495847ce5c73a9e98332201b6eddf638"
+    },
+    {
+      "name": "p1_full_lifecycle_feature_family_readiness.csv",
+      "sha256": "095cd994f0dd54225a7342864ead4f32d70862fa9443fc3346b8a58d323cdc81"
+    },
+    {
+      "name": "p1_full_lifecycle_price_semantics_contract.csv",
+      "sha256": "83a11c3321e867b91139547aa1fc1ab364d30cae992674542b55c43d24adf621"
+    },
+    {
+      "name": "p1_full_lifecycle_state_machine_schema_contract.csv",
+      "sha256": "5de97ef0092fdde307a0a83b752fa75be01f06df65cc031a9b05f22d008dcf21"
+    },
+    {
+      "name": "p1_full_lifecycle_true_failed_ledger.csv",
+      "sha256": "ddfcfe3eb5367155224b7831f1a5b33bd6f35fc9b9368c41d1383a8b53aac7fa"
+    },
+    {
+      "name": "readiness_for_p1_full_lifecycle_unified_feature_state_machine_contract.json",
+      "sha256": "93f6bea66deacc1a877ea5fc5ddf4cfe686b0be2af52675e0702ec18d4962357"
+    },
+    {
+      "name": "requested_vs_actual_coverage.csv",
+      "sha256": "5888a28b22570d2228b897156f071387b7b1e541950cb795430338d851c8c0c3"
+    }
+  ]
+}

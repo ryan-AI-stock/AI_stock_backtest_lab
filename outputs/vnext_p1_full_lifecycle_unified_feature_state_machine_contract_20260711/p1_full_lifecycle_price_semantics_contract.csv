@@ -1,0 +1,5 @@
+﻿field,source,use,may_mix_with_other_price,ready
+raw_execution_price,official TWSE/TPEx raw OHLCV,execution/cost/wealth path,False,True
+event_adjusted_analysis_price,Yahoo trusted_nonofficial adjusted series,KD/MA/BIAS/RS research features,False,False
+analysis_price_source_quality,per ticker manifest,row-level gate,False,True
+corporate_action_warning,event audit/guard,contamination warning,False,False
