@@ -1,0 +1,13 @@
+﻿component,market,ticker,date,blocked_reason,source_status,bounded_resolution,accepted_for_research_adjusted_analysis,official_adjusted_ready,future_data_violation_count
+adjusted_analysis_ohlc,TWSE,1704,,1704.TW:200:;1704.TWO:404:HTTP_404,blocked_no_trusted_free_adjusted_history,blocked_free_trusted_routes_exhausted_no_reprobe,False,False,0
+adjusted_analysis_ohlc,TWSE,2311,,2311.TW:200:;2311.TWO:404:HTTP_404,blocked_no_trusted_free_adjusted_history,blocked_free_trusted_routes_exhausted_no_reprobe,False,False,0
+adjusted_analysis_ohlc,TWSE,2325,,2325.TW:200:;2325.TWO:404:HTTP_404,blocked_no_trusted_free_adjusted_history,blocked_free_trusted_routes_exhausted_no_reprobe,False,False,0
+adjusted_analysis_ohlc,TWSE,2448,,2448.TW:404:HTTP_404;2448.TWO:404:HTTP_404,blocked_no_trusted_free_adjusted_history,blocked_free_trusted_routes_exhausted_no_reprobe,False,False,0
+adjusted_analysis_ohlc,TWSE,2456,,2456.TW:404:HTTP_404;2456.TWO:404:HTTP_404,blocked_no_trusted_free_adjusted_history,blocked_free_trusted_routes_exhausted_no_reprobe,False,False,0
+adjusted_analysis_ohlc,TWSE,2823,,2823.TW:404:HTTP_404;2823.TWO:404:HTTP_404,blocked_no_trusted_free_adjusted_history,blocked_free_trusted_routes_exhausted_no_reprobe,False,False,0
+adjusted_analysis_ohlc,TWSE,2809,,2809.TW:404:HTTP_404;2809.TWO:404:HTTP_404,blocked_no_trusted_free_adjusted_history,blocked_free_trusted_routes_exhausted_no_reprobe,False,False,0
+adjusted_analysis_ohlc,TWSE,2888,,2888.TW:404:HTTP_404;2888.TWO:404:HTTP_404,blocked_no_trusted_free_adjusted_history,blocked_free_trusted_routes_exhausted_no_reprobe,False,False,0
+adjusted_analysis_ohlc,TWSE,3698,,3698.TW:404:HTTP_404;3698.TWO:404:HTTP_404,blocked_no_trusted_free_adjusted_history,blocked_free_trusted_routes_exhausted_no_reprobe,False,False,0
+adjusted_analysis_ohlc,TWSE,5264,,5264.TW:404:HTTP_404;5264.TWO:404:HTTP_404,blocked_no_trusted_free_adjusted_history,blocked_free_trusted_routes_exhausted_no_reprobe,False,False,0
+adjusted_analysis_ohlc,TWSE,6288,,6288.TW:404:HTTP_404;6288.TWO:200:,blocked_no_trusted_free_adjusted_history,blocked_free_trusted_routes_exhausted_no_reprobe,False,False,0
+adjusted_analysis_ohlc,TWSE,6806,,6806.TW:200:;6806.TWO:404:HTTP_404,blocked_no_trusted_free_adjusted_history,blocked_free_trusted_routes_exhausted_no_reprobe,False,False,0

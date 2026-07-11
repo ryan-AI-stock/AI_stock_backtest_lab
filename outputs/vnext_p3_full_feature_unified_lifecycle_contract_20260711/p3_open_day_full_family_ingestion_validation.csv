@@ -1,2 +1,2 @@
 ﻿validation_date,manifest_status,normal_trading_day,full_family_ingestion_validated,market_closed_validation_is_sufficient,next_action
-,pending,True,False,False,ingest first accepted open-day Radar manifest and evaluate mandatory freshness
+,pending_future_official_open_day,True,False,False,ingest first accepted open-day Radar manifest and evaluate mandatory freshness

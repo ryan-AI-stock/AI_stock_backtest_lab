@@ -3,6 +3,8 @@
   "runner": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\src\\backtest_lab\\vnext_p3_full_feature_unified_lifecycle_contract.py",
   "source_package": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_p3_recent_full_feature_data_readiness_acquisition_20260711",
   "source_commit": "d2e9071",
+  "gap_patch_source": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_p3_gap_convergence_open_day_acceptance_20260711",
+  "gap_patch_commit": "9a803ca",
   "source_readiness": {
     "task_id": "TASK-RADAR-DATA-VNEXT-P3-RECENT-FULL-FEATURE-DATA-READINESS-AND-ACQUISITION-001",
     "status": "p3_partial_readiness_contract_mandatory_gaps_remain",
@@ -41,12 +43,44 @@
     "not_live_rule": true,
     "forward_returns_live_rule_usage": false
   },
+  "gap_patch_readiness": {
+    "task_id": "TASK-RADAR-DATA-VNEXT-P3-GAP-CONVERGENCE-OPEN-DAY-ACCEPTANCE-001",
+    "status": "gap_convergence_complete_open_day_acceptance_pending",
+    "source": "TAIFEX official range CSV; TDCC official retained-history ticker-week query; prior adjusted source exhaustion evidence",
+    "coverage": {
+      "taifex_input_dates": 110,
+      "taifex_repaired_dates": 110,
+      "taifex_blocked_dates": 0,
+      "tdcc_input_ticker_weeks": 11,
+      "tdcc_repaired_ticker_weeks": 3,
+      "tdcc_blocked_ticker_weeks": 8,
+      "adjusted_analysis_tickers_blocked": 12,
+      "layer4_exact_pit_membership_end": "2026-06-29"
+    },
+    "future_data_violation_count": 0,
+    "ready_for_core_p3_gap_patch_absorption": true,
+    "ready_for_core_p3_full_feature_contract": false,
+    "ready_for_open_day_ingestion_validation": false,
+    "open_day_validation_status": "pending_first_official_open_day_after_workflow_schedule",
+    "ready_for_experiments": false,
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "ready_for_strategy_replay": false,
+    "ready_for_formal": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false
+  },
   "readiness": {
     "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-FULL-FEATURE-UNIFIED-LIFECYCLE-CONTRACT-001",
     "status": "partial_readiness_mandatory_gaps_remain",
     "source_package_hash_mismatch_count": 0,
     "requested_start": "2023-07-11",
     "requested_end": "2026-07-10",
+    "gap_patch_hash_mismatch_count": 0,
+    "gap_patch_absorbed": true,
     "actual_market_end": "2026-07-09",
     "P3_replaces_P1": false,
     "official_raw_execution_OHLCV_ready": true,
@@ -55,8 +89,13 @@
     "official_adjusted_ready": false,
     "TDCC_full_P3_ready": false,
     "TDCC_P3_2_AB_only": true,
-    "TAIFEX_accepted_dates": 615,
-    "TAIFEX_confirmed_market_day_missing_dates": 110,
+    "TAIFEX_original_accepted_dates": 615,
+    "TAIFEX_repaired_dates": 110,
+    "TAIFEX_confirmed_market_day_missing_dates": 0,
+    "TAIFEX_full_period_ready_after_patch": true,
+    "TDCC_gap_input_ticker_weeks": 11,
+    "TDCC_gap_repaired_ticker_weeks": 3,
+    "TDCC_gap_blocked_ticker_weeks": 8,
     "Layer4_new_PIT_membership_after_2026_06_29_ready": false,
     "P3_1_TDCC_required": false,
     "P3_2_TDCC_optional_AB": true,
@@ -86,7 +125,7 @@
     },
     {
       "name": "final_summary_zh.md",
-      "sha256": "9c808e8c2ee3b5b8c58f1f273e9e5a7c9a3b55105659c26eb4cbd0e616d10f99"
+      "sha256": "f1a5c5471dda70d78ba887b94178dd221369354225b63c6e3fb987f8ca82f7f9"
     },
     {
       "name": "future_data_audit.csv",
@@ -94,11 +133,15 @@
     },
     {
       "name": "p3_1_p3_2_mandatory_optional_readiness_matrix.csv",
-      "sha256": "035260aeb21b1be83af17087be2ff5df4f5a560113e591a4ec6d7e6a113b9221"
+      "sha256": "23dda8d996e371d0a73d8e3832d8b8d998999c20dfa5db140df81a000a0c8672"
     },
     {
       "name": "p3_1_p3_2_same_period_TDCC_AB_contract.csv",
       "sha256": "3d85737d47826cf274cee02b000b61899931490d5665d3433092e06f7711a747"
+    },
+    {
+      "name": "p3_adjusted_12_exhausted_blocked_ledger.csv",
+      "sha256": "190816bbfb5a6195e55b330fe4035f2307882023882d51bd83e906b4d6c4e6d0"
     },
     {
       "name": "p3_analysis_execution_price_separation_contract.csv",
@@ -130,7 +173,15 @@
     },
     {
       "name": "p3_open_day_full_family_ingestion_validation.csv",
-      "sha256": "44649ee673f1ebeb0615c1f520ec1b0c98b52fe6bd295e5470596025f57db526"
+      "sha256": "5b83c61aaf027f186bd490c4b3620773b90d082aaaf3af5e7054d1a085fc9f12"
+    },
+    {
+      "name": "p3_TAIFEX_110_gap_absorption_audit.csv",
+      "sha256": "be6c7cf3a238e01a3e64bc1508640cd657813ad0f4a8fa6d69566698013638ed"
+    },
+    {
+      "name": "p3_TDCC_11_gap_absorption_audit.csv",
+      "sha256": "842af28956eb6483dcb64efbef474d66372cfbfbde5736fe2aff493ebc5f5e56"
     },
     {
       "name": "p3_TDCC_subperiod_ingest_audit.csv",
@@ -138,11 +189,11 @@
     },
     {
       "name": "p3_unified_feature_ingestion_schema.csv",
-      "sha256": "1d9be8cf065c3de4a34d5be4c4af1ae676be2aaa138d15b3e0a9622a20e9034d"
+      "sha256": "f44b155a9898b81e150ec8cd27672b728761d82e67164bfa701873a2691aac40"
     },
     {
       "name": "p3_unified_PIT_feature_matrix_readiness.csv",
-      "sha256": "d3000a879bf398cc9a93ee1558b311a493b729f07a448540923a824d9d2ea0e1"
+      "sha256": "308c0ed228c88a299544b77b07d0f274f6f114cb990642d18cdade5502b4d899"
     },
     {
       "name": "p3_universe_membership_coverage_audit.csv",
@@ -150,7 +201,7 @@
     },
     {
       "name": "readiness_for_p3_full_feature_unified_lifecycle_contract.json",
-      "sha256": "5f48be9c634205ed320f8b12dc1166b4fb2b39b82512f91604340e92d495cc5f"
+      "sha256": "fb3bbad2c38c5f9b31a3cf76f9fd653c519475e1ebb40aeed3940e6efc925e42"
     }
   ]
 }
