@@ -17,6 +17,7 @@ DEFAULT_SOURCE = Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotat
 DEFAULT_GAP_PATCH = Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p3_gap_convergence_open_day_acceptance_20260711")
 DEFAULT_EXACT_PRIMARY80 = Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p3_exact_primary80_full_feature_source_scope_repair_20260711")
 DEFAULT_RAW_HLC_WARMUP = Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p3_exact_primary80_raw_hlc_warmup_gap_fill_20260711")
+DEFAULT_CHIP_20D_WARMUP = Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p3_exact_primary80_chip_20d_warmup_gap_fill_20260711")
 DEFAULT_OUTPUT = REPO_ROOT / "outputs/vnext_p3_full_feature_unified_lifecycle_contract_20260711"
 FLAGS = {"formal_model_changed": False, "trade_decision_changed": False, "active_in_trade_decision": False,
          "report_changed": False, "portfolio_replay_executed": False, "ready_for_strategy_replay": False,
@@ -35,7 +36,7 @@ def _load_compact(root: Path, family: str) -> pd.DataFrame:
 
 def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PATCH,
         exact_primary80_dir: Path = DEFAULT_EXACT_PRIMARY80, raw_hlc_warmup_dir: Path = DEFAULT_RAW_HLC_WARMUP,
-        output_dir: Path = DEFAULT_OUTPUT) -> Path:
+        chip_20d_warmup_dir: Path = DEFAULT_CHIP_20D_WARMUP, output_dir: Path = DEFAULT_OUTPUT) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "current_step.txt").write_text("validating_P3_source_package", encoding="utf-8")
     required = ["manifest.json", "readiness_for_core_p3_full_feature_unified_lifecycle_contract.json",
@@ -61,6 +62,11 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
                        "p3_exact_primary80_raw_hlc_warmup_compact_hash_manifest.csv"]
     warmup_missing = [name for name in warmup_required if not (raw_hlc_warmup_dir / name).exists()]
     if warmup_missing: raise FileNotFoundError(f"P3 raw HLC warmup package missing: {warmup_missing}")
+    chip_required = ["manifest.json", "readiness_for_core_p3_exact_primary80_chip_20d_warmup.json",
+                     "p3_exact_primary80_chip_20d_coverage_by_segment.csv", "p3_exact_primary80_chip_20d_blocked_ledger.csv",
+                     "p3_exact_primary80_chip_20d_compact_hash_manifest.csv"]
+    chip_missing = [name for name in chip_required if not (chip_20d_warmup_dir / name).exists()]
+    if chip_missing: raise FileNotFoundError(f"P3 chip 20D warmup package missing: {chip_missing}")
     source_manifest = json.loads((source_dir / "manifest.json").read_text(encoding="utf-8-sig"))
     source_ready = json.loads((source_dir / "readiness_for_core_p3_full_feature_unified_lifecycle_contract.json").read_text(encoding="utf-8-sig"))
     patch_manifest = json.loads((gap_patch_dir / "manifest.json").read_text(encoding="utf-8-sig"))
@@ -69,6 +75,8 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
     exact_ready = json.loads((exact_primary80_dir / "readiness_for_core_p3_exact_primary80_source_scope_repair.json").read_text(encoding="utf-8-sig"))
     warmup_manifest = json.loads((raw_hlc_warmup_dir / "manifest.json").read_text(encoding="utf-8-sig"))
     warmup_ready = json.loads((raw_hlc_warmup_dir / "readiness_for_core_p3_exact_primary80_raw_hlc_warmup.json").read_text(encoding="utf-8-sig"))
+    chip_manifest = json.loads((chip_20d_warmup_dir / "manifest.json").read_text(encoding="utf-8-sig"))
+    chip_ready = json.loads((chip_20d_warmup_dir / "readiness_for_core_p3_exact_primary80_chip_20d_warmup.json").read_text(encoding="utf-8-sig"))
     declared = {item["path"].replace("\\", "/"): item["sha256"] for item in source_manifest["files"]}
     hash_mismatch = []
     for name in required[1:]:
@@ -85,6 +93,9 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
     warmup_declared = {item["path"]: item["sha256"] for item in warmup_manifest["files"]}
     warmup_hash_mismatch = [name for name in warmup_required[1:] if warmup_declared.get(name) != hashlib.sha256((raw_hlc_warmup_dir / name).read_bytes()).hexdigest()]
     if warmup_hash_mismatch: raise ValueError(f"P3 warmup package hash mismatch: {warmup_hash_mismatch}")
+    chip_declared = {item["path"]: item["sha256"] for item in chip_manifest["files"]}
+    chip_hash_mismatch = [name for name in chip_required[1:] if chip_declared.get(name) != hashlib.sha256((chip_20d_warmup_dir / name).read_bytes()).hexdigest()]
+    if chip_hash_mismatch: raise ValueError(f"P3 chip warmup package hash mismatch: {chip_hash_mismatch}")
 
     coverage = pd.read_csv(source_dir / "p3_family_coverage_matrix.csv")
     blocked = pd.read_csv(source_dir / "p3_blocked_rows_and_family_ledger.csv")
@@ -100,6 +111,8 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
     open_day = json.loads((gap_patch_dir / "first_open_day_acceptance_status.json").read_text(encoding="utf-8-sig"))
     warmup_segments = pd.read_csv(raw_hlc_warmup_dir / "p3_exact_primary80_raw_hlc_warmup_coverage_by_segment.csv", dtype={"ticker": str})
     warmup_blocked = pd.read_csv(raw_hlc_warmup_dir / "p3_exact_primary80_raw_hlc_warmup_blocked_ledger.csv", dtype={"ticker": str})
+    chip_segments = pd.read_csv(chip_20d_warmup_dir / "p3_exact_primary80_chip_20d_coverage_by_segment.csv", dtype={"ticker": str})
+    chip_blocked = pd.read_csv(chip_20d_warmup_dir / "p3_exact_primary80_chip_20d_blocked_ledger.csv", dtype={"ticker": str})
     shutil.copy2(source_dir / "p3_blocked_rows_detail.csv", output_dir / "p3_full_feature_blocked_rows_detail.csv")
     shutil.copy2(source_dir / "p3_pit_release_lag_ledger.csv", output_dir / "p3_full_feature_PIT_release_lag_ledger.csv")
     lag_cols = [c for c in ("family", "source_date_semantics", "available_at_policy", "PIT_status") if c in release_lag.columns]
@@ -116,6 +129,9 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
     warmup_segments.to_csv(output_dir / "p3_raw_HLC_warmup_segment_absorption_audit.csv", index=False, encoding="utf-8-sig")
     warmup_blocked.assign(missing_class="official_zero_or_not_applicable", feature_value_imputation_allowed=False).to_csv(
         output_dir / "p3_raw_HLC_warmup_blocked_ledger.csv", index=False, encoding="utf-8-sig")
+    chip_segments.to_csv(output_dir / "p3_chip_20D_warmup_segment_absorption_audit.csv", index=False, encoding="utf-8-sig")
+    chip_blocked.assign(missing_class="official_zero_or_not_applicable", feature_value_imputation_allowed=False).to_csv(
+        output_dir / "p3_chip_20D_warmup_blocked_ledger.csv", index=False, encoding="utf-8-sig")
 
     adjusted["_ready"] = adjusted.trusted_nonofficial_adjusted_ready.astype(str).str.lower().eq("true")
     adjusted_by_ticker = adjusted.groupby("ticker", as_index=False)._ready.max()
@@ -193,19 +209,29 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
     readiness_rows["analysis_warmup_60TD_ready"] = readiness_rows.valid_history_count.fillna(0).ge(60)
     readiness_rows["adjusted_dependent_lifecycle_ready"] = readiness_rows.adjusted_OHLC_ready & readiness_rows.analysis_warmup_60TD_ready
     readiness_rows["row_blocked_reason"] = np.where(readiness_rows.adjusted_dependent_lifecycle_ready, "", "missing_adjusted_OHLC_or_60TD_warmup")
-    family_map = {
-        "institutional": "chip_institutional", "margin_short": "chip_margin_short",
-        "securities_lending": "chip_securities_lending", "foreign_ownership": "foreign_ownership",
-    }
+    family_map = {"institutional": "chip_institutional", "margin_short": "chip_margin_short",
+                  "securities_lending": "chip_securities_lending", "foreign_ownership": "foreign_ownership"}
+    (output_dir / "current_step.txt").write_text("aligning_chip_segments", encoding="utf-8")
+    segment_keys = chip_segments[["ticker", "segment_start_snapshot"] + [f"{name}_20d_ready" for name in family_map]].copy()
+    segment_keys["segment_start_snapshot"] = pd.to_datetime(segment_keys.segment_start_snapshot)
+    # Attach each weekly row to its most recent entry/re-entry segment. Radar has
+    # already audited the exact preceding 20 official sessions for that segment.
+    parts = []
+    for ticker, rows in readiness_rows.groupby("ticker", sort=False):
+        seg = segment_keys[segment_keys.ticker.eq(ticker)].sort_values("segment_start_snapshot")
+        rows = rows.sort_values("snapshot_date")
+        if len(seg): rows = pd.merge_asof(rows, seg.drop(columns="ticker"), left_on="snapshot_date", right_on="segment_start_snapshot", direction="backward")
+        parts.append(rows)
+    readiness_rows = pd.concat(parts, ignore_index=True, sort=False)
     for label, folder in family_map.items():
-        frame = _load_compact(exact_primary80_dir, folder)
-        frame["date"] = pd.to_datetime(frame.date); frame["ticker"] = frame.ticker.astype(str)
-        frame = frame.sort_values(["ticker", "date"]).drop_duplicates(["ticker", "date"])
-        frame[f"{label}_observed"] = True
-        frame[f"{label}_rolling35d_count"] = frame.set_index("date").groupby("ticker")[f"{label}_observed"].rolling("35D").count().reset_index(level=0, drop=True).to_numpy()
-        readiness_rows = readiness_rows.merge(frame[["date", "ticker", f"{label}_observed", f"{label}_rolling35d_count"]],
+        (output_dir / "current_step.txt").write_text(f"merging_chip_family_{label}", encoding="utf-8")
+        active = _load_compact(exact_primary80_dir, folder)
+        active["date"] = pd.to_datetime(active.date); active["ticker"] = active.ticker.astype(str)
+        active = active.drop_duplicates(["ticker", "date"]); active[f"{label}_current_observed"] = True
+        readiness_rows = readiness_rows.merge(active[["date", "ticker", f"{label}_current_observed"]],
                                               left_on=["snapshot_date", "ticker"], right_on=["date", "ticker"], how="left", suffixes=("", f"_{label}"))
-        readiness_rows[f"{label}_20obs_PIT_ready"] = readiness_rows[f"{label}_observed"].fillna(False) & readiness_rows[f"{label}_rolling35d_count"].fillna(0).ge(20)
+        readiness_rows[f"{label}_20obs_PIT_ready"] = readiness_rows[f"{label}_20d_ready"].fillna(False) & readiness_rows[f"{label}_current_observed"].fillna(False)
+    (output_dir / "current_step.txt").write_text("building_snapshot_completeness", encoding="utf-8")
     mandatory_row_cols = ["adjusted_dependent_lifecycle_ready"] + [f"{name}_20obs_PIT_ready" for name in family_map]
     readiness_rows["full_feature_row_ready"] = readiness_rows[mandatory_row_cols].all(axis=1)
     readiness_rows["full_feature_blocked_families"] = readiness_rows.apply(
@@ -318,6 +344,7 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
                  "source_package_hash_mismatch_count": 0, "requested_start": "2023-07-11", "requested_end": "2026-07-10",
                  "gap_patch_hash_mismatch_count": 0, "gap_patch_absorbed": True,
                  "raw_HLC_warmup_hash_mismatch_count": 0, "raw_HLC_warmup_absorbed": True,
+                 "chip_20D_warmup_hash_mismatch_count": 0, "chip_20D_warmup_absorbed": True,
                  "actual_market_start": "2023-07-14", "actual_market_end": "2026-06-29", "P3_replaces_P1": False,
                  "official_raw_execution_OHLCV_ready": True, "adjusted_analysis_accepted_tickers": adjusted_ready,
                  "adjusted_analysis_blocked_tickers": adjusted_blocked, "official_adjusted_ready": False,
@@ -338,6 +365,10 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
                  "raw_HLC_warmup_official_zero_or_not_applicable": int(warmup_manifest["coverage"]["blocked_ticker_dates"]),
                  "raw_HLC_warmup_source_gap_rows": 0,
                  "raw_HLC_warmup_complete_segments": int(warmup_manifest["coverage"]["complete_60td_segments"]),
+                 "chip_20D_warmup_total_requirements": 358100,
+                 "chip_20D_warmup_complete_segments": int(chip_ready["all_mandatory_chip_20d_ready_segments"]),
+                 "chip_20D_warmup_incomplete_segments": int(chip_ready["segment_count"] - chip_ready["all_mandatory_chip_20d_ready_segments"]),
+                 "chip_20D_warmup_source_gap_rows": int(chip_ready["source_gap_count"]),
                  "TDCC_full_P3_ready": False, "TDCC_P3_2_AB_only": True,
                  "TAIFEX_original_accepted_dates": 615, "TAIFEX_repaired_dates": 110,
                  "TAIFEX_confirmed_market_day_missing_dates": 0, "TAIFEX_full_period_ready_after_patch": True,
@@ -360,7 +391,7 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
         f"- 前版 adjusted-12 no-path proof 已 superseded：11檔進入 primary80，共{len(blocked_membership)}筆 snapshots，selected impact在凍結selector前未知。\n"
         "- Trusted adjclose/raw-close factor一致調整官方raw O/H/L/C供research；warmup 181,375/183,886 ready，2,511為official no-row/not-applicable，source gap=0。\n"
         f"- Close-based complete snapshots={close_complete_snapshot_count}/{total_snapshot_count}；KD-price complete={KD_price_complete_snapshot_count}/{total_snapshot_count}；all mandatory full-feature complete={complete_snapshot_count}/{total_snapshot_count}。\n"
-        "- Exact chip compacts缺新進/重入前20D warmup；法人、融資融券借券、外資持股不得用不足20日或舊值補齊。\n"
+        f"- Chip 20D warmup complete segments={chip_ready['all_mandatory_chip_20d_ready_segments']}/{chip_ready['segment_count']}；其餘official no-row保留availability，不補0、不stale carry。\n"
         "- P3 不取代 P1；法人／大戶籌碼代理分數僅 proxy components，權重未定。\n"
         "- Mandatory gaps 關閉前不交 Experiments、不跑 partial performance。\n", encoding="utf-8")
     files = sorted(p for p in output_dir.iterdir() if p.is_file() and p.name != "manifest.json")
@@ -368,8 +399,9 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
                 "source_commit": "d2e9071", "gap_patch_source": str(gap_patch_dir), "gap_patch_commit": "9a803ca",
                 "exact_primary80_source": str(exact_primary80_dir), "exact_primary80_commit": "6120840",
                 "raw_HLC_warmup_source": str(raw_hlc_warmup_dir), "raw_HLC_warmup_commit": "2303e87", "raw_HLC_runner_hygiene_commit": "cfd1542",
+                "chip_20D_warmup_source": str(chip_20d_warmup_dir), "chip_20D_warmup_commit": "4cf45a8",
                 "source_readiness": source_ready, "gap_patch_readiness": patch_ready, "exact_primary80_readiness": exact_ready,
-                "raw_HLC_warmup_readiness": warmup_ready, "readiness": readiness,
+                "raw_HLC_warmup_readiness": warmup_ready, "chip_20D_warmup_readiness": chip_ready, "readiness": readiness,
                 "files": [{"name": p.name, "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in files]}
     (output_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     (output_dir / "current_step.txt").write_text("partial_readiness_waiting_mandatory_gap_closure_no_experiments", encoding="utf-8")
@@ -377,8 +409,8 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(); parser.add_argument("--source-dir", type=Path, default=DEFAULT_SOURCE); parser.add_argument("--gap-patch-dir", type=Path, default=DEFAULT_GAP_PATCH); parser.add_argument("--exact-primary80-dir", type=Path, default=DEFAULT_EXACT_PRIMARY80); parser.add_argument("--raw-hlc-warmup-dir", type=Path, default=DEFAULT_RAW_HLC_WARMUP); parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
-    args = parser.parse_args(); print(run(args.source_dir, args.gap_patch_dir, args.exact_primary80_dir, args.raw_hlc_warmup_dir, args.output_dir))
+    parser = argparse.ArgumentParser(); parser.add_argument("--source-dir", type=Path, default=DEFAULT_SOURCE); parser.add_argument("--gap-patch-dir", type=Path, default=DEFAULT_GAP_PATCH); parser.add_argument("--exact-primary80-dir", type=Path, default=DEFAULT_EXACT_PRIMARY80); parser.add_argument("--raw-hlc-warmup-dir", type=Path, default=DEFAULT_RAW_HLC_WARMUP); parser.add_argument("--chip-20d-warmup-dir", type=Path, default=DEFAULT_CHIP_20D_WARMUP); parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
+    args = parser.parse_args(); print(run(args.source_dir, args.gap_patch_dir, args.exact_primary80_dir, args.raw_hlc_warmup_dir, args.chip_20d_warmup_dir, args.output_dir))
 
 
 if __name__ == "__main__": main()

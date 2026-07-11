@@ -10,6 +10,8 @@
   "raw_HLC_warmup_source": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_p3_exact_primary80_raw_hlc_warmup_gap_fill_20260711",
   "raw_HLC_warmup_commit": "2303e87",
   "raw_HLC_runner_hygiene_commit": "cfd1542",
+  "chip_20D_warmup_source": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_p3_exact_primary80_chip_20d_warmup_gap_fill_20260711",
+  "chip_20D_warmup_commit": "4cf45a8",
   "source_readiness": {
     "task_id": "TASK-RADAR-DATA-VNEXT-P3-RECENT-FULL-FEATURE-DATA-READINESS-AND-ACQUISITION-001",
     "status": "p3_partial_readiness_contract_mandatory_gaps_remain",
@@ -149,6 +151,50 @@
     "not_live_rule": true,
     "forward_returns_live_rule_usage": false
   },
+  "chip_20D_warmup_readiness": {
+    "task_id": "TASK-RADAR-DATA-VNEXT-P3-EXACT-PRIMARY80-CHIP-FAMILY-20D-WARMUP-GAP-FILL-001",
+    "status": "chip_20d_warmup_source_package_ready_with_explicit_no_rows",
+    "source": "official TWSE/TPEx institutional, margin/short, securities lending, foreign ownership",
+    "coverage": {
+      "institutional": {
+        "ready": 89236,
+        "required": 89525,
+        "blocked": 289
+      },
+      "margin_short": {
+        "ready": 87963,
+        "required": 89525,
+        "blocked": 1562
+      },
+      "securities_lending": {
+        "ready": 88963,
+        "required": 89525,
+        "blocked": 562
+      },
+      "foreign_ownership": {
+        "ready": 89379,
+        "required": 89525,
+        "blocked": 146
+      }
+    },
+    "segment_count": 5016,
+    "all_mandatory_chip_20d_ready_segments": 4797,
+    "source_gap_count": 0,
+    "future_data_violation_count": 0,
+    "ready_for_core_p3_exact_primary80_chip_20d_absorption": true,
+    "ready_for_experiments": false,
+    "adjusted_11_reprobed": false,
+    "zero_or_stale_fill_used": false,
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "ready_for_strategy_replay": false,
+    "ready_for_formal": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false
+  },
   "readiness": {
     "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-FULL-FEATURE-UNIFIED-LIFECYCLE-CONTRACT-001",
     "status": "partial_readiness_mandatory_gaps_remain",
@@ -159,6 +205,8 @@
     "gap_patch_absorbed": true,
     "raw_HLC_warmup_hash_mismatch_count": 0,
     "raw_HLC_warmup_absorbed": true,
+    "chip_20D_warmup_hash_mismatch_count": 0,
+    "chip_20D_warmup_absorbed": true,
     "actual_market_start": "2023-07-14",
     "actual_market_end": "2026-06-29",
     "P3_replaces_P1": false,
@@ -178,14 +226,18 @@
     "corporate_action_no_event_completeness_ready": false,
     "close_feature_complete_snapshots": 87,
     "KD_price_complete_snapshots": 63,
-    "full_lifecycle_complete_snapshots": 0,
+    "full_lifecycle_complete_snapshots": 11,
     "total_exact_snapshots": 154,
-    "full_lifecycle_complete_snapshot_share": 0.0,
+    "full_lifecycle_complete_snapshot_share": 0.07142857142857142,
     "raw_HLC_warmup_required_ticker_dates": 183886,
     "raw_HLC_warmup_ready_ticker_dates": 181375,
     "raw_HLC_warmup_official_zero_or_not_applicable": 2511,
     "raw_HLC_warmup_source_gap_rows": 0,
     "raw_HLC_warmup_complete_segments": 3139,
+    "chip_20D_warmup_total_requirements": 358100,
+    "chip_20D_warmup_complete_segments": 4797,
+    "chip_20D_warmup_incomplete_segments": 219,
+    "chip_20D_warmup_source_gap_rows": 0,
     "TDCC_full_P3_ready": false,
     "TDCC_P3_2_AB_only": true,
     "TAIFEX_original_accepted_dates": 615,
@@ -220,11 +272,11 @@
   "files": [
     {
       "name": "current_step.txt",
-      "sha256": "e7eee3f4114e03395e4454daeb2ade415108b804e27c61febfc2c50155dd5a27"
+      "sha256": "5ed6007ae817e882d4746c39fc34db8dff9424b30d099eacaa5f5b716665d584"
     },
     {
       "name": "final_summary_zh.md",
-      "sha256": "eefb3de6c6130a2c8c9c096978ab3fb17ed90ccb5afd0b7309f4c235740a99fb"
+      "sha256": "d3cde88ae49f65e506d82e40c6f1942287886f001b372a4f911c6a119c471d9c"
     },
     {
       "name": "future_data_audit.csv",
@@ -263,20 +315,28 @@
       "sha256": "08097564f5cf708d46b6849ee18210476913cec5a89d3e09464d3225ce3bfc9b"
     },
     {
+      "name": "p3_chip_20D_warmup_blocked_ledger.csv",
+      "sha256": "e9002075ce0f94bb69079c577c7df31872acfca6fd28ec8ffa4bc23cb35bb795"
+    },
+    {
+      "name": "p3_chip_20D_warmup_segment_absorption_audit.csv",
+      "sha256": "cd8a8bf9c4b6fd5f98d7f369b14046471b4478139a3f3cd9866d6400a5bd7c83"
+    },
+    {
       "name": "p3_chip_proxy_semantics_contract.csv",
       "sha256": "99e32f4cf184517801b1531ce05895dd1e18205242ddb9e2deee7f3d3718ba64"
     },
     {
       "name": "p3_exact_complete_snapshot_subset_contract.csv",
-      "sha256": "45f3527d410fc52d0c3e49de2ff81da787311b37ef00e10e3802e7d909df9465"
+      "sha256": "eafc4a0ec58a7fc37169d4efa471af3c0c0750e3e1525646bc38aa72b1df4431"
     },
     {
       "name": "p3_exact_primary80_snapshot_completeness_audit.csv",
-      "sha256": "d3b8ee56c993f645bdd8db77ee134aafedc6311bcbe367dfd0afd06fe79bdc3b"
+      "sha256": "55960218850f85749c87f3023ac06d42923b424fa20f0e2d00058e9a8258b5f5"
     },
     {
       "name": "p3_exact_primary80_unified_PIT_feature_matrix_readiness_rows.csv",
-      "sha256": "0cca4cef361d6ae34a414b844d9c4d1fa1759a5bf230598d19fff842b7b8c6ee"
+      "sha256": "600a25680c18f54b9bd03d9e5d9436ebae512165083feb7f82d791f0e2b5c4b6"
     },
     {
       "name": "p3_full_feature_blocked_family_ledger.csv",
@@ -340,7 +400,7 @@
     },
     {
       "name": "p3_unified_PIT_feature_matrix_readiness.csv",
-      "sha256": "1b529dbd9d4110dd14fea50919e8a5f0b5c254bb3c317897f70548613d9a235c"
+      "sha256": "4a049d67200addff3c2caf497d57cd2f9dc89258704093b88eb4cd9002f101f6"
     },
     {
       "name": "p3_universe_membership_coverage_audit.csv",
@@ -348,7 +408,7 @@
     },
     {
       "name": "readiness_for_p3_full_feature_unified_lifecycle_contract.json",
-      "sha256": "6a8b56c7172db8eaabaa8774231d626a934a25b25c2d7e5f6ee27e15c63e3537"
+      "sha256": "270d123841b71e912f14fe67e8de05a16947297bd00a2cacc9953127a5dee4d0"
     }
   ]
 }

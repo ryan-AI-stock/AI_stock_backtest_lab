@@ -1,1 +1,12 @@
 ﻿snapshot_date,primary80_rows,close_feature_ready_rows,adjusted_HLC_KD_ready_rows,full_feature_ready_rows,close_feature_snapshot_complete,KD_price_snapshot_complete,selector_completeness_ready,selector_completeness_status,silent_exclusion_allowed
+2024-10-18,80,80,80,80,True,True,True,exact_complete,False
+2024-10-25,80,80,80,80,True,True,True,exact_complete,False
+2024-11-01,80,80,80,80,True,True,True,exact_complete,False
+2024-11-08,80,80,80,80,True,True,True,exact_complete,False
+2026-04-30,80,80,80,80,True,True,True,exact_complete,False
+2026-05-08,80,80,80,80,True,True,True,exact_complete,False
+2026-05-15,80,80,80,80,True,True,True,exact_complete,False
+2026-05-22,80,80,80,80,True,True,True,exact_complete,False
+2026-05-29,80,80,80,80,True,True,True,exact_complete,False
+2026-06-26,80,80,80,80,True,True,True,exact_complete,False
+2026-06-29,80,80,80,80,True,True,True,exact_complete,False
