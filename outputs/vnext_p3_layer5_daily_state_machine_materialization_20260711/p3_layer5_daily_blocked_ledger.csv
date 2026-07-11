@@ -1,0 +1,5 @@
+﻿blocker,scope,silent_fill
+daily_RS_MA_BIAS_KD_not_materialized,all daily candidate rows,False
+daily_chip_5_10_20D_rollups_not_materialized,applicable rows,False
+daily_market_three_group_state_not_materialized,all decision dates,False
+2025_08_01_adjusted_provider_partial,ticker-level,False

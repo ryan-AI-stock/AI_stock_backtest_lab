@@ -1,0 +1,4 @@
+﻿audit,violation_count
+membership_effective_strictly_after_snapshot,0
+execution_strictly_after_decision,0
+future_return_used_as_rule,0

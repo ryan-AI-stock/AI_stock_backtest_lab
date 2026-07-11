@@ -1,0 +1,8 @@
+﻿family,frequency,status,daily_recomputed
+membership,weekly_PIT_effective_next_day,ready,False
+raw_execution_OHLCV,daily,ready_or_row_blocked,True
+adjusted_analysis_OHLC,daily,ready_or_row_blocked,True
+RS_MA_BIAS_KD,daily,blocked_not_yet_computed_from_daily_adjusted_history,False
+chip_rollups,daily,blocked_not_yet_rolled_5_10_20D,False
+quality_context,weekly_PIT,ready_carried_context,False
+market_state_3group,daily,blocked_not_yet_materialized,False

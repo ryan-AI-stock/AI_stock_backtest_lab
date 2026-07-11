@@ -1,0 +1,76 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-DAILY-STATE-MACHINE-MATERIALIZATION-001",
+  "source_commits": [
+    "ea5b046",
+    "9c3ea9a"
+  ],
+  "readiness": {
+    "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-DAILY-STATE-MACHINE-MATERIALIZATION-001",
+    "status": "daily_membership_and_price_core_materialized_feature_state_action_partial",
+    "requested_start": "2023-07-14",
+    "requested_end": "2026-06-29",
+    "actual_start": "2023-07-17",
+    "actual_end": "2026-06-26",
+    "daily_dates": 715,
+    "daily_candidate_rows": 57200,
+    "daily_candidate_count_min": 80,
+    "daily_candidate_count_median": 80.0,
+    "daily_candidate_count_max": 80,
+    "daily_price_core_ready_rows": 53686,
+    "daily_membership_timing_ready": true,
+    "daily_feature_blocks_ready": false,
+    "daily_state_rows_ready": false,
+    "daily_action_rows_ready": false,
+    "ready_for_phase_a_event_validation": false,
+    "ready_for_phase_b_unique_position_path": false,
+    "ready_for_experiments": false,
+    "future_data_violation_count": 0,
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "ready_for_strategy_replay": false,
+    "ready_for_formal": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false
+  },
+  "files": [
+    {
+      "name": "final_summary_zh.md",
+      "sha256": "a77ed08540a7f6163fe5575eaa683e61be5381d350b890d641d6fb63887cc738"
+    },
+    {
+      "name": "future_data_audit.csv",
+      "sha256": "34beba604165ac7518668a97460f7b7551171d0e447128d6778af56060f3b20d"
+    },
+    {
+      "name": "p3_layer5_daily_blocked_ledger.csv",
+      "sha256": "6b0cc1c26c27e00f26faf5e2366ab17c865f34c7db21f181c7b62317bb2a2dc8"
+    },
+    {
+      "name": "p3_layer5_daily_candidate_materialization.csv",
+      "sha256": "4d79ef47b038f68c28e8c31c1ccc015c3117c89d3ff034e2f7c592f23f190ff1"
+    },
+    {
+      "name": "p3_layer5_daily_cost_slippage_policy.csv",
+      "sha256": "a48878f376fb8e2ed86a72fafc69ba367944ee429c8a98f53e5434444bf2f09f"
+    },
+    {
+      "name": "p3_layer5_daily_field_frequency_source_audit.csv",
+      "sha256": "d49e0029711860768aa0dca0040ba2d7a0ebe68a0b7b927d9c0415b56c26d047"
+    },
+    {
+      "name": "p3_layer5_daily_frozen_parameter_policy.csv",
+      "sha256": "5d27a57a2ce03210342596e445507e8f44109435a1c472dc58f3992d84160e38"
+    },
+    {
+      "name": "p3_layer5_daily_readiness.json",
+      "sha256": "480b0d7c642003a87b3cca47da93eac4b51889a0cff06c05025d6e23b179c3f0"
+    },
+    {
+      "name": "p3_layer5_daily_requested_vs_actual_coverage.csv",
+      "sha256": "1191461414b7e667d0b2a4eadec0fc422b508190bc4451f355fc08d8e096bedb"
+    }
+  ]
+}

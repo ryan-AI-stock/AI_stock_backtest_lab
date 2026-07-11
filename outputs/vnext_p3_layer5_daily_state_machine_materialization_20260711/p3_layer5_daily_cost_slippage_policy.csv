@@ -1,0 +1,6 @@
+﻿item,base,ready,low,high
+EP05_brokerage_fee,existing_model,True,,
+stock_sell_tax,existing_model,True,,
+switch_double_sided_cost,existing_model,True,,
+slippage_bp_per_side,10,True,5.0,20.0
+after_cost_edge_buffer_x,1.5,True,1.0,2.0
