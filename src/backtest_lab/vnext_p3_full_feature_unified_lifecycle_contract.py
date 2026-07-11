@@ -18,6 +18,7 @@ DEFAULT_GAP_PATCH = Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-ro
 DEFAULT_EXACT_PRIMARY80 = Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p3_exact_primary80_full_feature_source_scope_repair_20260711")
 DEFAULT_RAW_HLC_WARMUP = Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p3_exact_primary80_raw_hlc_warmup_gap_fill_20260711")
 DEFAULT_CHIP_20D_WARMUP = Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p3_exact_primary80_chip_20d_warmup_gap_fill_20260711")
+DEFAULT_TWO_DATE_AUDIT = Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p3_two_date_blocker_source_audit_20260711")
 DEFAULT_OUTPUT = REPO_ROOT / "outputs/vnext_p3_full_feature_unified_lifecycle_contract_20260711"
 FLAGS = {"formal_model_changed": False, "trade_decision_changed": False, "active_in_trade_decision": False,
          "report_changed": False, "portfolio_replay_executed": False, "ready_for_strategy_replay": False,
@@ -36,7 +37,8 @@ def _load_compact(root: Path, family: str) -> pd.DataFrame:
 
 def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PATCH,
         exact_primary80_dir: Path = DEFAULT_EXACT_PRIMARY80, raw_hlc_warmup_dir: Path = DEFAULT_RAW_HLC_WARMUP,
-        chip_20d_warmup_dir: Path = DEFAULT_CHIP_20D_WARMUP, output_dir: Path = DEFAULT_OUTPUT) -> Path:
+        chip_20d_warmup_dir: Path = DEFAULT_CHIP_20D_WARMUP, two_date_audit_dir: Path = DEFAULT_TWO_DATE_AUDIT,
+        output_dir: Path = DEFAULT_OUTPUT) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "current_step.txt").write_text("validating_P3_source_package", encoding="utf-8")
     required = ["manifest.json", "readiness_for_core_p3_full_feature_unified_lifecycle_contract.json",
@@ -67,6 +69,10 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
                      "p3_exact_primary80_chip_20d_compact_hash_manifest.csv"]
     chip_missing = [name for name in chip_required if not (chip_20d_warmup_dir / name).exists()]
     if chip_missing: raise FileNotFoundError(f"P3 chip 20D warmup package missing: {chip_missing}")
+    two_date_required = ["manifest.json", "readiness_for_core_p3_two_date_blocker_audit.json", "p3_20251226_taifex_patch.csv",
+                         "p3_20250801_yahoo_adjusted_probe.csv", "p3_20250801_adjusted_patch.csv", "p3_two_date_blocked_ledger.csv"]
+    two_date_missing = [name for name in two_date_required if not (two_date_audit_dir / name).exists()]
+    if two_date_missing: raise FileNotFoundError(f"P3 two-date audit package missing: {two_date_missing}")
     source_manifest = json.loads((source_dir / "manifest.json").read_text(encoding="utf-8-sig"))
     source_ready = json.loads((source_dir / "readiness_for_core_p3_full_feature_unified_lifecycle_contract.json").read_text(encoding="utf-8-sig"))
     patch_manifest = json.loads((gap_patch_dir / "manifest.json").read_text(encoding="utf-8-sig"))
@@ -77,6 +83,8 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
     warmup_ready = json.loads((raw_hlc_warmup_dir / "readiness_for_core_p3_exact_primary80_raw_hlc_warmup.json").read_text(encoding="utf-8-sig"))
     chip_manifest = json.loads((chip_20d_warmup_dir / "manifest.json").read_text(encoding="utf-8-sig"))
     chip_ready = json.loads((chip_20d_warmup_dir / "readiness_for_core_p3_exact_primary80_chip_20d_warmup.json").read_text(encoding="utf-8-sig"))
+    two_date_manifest = json.loads((two_date_audit_dir / "manifest.json").read_text(encoding="utf-8-sig"))
+    two_date_ready = json.loads((two_date_audit_dir / "readiness_for_core_p3_two_date_blocker_audit.json").read_text(encoding="utf-8-sig"))
     declared = {item["path"].replace("\\", "/"): item["sha256"] for item in source_manifest["files"]}
     hash_mismatch = []
     for name in required[1:]:
@@ -96,6 +104,9 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
     chip_declared = {item["path"]: item["sha256"] for item in chip_manifest["files"]}
     chip_hash_mismatch = [name for name in chip_required[1:] if chip_declared.get(name) != hashlib.sha256((chip_20d_warmup_dir / name).read_bytes()).hexdigest()]
     if chip_hash_mismatch: raise ValueError(f"P3 chip warmup package hash mismatch: {chip_hash_mismatch}")
+    two_date_declared = {item["path"]: item["sha256"] for item in two_date_manifest["files"]}
+    two_date_hash_mismatch = [name for name in two_date_required[1:] if two_date_declared.get(name) != hashlib.sha256((two_date_audit_dir / name).read_bytes()).hexdigest()]
+    if two_date_hash_mismatch: raise ValueError(f"P3 two-date audit hash mismatch: {two_date_hash_mismatch}")
 
     coverage = pd.read_csv(source_dir / "p3_family_coverage_matrix.csv")
     blocked = pd.read_csv(source_dir / "p3_blocked_rows_and_family_ledger.csv")
@@ -113,6 +124,7 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
     warmup_blocked = pd.read_csv(raw_hlc_warmup_dir / "p3_exact_primary80_raw_hlc_warmup_blocked_ledger.csv", dtype={"ticker": str})
     chip_segments = pd.read_csv(chip_20d_warmup_dir / "p3_exact_primary80_chip_20d_coverage_by_segment.csv", dtype={"ticker": str})
     chip_blocked = pd.read_csv(chip_20d_warmup_dir / "p3_exact_primary80_chip_20d_blocked_ledger.csv", dtype={"ticker": str})
+    taifex_single_patch = pd.read_csv(two_date_audit_dir / "p3_20251226_taifex_patch.csv")
     shutil.copy2(source_dir / "p3_blocked_rows_detail.csv", output_dir / "p3_full_feature_blocked_rows_detail.csv")
     shutil.copy2(source_dir / "p3_pit_release_lag_ledger.csv", output_dir / "p3_full_feature_PIT_release_lag_ledger.csv")
     lag_cols = [c for c in ("family", "source_date_semantics", "available_at_policy", "PIT_status") if c in release_lag.columns]
@@ -132,6 +144,9 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
     chip_segments.to_csv(output_dir / "p3_chip_20D_warmup_segment_absorption_audit.csv", index=False, encoding="utf-8-sig")
     chip_blocked.assign(missing_class="official_zero_or_not_applicable", feature_value_imputation_allowed=False).to_csv(
         output_dir / "p3_chip_20D_warmup_blocked_ledger.csv", index=False, encoding="utf-8-sig")
+    taifex_single_patch.to_csv(output_dir / "p3_20251226_TAIFEX_patch_absorption_audit.csv", index=False, encoding="utf-8-sig")
+    shutil.copy2(two_date_audit_dir / "p3_20250801_yahoo_adjusted_probe.csv", output_dir / "p3_20250801_adjusted_provider_blocked_evidence.csv")
+    shutil.copy2(two_date_audit_dir / "p3_two_date_blocked_ledger.csv", output_dir / "p3_two_date_source_blocked_ledger.csv")
 
     adjusted["_ready"] = adjusted.trusted_nonofficial_adjusted_ready.astype(str).str.lower().eq("true")
     adjusted_by_ticker = adjusted.groupby("ticker", as_index=False)._ready.max()
@@ -292,7 +307,7 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
     benchmark["date"] = pd.to_datetime(benchmark.date); benchmark_dates = set(benchmark.loc[benchmark.close.notna(), "date"])
     taifex = _load_compact(source_dir, "taifex")
     taifex_patch_rows = pd.read_csv(gap_patch_dir / "taifex_110_failed_only_patch.csv")
-    taifex_dates = set(pd.to_datetime(pd.concat([taifex[["date"]], taifex_patch_rows[["date"]]], ignore_index=True).date))
+    taifex_dates = set(pd.to_datetime(pd.concat([taifex[["date"]], taifex_patch_rows[["date"]], taifex_single_patch[["date"]]], ignore_index=True).date))
     global_market = _load_compact(source_dir, "global_market"); global_market["session_date"] = pd.to_datetime(global_market.session_date)
     market_rows = []
     for date in sorted(exact_membership.snapshot_date.unique()):
@@ -323,6 +338,8 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
     candidate_matrix_ready = market_gate_complete_weeks == total_snapshot_count and price_eligible_min > 0
     candidate_level_evaluable_weeks = int(candidate_weekly.candidate_level_date_ready.sum())
     bracket_accepted_count = int(bracket_proof.bracket_factor_accepted.sum())
+    exact_blocker_labels = [f"{row.snapshot_date.date()}:{'market_gate' if not row.date_level_market_gate_ready else 'price_eligibility'}"
+                            for row in candidate_weekly.loc[~candidate_weekly.candidate_level_date_ready].itertuples(index=False)]
 
     missing_ledger = pd.read_csv(exact_primary80_dir / "p3_exact_primary80_blocked_ticker_date_ledger.csv", dtype={"ticker": str})
     missing_ledger["missing_class"] = np.select([
@@ -433,9 +450,10 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
     universe.to_csv(output_dir / "p3_universe_membership_coverage_audit.csv", index=False, encoding="utf-8-sig")
     pd.DataFrame(columns=["date", "family", "violation_reason"]).to_csv(output_dir / "future_data_audit.csv", index=False, encoding="utf-8-sig")
 
-    readiness = {"task_id": TASK_ID, "status": "partial_readiness_mandatory_gaps_remain",
+    readiness = {"task_id": TASK_ID, "status": "candidate_feature_matrix_ready_waiting_layer5_state_machine_freeze",
                  "source_package_hash_mismatch_count": 0, "requested_start": "2023-07-11", "requested_end": "2026-07-10",
                  "gap_patch_hash_mismatch_count": 0, "gap_patch_absorbed": True,
+                 "two_date_audit_hash_mismatch_count": 0, "two_date_audit_absorbed": True,
                  "raw_HLC_warmup_hash_mismatch_count": 0, "raw_HLC_warmup_absorbed": True,
                  "chip_20D_warmup_hash_mismatch_count": 0, "chip_20D_warmup_absorbed": True,
                  "actual_market_start": "2023-07-14", "actual_market_end": "2026-06-29", "P3_replaces_P1": False,
@@ -462,7 +480,9 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
                  "candidate_level_feature_matrix_ready": candidate_matrix_ready,
                  "candidate_level_evaluable_subset_weeks": candidate_level_evaluable_weeks,
                  "candidate_level_blocked_weeks": total_snapshot_count - candidate_level_evaluable_weeks,
-                 "candidate_level_exact_blockers": ["2025-12-26 TAIFEX_no_target_row"],
+                 "candidate_level_exact_blockers": exact_blocker_labels,
+                 "TAIFEX_2025_12_26_patch_absorbed": True,
+                 "TAIFEX_2025_12_26_source_hash": str(taifex_single_patch.source_hash.iloc[0]),
                  "adjustment_factor_bracket_2025_08_01_accepted_tickers": bracket_accepted_count,
                  "adjustment_factor_bracket_2025_08_01_total_tickers": len(bracket_proof),
                  "adjustment_factor_bracket_2025_08_01_blocked_tickers": len(bracket_proof) - bracket_accepted_count,
@@ -503,7 +523,7 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
         f"- Close-based complete snapshots={close_complete_snapshot_count}/{total_snapshot_count}；KD-price complete={KD_price_complete_snapshot_count}/{total_snapshot_count}；all mandatory full-feature complete={complete_snapshot_count}/{total_snapshot_count}。\n"
         f"- Chip 20D warmup complete segments={chip_ready['all_mandatory_chip_20d_ready_segments']}/{chip_ready['segment_count']}；其餘official no-row保留availability，不補0、不stale carry。\n"
         f"- Candidate-level price eligible min/median/max={price_eligible_min}/{price_eligible_median:.1f}/{price_eligible_max}；market gate complete={market_gate_complete_weeks}/{total_snapshot_count}。\n"
-        f"- Candidate-level evaluable subset={candidate_level_evaluable_weeks}/{total_snapshot_count}；唯一date blocker為2025-12-26 TAIFEX。\n"
+        f"- Candidate-level evaluable subset={candidate_level_evaluable_weeks}/{total_snapshot_count}；remaining date blockers={len(exact_blocker_labels)}。\n"
         f"- 2025-08-01 factor bracket accepted={bracket_accepted_count}/{len(bracket_proof)}；只補factor continuity，不替代當日raw價格。\n"
         f"- Candidate-level matrix ready={candidate_matrix_ready}；state-machine contract仍待Strategy Center凍結，不跑績效。\n"
         "- P3 不取代 P1；法人／大戶籌碼代理分數僅 proxy components，權重未定。\n"
@@ -514,17 +534,19 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
                 "exact_primary80_source": str(exact_primary80_dir), "exact_primary80_commit": "6120840",
                 "raw_HLC_warmup_source": str(raw_hlc_warmup_dir), "raw_HLC_warmup_commit": "2303e87", "raw_HLC_runner_hygiene_commit": "cfd1542",
                 "chip_20D_warmup_source": str(chip_20d_warmup_dir), "chip_20D_warmup_commit": "4cf45a8",
+                "two_date_audit_source": str(two_date_audit_dir), "two_date_audit_commit": "29ea02b",
                 "source_readiness": source_ready, "gap_patch_readiness": patch_ready, "exact_primary80_readiness": exact_ready,
-                "raw_HLC_warmup_readiness": warmup_ready, "chip_20D_warmup_readiness": chip_ready, "readiness": readiness,
+                "raw_HLC_warmup_readiness": warmup_ready, "chip_20D_warmup_readiness": chip_ready,
+                "two_date_audit_readiness": two_date_ready, "readiness": readiness,
                 "files": [{"name": p.name, "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in files]}
     (output_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
-    (output_dir / "current_step.txt").write_text("partial_readiness_waiting_mandatory_gap_closure_no_experiments", encoding="utf-8")
+    (output_dir / "current_step.txt").write_text("candidate_matrix_ready_waiting_layer5_state_machine_freeze_no_experiments", encoding="utf-8")
     return output_dir
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(); parser.add_argument("--source-dir", type=Path, default=DEFAULT_SOURCE); parser.add_argument("--gap-patch-dir", type=Path, default=DEFAULT_GAP_PATCH); parser.add_argument("--exact-primary80-dir", type=Path, default=DEFAULT_EXACT_PRIMARY80); parser.add_argument("--raw-hlc-warmup-dir", type=Path, default=DEFAULT_RAW_HLC_WARMUP); parser.add_argument("--chip-20d-warmup-dir", type=Path, default=DEFAULT_CHIP_20D_WARMUP); parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
-    args = parser.parse_args(); print(run(args.source_dir, args.gap_patch_dir, args.exact_primary80_dir, args.raw_hlc_warmup_dir, args.chip_20d_warmup_dir, args.output_dir))
+    parser = argparse.ArgumentParser(); parser.add_argument("--source-dir", type=Path, default=DEFAULT_SOURCE); parser.add_argument("--gap-patch-dir", type=Path, default=DEFAULT_GAP_PATCH); parser.add_argument("--exact-primary80-dir", type=Path, default=DEFAULT_EXACT_PRIMARY80); parser.add_argument("--raw-hlc-warmup-dir", type=Path, default=DEFAULT_RAW_HLC_WARMUP); parser.add_argument("--chip-20d-warmup-dir", type=Path, default=DEFAULT_CHIP_20D_WARMUP); parser.add_argument("--two-date-audit-dir", type=Path, default=DEFAULT_TWO_DATE_AUDIT); parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
+    args = parser.parse_args(); print(run(args.source_dir, args.gap_patch_dir, args.exact_primary80_dir, args.raw_hlc_warmup_dir, args.chip_20d_warmup_dir, args.two_date_audit_dir, args.output_dir))
 
 
 if __name__ == "__main__": main()

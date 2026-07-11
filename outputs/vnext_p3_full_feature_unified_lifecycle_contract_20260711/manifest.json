@@ -12,6 +12,8 @@
   "raw_HLC_runner_hygiene_commit": "cfd1542",
   "chip_20D_warmup_source": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_p3_exact_primary80_chip_20d_warmup_gap_fill_20260711",
   "chip_20D_warmup_commit": "4cf45a8",
+  "two_date_audit_source": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_p3_two_date_blocker_source_audit_20260711",
+  "two_date_audit_commit": "29ea02b",
   "source_readiness": {
     "task_id": "TASK-RADAR-DATA-VNEXT-P3-RECENT-FULL-FEATURE-DATA-READINESS-AND-ACQUISITION-001",
     "status": "p3_partial_readiness_contract_mandatory_gaps_remain",
@@ -195,14 +197,46 @@
     "not_live_rule": true,
     "forward_returns_live_rule_usage": false
   },
+  "two_date_audit_readiness": {
+    "task_id": "TASK-RADAR-DATA-VNEXT-P3-TWO-DATE-BLOCKER-BOUNDED-SOURCE-AUDIT-001",
+    "status": "taifex_patch_ready_adjusted_date_structurally_blocked_by_provider_nulls",
+    "source": "official TWSE/TPEx market status plus Yahoo trusted adjusted probe plus official TAIFEX range CSV",
+    "coverage": {
+      "2025-08-01_primary80_tickers": 80,
+      "2025-08-01_existing_adjusted_rows": 0,
+      "2025-08-01_adjusted_patch_rows": 0,
+      "2025-08-01_yahoo_classifications": {
+        "provider_null_placeholder_for_official_trading_session": 72,
+        "provider_session_absent": 2,
+        "symbol_history_unavailable_chart_result_null": 6
+      },
+      "2025-12-26_taifex_patch_rows": 1
+    },
+    "future_data_violation_count": 0,
+    "ready_for_core_p3_20251226_taifex_patch_absorption": true,
+    "ready_for_core_p3_20250801_adjusted_patch_absorption": false,
+    "ready_for_experiments": false,
+    "raw_used_as_adjusted": false,
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "ready_for_strategy_replay": false,
+    "ready_for_formal": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false
+  },
   "readiness": {
     "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-FULL-FEATURE-UNIFIED-LIFECYCLE-CONTRACT-001",
-    "status": "partial_readiness_mandatory_gaps_remain",
+    "status": "candidate_feature_matrix_ready_waiting_layer5_state_machine_freeze",
     "source_package_hash_mismatch_count": 0,
     "requested_start": "2023-07-11",
     "requested_end": "2026-07-10",
     "gap_patch_hash_mismatch_count": 0,
     "gap_patch_absorbed": true,
+    "two_date_audit_hash_mismatch_count": 0,
+    "two_date_audit_absorbed": true,
     "raw_HLC_warmup_hash_mismatch_count": 0,
     "raw_HLC_warmup_absorbed": true,
     "chip_20D_warmup_hash_mismatch_count": 0,
@@ -233,14 +267,14 @@
     "candidate_level_price_eligible_min": 25,
     "candidate_level_price_eligible_median": 79.0,
     "candidate_level_price_eligible_max": 80,
-    "date_level_market_gate_complete_weeks": 153,
+    "date_level_market_gate_complete_weeks": 154,
     "date_level_market_gate_total_weeks": 154,
-    "candidate_level_feature_matrix_ready": false,
-    "candidate_level_evaluable_subset_weeks": 153,
-    "candidate_level_blocked_weeks": 1,
-    "candidate_level_exact_blockers": [
-      "2025-12-26 TAIFEX_no_target_row"
-    ],
+    "candidate_level_feature_matrix_ready": true,
+    "candidate_level_evaluable_subset_weeks": 154,
+    "candidate_level_blocked_weeks": 0,
+    "candidate_level_exact_blockers": [],
+    "TAIFEX_2025_12_26_patch_absorbed": true,
+    "TAIFEX_2025_12_26_source_hash": "ad5aa5eeaa4084595e85afd89306bec55ee4d8c809b0c07270a4a80fd0ccaece",
     "adjustment_factor_bracket_2025_08_01_accepted_tickers": 35,
     "adjustment_factor_bracket_2025_08_01_total_tickers": 80,
     "adjustment_factor_bracket_2025_08_01_blocked_tickers": 45,
@@ -271,8 +305,8 @@
     "P3_2_TDCC_optional_AB": true,
     "open_day_full_family_ingestion_validation_ready": false,
     "market_closed_no_signal_validation_does_not_count_as_open_day": true,
-    "mandatory_full_period_ready": false,
-    "ready_for_feature_materialization": false,
+    "mandatory_full_period_ready": true,
+    "ready_for_feature_materialization": true,
     "ready_for_state_machine_materialization": false,
     "weights_fixed": false,
     "partial_backtest_executed": false,
@@ -295,7 +329,7 @@
     },
     {
       "name": "final_summary_zh.md",
-      "sha256": "033919d314a49cd55105e48c904ce8cfa5cdf5bc66ba249b8d2dbf7e49ceef76"
+      "sha256": "943a67158fa1b60ebef62642aa009d301ba09d0ab0fdac518ca52eb7610d46c9"
     },
     {
       "name": "future_data_audit.csv",
@@ -310,8 +344,16 @@
       "sha256": "3d85737d47826cf274cee02b000b61899931490d5665d3433092e06f7711a747"
     },
     {
+      "name": "p3_20250801_adjusted_provider_blocked_evidence.csv",
+      "sha256": "100a4853d1ca1799f85668cbd187995677efb88a99118f7f1bf98ccd0d4c630f"
+    },
+    {
       "name": "p3_20250801_adjustment_factor_bracket_proof.csv",
       "sha256": "c3405947c78e50de8c5dd43c299440a9a8df45d54285483e9c74bdabc1f81a04"
+    },
+    {
+      "name": "p3_20251226_TAIFEX_patch_absorption_audit.csv",
+      "sha256": "c4173468ff061a14a8683bffa0fe5cd55a685c5a42253026c6065fa94dfa406f"
     },
     {
       "name": "p3_adjusted_12_exhausted_blocked_ledger.csv",
@@ -339,15 +381,15 @@
     },
     {
       "name": "p3_candidate_level_date_blocker_audit.csv",
-      "sha256": "60ddd264464e6ee8ba962f2b401726f6e2d8658ad41850bb6286366605b9c3c9"
+      "sha256": "73b1a94cdd6d6f7557f8403b2a3010e6f72fa29cbe4bd2daf42ba07f6783a61e"
     },
     {
       "name": "p3_candidate_level_evaluable_date_subset_contract.csv",
-      "sha256": "1cbbee008122239edfee22c4c05f643ca172cbfffb52fff4147179d70b4398d6"
+      "sha256": "cb7884c72ac8a957a2feeb598ae89583c412e2083a874d582d15c872f493d4fc"
     },
     {
       "name": "p3_candidate_level_weekly_coverage_distribution.csv",
-      "sha256": "0333c2dde022c9e559a85bf8c281a953a12746ae0c842835ef396a188c9a0bb9"
+      "sha256": "cb7884c72ac8a957a2feeb598ae89583c412e2083a874d582d15c872f493d4fc"
     },
     {
       "name": "p3_chip_20D_warmup_blocked_ledger.csv",
@@ -363,7 +405,7 @@
     },
     {
       "name": "p3_date_level_market_gate_audit.csv",
-      "sha256": "6cfbe851a35d69924403a428ad6a0d8b2974ccc9ad3e6191d425503eebb0394c"
+      "sha256": "49d581a149aba1943945f39a5123cf9075bfc51adf6712f2a207a83f1db2db48"
     },
     {
       "name": "p3_exact_complete_snapshot_subset_contract.csv",
@@ -442,12 +484,16 @@
       "sha256": "07ca236d7f7578e15617da92d27183ba12dc7d3554f2c126c83eaaca6188cd78"
     },
     {
+      "name": "p3_two_date_source_blocked_ledger.csv",
+      "sha256": "b19be3287a8c4aa49df3f9c553a1d44e558fc173307c4ad0c27783147cd03cc5"
+    },
+    {
       "name": "p3_unified_feature_ingestion_schema.csv",
       "sha256": "f44b155a9898b81e150ec8cd27672b728761d82e67164bfa701873a2691aac40"
     },
     {
       "name": "p3_unified_PIT_feature_matrix_readiness.csv",
-      "sha256": "510e2c5bdc17d2503182dbae0b8e0219ab8e0884b6943e4db3407c7271b74613"
+      "sha256": "48924c3453107876076f4bdee22b2985d2a4c8f833d5ddb621017afa7210a1cd"
     },
     {
       "name": "p3_universe_membership_coverage_audit.csv",
@@ -455,7 +501,7 @@
     },
     {
       "name": "readiness_for_p3_full_feature_unified_lifecycle_contract.json",
-      "sha256": "fb66e203f5a1cc60582006e7caea8b3754cbb663793d861796bee8acf06af4af"
+      "sha256": "16fcfab0885805260eb374cd3d3abb517a68838e6ffc7340efed2d75966feb40"
     }
   ]
 }

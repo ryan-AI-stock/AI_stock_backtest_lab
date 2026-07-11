@@ -1,6 +1,6 @@
 ﻿gate,status,blockers,partial_test_allowed
-P3-1 candidate-level PIT feature matrix,blocked,date_level_market_gate_or_no_price_eligible_candidate,False
-P3-2 candidate-level PIT feature matrix without TDCC,blocked,date_level_market_gate_or_no_price_eligible_candidate,False
+P3-1 candidate-level PIT feature matrix,ready,,False
+P3-2 candidate-level PIT feature matrix without TDCC,ready,,False
 legacy all80 all-family complete reference,overstrict_reference_only,complete=11/154,False
 P3-2 TDCC A/B,partial,8_legacy_or_inactive_ticker_weeks_official_zero_rows; may run only after common mandatory set ready,False
 open-day daily risk ingestion,pending_first_normal_trading_day_manifest,2026-07-10 validated market_closed_no_signal only,False

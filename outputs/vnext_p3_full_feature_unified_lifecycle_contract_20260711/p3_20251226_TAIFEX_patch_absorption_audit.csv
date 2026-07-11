@@ -1,0 +1,2 @@
+﻿date,product,investor,foreign_futures_oi_net_contracts,foreign_futures_oi_net_amount,foreign_futures_trade_net_contracts,foreign_futures_trade_net_amount,source_quality,available_at_policy,source_url,source_hash,retrieval_time_utc
+2025-12-26,TXF,foreign,-23476,-134643697,1008,5791031,official_taifex_market_level_range_download,official post-close release; eligible next trading day only,https://www.taifex.com.tw/cht/3/futContractsDateDown,ad5aa5eeaa4084595e85afd89306bec55ee4d8c809b0c07270a4a80fd0ccaece,2026-07-11T12:59:54+00:00

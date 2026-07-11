@@ -8,9 +8,9 @@
 - Trusted adjclose/raw-close factor一致調整官方raw O/H/L/C供research；warmup 181,375/183,886 ready，2,511為official no-row/not-applicable，source gap=0。
 - Close-based complete snapshots=87/154；KD-price complete=63/154；all mandatory full-feature complete=11/154。
 - Chip 20D warmup complete segments=4797/5016；其餘official no-row保留availability，不補0、不stale carry。
-- Candidate-level price eligible min/median/max=25/79.0/80；market gate complete=153/154。
-- Candidate-level evaluable subset=153/154；唯一date blocker為2025-12-26 TAIFEX。
+- Candidate-level price eligible min/median/max=25/79.0/80；market gate complete=154/154。
+- Candidate-level evaluable subset=154/154；remaining date blockers=0。
 - 2025-08-01 factor bracket accepted=35/80；只補factor continuity，不替代當日raw價格。
-- Candidate-level matrix ready=False；state-machine contract仍待Strategy Center凍結，不跑績效。
+- Candidate-level matrix ready=True；state-machine contract仍待Strategy Center凍結，不跑績效。
 - P3 不取代 P1；法人／大戶籌碼代理分數僅 proxy components，權重未定。
 - Mandatory gaps 關閉前不交 Experiments、不跑 partial performance。
