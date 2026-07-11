@@ -1,0 +1,5 @@
+﻿provider,dataset_or_route,cost_status,source_quality,bounded_result,usage_policy,notes
+Yahoo Finance,v8/finance/chart with adjclose,free_route,trusted_nonofficial,0_of_63_recovered,research_grade_analysis_only_not_formal,Both TW and TWO suffixes were tested as applicable; no raw OHLC substitution.
+FinMind,TaiwanStockPriceAdj,backer_or_sponsor_membership_required,trusted_nonofficial_not_accessed,blocked_by_no_new_paid_subscription_policy,not_downloaded,Official FinMind documentation labels adjusted price as member-only; free TaiwanStockPrice is unadjusted and was not substituted.
+FinMind,TaiwanStockInfo and TaiwanStockDelisting,free_route,trusted_nonofficial_structured_classification,used_for_symbol_and_delisting_classification,classification_only_not_adjusted_price,Snapshots retained in upstream lifecycle output with hashes in this package manifest.
+TWSE_TPEx_official_raw_execution_ledger,existing compact official raw OHLCV,local_existing_source,official_unadjusted_execution_price,used_for_historical_market_mapping_only,must_not_be_used_as_adjusted_analysis_price,No raw close was copied into adjusted_close.

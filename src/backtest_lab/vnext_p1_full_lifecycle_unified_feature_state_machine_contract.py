@@ -12,6 +12,7 @@ import pandas as pd
 TASK_ID = "TASK-BACKTEST-CORE-VNEXT-P1-FULL-LIFECYCLE-UNIFIED-FEATURE-STATE-MACHINE-CONTRACT-001"
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_RADAR = Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p1_full_lifecycle_minimum_data_acquisition_20260710")
+DEFAULT_ADJUSTED_63 = Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p1_adjusted_analysis_63_bounded_resolution_20260711")
 DEFAULT_OUTPUT = REPO_ROOT / "outputs/vnext_p1_full_lifecycle_unified_feature_state_machine_contract_20260711"
 FLAGS = {
     "formal_model_changed": False, "trade_decision_changed": False,
@@ -26,7 +27,7 @@ def _write_csv(rows: list[dict], path: Path) -> None:
     pd.DataFrame(rows).to_csv(path, index=False, encoding="utf-8-sig")
 
 
-def run(radar_dir: Path = DEFAULT_RADAR, output_dir: Path = DEFAULT_OUTPUT) -> Path:
+def run(radar_dir: Path = DEFAULT_RADAR, adjusted_63_dir: Path = DEFAULT_ADJUSTED_63, output_dir: Path = DEFAULT_OUTPUT) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "current_step.txt").write_text("validating_radar_source_package", encoding="utf-8")
     required = [
@@ -41,6 +42,14 @@ def run(radar_dir: Path = DEFAULT_RADAR, output_dir: Path = DEFAULT_OUTPUT) -> P
     missing = [name for name in required if not (radar_dir / name).exists()]
     if missing:
         raise FileNotFoundError(f"Radar package missing required artifacts: {missing}")
+    adjusted_required = [
+        "adjusted_analysis_63_ticker_classification.csv", "adjusted_analysis_63_remaining_blocked.csv",
+        "adjusted_analysis_63_provider_route_inventory.csv", "adjusted_analysis_63_requested_vs_actual_coverage.csv",
+        "adjusted_analysis_63_future_data_audit.csv", "readiness_for_core_adjusted_analysis_63_resolution.json",
+    ]
+    adjusted_missing = [name for name in adjusted_required if not (adjusted_63_dir / name).exists()]
+    if adjusted_missing:
+        raise FileNotFoundError(f"Adjusted-63 package missing required artifacts: {adjusted_missing}")
 
     compact = pd.read_csv(radar_dir / "twse_compact_repair_dedup_audit.csv")
     failures = pd.read_csv(radar_dir / "twse_true_failed_ledger.csv")
@@ -50,6 +59,11 @@ def run(radar_dir: Path = DEFAULT_RADAR, output_dir: Path = DEFAULT_OUTPUT) -> P
     rebuilt = pd.read_csv(radar_dir / "twse_2017_rebuilt_shard_integrity.csv")
     margin_gaps = pd.read_csv(radar_dir / "twse_2017_margin_failed_market_day_classification.csv")
     retry = pd.read_csv(radar_dir / "twse_true_failed_final_bounded_retry.csv")
+    adjusted_63 = pd.read_csv(adjusted_63_dir / "adjusted_analysis_63_ticker_classification.csv", dtype={"ticker": str})
+    adjusted_63_coverage = pd.read_csv(adjusted_63_dir / "adjusted_analysis_63_requested_vs_actual_coverage.csv").iloc[0]
+    adjusted_63_ready = json.loads((adjusted_63_dir / "readiness_for_core_adjusted_analysis_63_resolution.json").read_text(encoding="utf-8-sig"))
+    if len(adjusted_63) != 63 or adjusted_63.resolution_status.ne("blocked").any():
+        raise ValueError("Adjusted-63 classification must contain exactly 63 explicitly blocked tickers")
     expected_shards = {item["family"]: item for item in radar_ready.get("twse_2017_rebuilt_shards", [])}
     shard_checks = []
     for family, item in expected_shards.items():
@@ -77,13 +91,16 @@ def run(radar_dir: Path = DEFAULT_RADAR, output_dir: Path = DEFAULT_OUTPUT) -> P
     retry.assign(final_ingest_status=retry.retry_result, silent_fill_allowed=False).to_csv(
         output_dir / "p1_full_lifecycle_true_failed_retry_resolution.csv", index=False, encoding="utf-8-sig"
     )
+    adjusted_63.to_csv(output_dir / "p1_full_lifecycle_adjusted_analysis_63_classification.csv", index=False, encoding="utf-8-sig")
+    shutil.copy2(adjusted_63_dir / "adjusted_analysis_63_remaining_blocked.csv", output_dir / "p1_full_lifecycle_adjusted_analysis_63_blocked_ledger.csv")
+    shutil.copy2(adjusted_63_dir / "adjusted_analysis_63_provider_route_inventory.csv", output_dir / "p1_full_lifecycle_adjusted_analysis_63_provider_route_audit.csv")
 
     adjusted_accepted = int(adjusted.status.eq("accepted").sum())
     tpex_inst_accepted = int(((tpex.family == "tpex_three_institutional") & (tpex.status == "accepted")).sum())
     tpex_margin_accepted = int(((tpex.family == "tpex_margin_short") & (tpex.status == "accepted")).sum())
     feature_rows = [
         {"feature_family": "official_raw_execution_OHLCV", "status": "ready", "source_quality": "official", "allowed_use": "execution_price_and_mark_to_market", "blocked_reason": ""},
-        {"feature_family": "trusted_adjusted_analysis_OHLC", "status": "partial", "source_quality": "trusted_nonofficial_analysis_only", "allowed_use": "research_grade_KD_MA_BIAS_RS_only", "blocked_reason": f"accepted={adjusted_accepted}; blocked={len(adjusted)-adjusted_accepted}; not formal"},
+        {"feature_family": "trusted_adjusted_analysis_OHLC", "status": "partial_structural_blocker", "source_quality": "trusted_nonofficial_analysis_only", "allowed_use": "research_grade_KD_MA_BIAS_RS_only_on_accepted_tickers", "blocked_reason": f"accepted={adjusted_accepted}; blocked=63 after bounded free-route exhaustion; no paid source; not formal"},
         {"feature_family": "TWSE_three_institutional", "status": "ready_with_explicit_no_rows", "source_quality": "official", "allowed_use": "PIT feature using atomic 2017 shard and date-level no_rows flags", "blocked_reason": "original true failures resolved: accepted=4/no_rows=6 across TWSE families"},
         {"feature_family": "TWSE_margin_short", "status": "partial", "source_quality": "official", "allowed_use": "PIT feature using atomic 2017 shard with explicit missingness", "blocked_reason": f"2017 market-trading-day source gaps={len(margin_gaps)}; original corrupt stream excluded"},
         {"feature_family": "TPEx_margin_short", "status": "partial", "source_quality": "official", "allowed_use": "PIT feature on accepted dates", "blocked_reason": f"accepted_dates={tpex_margin_accepted}; remaining missingness explicit"},
@@ -141,6 +158,12 @@ def run(radar_dir: Path = DEFAULT_RADAR, output_dir: Path = DEFAULT_OUTPUT) -> P
         "official_raw_execution_OHLCV_ready": True,
         "trusted_nonofficial_adjusted_analysis_accepted_tickers": adjusted_accepted,
         "trusted_nonofficial_adjusted_analysis_blocked_tickers": len(adjusted) - adjusted_accepted,
+        "adjusted_analysis_63_resolution_absorbed": True,
+        "adjusted_analysis_63_attempted_tickers": int(adjusted_63_coverage["attempted_tickers"]),
+        "adjusted_analysis_63_accepted_repair_tickers": int(adjusted_63_coverage["accepted_repair_tickers"]),
+        "adjusted_analysis_63_remaining_blocked_tickers": int(adjusted_63_coverage["remaining_blocked_tickers"]),
+        "adjusted_analysis_63_route_status": "bounded_free_routes_exhausted_explicit_blocked",
+        "adjusted_analysis_paid_source_authorized": False,
         "TPEx_institutional_ready": False, "TDCC_P1_ready": False, "TAIFEX_P1_ready": False,
         "ready_for_core_full_lifecycle_feature_matrix": False,
         "ready_for_unified_state_machine_materialization": False,
@@ -154,11 +177,12 @@ def run(radar_dir: Path = DEFAULT_RADAR, output_dir: Path = DEFAULT_OUTPUT) -> P
         "- 官方 raw execution OHLCV 可用；trusted Yahoo adjusted series 僅 research-grade analysis，913/976 ticker accepted，不得與 execution price 混欄。\n"
         "- TWSE 2017 institutional/margin atomic shards checksum、gzip、UTF-8 驗證通過；原損壞 stream 明確排除。\n"
         "- 原 10 筆 true failure 已由 bounded retry 關閉為 4 accepted + 6 official no_rows；另有 22 個 market-trading-day margin source gaps 保留欄位級 missingness，不 silent fill。\n"
+        "- Adjusted-analysis 剩餘 63 檔已完成 bounded resolution：0 repair、63 explicit blocked；免費 route exhausted，未使用付費來源、successor ticker 或 raw-price substitution。\n"
         "- TPEx institutional、TDCC P1、TAIFEX P1 blocked；因此不跑 partial performance、不交 Experiments。\n",
         encoding="utf-8",
     )
     files = sorted(p for p in output_dir.iterdir() if p.is_file())
-    manifest = {"task_id": TASK_ID, "runner": str(Path(__file__).resolve()), "source_radar": str(radar_dir), "source_readiness": radar_ready, "readiness": readiness,
+    manifest = {"task_id": TASK_ID, "runner": str(Path(__file__).resolve()), "source_radar": str(radar_dir), "source_adjusted_63": str(adjusted_63_dir), "source_readiness": radar_ready, "adjusted_63_source_readiness": adjusted_63_ready, "readiness": readiness,
                 "files": [{"name": p.name, "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in files if p.name != "manifest.json"]}
     (output_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
     (output_dir / "current_step.txt").write_text("blocked_waiting_complete_source_families_no_experiments_handoff", encoding="utf-8")
@@ -168,9 +192,10 @@ def run(radar_dir: Path = DEFAULT_RADAR, output_dir: Path = DEFAULT_OUTPUT) -> P
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--radar-dir", type=Path, default=DEFAULT_RADAR)
+    parser.add_argument("--adjusted-63-dir", type=Path, default=DEFAULT_ADJUSTED_63)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
     args = parser.parse_args()
-    print(run(args.radar_dir, args.output_dir))
+    print(run(args.radar_dir, args.adjusted_63_dir, args.output_dir))
 
 
 if __name__ == "__main__":

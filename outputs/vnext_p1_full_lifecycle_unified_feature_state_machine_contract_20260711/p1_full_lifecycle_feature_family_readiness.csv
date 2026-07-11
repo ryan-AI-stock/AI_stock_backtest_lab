@@ -1,6 +1,6 @@
 ﻿feature_family,status,source_quality,allowed_use,blocked_reason
 official_raw_execution_OHLCV,ready,official,execution_price_and_mark_to_market,
-trusted_adjusted_analysis_OHLC,partial,trusted_nonofficial_analysis_only,research_grade_KD_MA_BIAS_RS_only,accepted=913; blocked=63; not formal
+trusted_adjusted_analysis_OHLC,partial_structural_blocker,trusted_nonofficial_analysis_only,research_grade_KD_MA_BIAS_RS_only_on_accepted_tickers,accepted=913; blocked=63 after bounded free-route exhaustion; no paid source; not formal
 TWSE_three_institutional,ready_with_explicit_no_rows,official,PIT feature using atomic 2017 shard and date-level no_rows flags,original true failures resolved: accepted=4/no_rows=6 across TWSE families
 TWSE_margin_short,partial,official,PIT feature using atomic 2017 shard with explicit missingness,2017 market-trading-day source gaps=22; original corrupt stream excluded
 TPEx_margin_short,partial,official,PIT feature on accepted dates,accepted_dates=2029; remaining missingness explicit

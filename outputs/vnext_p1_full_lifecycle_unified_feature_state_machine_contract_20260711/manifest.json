@@ -2,6 +2,7 @@
   "task_id": "TASK-BACKTEST-CORE-VNEXT-P1-FULL-LIFECYCLE-UNIFIED-FEATURE-STATE-MACHINE-CONTRACT-001",
   "runner": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\src\\backtest_lab\\vnext_p1_full_lifecycle_unified_feature_state_machine_contract.py",
   "source_radar": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_p1_full_lifecycle_minimum_data_acquisition_20260710",
+  "source_adjusted_63": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_p1_adjusted_analysis_63_bounded_resolution_20260711",
   "source_readiness": {
     "task_id": "TASK-RADAR-DATA-VNEXT-P1-FULL-LIFECYCLE-MINIMUM-DATA-ACQUISITION-001",
     "status": "research_grade_lifecycle_source_package_partial_structural_blockers",
@@ -77,6 +78,51 @@
     },
     "twse_original_corrupt_stream_status": "excluded_replaced_by_atomic_rebuild"
   },
+  "adjusted_63_source_readiness": {
+    "task_id": "TASK-RADAR-DATA-VNEXT-P1-ADJUSTED-ANALYSIS-63-BOUNDED-RESOLUTION-001",
+    "status": "bounded_resolution_completed_no_free_adjusted_repair_remaining_63_blocked",
+    "source": [
+      "Yahoo Finance structured adjusted chart bounded retry",
+      "FinMind TaiwanStockInfo/TaiwanStockDelisting classification",
+      "existing official TWSE/TPEx raw execution ledger for market mapping only"
+    ],
+    "coverage": {
+      "requested_tickers": 63,
+      "attempted_tickers": 63,
+      "classified_tickers": 63,
+      "accepted_repair_tickers": 0,
+      "remaining_blocked_tickers": 63,
+      "classification_counts": {
+        "delisted_or_merged_historical_symbol": 38,
+        "historical_symbol_not_currently_searchable": 9,
+        "searchable_symbol_yahoo_adjusted_chart_empty": 1,
+        "symbol_status_and_adjusted_source_unresolved": 15
+      },
+      "market_mapping_counts": {
+        "historical_market_transition_or_master_snapshot_difference": 1,
+        "market_mapping_confirmed_by_official_raw_ledger": 44,
+        "market_mapping_from_finmind_only_no_raw_rows_in_requested_interval": 1,
+        "market_mapping_recovered_from_official_raw_ledger": 17
+      }
+    },
+    "future_data_violation_count": 0,
+    "ready_for_core_adjusted_analysis_63_resolution_absorption": true,
+    "ready_for_core_adjusted_analysis_price_ingest": false,
+    "ready_for_core_full_lifecycle_feature_matrix": false,
+    "ready_for_experiments": false,
+    "ready_for_strategy_replay": false,
+    "ready_for_formal": false,
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false,
+    "formal_model_changed_detail": "No model or selector changes.",
+    "blocked_reason": "No authorized free structured adjusted source recovered any of the 63 ticker-specific histories; FinMind adjusted dataset requires paid membership and raw OHLC substitution is prohibited.",
+    "next_data_gap": "TPEx institutional history, TDCC history, TAIFEX history, and adjusted-analysis 63 remain blocked with free-route exhaustion evidence."
+  },
   "readiness": {
     "task_id": "TASK-BACKTEST-CORE-VNEXT-P1-FULL-LIFECYCLE-UNIFIED-FEATURE-STATE-MACHINE-CONTRACT-001",
     "status": "blocked_for_complete_unified_feature_state_machine_materialization",
@@ -95,6 +141,12 @@
     "official_raw_execution_OHLCV_ready": true,
     "trusted_nonofficial_adjusted_analysis_accepted_tickers": 913,
     "trusted_nonofficial_adjusted_analysis_blocked_tickers": 63,
+    "adjusted_analysis_63_resolution_absorbed": true,
+    "adjusted_analysis_63_attempted_tickers": 63,
+    "adjusted_analysis_63_accepted_repair_tickers": 0,
+    "adjusted_analysis_63_remaining_blocked_tickers": 63,
+    "adjusted_analysis_63_route_status": "bounded_free_routes_exhausted_explicit_blocked",
+    "adjusted_analysis_paid_source_authorized": false,
     "TPEx_institutional_ready": false,
     "TDCC_P1_ready": false,
     "TAIFEX_P1_ready": false,
@@ -120,15 +172,27 @@
     },
     {
       "name": "final_summary_zh.md",
-      "sha256": "ae9bc768d1b7afc7f3704ef02cfc0b6067bca501d45c5d827d32ea412fb7ec2f"
+      "sha256": "cb52064c4dc2c78a6c9b616a1204f698e8e2bf6eecefec286b09f810e20032cd"
     },
     {
       "name": "future_data_audit.csv",
       "sha256": "9a205599dd1f250245aec4b3379807320191917070d8b01657e7fc88459da0bd"
     },
     {
+      "name": "p1_full_lifecycle_adjusted_analysis_63_blocked_ledger.csv",
+      "sha256": "2ca38c806ceb9facb9b50e764e0ca967eeed18893871992a60d92d8773d52a56"
+    },
+    {
+      "name": "p1_full_lifecycle_adjusted_analysis_63_classification.csv",
+      "sha256": "2ca38c806ceb9facb9b50e764e0ca967eeed18893871992a60d92d8773d52a56"
+    },
+    {
+      "name": "p1_full_lifecycle_adjusted_analysis_63_provider_route_audit.csv",
+      "sha256": "49409958c9c0cb138e16d3f07f88459045ffd30000230b22bb7d56985dbcc830"
+    },
+    {
       "name": "p1_full_lifecycle_blocked_proxy_audit.csv",
-      "sha256": "1ff974856f478be5cedcff5f2bb4708033ec46f7e9a26a8c3fb88a115910fa2d"
+      "sha256": "6f0ad85b9d50b15ac5af126c2a92573949ba39a4578e3974ef1694fe505dc0c1"
     },
     {
       "name": "p1_full_lifecycle_compact_dedup_exclusion_audit.csv",
@@ -136,7 +200,7 @@
     },
     {
       "name": "p1_full_lifecycle_feature_family_readiness.csv",
-      "sha256": "1355eed846afae65645ab3e45d64e9d492c9fb3d3652e168e9d6937bedcd6606"
+      "sha256": "96fa2aeda3a230046499b0d57137dbfb8cfe0045977b52e1176aa168523401f8"
     },
     {
       "name": "p1_full_lifecycle_price_semantics_contract.csv",
@@ -164,7 +228,7 @@
     },
     {
       "name": "readiness_for_p1_full_lifecycle_unified_feature_state_machine_contract.json",
-      "sha256": "333347707c482727ceb0b8a8c6e2ef3fd3accb49990ef6043250ae400fb68b1f"
+      "sha256": "c3fa492f6107307a1c90fee229a8de859abec89bdab1595bd778bd6f2e3c1a89"
     },
     {
       "name": "requested_vs_actual_coverage.csv",
