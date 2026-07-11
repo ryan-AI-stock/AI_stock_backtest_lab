@@ -1,0 +1,4 @@
+﻿contract,TDCC_used,comparison_role,same_period_AB_required
+P3-1,False,full lifecycle without TDCC,False
+P3-2_no_TDCC_arm,False,same-period A arm,True
+P3-2_with_TDCC_arm,True,same-period B arm,True

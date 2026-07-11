@@ -1,0 +1,22 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-DAILY-RISK-FEATURE-INGESTION-CONTRACT-001",
+  "status": "ready_for_radar_handoff",
+  "ready_for_radar_handoff": true,
+  "ready_for_daily_manifest_absorption": true,
+  "daily_manifest_supplied": false,
+  "weights_fixed": false,
+  "partial_backtest_executed": false,
+  "ready_for_experiments": false,
+  "precise_institution_retail_ratio_claimed": false,
+  "P3_2_same_period_TDCC_AB_required": true,
+  "future_data_violation_count": 0,
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "ready_for_strategy_replay": false,
+  "ready_for_formal": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false
+}

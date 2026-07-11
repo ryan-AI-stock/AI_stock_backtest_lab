@@ -1,0 +1,9 @@
+﻿field,meaning,mandatory
+market_date,target Taiwan market date,True
+source_date,economic/market observation date,True
+release_at,first legally observable timestamp,True
+retrieved_at,cache retrieval metadata only,True
+decision_cutoff_at,Taiwan decision cutoff,True
+stale,source exceeds family stale policy,True
+blocked,mandatory unavailable or PIT invalid,True
+source_quality,official/trusted/proxy/blocked,True

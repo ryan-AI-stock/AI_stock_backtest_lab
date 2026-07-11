@@ -1,0 +1,5 @@
+﻿component,contract,requirement,meaning,PIT_policy,weight
+foreign_ownership_ratio_change,P3-1|P3-2,optional,ownership context,source-specific PIT release,unset
+three_institutional_flow_5_10_20D,P3-1|P3-2,mandatory,flow and continuity,rolling windows use rows released by cutoff,unset
+margin_short_lending_crowding,P3-1|P3-2,mandatory,crowding/risk,documented release lag,unset
+TDCC_holder_bucket_weekly_change,P3-2,mandatory,large/small bucket proxy,weekly release_at; never backdate to observation week,unset

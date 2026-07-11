@@ -1,0 +1,8 @@
+﻿field,value_source
+data_status,data_ready|partial|blocked
+chip_proxy_label,法人／大戶籌碼代理分數
+chip_proxy_confidence,component availability and PIT quality
+analysis_price_source_quality,adjusted analysis manifest
+corporate_action_event_status,event guard
+stale_or_blocked_families,freshness gate
+diagnostic_warning,not live rule; no trade decision

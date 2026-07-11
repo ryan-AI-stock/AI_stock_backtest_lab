@@ -1,0 +1,2 @@
+﻿canonical_name,display_name_zh,exact_institution_vs_retail_ratio,weight_fixed,components,claim_boundary
+institutional_large_holder_chip_proxy_score,法人／大戶籌碼代理分數,False,False,foreign_ownership_ratio_change|three_institutional_flow_5_10_20D|margin_short_lending_crowding|TDCC_holder_bucket_weekly_change(P3-2_only),proxy only; must not claim precise institutional versus retail ownership ratio

@@ -1,0 +1,8 @@
+﻿series,use,session_policy,missing_policy,weight_fixed
+TAIFEX_OI_foreign_net,market_threshold_context_only,latest completed session before Taiwan decision cutoff,TAIFEX mandatory blocked; global series optional confidence downgrade,False
+^DJI,market_threshold_context_only,latest completed session before Taiwan decision cutoff,TAIFEX mandatory blocked; global series optional confidence downgrade,False
+^IXIC,market_threshold_context_only,latest completed session before Taiwan decision cutoff,TAIFEX mandatory blocked; global series optional confidence downgrade,False
+^N225,market_threshold_context_only,latest completed session before Taiwan decision cutoff,TAIFEX mandatory blocked; global series optional confidence downgrade,False
+^KS11,market_threshold_context_only,latest completed session before Taiwan decision cutoff,TAIFEX mandatory blocked; global series optional confidence downgrade,False
+TWD=X,market_threshold_context_only,latest completed session before Taiwan decision cutoff,TAIFEX mandatory blocked; global series optional confidence downgrade,False
+^VIX,market_threshold_context_only,latest completed session before Taiwan decision cutoff,TAIFEX mandatory blocked; global series optional confidence downgrade,False

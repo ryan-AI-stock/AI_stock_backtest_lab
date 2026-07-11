@@ -1,0 +1,10 @@
+﻿family,contract,mandatory,grain,PIT_release_policy,max_stale_calendar_days,allowed_use,required_source_quality,weight_fixed,silent_fill_allowed,availability,confidence,blocked_reason
+official_raw_execution_OHLCV,P3-1|P3-2,True,ticker_daily,same trading day post-close,0,execution/mark/cost,official,False,False,awaiting_radar_manifest,unknown,source package not handed off
+event_adjusted_analysis_OHLC,P3-1|P3-2,True,ticker_daily,decision cutoff before scoring,0,KD/MA/BIAS/RS,trusted_nonofficial_research_grade,False,False,awaiting_radar_manifest,unknown,source package not handed off
+corporate_action_event_guard,P3-1|P3-2,True,ticker_event,announcement/effective time PIT,0,analysis-price contamination guard,official_or_explicit_block,False,False,awaiting_radar_manifest,unknown,source package not handed off
+foreign_ownership_ratio_change,P3-1|P3-2,False,ticker_daily_or_latest,published before cutoff,5,proxy score confidence,source_specific,False,False,awaiting_radar_manifest,unknown,source package not handed off
+three_institutional_flow_5_10_20D,P3-1|P3-2,True,ticker_daily,same day post-close,0,flow/continuity proxy,official,False,False,awaiting_radar_manifest,unknown,source package not handed off
+margin_short_lending_crowding,P3-1|P3-2,True,ticker_daily,same day post-close or documented lag,1,crowding/risk proxy,official,False,False,awaiting_radar_manifest,unknown,source package not handed off
+TDCC_holder_bucket_weekly_change,P3-2,True,ticker_weekly,release_at plus documented publication lag,10,large/small holder proxy,official,False,False,awaiting_radar_manifest,unknown,source package not handed off
+TAIFEX_OI_foreign_net,P3-1|P3-2,True,market_daily,Taiwan cutoff before decision,1,market threshold context,official,False,False,awaiting_radar_manifest,unknown,source package not handed off
+global_market_context,P3-1|P3-2,False,market_session,latest completed session before Taiwan decision cutoff,4,market threshold confidence,trusted_market_data,False,False,awaiting_radar_manifest,unknown,source package not handed off

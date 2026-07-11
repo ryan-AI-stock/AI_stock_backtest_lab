@@ -1,0 +1,7 @@
+﻿rule,condition,failure,notes
+release_cutoff,release_at <= decision_cutoff_at,blocked,retrieved_at never substitutes release_at
+analysis_execution_separation,analysis_price and raw_execution_price are separate columns,blocked,KD/MA/BIAS/RS use analysis price only
+mandatory_missing,mandatory family ready,blocked,no silent fill
+optional_missing,optional family may be unavailable,partial,lower confidence and report reason
+TDCC_lag,TDCC row available only after actual release_at,blocked_for_P3_2,P3-1 excludes TDCC by contract
+global_session,session completed before Taiwan cutoff,partial,never use later same-calendar-date close
