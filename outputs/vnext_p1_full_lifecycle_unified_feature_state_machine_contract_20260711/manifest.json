@@ -26,7 +26,7 @@
         "requested_vs_actual": "partial"
       }
     ],
-    "twse_compact_stream_corruption_file_count": 1,
+    "twse_compact_stream_corruption_file_count": 0,
     "tpex_margin_accepted_dates": 2029,
     "tpex_institutional_accepted_dates": 56,
     "adjusted_analysis_trusted_accepted_tickers": 913,
@@ -44,7 +44,38 @@
     "report_changed": false,
     "portfolio_replay_executed": false,
     "not_live_rule": true,
-    "forward_returns_live_rule_usage": false
+    "forward_returns_live_rule_usage": false,
+    "twse_2017_atomic_rebuild_ready_for_core_ingest": true,
+    "twse_2017_rebuilt_shards": [
+      {
+        "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_p1_full_lifecycle_minimum_data_acquisition_20260710\\compact_rebuilt\\twse_three_institutional\\TWSE_2017.csv.gz",
+        "rows": 31210,
+        "unique_rows": 31210,
+        "duplicate_rows": 0,
+        "gzip_integrity": "pass",
+        "utf8_roundtrip": "pass",
+        "sha256": "c487b4f12fc4ba1508372dda782286899f6a93a3b33e8cfabb2ff6d89bbe9dc0",
+        "family": "twse_three_institutional"
+      },
+      {
+        "path": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_p1_full_lifecycle_minimum_data_acquisition_20260710\\compact_rebuilt\\twse_margin_short\\TWSE_2017.csv.gz",
+        "rows": 46115,
+        "unique_rows": 46115,
+        "duplicate_rows": 0,
+        "gzip_integrity": "pass",
+        "utf8_roundtrip": "pass",
+        "sha256": "380a2b574a3fff20a2223e91068b160c9d9e07771e892609a5ab9d110f2bd210",
+        "family": "twse_margin_short"
+      }
+    ],
+    "twse_2017_margin_failed_classification": {
+      "market_trading_day_margin_source_gap": 22
+    },
+    "twse_true_failed_final_retry": {
+      "accepted_official_response": 4,
+      "no_rows_official_response": 6
+    },
+    "twse_original_corrupt_stream_status": "excluded_replaced_by_atomic_rebuild"
   },
   "readiness": {
     "task_id": "TASK-BACKTEST-CORE-VNEXT-P1-FULL-LIFECYCLE-UNIFIED-FEATURE-STATE-MACHINE-CONTRACT-001",
@@ -52,7 +83,14 @@
     "radar_source_package_absorbed": true,
     "compact_ingest_policy_ready": true,
     "corrupt_TWSE_2017_margin_file_excluded": true,
-    "true_failed_rows": 10,
+    "twse_2017_atomic_rebuild_ready_for_core_ingest": true,
+    "twse_2017_atomic_shard_checksum_match": true,
+    "twse_compact_stream_corruption_file_count": 0,
+    "original_true_failed_rows": 10,
+    "true_failed_retry_accepted_rows": 4,
+    "true_failed_retry_official_no_rows": 6,
+    "true_failed_rows_remaining_after_retry": 0,
+    "twse_2017_margin_market_trading_day_source_gap_rows": 22,
     "no_rows_silently_filled": false,
     "official_raw_execution_OHLCV_ready": true,
     "trusted_nonofficial_adjusted_analysis_accepted_tickers": 913,
@@ -82,7 +120,7 @@
     },
     {
       "name": "final_summary_zh.md",
-      "sha256": "9b1cca6628dad90c6259533a1e68b7600a52463ab0c75f8ed26a46d5ea543da6"
+      "sha256": "ae9bc768d1b7afc7f3704ef02cfc0b6067bca501d45c5d827d32ea412fb7ec2f"
     },
     {
       "name": "future_data_audit.csv",
@@ -90,7 +128,7 @@
     },
     {
       "name": "p1_full_lifecycle_blocked_proxy_audit.csv",
-      "sha256": "48341f23e6abbba58f673e675a44f828307ac1e202e649726a6596a240e92589"
+      "sha256": "1ff974856f478be5cedcff5f2bb4708033ec46f7e9a26a8c3fb88a115910fa2d"
     },
     {
       "name": "p1_full_lifecycle_compact_dedup_exclusion_audit.csv",
@@ -98,7 +136,7 @@
     },
     {
       "name": "p1_full_lifecycle_feature_family_readiness.csv",
-      "sha256": "095cd994f0dd54225a7342864ead4f32d70862fa9443fc3346b8a58d323cdc81"
+      "sha256": "1355eed846afae65645ab3e45d64e9d492c9fb3d3652e168e9d6937bedcd6606"
     },
     {
       "name": "p1_full_lifecycle_price_semantics_contract.csv",
@@ -113,8 +151,20 @@
       "sha256": "ddfcfe3eb5367155224b7831f1a5b33bd6f35fc9b9368c41d1383a8b53aac7fa"
     },
     {
+      "name": "p1_full_lifecycle_true_failed_retry_resolution.csv",
+      "sha256": "b74932e4c625ab4b0596c96f592ac62029303ef8d5302a24cee38987a2f710d7"
+    },
+    {
+      "name": "p1_full_lifecycle_twse_2017_atomic_shard_ingest_audit.csv",
+      "sha256": "04319c8fbaaf5e4a1fb3ac939b86900215f2e3acace68dcdf4ee510aff3ce96d"
+    },
+    {
+      "name": "p1_full_lifecycle_twse_2017_margin_market_day_gap_ledger.csv",
+      "sha256": "12beedc9366d3a4ae40e70d60ae4f93b39d614b6755d3252af955d01bf30b33e"
+    },
+    {
       "name": "readiness_for_p1_full_lifecycle_unified_feature_state_machine_contract.json",
-      "sha256": "93f6bea66deacc1a877ea5fc5ddf4cfe686b0be2af52675e0702ec18d4962357"
+      "sha256": "333347707c482727ceb0b8a8c6e2ef3fd3accb49990ef6043250ae400fb68b1f"
     },
     {
       "name": "requested_vs_actual_coverage.csv",

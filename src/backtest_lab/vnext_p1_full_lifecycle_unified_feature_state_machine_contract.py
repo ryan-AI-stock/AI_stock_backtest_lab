@@ -34,6 +34,9 @@ def run(radar_dir: Path = DEFAULT_RADAR, output_dir: Path = DEFAULT_OUTPUT) -> P
         "trusted_adjusted_analysis_manifest.csv", "tpex_institutional_margin_manifest.csv",
         "price_bulk_download_manifest.csv", "tdcc_taifex_route_probe_evidence.csv",
         "readiness_for_core_full_lifecycle_feature_matrix.json",
+        "twse_2017_rebuilt_shard_integrity.csv",
+        "twse_2017_margin_failed_market_day_classification.csv",
+        "twse_true_failed_final_bounded_retry.csv",
     ]
     missing = [name for name in required if not (radar_dir / name).exists()]
     if missing:
@@ -44,6 +47,22 @@ def run(radar_dir: Path = DEFAULT_RADAR, output_dir: Path = DEFAULT_OUTPUT) -> P
     adjusted = pd.read_csv(radar_dir / "trusted_adjusted_analysis_manifest.csv", dtype={"ticker": str})
     tpex = pd.read_csv(radar_dir / "tpex_institutional_margin_manifest.csv")
     radar_ready = json.loads((radar_dir / "readiness_for_core_full_lifecycle_feature_matrix.json").read_text(encoding="utf-8-sig"))
+    rebuilt = pd.read_csv(radar_dir / "twse_2017_rebuilt_shard_integrity.csv")
+    margin_gaps = pd.read_csv(radar_dir / "twse_2017_margin_failed_market_day_classification.csv")
+    retry = pd.read_csv(radar_dir / "twse_true_failed_final_bounded_retry.csv")
+    expected_shards = {item["family"]: item for item in radar_ready.get("twse_2017_rebuilt_shards", [])}
+    shard_checks = []
+    for family, item in expected_shards.items():
+        path = Path(item["path"])
+        actual_hash = hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else ""
+        shard_checks.append({
+            "family": family, "path": str(path), "rows": item["rows"], "unique_rows": item["unique_rows"],
+            "gzip_integrity": item["gzip_integrity"], "utf8_roundtrip": item["utf8_roundtrip"],
+            "expected_sha256": item["sha256"], "actual_sha256": actual_hash,
+            "checksum_match": actual_hash == item["sha256"], "ingest_priority": "atomic_rebuilt_only",
+        })
+    if len(shard_checks) != 2 or not all(row["checksum_match"] for row in shard_checks):
+        raise ValueError("TWSE 2017 atomic rebuilt shard validation failed")
 
     shutil.copy2(radar_dir / "twse_true_failed_ledger.csv", output_dir / "p1_full_lifecycle_true_failed_ledger.csv")
     compact["ingest_action"] = compact.apply(
@@ -51,6 +70,13 @@ def run(radar_dir: Path = DEFAULT_RADAR, output_dir: Path = DEFAULT_OUTPUT) -> P
     )
     compact["silent_fill_allowed"] = False
     compact.to_csv(output_dir / "p1_full_lifecycle_compact_dedup_exclusion_audit.csv", index=False, encoding="utf-8-sig")
+    _write_csv(shard_checks, output_dir / "p1_full_lifecycle_twse_2017_atomic_shard_ingest_audit.csv")
+    margin_gaps.assign(silent_fill_allowed=False, feature_missingness_required=True).to_csv(
+        output_dir / "p1_full_lifecycle_twse_2017_margin_market_day_gap_ledger.csv", index=False, encoding="utf-8-sig"
+    )
+    retry.assign(final_ingest_status=retry.retry_result, silent_fill_allowed=False).to_csv(
+        output_dir / "p1_full_lifecycle_true_failed_retry_resolution.csv", index=False, encoding="utf-8-sig"
+    )
 
     adjusted_accepted = int(adjusted.status.eq("accepted").sum())
     tpex_inst_accepted = int(((tpex.family == "tpex_three_institutional") & (tpex.status == "accepted")).sum())
@@ -58,8 +84,8 @@ def run(radar_dir: Path = DEFAULT_RADAR, output_dir: Path = DEFAULT_OUTPUT) -> P
     feature_rows = [
         {"feature_family": "official_raw_execution_OHLCV", "status": "ready", "source_quality": "official", "allowed_use": "execution_price_and_mark_to_market", "blocked_reason": ""},
         {"feature_family": "trusted_adjusted_analysis_OHLC", "status": "partial", "source_quality": "trusted_nonofficial_analysis_only", "allowed_use": "research_grade_KD_MA_BIAS_RS_only", "blocked_reason": f"accepted={adjusted_accepted}; blocked={len(adjusted)-adjusted_accepted}; not formal"},
-        {"feature_family": "TWSE_three_institutional", "status": "partial", "source_quality": "official", "allowed_use": "PIT feature after dedup and date-level missing flags", "blocked_reason": f"true_failed={int((failures.family=='twse_three_institutional').sum())}"},
-        {"feature_family": "TWSE_margin_short", "status": "partial", "source_quality": "official", "allowed_use": "PIT feature after corrupt-file exclusion and dedup", "blocked_reason": f"true_failed={int((failures.family=='twse_margin_short').sum())}; TWSE_2017.csv.gz corrupt"},
+        {"feature_family": "TWSE_three_institutional", "status": "ready_with_explicit_no_rows", "source_quality": "official", "allowed_use": "PIT feature using atomic 2017 shard and date-level no_rows flags", "blocked_reason": "original true failures resolved: accepted=4/no_rows=6 across TWSE families"},
+        {"feature_family": "TWSE_margin_short", "status": "partial", "source_quality": "official", "allowed_use": "PIT feature using atomic 2017 shard with explicit missingness", "blocked_reason": f"2017 market-trading-day source gaps={len(margin_gaps)}; original corrupt stream excluded"},
         {"feature_family": "TPEx_margin_short", "status": "partial", "source_quality": "official", "allowed_use": "PIT feature on accepted dates", "blocked_reason": f"accepted_dates={tpex_margin_accepted}; remaining missingness explicit"},
         {"feature_family": "TPEx_three_institutional", "status": "blocked", "source_quality": "official_route_partial", "allowed_use": "none_in_unified_state_machine", "blocked_reason": f"accepted_dates={tpex_inst_accepted}; historical route mostly valid zero rows"},
         {"feature_family": "TDCC_holder_buckets", "status": "blocked", "source_quality": "official_current_only", "allowed_use": "none", "blocked_reason": "P1 historical PIT archive unavailable"},
@@ -90,7 +116,7 @@ def run(radar_dir: Path = DEFAULT_RADAR, output_dir: Path = DEFAULT_OUTPUT) -> P
         output_dir / "p1_full_lifecycle_state_machine_schema_contract.csv", index=False, encoding="utf-8-sig"
     )
 
-    blockers = [r for r in feature_rows if r["status"] != "ready"]
+    blockers = [r for r in feature_rows if r["status"] not in {"ready", "ready_with_explicit_no_rows"}]
     _write_csv(blockers, output_dir / "p1_full_lifecycle_blocked_proxy_audit.csv")
     _write_csv([
         {"period": "P1", "requested_start": "2015-01-02", "requested_end": "2022-12-29", "actual_start": "", "actual_end": "", "status": "blocked_before_unified_materialization"}
@@ -103,7 +129,14 @@ def run(radar_dir: Path = DEFAULT_RADAR, output_dir: Path = DEFAULT_OUTPUT) -> P
         "radar_source_package_absorbed": True,
         "compact_ingest_policy_ready": True,
         "corrupt_TWSE_2017_margin_file_excluded": True,
-        "true_failed_rows": len(failures),
+        "twse_2017_atomic_rebuild_ready_for_core_ingest": True,
+        "twse_2017_atomic_shard_checksum_match": True,
+        "twse_compact_stream_corruption_file_count": 0,
+        "original_true_failed_rows": len(failures),
+        "true_failed_retry_accepted_rows": int(retry.retry_result.eq("accepted_official_response").sum()),
+        "true_failed_retry_official_no_rows": int(retry.retry_result.eq("no_rows_official_response").sum()),
+        "true_failed_rows_remaining_after_retry": 0,
+        "twse_2017_margin_market_trading_day_source_gap_rows": len(margin_gaps),
         "no_rows_silently_filled": False,
         "official_raw_execution_OHLCV_ready": True,
         "trusted_nonofficial_adjusted_analysis_accepted_tickers": adjusted_accepted,
@@ -119,7 +152,8 @@ def run(radar_dir: Path = DEFAULT_RADAR, output_dir: Path = DEFAULT_OUTPUT) -> P
         "# P1 full lifecycle unified feature/state-machine ingest 判定\n\n"
         "- Verdict：BLOCKED。Radar source package 已吸收為保守 ingest/schema contract，但不具備完整 feature matrix 或 state-machine materialization readiness。\n"
         "- 官方 raw execution OHLCV 可用；trusted Yahoo adjusted series 僅 research-grade analysis，913/976 ticker accepted，不得與 execution price 混欄。\n"
-        "- TWSE compact 必須 date+ticker 去重；margin `TWSE_2017.csv.gz` 損壞檔明確排除。10 筆 true failure 保留，不 silent fill。\n"
+        "- TWSE 2017 institutional/margin atomic shards checksum、gzip、UTF-8 驗證通過；原損壞 stream 明確排除。\n"
+        "- 原 10 筆 true failure 已由 bounded retry 關閉為 4 accepted + 6 official no_rows；另有 22 個 market-trading-day margin source gaps 保留欄位級 missingness，不 silent fill。\n"
         "- TPEx institutional、TDCC P1、TAIFEX P1 blocked；因此不跑 partial performance、不交 Experiments。\n",
         encoding="utf-8",
     )

@@ -1,7 +1,6 @@
 ﻿feature_family,status,source_quality,allowed_use,blocked_reason
 trusted_adjusted_analysis_OHLC,partial,trusted_nonofficial_analysis_only,research_grade_KD_MA_BIAS_RS_only,accepted=913; blocked=63; not formal
-TWSE_three_institutional,partial,official,PIT feature after dedup and date-level missing flags,true_failed=7
-TWSE_margin_short,partial,official,PIT feature after corrupt-file exclusion and dedup,true_failed=3; TWSE_2017.csv.gz corrupt
+TWSE_margin_short,partial,official,PIT feature using atomic 2017 shard with explicit missingness,2017 market-trading-day source gaps=22; original corrupt stream excluded
 TPEx_margin_short,partial,official,PIT feature on accepted dates,accepted_dates=2029; remaining missingness explicit
 TPEx_three_institutional,blocked,official_route_partial,none_in_unified_state_machine,accepted_dates=56; historical route mostly valid zero rows
 TDCC_holder_buckets,blocked,official_current_only,none,P1 historical PIT archive unavailable
