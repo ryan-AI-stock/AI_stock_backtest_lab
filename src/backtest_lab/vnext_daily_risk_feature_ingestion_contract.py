@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import subprocess
 from pathlib import Path
 
 import pandas as pd
@@ -43,14 +44,49 @@ def _family_rows() -> list[dict]:
              "weight_fixed": False, "silent_fill_allowed": False} for f, c, m, g, p, s, u, q in FAMILIES]
 
 
-def _evaluate_manifest(path: Path | None) -> tuple[pd.DataFrame, str]:
+def _load_manifest(path: Path | None, radar_repo: Path | None, radar_git_ref: str, radar_manifest_repo_path: str) -> dict | pd.DataFrame | None:
+    if path is not None:
+        if path.suffix.lower() == ".json":
+            return json.loads(path.read_text(encoding="utf-8-sig"))
+        return pd.read_csv(path, dtype=str).fillna("")
+    if radar_repo is not None and radar_git_ref:
+        raw = subprocess.run(
+            ["git", "show", f"{radar_git_ref}:{radar_manifest_repo_path}"], cwd=radar_repo,
+            check=True, capture_output=True, text=True, encoding="utf-8",
+        ).stdout
+        return json.loads(raw)
+    return None
+
+
+def _evaluate_manifest(payload: dict | pd.DataFrame | None) -> tuple[pd.DataFrame, str, dict]:
     schema = pd.DataFrame(_family_rows())
-    if path is None:
+    audit = {"requested_date": "", "source_manifest_status": "not_supplied", "calendar_state": "", "market_closed": False, "source_rows": 0}
+    if payload is None:
         schema["availability"] = "awaiting_radar_manifest"
         schema["confidence"] = "unknown"
         schema["blocked_reason"] = "source package not handed off"
-        return schema, "ready_for_radar_handoff"
-    manifest = pd.read_csv(path, dtype=str).fillna("")
+        return schema, "ready_for_radar_handoff", audit
+    if isinstance(payload, dict):
+        audit.update({"requested_date": payload.get("requested_date", ""), "source_manifest_status": payload.get("status", ""),
+                      "calendar_state": payload.get("calendar_state", ""), "market_closed": payload.get("status") == "skipped_market_closed",
+                      "source_rows": len(payload.get("sources", [])), "future_data_violation_count": payload.get("future_data_violation_count", 0)})
+        manifest = pd.DataFrame(payload.get("sources", [])).fillna("")
+        if audit["market_closed"]:
+            valid_no_rows = (len(manifest) == 2 and set(manifest.get("market", [])) == {"TWSE", "TPEx"}
+                             and manifest.get("family", pd.Series(dtype=str)).eq("official_raw_execution_ohlcv").all()
+                             and manifest.get("status", pd.Series(dtype=str)).eq("no_rows").all()
+                             and pd.to_numeric(manifest.get("http_status", pd.Series(dtype=float)), errors="coerce").eq(200).all())
+            if not valid_no_rows:
+                raise ValueError("market-closed manifest lacks valid TWSE/TPEx official no_rows evidence")
+            schema["availability"] = "not_applicable_market_closed"
+            schema["confidence"] = "high"
+            schema["blocked_reason"] = ""
+            return schema, "market_closed_no_signal", audit
+        manifest = manifest.rename(columns={"requested_date": "market_date", "actual_source_date": "source_date", "retrieved_at_utc": "retrieved_at"})
+        if "release_at" not in manifest: manifest["release_at"] = ""
+        if "source_quality" not in manifest: manifest["source_quality"] = "source_manifest_lineage"
+    else:
+        manifest = payload.copy()
     required = {"family", "market_date", "source_date", "release_at", "retrieved_at", "source_quality", "status"}
     absent = sorted(required - set(manifest.columns))
     if absent:
@@ -62,14 +98,23 @@ def _evaluate_manifest(path: Path | None) -> tuple[pd.DataFrame, str]:
     joined["blocked_reason"] = joined.apply(lambda r: "" if r.availability == "ready" else f"{r.family}:{r.availability}", axis=1)
     mandatory_blocked = joined.mandatory & joined.availability.ne("ready")
     state = "blocked" if mandatory_blocked.any() else "partial" if joined.availability.ne("ready").any() else "data_ready"
-    return joined, state
+    return joined, state, audit
 
 
-def run(output_dir: Path = DEFAULT_OUTPUT, radar_manifest: Path | None = None) -> Path:
+def run(output_dir: Path = DEFAULT_OUTPUT, radar_manifest: Path | None = None, radar_repo: Path | None = None,
+        radar_git_ref: str = "", radar_manifest_repo_path: str = "") -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "current_step.txt").write_text("building_daily_risk_ingestion_schema", encoding="utf-8")
-    availability, state = _evaluate_manifest(radar_manifest)
+    payload = _load_manifest(radar_manifest, radar_repo, radar_git_ref, radar_manifest_repo_path)
+    availability, state, ingest_audit = _evaluate_manifest(payload)
     availability.to_csv(output_dir / "daily_risk_feature_family_availability_contract.csv", index=False, encoding="utf-8-sig")
+    _csv([ingest_audit], output_dir / "daily_risk_manifest_ingestion_audit.csv")
+    _csv([{
+        "radar_pipeline_commit": "09aaeef", "radar_persisted_manifest_commit": "7bb60f5",
+        "actions_run_url": "https://github.com/ryan-AI-stock/AI_stock_rotation_radar/actions/runs/29147702136",
+        "actions_conclusion": "success", "validated_path": "market_closed_no_signal",
+        "open_trading_day_full_family_validation_ready": False,
+    }], output_dir / "radar_daily_risk_pipeline_source_audit.csv")
 
     _csv([
         {"canonical_name": "institutional_large_holder_chip_proxy_score", "display_name_zh": "法人／大戶籌碼代理分數", "exact_institution_vs_retail_ratio": False, "weight_fixed": False,
@@ -127,11 +172,15 @@ def run(output_dir: Path = DEFAULT_OUTPUT, radar_manifest: Path | None = None) -
         {"field": "diagnostic_warning", "value_source": "not live rule; no trade decision"},
     ], output_dir / "daily_report_risk_feature_hooks.csv")
 
-    blocked = availability[availability.availability.ne("ready")].copy()
+    blocked = availability[~availability.availability.isin(["ready", "not_applicable_market_closed"])].copy()
     blocked.to_csv(output_dir / "daily_risk_feature_blocked_ledger.csv", index=False, encoding="utf-8-sig")
     pd.DataFrame(columns=["market_date", "family", "violation_reason"]).to_csv(output_dir / "future_data_audit.csv", index=False, encoding="utf-8-sig")
     readiness = {"task_id": TASK_ID, "status": state, "ready_for_radar_handoff": True,
-                 "ready_for_daily_manifest_absorption": True, "daily_manifest_supplied": radar_manifest is not None,
+                 "ready_for_daily_manifest_absorption": True, "daily_manifest_supplied": payload is not None,
+                 "requested_date": ingest_audit.get("requested_date", ""), "market_closed": ingest_audit.get("market_closed", False),
+                 "market_closed_no_signal": state == "market_closed_no_signal",
+                 "radar_actions_manual_validation_success": True,
+                 "open_trading_day_full_family_validation_ready": False,
                  "weights_fixed": False, "partial_backtest_executed": False, "ready_for_experiments": False,
                  "precise_institution_retail_ratio_claimed": False, "P3_2_same_period_TDCC_AB_required": True,
                  "future_data_violation_count": 0, **FLAGS}
@@ -146,6 +195,7 @@ def run(output_dir: Path = DEFAULT_OUTPUT, radar_manifest: Path | None = None) -
         encoding="utf-8")
     files = sorted(p for p in output_dir.iterdir() if p.is_file() and p.name != "manifest.json")
     manifest = {"task_id": TASK_ID, "runner": str(Path(__file__).resolve()), "input_radar_manifest": str(radar_manifest or ""),
+                "input_radar_git_ref": radar_git_ref, "input_radar_manifest_repo_path": radar_manifest_repo_path,
                 "readiness": readiness, "files": [{"name": p.name, "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in files]}
     (output_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     (output_dir / "current_step.txt").write_text("ready_for_radar_complete_family_handoff_no_partial_backtest", encoding="utf-8")
@@ -156,8 +206,11 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--radar-manifest", type=Path)
+    parser.add_argument("--radar-repo", type=Path)
+    parser.add_argument("--radar-git-ref", default="")
+    parser.add_argument("--radar-manifest-repo-path", default="")
     args = parser.parse_args()
-    print(run(args.output_dir, args.radar_manifest))
+    print(run(args.output_dir, args.radar_manifest, args.radar_repo, args.radar_git_ref, args.radar_manifest_repo_path))
 
 
 if __name__ == "__main__":

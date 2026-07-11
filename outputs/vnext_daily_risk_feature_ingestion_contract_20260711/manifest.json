@@ -2,12 +2,19 @@
   "task_id": "TASK-BACKTEST-CORE-VNEXT-DAILY-RISK-FEATURE-INGESTION-CONTRACT-001",
   "runner": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\src\\backtest_lab\\vnext_daily_risk_feature_ingestion_contract.py",
   "input_radar_manifest": "",
+  "input_radar_git_ref": "7bb60f5",
+  "input_radar_manifest_repo_path": "data/risk_features/daily/2026/07/10/manifest.json",
   "readiness": {
     "task_id": "TASK-BACKTEST-CORE-VNEXT-DAILY-RISK-FEATURE-INGESTION-CONTRACT-001",
-    "status": "ready_for_radar_handoff",
+    "status": "market_closed_no_signal",
     "ready_for_radar_handoff": true,
     "ready_for_daily_manifest_absorption": true,
-    "daily_manifest_supplied": false,
+    "daily_manifest_supplied": true,
+    "requested_date": "2026-07-10",
+    "market_closed": true,
+    "market_closed_no_signal": true,
+    "radar_actions_manual_validation_success": true,
+    "open_trading_day_full_family_validation_ready": false,
     "weights_fixed": false,
     "partial_backtest_executed": false,
     "ready_for_experiments": false,
@@ -43,11 +50,15 @@
     },
     {
       "name": "daily_risk_feature_blocked_ledger.csv",
-      "sha256": "d3c39b3c96b58c47e238bd17b221237f138d3857c5a9deec0a6650a4754c2f5f"
+      "sha256": "8860c07d4b285091ec3fbf961fe3e7d498f3535b9d2c10a9bb2fa3e720d3953b"
     },
     {
       "name": "daily_risk_feature_family_availability_contract.csv",
-      "sha256": "d3c39b3c96b58c47e238bd17b221237f138d3857c5a9deec0a6650a4754c2f5f"
+      "sha256": "634f5cc1277f0c5fe37944a6360738b911d517899d5044d1dd81296de290806a"
+    },
+    {
+      "name": "daily_risk_manifest_ingestion_audit.csv",
+      "sha256": "0f26faa0f42fd4c157ac926d44095db7f34498edebbe8cf905d5c9544ea75348"
     },
     {
       "name": "daily_risk_PIT_policy.csv",
@@ -55,7 +66,7 @@
     },
     {
       "name": "final_summary_zh.md",
-      "sha256": "e1dae250c4e5dcd1b44ada086de857401ad729cfb2a5bb038997a3594079e397"
+      "sha256": "b7ba4de91a13552de90dfe5348bc46f9d155eb6549b01cfb3fa521c21267a945"
     },
     {
       "name": "future_data_audit.csv",
@@ -74,8 +85,12 @@
       "sha256": "34be64156a8259204abb705b1f7a18bd9ab2d154bca4f5f7fe30182ee1227820"
     },
     {
+      "name": "radar_daily_risk_pipeline_source_audit.csv",
+      "sha256": "a4579b8bd4127f44cf4854a50c4b1906e783e12b44b20afbebd76e988a453612"
+    },
+    {
       "name": "readiness_for_daily_risk_feature_ingestion_contract.json",
-      "sha256": "aaa939edd522f01d5c497609ac22725c0d643f59f54fe49c16f2ef361964252c"
+      "sha256": "2f18814ca3eceed763dc2ed4534035c145b0336c70aae5a13f38aa9da745cc3b"
     }
   ]
 }
