@@ -1,0 +1,4 @@
+﻿phase,portfolio_replay,scope,cost_boundary,ready_now
+A_event_acceptance,False,states|blocks|confidence|reason_codes|eligibility|missingness,materialize EP05 and slippage hurdle fields,False
+B_unique_position_path,True,single-position next-day path|hold-vs-switch|full costs,brokerage|tax|switch|slippage,False
+robustness,True,walk-forward|leave-one-year-out|remove-best episodes|P3-1|P3-2 TDCC A/B,net after full cost,False

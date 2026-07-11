@@ -1,0 +1,87 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-SINGLE-LIFECYCLE-STATE-MACHINE-CONTRACT-001",
+  "source": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p3_full_feature_unified_lifecycle_contract_20260711",
+  "source_commit": "ea5b046",
+  "readiness": {
+    "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-SINGLE-LIFECYCLE-STATE-MACHINE-CONTRACT-001",
+    "status": "architecture_contract_materialized_parameter_selection_and_event_rows_pending",
+    "source_candidate_level_feature_matrix_ready": true,
+    "requested_start": "2023-07-11",
+    "requested_end": "2026-07-10",
+    "actual_exact_start": "2023-07-14",
+    "actual_exact_end": "2026-06-29",
+    "exact_snapshots": 154,
+    "lifecycle_states_contract_ready": true,
+    "six_block_ownership_contract_ready": true,
+    "applicability_confidence_contract_ready": true,
+    "incumbent_challenger_policy_ready": true,
+    "market_tightness_policy_ready": true,
+    "reason_code_contract_ready": true,
+    "parameter_lattice_ready": true,
+    "parameter_base_values_selected": false,
+    "block_weights_selected": false,
+    "state_thresholds_materialized": false,
+    "event_rows_materialized": false,
+    "EP05_cost_hooks_required": true,
+    "slippage_assumption_ready": false,
+    "ready_for_phase_a_event_validation": false,
+    "ready_for_phase_b_unique_position_path": false,
+    "ready_for_experiments": false,
+    "future_data_violation_count": 0,
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "ready_for_strategy_replay": false,
+    "ready_for_formal": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false
+  },
+  "files": [
+    {
+      "name": "final_summary_zh.md",
+      "sha256": "6e3837a602e955142559d67e2a206a1f8bc0565e6f8db2ba2fe8a9e5a95a47a9"
+    },
+    {
+      "name": "p3_layer5_applicability_confidence_policy.csv",
+      "sha256": "92953a2585afab587732d99bcea803b5c510d8f6a34746bf0db1a72171e023c0"
+    },
+    {
+      "name": "p3_layer5_incumbent_challenger_policy.csv",
+      "sha256": "c3d8ea6aa6d9d295dd7cad4187920db734ca9fb6a1586e7f75591a69f71148ec"
+    },
+    {
+      "name": "p3_layer5_market_tightness_policy.csv",
+      "sha256": "b21aaca7f24ccd7c10b576313fa8c23ef4127df28160163f0fa3fa19f24be67e"
+    },
+    {
+      "name": "p3_layer5_parameter_lattice.csv",
+      "sha256": "de518bbe3e28f53209442ed510e952e4c8391b19affb9d58bbe11a32b95f6b95"
+    },
+    {
+      "name": "p3_layer5_raw_field_block_ownership.csv",
+      "sha256": "191de34c698a58237647cce5b3ed13bf3425d56a6d87f4889b264507aa6cffe1"
+    },
+    {
+      "name": "p3_layer5_readiness.json",
+      "sha256": "e24361168fd05d306845c84c8b90447b2e1fd4fe3099e65ae765b3ac435db420"
+    },
+    {
+      "name": "p3_layer5_reason_code_contract.csv",
+      "sha256": "a45c2eaa0388fb9ac0e7239fa1476f6072b9749640f1a73d618781daab8c39b0"
+    },
+    {
+      "name": "p3_layer5_state_machine_contract.csv",
+      "sha256": "8602e6584dc1eea580623edda80e61244f675903800fa3311ee41028ad1d1b7e"
+    },
+    {
+      "name": "p3_layer5_stop_gate_contract.csv",
+      "sha256": "b73e190e0932c45263fca4a14f11b2266dfa56734889a65bcadeafedf00ed5d6"
+    },
+    {
+      "name": "p3_layer5_validation_phase_contract.csv",
+      "sha256": "bb8222c082a121636659053ebe202c9f7ab4a6cd4248d97de082662904675627"
+    }
+  ]
+}

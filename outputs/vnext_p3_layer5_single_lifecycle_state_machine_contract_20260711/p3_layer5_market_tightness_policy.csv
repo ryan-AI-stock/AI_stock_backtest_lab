@@ -1,0 +1,5 @@
+﻿market_state,threshold_effect,selector_policy,primary_context,secondary_context,reference_only,future_return_rule
+strong_market,loosen incumbent overheat tolerance; require stronger challenger edge,same selector,0050|TAIEX|breadth|market_value|volatility|margin|TAIFEX|USD_TWD|Nasdaq|SOX|VIX,SP500|US10Y,Dow|Nikkei|KOSPI,False
+ordinary_market,base thresholds,same selector,0050|TAIEX|breadth|market_value|volatility|margin|TAIFEX|USD_TWD|Nasdaq|SOX|VIX,SP500|US10Y,Dow|Nikkei|KOSPI,False
+weak_market,stricter entry/confidence; lower weakening tolerance,same selector,0050|TAIEX|breadth|market_value|volatility|margin|TAIFEX|USD_TWD|Nasdaq|SOX|VIX,SP500|US10Y,Dow|Nikkei|KOSPI,False
+confirmed_bear,cash allowed; only strongest valid holdings survive,same selector,0050|TAIEX|breadth|market_value|volatility|margin|TAIFEX|USD_TWD|Nasdaq|SOX|VIX,SP500|US10Y,Dow|Nikkei|KOSPI,False

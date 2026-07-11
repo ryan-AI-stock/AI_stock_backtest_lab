@@ -1,0 +1,6 @@
+﻿selected_action,condition,policy_note,next_day_execution,single_position,00631L_daily_fallback,reference_signals_can_select,full_EP05_cost_required
+hold_incumbent,"incumbent valid and healthy_rise, or overheat_warning without confirmed_weakening",default; no challenger is not no target,True,True,False,False,True
+normal_switch,margin pass AND >=3/6 block wins including A/B/C AND incumbent weakened AND after-cost edge pass AND confidence/price/quality/risk gates pass,all conditions required,True,True,False,False,True
+forced_replacement,confirmed_weakening OR formal stop OR invalid price/tradability/core data OR severe risk/quality veto,independent from normal switch,True,True,False,False,True
+no_position_confirmed_bear,confirmed_bear,cash allowed,True,True,False,False,True
+watch_only,forced exit and no valid replacement but no accepted cash rule,Strategy Center review; do not fabricate action,True,True,False,False,True
