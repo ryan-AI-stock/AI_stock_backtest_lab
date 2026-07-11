@@ -87,6 +87,13 @@
     "adjusted_analysis_accepted_tickers": 764,
     "adjusted_analysis_blocked_tickers": 12,
     "official_adjusted_ready": false,
+    "adjusted_12_primary80_rows": 0,
+    "adjusted_12_watchlist_reference_rows": 107,
+    "adjusted_12_selected_path_impact": false,
+    "adjusted_12_no_path_impact_proof_ready": true,
+    "Radar_source_scope_primary80_rows": 0,
+    "Radar_source_scope_watchlist_rows": 15400,
+    "Radar_compact_scope_correct_for_primary80": false,
     "TDCC_full_P3_ready": false,
     "TDCC_P3_2_AB_only": true,
     "TAIFEX_original_accepted_dates": 615,
@@ -125,7 +132,7 @@
     },
     {
       "name": "final_summary_zh.md",
-      "sha256": "f1a5c5471dda70d78ba887b94178dd221369354225b63c6e3fb987f8ca82f7f9"
+      "sha256": "f4f0059e4297bdce2f3db0573acb76e0e5ee0ab8a3dce8c09787a0d50b19b1e2"
     },
     {
       "name": "future_data_audit.csv",
@@ -142,6 +149,18 @@
     {
       "name": "p3_adjusted_12_exhausted_blocked_ledger.csv",
       "sha256": "190816bbfb5a6195e55b330fe4035f2307882023882d51bd83e906b4d6c4e6d0"
+    },
+    {
+      "name": "p3_adjusted_12_membership_path_impact_rows.csv",
+      "sha256": "1d15ce806399e5e20e6e9811a649d92737c2740af03bec558b1381deeeb92a3c"
+    },
+    {
+      "name": "p3_adjusted_12_no_path_impact_proof.csv",
+      "sha256": "a3cabcb2ee008a6e6e038e6c2c5e1b54d2808da3cf99741b7c1dd4005ccd65f3"
+    },
+    {
+      "name": "p3_adjusted_12_path_impact_audit.csv",
+      "sha256": "9f465ae7a2c91e677f349e339c13d79e2986dabee6f9b2db13a928fda9fa4d91"
     },
     {
       "name": "p3_analysis_execution_price_separation_contract.csv",
@@ -176,6 +195,10 @@
       "sha256": "5b83c61aaf027f186bd490c4b3620773b90d082aaaf3af5e7054d1a085fc9f12"
     },
     {
+      "name": "p3_primary80_source_scope_blocker_audit.csv",
+      "sha256": "d616c2f189dbd985cb390e0b1199138b0d2680c6f88ce1f9e71d0280b59858bc"
+    },
+    {
       "name": "p3_TAIFEX_110_gap_absorption_audit.csv",
       "sha256": "be6c7cf3a238e01a3e64bc1508640cd657813ad0f4a8fa6d69566698013638ed"
     },
@@ -193,7 +216,7 @@
     },
     {
       "name": "p3_unified_PIT_feature_matrix_readiness.csv",
-      "sha256": "308c0ed228c88a299544b77b07d0f274f6f114cb990642d18cdade5502b4d899"
+      "sha256": "7a322762a7ea621f19a1bb112df748fc45c90686f6615cdd97a835a75e2b1803"
     },
     {
       "name": "p3_universe_membership_coverage_audit.csv",
@@ -201,7 +224,7 @@
     },
     {
       "name": "readiness_for_p3_full_feature_unified_lifecycle_contract.json",
-      "sha256": "fb3bbad2c38c5f9b31a3cf76f9fd653c519475e1ebb40aeed3940e6efc925e42"
+      "sha256": "a16e375d6f26448e704ab2545eb5d89361d33bf9bd38aad84977e4d6f0047712"
     }
   ]
 }

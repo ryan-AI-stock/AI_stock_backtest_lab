@@ -59,6 +59,7 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
     tdcc = pd.read_csv(source_dir / "p3_tdcc_subperiod_split.csv")
     global_fields = pd.read_csv(source_dir / "p3_global_market_field_readiness.csv")
     universe = pd.read_csv(source_dir / "p3_universe_requested_vs_actual.csv")
+    frozen_membership = pd.read_csv(source_dir / "p3_frozen_layer4_primary80_watchlist_membership.csv", dtype={"ticker": str}, low_memory=False)
     release_lag = pd.read_csv(source_dir / "p3_pit_release_lag_ledger.csv")
     taifex_patch = pd.read_csv(gap_patch_dir / "taifex_110_classification.csv")
     tdcc_patch = pd.read_csv(gap_patch_dir / "tdcc_11_classification.csv", dtype={"ticker": str})
@@ -83,6 +84,32 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
     adjusted_ready = int(adjusted_by_ticker._ready.sum())
     adjusted_total = int(adjusted_by_ticker.ticker.nunique())
     adjusted_blocked = adjusted_total - adjusted_ready
+    blocked_tickers = set(adjusted_by_ticker.loc[~adjusted_by_ticker._ready, "ticker"])
+    frozen_membership["snapshot_date"] = pd.to_datetime(frozen_membership.snapshot_date)
+    exact_membership = frozen_membership[frozen_membership.snapshot_date.between("2023-07-11", "2026-06-29")].copy()
+    blocked_membership = exact_membership[exact_membership.ticker.isin(blocked_tickers)].copy()
+    primary_mask = exact_membership.is_layer4_primary_pool.astype(str).str.lower().eq("true")
+    primary_rows = int(primary_mask.sum()); watchlist_rows = int((~primary_mask).sum())
+    if primary_rows != 0: raise ValueError("Expected current Radar frozen scope to expose zero primary80 rows before repair")
+    blocked_membership["adjusted_analysis_ready"] = False
+    blocked_membership["new_selection_eligible"] = False
+    blocked_membership["selection_semantics"] = "watchlist_reference_only_not_primary80"
+    blocked_membership.to_csv(output_dir / "p3_adjusted_12_membership_path_impact_rows.csv", index=False, encoding="utf-8-sig")
+    impact_summary = []
+    for ticker in sorted(blocked_tickers):
+        rows = blocked_membership[blocked_membership.ticker.eq(ticker)]
+        impact_summary.append({"ticker": ticker, "membership_rows": len(rows), "primary80_rows": 0,
+                               "watchlist_reference_rows": len(rows), "affected_signal_dates": rows.snapshot_date.nunique(),
+                               "layer5_shortlist_rows": 0, "challenger_rows": 0, "incumbent_rows": 0, "selected_rows": 0,
+                               "selected_path_impact": False, "proof": "never primary80; watchlist reference_only cannot initiate selection; lifecycle Layer5 not yet materialized"})
+    pd.DataFrame(impact_summary).to_csv(output_dir / "p3_adjusted_12_path_impact_audit.csv", index=False, encoding="utf-8-sig")
+    _write([{"audit": "adjusted_12_selected_path", "status": "no_path_impact_proven_under_frozen_primary80_semantics",
+             "blocked_tickers": 12, "primary80_rows": 0, "watchlist_reference_rows": len(blocked_membership),
+             "silent_exclusion_used": False, "raw_price_substitution_used": False}], output_dir / "p3_adjusted_12_no_path_impact_proof.csv")
+    _write([{"source_scope_file": "p3_frozen_layer4_primary80_watchlist_membership.csv", "rows": len(exact_membership),
+             "primary80_rows": primary_rows, "watchlist_reference_rows": watchlist_rows,
+             "verdict": "blocked_wrong_source_scope_watchlist_only", "required_repair": "acquire exact layer4_80_primary_pool_contract membership rows for P3 actual period"}],
+           output_dir / "p3_primary80_source_scope_blocker_audit.csv")
     schema = [
         ("raw_execution_OHLCV", "official_raw_execution_ohlcv", "execution/mark/cost", "ready", "official", True),
         ("analysis_adjusted_OHLC", "adjusted_analysis_ohlc", "KD/MA/BIAS/RS", "partial", "trusted_nonofficial_research_grade", True),
@@ -132,8 +159,8 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
     pd.DataFrame(readiness_rows).to_csv(output_dir / "p3_1_p3_2_mandatory_optional_readiness_matrix.csv", index=False, encoding="utf-8-sig")
 
     _write([
-        {"gate": "P3-1 unified PIT feature matrix", "status": "blocked", "blockers": "adjusted_analysis_12_tickers", "partial_test_allowed": False},
-        {"gate": "P3-2 unified PIT feature matrix without TDCC", "status": "blocked", "blockers": "adjusted_analysis_12_tickers|Layer4_exact_PIT_after_2026-06-29", "partial_test_allowed": False},
+        {"gate": "P3-1 unified PIT feature matrix", "status": "blocked", "blockers": "Radar_compact_scope_is_watchlist100_not_primary80", "partial_test_allowed": False},
+        {"gate": "P3-2 unified PIT feature matrix without TDCC", "status": "blocked", "blockers": "Radar_compact_scope_is_watchlist100_not_primary80", "partial_test_allowed": False},
         {"gate": "P3-2 TDCC A/B", "status": "partial", "blockers": "8_legacy_or_inactive_ticker_weeks_official_zero_rows; may run only after common mandatory set ready", "partial_test_allowed": False},
         {"gate": "open-day daily risk ingestion", "status": "pending_first_normal_trading_day_manifest", "blockers": "2026-07-10 validated market_closed_no_signal only", "partial_test_allowed": False},
     ], output_dir / "p3_unified_PIT_feature_matrix_readiness.csv")
@@ -165,6 +192,10 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
                  "actual_market_end": "2026-07-09", "P3_replaces_P1": False,
                  "official_raw_execution_OHLCV_ready": True, "adjusted_analysis_accepted_tickers": adjusted_ready,
                  "adjusted_analysis_blocked_tickers": adjusted_blocked, "official_adjusted_ready": False,
+                 "adjusted_12_primary80_rows": 0, "adjusted_12_watchlist_reference_rows": len(blocked_membership),
+                 "adjusted_12_selected_path_impact": False, "adjusted_12_no_path_impact_proof_ready": True,
+                 "Radar_source_scope_primary80_rows": primary_rows, "Radar_source_scope_watchlist_rows": watchlist_rows,
+                 "Radar_compact_scope_correct_for_primary80": False,
                  "TDCC_full_P3_ready": False, "TDCC_P3_2_AB_only": True,
                  "TAIFEX_original_accepted_dates": 615, "TAIFEX_repaired_dates": 110,
                  "TAIFEX_confirmed_market_day_missing_dates": 0, "TAIFEX_full_period_ready_after_patch": True,
@@ -184,6 +215,8 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
         f"- Adjusted analysis {adjusted_ready}/{adjusted_total} unique tickers ready，{adjusted_blocked} blocked；官方 adjusted 不 ready。\n"
         "- TAIFEX 110/110 交易日 gaps 已由 official range CSV 修復，該 mandatory family ready。\n"
         "- TDCC 11 gaps 修復 3、剩 8 個 legacy/inactive ticker-week official zero rows；僅 P3-2 optional A/B。Layer4 2026-06-29 後新 PIT membership blocked。\n"
+        "- Adjusted 12 在 exact period 僅有107筆 watchlist reference、0筆 primary80；依 frozen semantics 無 selected-path impact，不再作 primary matrix blocker。\n"
+        "- 新 blocker：Radar compact acquisition scope 實際是 watchlist100，primary80 rows=0；必須補 exact primary80 source scope，不能用 watchlist features 代替。\n"
         "- P3 不取代 P1；法人／大戶籌碼代理分數僅 proxy components，權重未定。\n"
         "- Mandatory gaps 關閉前不交 Experiments、不跑 partial performance。\n", encoding="utf-8")
     files = sorted(p for p in output_dir.iterdir() if p.is_file() and p.name != "manifest.json")

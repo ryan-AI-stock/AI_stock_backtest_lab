@@ -1,0 +1,2 @@
+﻿source_scope_file,rows,primary80_rows,watchlist_reference_rows,verdict,required_repair
+p3_frozen_layer4_primary80_watchlist_membership.csv,15400,0,15400,blocked_wrong_source_scope_watchlist_only,acquire exact layer4_80_primary_pool_contract membership rows for P3 actual period

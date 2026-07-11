@@ -1,0 +1,13 @@
+﻿ticker,membership_rows,primary80_rows,watchlist_reference_rows,affected_signal_dates,layer5_shortlist_rows,challenger_rows,incumbent_rows,selected_rows,selected_path_impact,proof
+1704,1,0,1,1,0,0,0,0,False,never primary80; watchlist reference_only cannot initiate selection; lifecycle Layer5 not yet materialized
+2311,1,0,1,1,0,0,0,0,False,never primary80; watchlist reference_only cannot initiate selection; lifecycle Layer5 not yet materialized
+2325,1,0,1,1,0,0,0,0,False,never primary80; watchlist reference_only cannot initiate selection; lifecycle Layer5 not yet materialized
+2448,1,0,1,1,0,0,0,0,False,never primary80; watchlist reference_only cannot initiate selection; lifecycle Layer5 not yet materialized
+2456,1,0,1,1,0,0,0,0,False,never primary80; watchlist reference_only cannot initiate selection; lifecycle Layer5 not yet materialized
+2809,13,0,13,13,0,0,0,0,False,never primary80; watchlist reference_only cannot initiate selection; lifecycle Layer5 not yet materialized
+2823,1,0,1,1,0,0,0,0,False,never primary80; watchlist reference_only cannot initiate selection; lifecycle Layer5 not yet materialized
+2888,55,0,55,55,0,0,0,0,False,never primary80; watchlist reference_only cannot initiate selection; lifecycle Layer5 not yet materialized
+3698,1,0,1,1,0,0,0,0,False,never primary80; watchlist reference_only cannot initiate selection; lifecycle Layer5 not yet materialized
+5264,1,0,1,1,0,0,0,0,False,never primary80; watchlist reference_only cannot initiate selection; lifecycle Layer5 not yet materialized
+6288,5,0,5,5,0,0,0,0,False,never primary80; watchlist reference_only cannot initiate selection; lifecycle Layer5 not yet materialized
+6806,26,0,26,26,0,0,0,0,False,never primary80; watchlist reference_only cannot initiate selection; lifecycle Layer5 not yet materialized
