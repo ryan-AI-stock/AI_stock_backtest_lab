@@ -1,0 +1,156 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-FULL-FEATURE-UNIFIED-LIFECYCLE-CONTRACT-001",
+  "runner": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\src\\backtest_lab\\vnext_p3_full_feature_unified_lifecycle_contract.py",
+  "source_package": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_p3_recent_full_feature_data_readiness_acquisition_20260711",
+  "source_commit": "d2e9071",
+  "source_readiness": {
+    "task_id": "TASK-RADAR-DATA-VNEXT-P3-RECENT-FULL-FEATURE-DATA-READINESS-AND-ACQUISITION-001",
+    "status": "p3_partial_readiness_contract_mandatory_gaps_remain",
+    "source": "official_raw_and_chip_sources_plus_trusted_nonofficial_adjusted_analysis",
+    "coverage": {
+      "official_raw_execution_ohlcv": "ready",
+      "adjusted_analysis_ohlc": "partial",
+      "institutional": "ready",
+      "margin_short": "ready",
+      "securities_lending": "ready",
+      "tdcc_holder_distribution": "partial",
+      "taifex_foreign_oi": "partial",
+      "global_market": "ready",
+      "foreign_ownership": "ready"
+    },
+    "future_data_violation_count": 0,
+    "ready_for_core_p3_full_feature_unified_lifecycle_contract": false,
+    "ready_for_core_p3_partial_readiness_contract": true,
+    "mandatory_full_period_ready": false,
+    "tdcc_full_p3_ready": false,
+    "tdcc_role": "optional_P3_2_recent_subperiod_only",
+    "法人／大戶籌碼代理分數_semantics": "proxy_not_exact_identity",
+    "institutional_daily_flow_ready_is_not_holding_level_ready": true,
+    "official_adjusted_analysis_ready": false,
+    "global_market_source_locked": true,
+    "all_families_complete": false,
+    "ready_for_experiments": false,
+    "ready_for_formal": false,
+    "ready_for_strategy_replay": false,
+    "p3_replaces_p1": false,
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false
+  },
+  "readiness": {
+    "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-FULL-FEATURE-UNIFIED-LIFECYCLE-CONTRACT-001",
+    "status": "partial_readiness_mandatory_gaps_remain",
+    "source_package_hash_mismatch_count": 0,
+    "requested_start": "2023-07-11",
+    "requested_end": "2026-07-10",
+    "actual_market_end": "2026-07-09",
+    "P3_replaces_P1": false,
+    "official_raw_execution_OHLCV_ready": true,
+    "adjusted_analysis_accepted_tickers": 764,
+    "adjusted_analysis_blocked_tickers": 12,
+    "official_adjusted_ready": false,
+    "TDCC_full_P3_ready": false,
+    "TDCC_P3_2_AB_only": true,
+    "TAIFEX_accepted_dates": 615,
+    "TAIFEX_confirmed_market_day_missing_dates": 110,
+    "Layer4_new_PIT_membership_after_2026_06_29_ready": false,
+    "P3_1_TDCC_required": false,
+    "P3_2_TDCC_optional_AB": true,
+    "open_day_full_family_ingestion_validation_ready": false,
+    "market_closed_no_signal_validation_does_not_count_as_open_day": true,
+    "mandatory_full_period_ready": false,
+    "ready_for_feature_materialization": false,
+    "ready_for_state_machine_materialization": false,
+    "weights_fixed": false,
+    "partial_backtest_executed": false,
+    "ready_for_experiments": false,
+    "future_data_violation_count": 0,
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "ready_for_strategy_replay": false,
+    "ready_for_formal": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false
+  },
+  "files": [
+    {
+      "name": "current_step.txt",
+      "sha256": "e7eee3f4114e03395e4454daeb2ade415108b804e27c61febfc2c50155dd5a27"
+    },
+    {
+      "name": "final_summary_zh.md",
+      "sha256": "9c808e8c2ee3b5b8c58f1f273e9e5a7c9a3b55105659c26eb4cbd0e616d10f99"
+    },
+    {
+      "name": "future_data_audit.csv",
+      "sha256": "940f22fdd84515ef456645cee284b09aaf41ead209ea67dbab5d492a7be2eaec"
+    },
+    {
+      "name": "p3_1_p3_2_mandatory_optional_readiness_matrix.csv",
+      "sha256": "035260aeb21b1be83af17087be2ff5df4f5a560113e591a4ec6d7e6a113b9221"
+    },
+    {
+      "name": "p3_1_p3_2_same_period_TDCC_AB_contract.csv",
+      "sha256": "3d85737d47826cf274cee02b000b61899931490d5665d3433092e06f7711a747"
+    },
+    {
+      "name": "p3_analysis_execution_price_separation_contract.csv",
+      "sha256": "08097564f5cf708d46b6849ee18210476913cec5a89d3e09464d3225ce3bfc9b"
+    },
+    {
+      "name": "p3_chip_proxy_semantics_contract.csv",
+      "sha256": "99e32f4cf184517801b1531ce05895dd1e18205242ddb9e2deee7f3d3718ba64"
+    },
+    {
+      "name": "p3_full_feature_blocked_family_ledger.csv",
+      "sha256": "505ec1bd3562e1ebcbe9aad5e7dd5deb537f0d1e18d8f386b2716e9247b64d0b"
+    },
+    {
+      "name": "p3_full_feature_blocked_rows_detail.csv",
+      "sha256": "748edecc4298efe104dd7765822b3b65b0459297dd8d454776960cc79aa3bcdb"
+    },
+    {
+      "name": "p3_full_feature_family_ingest_readiness.csv",
+      "sha256": "32534e816e38c4a7179a3d4dec79f145e0ff5920c220e82f30c3d57216b0c917"
+    },
+    {
+      "name": "p3_full_feature_PIT_release_lag_ledger.csv",
+      "sha256": "a7bbac9fa60a59d1f5834f928c833f03aa1eba511e5ad39de89b052a5beaa71e"
+    },
+    {
+      "name": "p3_global_session_cutoff_contract.csv",
+      "sha256": "0992aa3921d41b805c328d35f6ae0b7d43101f03057d582a4470fce547aa3e0c"
+    },
+    {
+      "name": "p3_open_day_full_family_ingestion_validation.csv",
+      "sha256": "44649ee673f1ebeb0615c1f520ec1b0c98b52fe6bd295e5470596025f57db526"
+    },
+    {
+      "name": "p3_TDCC_subperiod_ingest_audit.csv",
+      "sha256": "07ca236d7f7578e15617da92d27183ba12dc7d3554f2c126c83eaaca6188cd78"
+    },
+    {
+      "name": "p3_unified_feature_ingestion_schema.csv",
+      "sha256": "1d9be8cf065c3de4a34d5be4c4af1ae676be2aaa138d15b3e0a9622a20e9034d"
+    },
+    {
+      "name": "p3_unified_PIT_feature_matrix_readiness.csv",
+      "sha256": "d3000a879bf398cc9a93ee1558b311a493b729f07a448540923a824d9d2ea0e1"
+    },
+    {
+      "name": "p3_universe_membership_coverage_audit.csv",
+      "sha256": "3172eea4c69dfc973495b29b19fd4e15da6de5a6d3df450658bc65af8d00e142"
+    },
+    {
+      "name": "readiness_for_p3_full_feature_unified_lifecycle_contract.json",
+      "sha256": "5f48be9c634205ed320f8b12dc1166b4fb2b39b82512f91604340e92d495cc5f"
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+﻿requested_start,requested_end,expected_actual_end,membership_actual_start,membership_actual_end,snapshot_count,membership_rows,unique_tickers,latest_scope_policy
+2023-07-11,2026-07-10,2026-07-09,2023-07-14,2026-06-29,154,15400,776,carry_2026-06-29_source_scope_through_2026-07-09; not_new_PIT_membership

@@ -1,0 +1,7 @@
+﻿field,symbol,exchange_timezone,PIT_policy,status
+Nikkei,^N225,Asia/Tokyo,latest completed session before Taiwan decision cutoff,accepted
+Dow,^DJI,America/New_York,latest completed session before Taiwan decision cutoff,accepted
+VIX,^VIX,America/Chicago,latest completed session before Taiwan decision cutoff,accepted
+KOSPI,^KS11,Asia/Seoul,latest completed session before Taiwan decision cutoff,accepted
+USD_TWD,TWD=X,Europe/London,latest completed session before Taiwan decision cutoff,accepted
+Nasdaq,^IXIC,America/New_York,latest completed session before Taiwan decision cutoff,accepted

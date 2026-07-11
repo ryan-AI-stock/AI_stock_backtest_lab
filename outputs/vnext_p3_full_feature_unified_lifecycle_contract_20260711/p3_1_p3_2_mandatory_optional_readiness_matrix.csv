@@ -1,0 +1,21 @@
+﻿contract,period,family,mandatory,status,notes,silent_fill_allowed
+P3-1,2023-07-11~2025-07-10,official_raw_execution_ohlcv,True,ready,execution path,False
+P3-1,2023-07-11~2025-07-10,adjusted_analysis_ohlc,True,partial,KD/MA/BIAS/RS analysis price; 12 ticker gaps,False
+P3-1,2023-07-11~2025-07-10,institutional,True,ready,proxy flow component,False
+P3-1,2023-07-11~2025-07-10,margin_short,True,ready,crowding component,False
+P3-1,2023-07-11~2025-07-10,securities_lending,True,ready,crowding component,False
+P3-1,2023-07-11~2025-07-10,foreign_ownership,False,ready,proxy confidence component,False
+P3-1,2023-07-11~2025-07-10,taifex_foreign_oi,True,partial,market threshold context; 110 market-day gaps,False
+P3-1,2023-07-11~2025-07-10,global_market,False,ready,completed-session threshold context,False
+P3-1,2023-07-11~2025-07-10,tdcc_holder_distribution,False,not_applicable,not used,False
+P3-1,2023-07-11~2025-07-10,Layer4_PIT_membership,True,ready,exact through 2026-06-29; carried scope later is not exact PIT,False
+P3-2,2025-07-11~2026-07-09,official_raw_execution_ohlcv,True,ready,execution path,False
+P3-2,2025-07-11~2026-07-09,adjusted_analysis_ohlc,True,partial,KD/MA/BIAS/RS analysis price; 12 ticker gaps,False
+P3-2,2025-07-11~2026-07-09,institutional,True,ready,proxy flow component,False
+P3-2,2025-07-11~2026-07-09,margin_short,True,ready,crowding component,False
+P3-2,2025-07-11~2026-07-09,securities_lending,True,ready,crowding component,False
+P3-2,2025-07-11~2026-07-09,foreign_ownership,False,ready,proxy confidence component,False
+P3-2,2025-07-11~2026-07-09,taifex_foreign_oi,True,partial,market threshold context; 110 market-day gaps,False
+P3-2,2025-07-11~2026-07-09,global_market,False,ready,completed-session threshold context,False
+P3-2,2025-07-11~2026-07-09,tdcc_holder_distribution,False,partial,optional same-period A/B only,False
+P3-2,2025-07-11~2026-07-09,Layer4_PIT_membership,True,partial,exact through 2026-06-29; carried scope later is not exact PIT,False

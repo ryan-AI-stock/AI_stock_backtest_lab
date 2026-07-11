@@ -1,0 +1,5 @@
+﻿field,basis,use,ready
+raw_execution_price,official unadjusted,execution only,True
+analysis_price,trusted_nonofficial adjusted,KD/MA/BIAS/RS only,False
+analysis_price_source_quality,per ticker,mandatory row gate,True
+corporate_action_event_status,event guard,contamination/block status,False

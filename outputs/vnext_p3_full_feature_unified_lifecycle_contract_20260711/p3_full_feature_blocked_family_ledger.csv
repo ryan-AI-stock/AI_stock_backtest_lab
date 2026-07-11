@@ -1,0 +1,4 @@
+﻿family,source,requested_start,requested_end,actual_start,actual_end,accepted_queries,no_rows_queries,true_gap_no_rows_queries,failed_or_blocked_queries,coverage_status,future_data_violation_count,blocked_reason
+adjusted_analysis_ohlc,trusted_nonofficial_research_grade,2023-07-11,2026-07-10,2022-07-11,2026-07-09,764,0,0,12,partial,0,missing_or_partial_family_coverage
+tdcc_holder_distribution,official,2023-07-11,2026-07-10,2025-07-11,2026-07-03,4069,0,0,11,partial,0,missing_or_partial_family_coverage
+taifex_foreign_oi,official,2023-07-11,2026-07-10,2023-07-11,2026-07-03,615,168,110,110,partial,0,missing_or_partial_family_coverage

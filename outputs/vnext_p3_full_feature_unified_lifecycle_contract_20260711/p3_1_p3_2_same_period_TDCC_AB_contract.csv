@@ -1,0 +1,4 @@
+﻿contract,period,TDCC_used,status,AB_role
+P3-1,2023-07-11~2025-07-10,False,partial_blocked_by_non_TDCC_mandatory_gaps,none
+P3-2_no_TDCC,2025-07-11~2026-07-09,False,partial,A
+P3-2_with_TDCC,2025-07-11~2026-07-09,True,partial_4069_ticker_weeks_11_blocked,B

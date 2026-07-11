@@ -1,0 +1,12 @@
+﻿field,source_family,semantics,status,source_quality,mandatory_full_lifecycle,weight_fixed,silent_fill_allowed
+raw_execution_OHLCV,official_raw_execution_ohlcv,execution/mark/cost,ready,official,True,False,False
+analysis_adjusted_OHLC,adjusted_analysis_ohlc,KD/MA/BIAS/RS,partial,trusted_nonofficial_research_grade,True,False,False
+institutional_flow_5_10_20D,institutional,法人／大戶籌碼代理分數 component,ready,official,True,False,False
+foreign_ownership_level_change,foreign_ownership,法人／大戶籌碼代理分數 component,ready,official,False,False,False
+margin_short_crowding,margin_short,法人／大戶籌碼代理分數/risk component,ready,official,True,False,False
+securities_lending_crowding,securities_lending,法人／大戶籌碼代理分數/risk component,ready,official,True,False,False
+TDCC_bucket_weekly_change,tdcc_holder_distribution,P3-2 proxy component only,partial,official_51_week_retention,False,False,False
+TAIFEX_foreign_OI,taifex_foreign_oi,market threshold context,partial,official,True,False,False
+global_completed_session,global_market,market threshold context,ready,trusted_nonofficial_timezone_PIT,False,False,False
+corporate_action_guard,corporate_action_guard,analysis-price contamination status,partial,source package event guard,True,False,False
+Layer4_PIT_membership,frozen_membership,candidate universe,partial,carried through 2026-06-29 only,True,False,False

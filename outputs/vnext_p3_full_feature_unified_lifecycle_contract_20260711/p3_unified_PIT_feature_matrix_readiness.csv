@@ -1,0 +1,5 @@
+﻿gate,status,blockers,partial_test_allowed
+P3-1 unified PIT feature matrix,blocked,adjusted_analysis_12_tickers|TAIFEX_110_market_dates,False
+P3-2 unified PIT feature matrix without TDCC,blocked,adjusted_analysis_12_tickers|TAIFEX_110_market_dates|Layer4_exact_PIT_after_2026-06-29,False
+P3-2 TDCC A/B,partial,11_ticker_weeks_blocked; may run only after common mandatory set ready,False
+open-day daily risk ingestion,pending_first_normal_trading_day_manifest,2026-07-10 validated market_closed_no_signal only,False

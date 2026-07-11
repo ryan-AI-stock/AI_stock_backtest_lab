@@ -1,0 +1,6 @@
+﻿family,availability,decision_eligibility,pit_status
+raw_execution_ohlcv,official post-close,next trading day,ready_where_covered
+adjusted_analysis_ohlc,provider retrieval; analysis only,event-aware historical analysis; not execution,research_grade_not_formal
+institutional_margin_lending,official post-close,next trading day,ready_where_covered
+tdcc,actual weekly publication date,after publication only; no week-backfill,partial_current_snapshot
+taifex,official post-close OI release,next trading day,ready_where_covered
