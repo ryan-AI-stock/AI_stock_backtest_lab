@@ -230,18 +230,22 @@
     "total_exact_snapshots": 154,
     "full_lifecycle_complete_snapshot_share": 0.07142857142857142,
     "legacy_all80_all_family_gate_overstrict_reference_only": true,
-    "candidate_level_price_eligible_min": 0,
+    "candidate_level_price_eligible_min": 25,
     "candidate_level_price_eligible_median": 79.0,
     "candidate_level_price_eligible_max": 80,
     "date_level_market_gate_complete_weeks": 153,
     "date_level_market_gate_total_weeks": 154,
     "candidate_level_feature_matrix_ready": false,
-    "candidate_level_evaluable_subset_weeks": 152,
-    "candidate_level_blocked_weeks": 2,
+    "candidate_level_evaluable_subset_weeks": 153,
+    "candidate_level_blocked_weeks": 1,
     "candidate_level_exact_blockers": [
-      "2025-08-01 adjusted_analysis_all_primary80_unavailable",
       "2025-12-26 TAIFEX_no_target_row"
     ],
+    "adjustment_factor_bracket_2025_08_01_accepted_tickers": 35,
+    "adjustment_factor_bracket_2025_08_01_total_tickers": 80,
+    "adjustment_factor_bracket_2025_08_01_blocked_tickers": 45,
+    "adjustment_factor_bracket_tolerance_absolute": 1e-10,
+    "adjustment_factor_bracket_tolerance_relative": 1e-08,
     "state_machine_contract_ready": false,
     "state_machine_blocked_reason": "Layer5 frozen decision/state parameters not yet supplied by Strategy Center",
     "raw_HLC_warmup_required_ticker_dates": 183886,
@@ -291,7 +295,7 @@
     },
     {
       "name": "final_summary_zh.md",
-      "sha256": "4d320285725dbff0da83f75fd9b909b4108d715d62a535e8179206c0dd9a1f28"
+      "sha256": "033919d314a49cd55105e48c904ce8cfa5cdf5bc66ba249b8d2dbf7e49ceef76"
     },
     {
       "name": "future_data_audit.csv",
@@ -304,6 +308,10 @@
     {
       "name": "p3_1_p3_2_same_period_TDCC_AB_contract.csv",
       "sha256": "3d85737d47826cf274cee02b000b61899931490d5665d3433092e06f7711a747"
+    },
+    {
+      "name": "p3_20250801_adjustment_factor_bracket_proof.csv",
+      "sha256": "c3405947c78e50de8c5dd43c299440a9a8df45d54285483e9c74bdabc1f81a04"
     },
     {
       "name": "p3_adjusted_12_exhausted_blocked_ledger.csv",
@@ -323,7 +331,7 @@
     },
     {
       "name": "p3_adjusted_OHLC_factor_method_audit.csv",
-      "sha256": "01dd1981016baa678b5224336877863aee01ad28594d4af5303b135fff0e9d49"
+      "sha256": "de63c7e900c25a26e4b0a07fa5820b87d84632ddb1e15db00669b6295f45b9de"
     },
     {
       "name": "p3_analysis_execution_price_separation_contract.csv",
@@ -331,15 +339,15 @@
     },
     {
       "name": "p3_candidate_level_date_blocker_audit.csv",
-      "sha256": "f05cd41ec7ed4b778256aac1170a6452ba97744a97a47b354ba476c6d40a16f0"
+      "sha256": "60ddd264464e6ee8ba962f2b401726f6e2d8658ad41850bb6286366605b9c3c9"
     },
     {
       "name": "p3_candidate_level_evaluable_date_subset_contract.csv",
-      "sha256": "5f5486c7eae493019705a6f2f03b50b72daa0b9a97729995e0872ef92d439cee"
+      "sha256": "1cbbee008122239edfee22c4c05f643ca172cbfffb52fff4147179d70b4398d6"
     },
     {
       "name": "p3_candidate_level_weekly_coverage_distribution.csv",
-      "sha256": "04ce87922ea892893a098a0d6ebb28d2ded9198424e0a5146b4ad2773299624c"
+      "sha256": "0333c2dde022c9e559a85bf8c281a953a12746ae0c842835ef396a188c9a0bb9"
     },
     {
       "name": "p3_chip_20D_warmup_blocked_ledger.csv",
@@ -363,11 +371,11 @@
     },
     {
       "name": "p3_exact_primary80_snapshot_completeness_audit.csv",
-      "sha256": "55960218850f85749c87f3023ac06d42923b424fa20f0e2d00058e9a8258b5f5"
+      "sha256": "1ce266ed9524f0b4014d7201260443384d84c6b7b81abb78e3c8053309d05246"
     },
     {
       "name": "p3_exact_primary80_unified_PIT_feature_matrix_readiness_rows.csv",
-      "sha256": "ec2af35aaeba463f6f4ddd58353d62e4ff8736234159449c2948016f1953b763"
+      "sha256": "3e55596ce9663fdbf1aee8cb455300e93adf8f85df9f2c3e8a0b933adafbdaa7"
     },
     {
       "name": "p3_full_feature_blocked_family_ledger.csv",
@@ -388,6 +396,14 @@
     {
       "name": "p3_global_session_cutoff_contract.csv",
       "sha256": "0992aa3921d41b805c328d35f6ae0b7d43101f03057d582a4470fce547aa3e0c"
+    },
+    {
+      "name": "p3_layer5_action_reason_codes.csv",
+      "sha256": "b60580405f982487b368ad6b7b2b00535188dcb0c97cdaff4825c524c713b2b0"
+    },
+    {
+      "name": "p3_layer5_state_machine_field_schema.csv",
+      "sha256": "e4cd9d03d144a3d568e4e6e8b61c15bb08f191e90a26c2497af024c3f5f642ae"
     },
     {
       "name": "p3_open_day_full_family_ingestion_validation.csv",
@@ -439,7 +455,7 @@
     },
     {
       "name": "readiness_for_p3_full_feature_unified_lifecycle_contract.json",
-      "sha256": "70eae2d2db49dc154ceb46cc17c79f547a43368e5065854a6254733d3e0bc4eb"
+      "sha256": "fb66e203f5a1cc60582006e7caea8b3754cbb663793d861796bee8acf06af4af"
     }
   ]
 }

@@ -1,0 +1,10 @@
+﻿reason_code,action,semantics,weight_or_threshold_fixed
+HOLD_VALID_INCUMBENT,hold,incumbent remains valid and no materially better eligible challenger,False
+HOLD_CHALLENGER_INSUFFICIENT_EDGE,hold,challenger does not clear multi-block and cost hurdle,False
+SWITCH_INCUMBENT_WEAKENED_CHALLENGER_BETTER,switch,incumbent confirmed weakening and challenger materially better,False
+FORCED_REPLACEMENT_INCUMBENT_INVALID,switch,incumbent hard invalid and eligible replacement exists,False
+CASH_CONFIRMED_SYSTEMIC_BEAR,cash,accepted confirmed-bear rule only,False
+CASH_PORTFOLIO_STOP,cash,accepted portfolio stop only,False
+CASH_INVALID_NO_REPLACEMENT,cash,incumbent invalid and no eligible replacement,False
+BLOCK_DATE_MARKET_DATA,hold,date-level mandatory market gate unavailable; no new decision,False
+BLOCK_TICKER_PRICE_ELIGIBILITY,hold,ticker adjusted price/history unavailable; ticker cannot challenge,False

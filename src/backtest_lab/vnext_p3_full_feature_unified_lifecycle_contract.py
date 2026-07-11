@@ -183,6 +183,38 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
     factor["analysis_close_ready"] = factor.factor_valid & factor.adjusted_close.notna()
     raw_cols = price[["date", "ticker", "open", "high", "low", "close"]].copy()
     for col in ("open", "high", "low", "close"): raw_cols[col] = pd.to_numeric(raw_cols[col], errors="coerce")
+
+    bracket_date = pd.Timestamp("2025-08-01"); abs_tol = 1e-10; rel_tol = 1e-8
+    bracket_members = set(exact_membership.loc[exact_membership.snapshot_date.eq(bracket_date), "ticker"])
+    events = _load_compact(exact_primary80_dir, "corporate_action_guard")
+    events["ticker"] = events.ticker.astype(str); events["effective_date"] = pd.to_datetime(events.effective_date, errors="coerce")
+    bracket_rows = []; synthetic = []
+    for ticker in sorted(bracket_members):
+        series = factor[factor.ticker.eq(ticker) & factor.factor_valid & factor.date.ne(bracket_date)].sort_values("date")
+        prior = series[series.date.lt(bracket_date)].tail(1); nxt = series[series.date.gt(bracket_date)].head(1)
+        raw_today = raw_cols[(raw_cols.ticker.eq(ticker)) & (raw_cols.date.eq(bracket_date))]
+        prior_date = prior.date.iloc[0] if len(prior) else pd.NaT; next_date = nxt.date.iloc[0] if len(nxt) else pd.NaT
+        prior_factor = float(prior.analysis_adjustment_factor.iloc[0]) if len(prior) else np.nan
+        next_factor = float(nxt.analysis_adjustment_factor.iloc[0]) if len(nxt) else np.nan
+        equal = bool(np.isfinite(prior_factor) and np.isfinite(next_factor) and np.isclose(prior_factor, next_factor, rtol=rel_tol, atol=abs_tol))
+        ambiguity = bool(len(events[(events.ticker.eq(ticker)) & events.effective_date.gt(prior_date) & events.effective_date.le(next_date)])) if pd.notna(prior_date) and pd.notna(next_date) else True
+        raw_ready = bool(len(raw_today) and raw_today[["open", "high", "low", "close"]].notna().all(axis=1).iloc[0])
+        accepted = bool(len(prior) and len(nxt) and equal and raw_ready and not ambiguity)
+        reason = "accepted_factor_continuity" if accepted else "missing_prior_factor" if not len(prior) else "missing_next_factor" if not len(nxt) else "factor_changed" if not equal else "raw_HLC_missing" if not raw_ready else "corporate_action_ambiguity"
+        bracket_rows.append({"snapshot_date": bracket_date, "ticker": ticker, "prior_factor_date": prior_date, "prior_factor": prior_factor,
+                             "next_factor_date": next_date, "next_factor": next_factor, "factor_abs_diff": abs(prior_factor-next_factor) if equal else np.nan,
+                             "absolute_tolerance": abs_tol, "relative_tolerance": rel_tol, "factor_equal_within_tolerance": equal,
+                             "raw_HLC_same_day_ready": raw_ready, "corporate_action_ambiguity": ambiguity, "bracket_factor_accepted": accepted,
+                             "proof_reason": reason, "neighbor_price_substitution_used": False})
+        if accepted:
+            raw_close = float(raw_today.close.iloc[0]); synthetic.append({"date": bracket_date, "ticker": ticker,
+                "adjusted_close": raw_close * prior_factor, "raw_close_comparator": raw_close,
+                "source_quality": "trusted_nonofficial_factor_continuity_bracket_research_only",
+                "analysis_adjustment_factor": prior_factor, "factor_valid": True, "analysis_close_ready": True})
+    bracket_proof = pd.DataFrame(bracket_rows)
+    bracket_proof.to_csv(output_dir / "p3_20250801_adjustment_factor_bracket_proof.csv", index=False, encoding="utf-8-sig")
+    if synthetic:
+        factor = pd.concat([factor, pd.DataFrame(synthetic)], ignore_index=True, sort=False)
     factor = factor.merge(raw_cols, on=["date", "ticker"], how="left")
     for col in ("open", "high", "low", "close"):
         factor[f"analysis_{col}"] = factor[col] * factor.analysis_adjustment_factor
@@ -290,6 +322,7 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
     price_eligible_max = int(candidate_weekly.price_eligible_tickers.max())
     candidate_matrix_ready = market_gate_complete_weeks == total_snapshot_count and price_eligible_min > 0
     candidate_level_evaluable_weeks = int(candidate_weekly.candidate_level_date_ready.sum())
+    bracket_accepted_count = int(bracket_proof.bracket_factor_accepted.sum())
 
     missing_ledger = pd.read_csv(exact_primary80_dir / "p3_exact_primary80_blocked_ticker_date_ledger.csv", dtype={"ticker": str})
     missing_ledger["missing_class"] = np.select([
@@ -318,6 +351,26 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
     ]
     pd.DataFrame(schema, columns=["field", "source_family", "semantics", "status", "source_quality", "mandatory_full_lifecycle"]).assign(
         weight_fixed=False, silent_fill_allowed=False).to_csv(output_dir / "p3_unified_feature_ingestion_schema.csv", index=False, encoding="utf-8-sig")
+
+    _write([
+        {"field": "signal_date", "role": "identity", "required": True}, {"field": "execution_date", "role": "next_trading_day_execution", "required": True},
+        {"field": "incumbent_ticker", "role": "current_single_position", "required": True}, {"field": "incumbent_lifecycle_state", "role": "cooling|turn_up|healthy|overheat_warning|confirmed_weakening|invalid", "required": True},
+        {"field": "challenger_ticker", "role": "highest_eligible_risk_adjusted_opportunity", "required": True}, {"field": "challenger_eligibility", "role": "price_history_and_hard_risk_gate", "required": True},
+        {"field": "chip_available_component_count", "role": "confidence_only_no_weight_yet", "required": True}, {"field": "market_threshold_context", "role": "entry_hold_switch_cash_threshold_modulation", "required": True},
+        {"field": "action", "role": "hold|switch|cash", "required": True}, {"field": "reason_code", "role": "auditable_action_reason", "required": True},
+        {"field": "EP05_transition_cost_hurdle", "role": "switch_must_cover_cost", "required": True},
+    ], output_dir / "p3_layer5_state_machine_field_schema.csv")
+    _write([{"reason_code": code, "action": action, "semantics": text, "weight_or_threshold_fixed": False} for code, action, text in [
+        ("HOLD_VALID_INCUMBENT", "hold", "incumbent remains valid and no materially better eligible challenger"),
+        ("HOLD_CHALLENGER_INSUFFICIENT_EDGE", "hold", "challenger does not clear multi-block and cost hurdle"),
+        ("SWITCH_INCUMBENT_WEAKENED_CHALLENGER_BETTER", "switch", "incumbent confirmed weakening and challenger materially better"),
+        ("FORCED_REPLACEMENT_INCUMBENT_INVALID", "switch", "incumbent hard invalid and eligible replacement exists"),
+        ("CASH_CONFIRMED_SYSTEMIC_BEAR", "cash", "accepted confirmed-bear rule only"),
+        ("CASH_PORTFOLIO_STOP", "cash", "accepted portfolio stop only"),
+        ("CASH_INVALID_NO_REPLACEMENT", "cash", "incumbent invalid and no eligible replacement"),
+        ("BLOCK_DATE_MARKET_DATA", "hold", "date-level mandatory market gate unavailable; no new decision"),
+        ("BLOCK_TICKER_PRICE_ELIGIBILITY", "hold", "ticker adjusted price/history unavailable; ticker cannot challenge"),
+    ]], output_dir / "p3_layer5_action_reason_codes.csv")
 
     _write([
         {"field": "institutional_large_holder_chip_proxy_score", "display_name_zh": "法人／大戶籌碼代理分數",
@@ -409,7 +462,12 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
                  "candidate_level_feature_matrix_ready": candidate_matrix_ready,
                  "candidate_level_evaluable_subset_weeks": candidate_level_evaluable_weeks,
                  "candidate_level_blocked_weeks": total_snapshot_count - candidate_level_evaluable_weeks,
-                 "candidate_level_exact_blockers": ["2025-08-01 adjusted_analysis_all_primary80_unavailable", "2025-12-26 TAIFEX_no_target_row"],
+                 "candidate_level_exact_blockers": ["2025-12-26 TAIFEX_no_target_row"],
+                 "adjustment_factor_bracket_2025_08_01_accepted_tickers": bracket_accepted_count,
+                 "adjustment_factor_bracket_2025_08_01_total_tickers": len(bracket_proof),
+                 "adjustment_factor_bracket_2025_08_01_blocked_tickers": len(bracket_proof) - bracket_accepted_count,
+                 "adjustment_factor_bracket_tolerance_absolute": abs_tol,
+                 "adjustment_factor_bracket_tolerance_relative": rel_tol,
                  "state_machine_contract_ready": False,
                  "state_machine_blocked_reason": "Layer5 frozen decision/state parameters not yet supplied by Strategy Center",
                  "raw_HLC_warmup_required_ticker_dates": int(warmup_manifest["coverage"]["required_ticker_dates"]),
@@ -445,7 +503,8 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
         f"- Close-based complete snapshots={close_complete_snapshot_count}/{total_snapshot_count}；KD-price complete={KD_price_complete_snapshot_count}/{total_snapshot_count}；all mandatory full-feature complete={complete_snapshot_count}/{total_snapshot_count}。\n"
         f"- Chip 20D warmup complete segments={chip_ready['all_mandatory_chip_20d_ready_segments']}/{chip_ready['segment_count']}；其餘official no-row保留availability，不補0、不stale carry。\n"
         f"- Candidate-level price eligible min/median/max={price_eligible_min}/{price_eligible_median:.1f}/{price_eligible_max}；market gate complete={market_gate_complete_weeks}/{total_snapshot_count}。\n"
-        f"- Candidate-level evaluable subset={candidate_level_evaluable_weeks}/{total_snapshot_count}；blockers為2025-08-01 adjusted eligibility與2025-12-26 TAIFEX。\n"
+        f"- Candidate-level evaluable subset={candidate_level_evaluable_weeks}/{total_snapshot_count}；唯一date blocker為2025-12-26 TAIFEX。\n"
+        f"- 2025-08-01 factor bracket accepted={bracket_accepted_count}/{len(bracket_proof)}；只補factor continuity，不替代當日raw價格。\n"
         f"- Candidate-level matrix ready={candidate_matrix_ready}；state-machine contract仍待Strategy Center凍結，不跑績效。\n"
         "- P3 不取代 P1；法人／大戶籌碼代理分數僅 proxy components，權重未定。\n"
         "- Mandatory gaps 關閉前不交 Experiments、不跑 partial performance。\n", encoding="utf-8")

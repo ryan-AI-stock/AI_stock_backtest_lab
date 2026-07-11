@@ -1,3 +1,2 @@
 ﻿snapshot_date,price_eligible_tickers,completely_unevaluable_candidates,chip_components_available_min,chip_components_available_median,chip_components_available_max,date_level_market_gate_ready,candidate_level_date_ready,blocked_reason
-2025-08-01,0,80,0,4.0,4,True,False,zero_price_eligible_candidates
 2025-12-26,80,0,3,4.0,4,False,False,date_level_market_gate_incomplete

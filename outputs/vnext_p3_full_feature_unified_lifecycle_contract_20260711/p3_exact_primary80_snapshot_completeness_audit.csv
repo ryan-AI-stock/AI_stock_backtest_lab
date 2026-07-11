@@ -105,7 +105,7 @@
 2025-07-11,80,78,78,70,False,False,False,selector_completeness_blocked,False
 2025-07-18,80,80,79,72,True,False,False,selector_completeness_blocked,False
 2025-07-25,80,80,80,74,True,True,False,selector_completeness_blocked,False
-2025-08-01,80,0,0,0,False,False,False,selector_completeness_blocked,False
+2025-08-01,80,35,35,33,False,False,False,selector_completeness_blocked,False
 2025-08-08,80,80,80,73,True,True,False,selector_completeness_blocked,False
 2025-08-15,80,80,80,72,True,True,False,selector_completeness_blocked,False
 2025-08-22,80,80,80,72,True,True,False,selector_completeness_blocked,False

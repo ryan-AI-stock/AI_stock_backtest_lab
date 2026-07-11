@@ -1,0 +1,12 @@
+﻿field,role,required
+signal_date,identity,True
+execution_date,next_trading_day_execution,True
+incumbent_ticker,current_single_position,True
+incumbent_lifecycle_state,cooling|turn_up|healthy|overheat_warning|confirmed_weakening|invalid,True
+challenger_ticker,highest_eligible_risk_adjusted_opportunity,True
+challenger_eligibility,price_history_and_hard_risk_gate,True
+chip_available_component_count,confidence_only_no_weight_yet,True
+market_threshold_context,entry_hold_switch_cash_threshold_modulation,True
+action,hold|switch|cash,True
+reason_code,auditable_action_reason,True
+EP05_transition_cost_hurdle,switch_must_cover_cost,True
