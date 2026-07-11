@@ -10,6 +10,7 @@ import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SOURCE = REPO_ROOT / "outputs/vnext_p3_full_feature_unified_lifecycle_contract_20260711"
+LAYER4_SOURCE = REPO_ROOT / "outputs/vnext_layer4_80_primary_pool_contract_20260708/layer4_80_primary_pool_contract.csv"
 OUTPUT = REPO_ROOT / "outputs/vnext_p3_layer5_single_lifecycle_state_machine_contract_20260711"
 TASK_ID = "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-SINGLE-LIFECYCLE-STATE-MACHINE-CONTRACT-001"
 
@@ -23,6 +24,13 @@ def run(source_dir: Path = SOURCE, output_dir: Path = OUTPUT) -> Path:
     source_readiness = json.loads((source_dir / "readiness_for_p3_full_feature_unified_lifecycle_contract.json").read_text(encoding="utf-8-sig"))
     if not source_readiness["candidate_level_feature_matrix_ready"]:
         raise ValueError("P3 candidate-level matrix is not ready")
+    candidate_readiness = pd.read_csv(source_dir / "p3_exact_primary80_unified_PIT_feature_matrix_readiness_rows.csv", dtype={"ticker": str})
+    layer4 = pd.read_csv(LAYER4_SOURCE, dtype={"ticker": str}, low_memory=False)
+    layer4["snapshot_date"] = pd.to_datetime(layer4["snapshot_date"])
+    layer4 = layer4.loc[(layer4["is_layer4_primary_pool"] == True) &
+                        layer4["snapshot_date"].between("2023-07-14", "2026-06-29")].copy()
+    layer4 = layer4.sort_values(["snapshot_date", "ticker"]).drop_duplicates(["snapshot_date", "ticker"], keep="last")
+    candidate_readiness["snapshot_date"] = pd.to_datetime(candidate_readiness["snapshot_date"])
 
     lifecycle = [
         ("cooling_down", "降溫", "recent strength/attention plus RS5/10 weakening, short-MA weakness or capital support decline", "BIAS/KD cooling; volatility falling without breakdown; quality floor pass", "MA breakdown with RS20/40 negative; high risk; quality/trading block; price core missing", "watch_only"),
@@ -145,6 +153,64 @@ def run(source_dir: Path = SOURCE, output_dir: Path = OUTPUT) -> Path:
         for s in stop_gates
     ])
 
+    # Materialize only source-backed evidence and eligibility. Final states/scores/actions
+    # remain blocked until the frozen spec supplies field weights and evidence thresholds.
+    source_field_map = {
+        "A_momentum_opportunity": ["RS5", "RS10", "RS20", "rs5_minus_rs10", "rs10_minus_rs20", "rs_short_acceleration_flag", "rs_short_deterioration_flag"],
+        "B_trend_persistence": ["RS40", "RS60", "MA20_position", "MA60_position", "MA120_position", "rs60_background_supportive"],
+        "C_capital_chip_support": ["traded_value_rank_5d", "traded_value_rank_20d", "traded_value_rank_60d", "capital_rank_improvement_20d_vs_60d", "capital_support_context", "capital_warning_context"],
+        "D_risk_overheat_crowding": ["BIAS20_percentile", "BIAS60_percentile", "volatility_pctile_by_week", "drawdown_20d", "drawdown_60d", "large_down_day_count_20d_proxy", "blowoff_turnover_without_price_continuation_proxy", "risk_bucket"],
+        "E_lifecycle_fit": ["momentum_sleeve_candidate_feature", "pullback_repair_sleeve_candidate_feature", "rs_exhaustion_warning_context", "breakdown_risk_score", "exhaustion_risk_score"],
+        "F_fundamental_quality": ["layer1_financial_risk_flag_count", "layer1_quality_floor_risk_pctile_by_week", "monthly_revenue_available", "quarterly_fundamental_available", "missing_core_fundamental_flag", "layer1_pass_bottom20"],
+    }
+    materialization_audit = []
+    for block, fields in source_field_map.items():
+        for field in fields:
+            exists = field in layer4.columns
+            materialization_audit.append({"block": block, "contract_field": field, "source_table": str(LAYER4_SOURCE),
+                                          "source_column_exists": exists,
+                                          "non_null_rows": int(layer4[field].notna().sum()) if exists else 0,
+                                          "total_candidate_rows": len(layer4), "PIT_source": True,
+                                          "usable_for_rule_now": exists, "future_return_field": False})
+    write_rows(output_dir / "p3_layer5_field_materialization_audit.csv", materialization_audit)
+
+    event = candidate_readiness.merge(layer4, on=["snapshot_date", "ticker"], how="left", suffixes=("_ready", ""))
+    evidence_cols = [f for fields in source_field_map.values() for f in fields if f in event.columns]
+    event_out = event[["snapshot_date", "ticker", "name_ready", "market_ready", "pool_rank_ready",
+                       "candidate_price_eligible", "chip_available_component_count", "chip_applicable_component_count",
+                       "chip_confidence", "row_blocked_reason"] + evidence_cols].copy()
+    event_out = event_out.rename(columns={"name_ready": "name", "market_ready": "market", "pool_rank_ready": "pool_rank"})
+    event_out["price_core_valid"] = event_out["candidate_price_eligible"].fillna(False)
+    event_out["lifecycle_state"] = "blocked_pending_frozen_evidence_thresholds"
+    event_out["lifecycle_state_confidence"] = pd.NA
+    event_out["six_block_score_ready"] = False
+    event_out["selected_eligibility"] = False
+    event_out["selected_action"] = "not_materialized"
+    event_out["future_return_used_as_rule"] = False
+    event_out.to_csv(output_dir / "p3_layer5_candidate_event_materialization_rows.csv", index=False, encoding="utf-8-sig")
+
+    transitions = [
+        ("cooling_down", "turning_up", "repair evidence reaches frozen confirmation count", "challenger_only"),
+        ("turning_up", "healthy_rise", "trend persistence and capital support confirmed", "challenger_or_hold"),
+        ("healthy_rise", "overheat_warning", "overheat evidence without multi-factor weakening", "hold_and_monitor"),
+        ("overheat_warning", "healthy_rise", "overheat cools while trend remains healthy", "hold"),
+        ("healthy_rise|overheat_warning", "confirmed_weakening", "multi-factor weakening reaches frozen confirmation count", "forced_replacement_candidate"),
+        ("confirmed_weakening", "turning_up|healthy_rise", "repair plus replacement-quality evidence", "replacement_candidate"),
+    ]
+    write_rows(output_dir / "p3_layer5_state_transition_contract.csv", [
+        {"from_state": a, "to_state": b, "required_transition_evidence": c, "action_semantics": d,
+         "single_signal_transition_allowed": False, "next_day_execution": True}
+        for a, b, c, d in transitions
+    ])
+
+    cost_rows = [
+        {"transition": "hold_same", "brokerage_fee_hook": 0.0, "stock_sell_tax_hook": 0.0, "slippage_hook": 0.0, "ready": True},
+        {"transition": "stock_to_stock", "brokerage_fee_hook": "EP05 buy+sell", "stock_sell_tax_hook": "EP05 stock sell tax", "slippage_hook": "blocked_numeric_assumption", "ready": False},
+        {"transition": "stock_to_cash", "brokerage_fee_hook": "EP05 sell", "stock_sell_tax_hook": "EP05 stock sell tax", "slippage_hook": "blocked_numeric_assumption", "ready": False},
+        {"transition": "cash_to_stock", "brokerage_fee_hook": "EP05 buy", "stock_sell_tax_hook": 0.0, "slippage_hook": "blocked_numeric_assumption", "ready": False},
+    ]
+    write_rows(output_dir / "p3_layer5_execution_cost_slippage_hooks.csv", cost_rows)
+
     readiness = {
         "task_id": TASK_ID, "status": "architecture_contract_materialized_parameter_selection_and_event_rows_pending",
         "source_candidate_level_feature_matrix_ready": True, "requested_start": "2023-07-11", "requested_end": "2026-07-10",
@@ -153,9 +219,15 @@ def run(source_dir: Path = SOURCE, output_dir: Path = OUTPUT) -> Path:
         "applicability_confidence_contract_ready": True, "incumbent_challenger_policy_ready": True,
         "market_tightness_policy_ready": True, "reason_code_contract_ready": True,
         "parameter_lattice_ready": True, "parameter_base_values_selected": False,
-        "block_weights_selected": False, "state_thresholds_materialized": False, "event_rows_materialized": False,
+        "block_weights_selected": False, "block_internal_field_weights_selected": False,
+        "state_thresholds_materialized": False, "event_rows_materialized": True,
+        "event_rows_materialized_count": int(len(event_out)), "event_rows_are_source_evidence_only": True,
+        "candidate_event_selected_actions_materialized": False,
         "EP05_cost_hooks_required": True, "slippage_assumption_ready": False,
-        "ready_for_phase_a_event_validation": False, "ready_for_phase_b_unique_position_path": False,
+        "ready_for_phase_a_event_validation": False,
+        "phase_a_blocked_reasons": ["six_block_weights_not_frozen", "block_internal_field_weights_not_frozen",
+                                    "state_evidence_thresholds_not_frozen", "slippage_numeric_assumption_not_frozen"],
+        "ready_for_phase_b_unique_position_path": False,
         "ready_for_experiments": False, "future_data_violation_count": 0,
         "formal_model_changed": False, "trade_decision_changed": False, "active_in_trade_decision": False,
         "report_changed": False, "portfolio_replay_executed": False, "ready_for_strategy_replay": False,
@@ -171,7 +243,8 @@ def run(source_dir: Path = SOURCE, output_dir: Path = OUTPUT) -> Path:
 - 正常換倉須同時通過 multi-block、incumbent weakening、confidence、price、quality/risk 與 after-cost edge。
 - 市場環境只調門檻，不切換 selector；confirmed bear 才允許 no-position。
 - 參數只建立每項最多三值 lattice，尚未選 base；block weights、state thresholds、slippage 亦未凍結。
-- 因此 Phase A event rows 尚不可 materialize，Phase B path 不 ready，不交 Experiments、不跑績效。
+- 12,320筆 candidate/source evidence rows 已 materialize；最終state/score/action仍因權重、evidence threshold與slippage未凍結而blocked。
+- 因此 Phase A event validation不ready，Phase B path亦不ready；不交Experiments、不跑績效。
 - C2/route_support/R6/RS20 top3 全部維持 reference-only。
 """
     (output_dir / "final_summary_zh.md").write_text(summary, encoding="utf-8")

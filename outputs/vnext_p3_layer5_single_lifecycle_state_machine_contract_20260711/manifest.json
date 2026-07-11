@@ -20,11 +20,21 @@
     "parameter_lattice_ready": true,
     "parameter_base_values_selected": false,
     "block_weights_selected": false,
+    "block_internal_field_weights_selected": false,
     "state_thresholds_materialized": false,
-    "event_rows_materialized": false,
+    "event_rows_materialized": true,
+    "event_rows_materialized_count": 12320,
+    "event_rows_are_source_evidence_only": true,
+    "candidate_event_selected_actions_materialized": false,
     "EP05_cost_hooks_required": true,
     "slippage_assumption_ready": false,
     "ready_for_phase_a_event_validation": false,
+    "phase_a_blocked_reasons": [
+      "six_block_weights_not_frozen",
+      "block_internal_field_weights_not_frozen",
+      "state_evidence_thresholds_not_frozen",
+      "slippage_numeric_assumption_not_frozen"
+    ],
     "ready_for_phase_b_unique_position_path": false,
     "ready_for_experiments": false,
     "future_data_violation_count": 0,
@@ -41,11 +51,23 @@
   "files": [
     {
       "name": "final_summary_zh.md",
-      "sha256": "6e3837a602e955142559d67e2a206a1f8bc0565e6f8db2ba2fe8a9e5a95a47a9"
+      "sha256": "db29e82783d28cef07ba97f1d3d461480faa7caf4c8ea84523116851bca8771c"
     },
     {
       "name": "p3_layer5_applicability_confidence_policy.csv",
       "sha256": "92953a2585afab587732d99bcea803b5c510d8f6a34746bf0db1a72171e023c0"
+    },
+    {
+      "name": "p3_layer5_candidate_event_materialization_rows.csv",
+      "sha256": "618bb3c838fe19a22a50a61035ae28645670780152e46153349145630e7d8da2"
+    },
+    {
+      "name": "p3_layer5_execution_cost_slippage_hooks.csv",
+      "sha256": "8ef84bc1ae30c5e8b10b482e6c8efe5964e05caed6a435d41b35c8f614e92969"
+    },
+    {
+      "name": "p3_layer5_field_materialization_audit.csv",
+      "sha256": "281f5b87decf63b8900fb01ef7346bb248a367957747844f983c023de2fb8cfd"
     },
     {
       "name": "p3_layer5_incumbent_challenger_policy.csv",
@@ -65,7 +87,7 @@
     },
     {
       "name": "p3_layer5_readiness.json",
-      "sha256": "e24361168fd05d306845c84c8b90447b2e1fd4fe3099e65ae765b3ac435db420"
+      "sha256": "b666feaeb609bc3197fb35f355cabad8817fc36180f2a4a27f069cf573043f78"
     },
     {
       "name": "p3_layer5_reason_code_contract.csv",
@@ -74,6 +96,10 @@
     {
       "name": "p3_layer5_state_machine_contract.csv",
       "sha256": "8602e6584dc1eea580623edda80e61244f675903800fa3311ee41028ad1d1b7e"
+    },
+    {
+      "name": "p3_layer5_state_transition_contract.csv",
+      "sha256": "4cb706f665e1721da06cb4362114b0422fddf8cc81a09154f81b862cf1245b21"
     },
     {
       "name": "p3_layer5_stop_gate_contract.csv",

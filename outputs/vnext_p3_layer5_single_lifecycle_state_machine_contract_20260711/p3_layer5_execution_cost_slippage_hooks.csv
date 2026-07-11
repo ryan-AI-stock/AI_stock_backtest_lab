@@ -1,0 +1,5 @@
+﻿transition,brokerage_fee_hook,stock_sell_tax_hook,slippage_hook,ready
+hold_same,0.0,0.0,0.0,True
+stock_to_stock,EP05 buy+sell,EP05 stock sell tax,blocked_numeric_assumption,False
+stock_to_cash,EP05 sell,EP05 stock sell tax,blocked_numeric_assumption,False
+cash_to_stock,EP05 buy,0.0,blocked_numeric_assumption,False

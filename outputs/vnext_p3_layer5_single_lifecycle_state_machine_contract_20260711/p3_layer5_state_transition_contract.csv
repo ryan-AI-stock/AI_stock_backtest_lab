@@ -1,0 +1,7 @@
+﻿from_state,to_state,required_transition_evidence,action_semantics,single_signal_transition_allowed,next_day_execution
+cooling_down,turning_up,repair evidence reaches frozen confirmation count,challenger_only,False,True
+turning_up,healthy_rise,trend persistence and capital support confirmed,challenger_or_hold,False,True
+healthy_rise,overheat_warning,overheat evidence without multi-factor weakening,hold_and_monitor,False,True
+overheat_warning,healthy_rise,overheat cools while trend remains healthy,hold,False,True
+healthy_rise|overheat_warning,confirmed_weakening,multi-factor weakening reaches frozen confirmation count,forced_replacement_candidate,False,True
+confirmed_weakening,turning_up|healthy_rise,repair plus replacement-quality evidence,replacement_candidate,False,True
