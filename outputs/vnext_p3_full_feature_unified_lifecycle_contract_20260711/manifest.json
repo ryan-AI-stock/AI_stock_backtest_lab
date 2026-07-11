@@ -229,6 +229,21 @@
     "full_lifecycle_complete_snapshots": 11,
     "total_exact_snapshots": 154,
     "full_lifecycle_complete_snapshot_share": 0.07142857142857142,
+    "legacy_all80_all_family_gate_overstrict_reference_only": true,
+    "candidate_level_price_eligible_min": 0,
+    "candidate_level_price_eligible_median": 79.0,
+    "candidate_level_price_eligible_max": 80,
+    "date_level_market_gate_complete_weeks": 153,
+    "date_level_market_gate_total_weeks": 154,
+    "candidate_level_feature_matrix_ready": false,
+    "candidate_level_evaluable_subset_weeks": 152,
+    "candidate_level_blocked_weeks": 2,
+    "candidate_level_exact_blockers": [
+      "2025-08-01 adjusted_analysis_all_primary80_unavailable",
+      "2025-12-26 TAIFEX_no_target_row"
+    ],
+    "state_machine_contract_ready": false,
+    "state_machine_blocked_reason": "Layer5 frozen decision/state parameters not yet supplied by Strategy Center",
     "raw_HLC_warmup_required_ticker_dates": 183886,
     "raw_HLC_warmup_ready_ticker_dates": 181375,
     "raw_HLC_warmup_official_zero_or_not_applicable": 2511,
@@ -276,7 +291,7 @@
     },
     {
       "name": "final_summary_zh.md",
-      "sha256": "d3cde88ae49f65e506d82e40c6f1942287886f001b372a4f911c6a119c471d9c"
+      "sha256": "4d320285725dbff0da83f75fd9b909b4108d715d62a535e8179206c0dd9a1f28"
     },
     {
       "name": "future_data_audit.csv",
@@ -315,6 +330,18 @@
       "sha256": "08097564f5cf708d46b6849ee18210476913cec5a89d3e09464d3225ce3bfc9b"
     },
     {
+      "name": "p3_candidate_level_date_blocker_audit.csv",
+      "sha256": "f05cd41ec7ed4b778256aac1170a6452ba97744a97a47b354ba476c6d40a16f0"
+    },
+    {
+      "name": "p3_candidate_level_evaluable_date_subset_contract.csv",
+      "sha256": "5f5486c7eae493019705a6f2f03b50b72daa0b9a97729995e0872ef92d439cee"
+    },
+    {
+      "name": "p3_candidate_level_weekly_coverage_distribution.csv",
+      "sha256": "04ce87922ea892893a098a0d6ebb28d2ded9198424e0a5146b4ad2773299624c"
+    },
+    {
       "name": "p3_chip_20D_warmup_blocked_ledger.csv",
       "sha256": "e9002075ce0f94bb69079c577c7df31872acfca6fd28ec8ffa4bc23cb35bb795"
     },
@@ -327,6 +354,10 @@
       "sha256": "99e32f4cf184517801b1531ce05895dd1e18205242ddb9e2deee7f3d3718ba64"
     },
     {
+      "name": "p3_date_level_market_gate_audit.csv",
+      "sha256": "6cfbe851a35d69924403a428ad6a0d8b2974ccc9ad3e6191d425503eebb0394c"
+    },
+    {
       "name": "p3_exact_complete_snapshot_subset_contract.csv",
       "sha256": "eafc4a0ec58a7fc37169d4efa471af3c0c0750e3e1525646bc38aa72b1df4431"
     },
@@ -336,7 +367,7 @@
     },
     {
       "name": "p3_exact_primary80_unified_PIT_feature_matrix_readiness_rows.csv",
-      "sha256": "600a25680c18f54b9bd03d9e5d9436ebae512165083feb7f82d791f0e2b5c4b6"
+      "sha256": "ec2af35aaeba463f6f4ddd58353d62e4ff8736234159449c2948016f1953b763"
     },
     {
       "name": "p3_full_feature_blocked_family_ledger.csv",
@@ -400,7 +431,7 @@
     },
     {
       "name": "p3_unified_PIT_feature_matrix_readiness.csv",
-      "sha256": "4a049d67200addff3c2caf497d57cd2f9dc89258704093b88eb4cd9002f101f6"
+      "sha256": "510e2c5bdc17d2503182dbae0b8e0219ab8e0884b6943e4db3407c7271b74613"
     },
     {
       "name": "p3_universe_membership_coverage_audit.csv",
@@ -408,7 +439,7 @@
     },
     {
       "name": "readiness_for_p3_full_feature_unified_lifecycle_contract.json",
-      "sha256": "270d123841b71e912f14fe67e8de05a16947297bd00a2cacc9953127a5dee4d0"
+      "sha256": "70eae2d2db49dc154ceb46cc17c79f547a43368e5065854a6254733d3e0bc4eb"
     }
   ]
 }

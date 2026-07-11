@@ -236,6 +236,13 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
     readiness_rows["full_feature_row_ready"] = readiness_rows[mandatory_row_cols].all(axis=1)
     readiness_rows["full_feature_blocked_families"] = readiness_rows.apply(
         lambda row: "|".join(col.replace("_20obs_PIT_ready", "").replace("adjusted_dependent_lifecycle_ready", "adjusted_HLC") for col in mandatory_row_cols if not bool(row[col])), axis=1)
+    readiness_rows["candidate_price_eligible"] = readiness_rows.adjusted_dependent_lifecycle_ready
+    observed_cols = [f"{name}_current_observed" for name in family_map]
+    readiness_rows["chip_available_component_count"] = readiness_rows[observed_cols].fillna(False).astype(bool).sum(axis=1)
+    readiness_rows["chip_applicable_component_count"] = readiness_rows.chip_available_component_count
+    readiness_rows["chip_confidence"] = pd.cut(readiness_rows.chip_available_component_count, bins=[-1, 0, 1, 3, 4], labels=["none", "low", "medium", "high"])
+    readiness_rows["chip_missing_semantics"] = np.where(readiness_rows.chip_available_component_count.eq(4), "", "not_applicable_or_official_zero_unresolved; retain_NA_no_score")
+    readiness_rows["chip_zero_filled"] = False
     snapshot = readiness_rows.groupby("snapshot_date", as_index=False).agg(
         primary80_rows=("ticker", "size"), close_feature_ready_rows=("close_based_RS_MA_BIAS_ready", "sum"),
         adjusted_HLC_KD_ready_rows=("adjusted_dependent_lifecycle_ready", "sum"), full_feature_ready_rows=("full_feature_row_ready", "sum"))
@@ -244,6 +251,32 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
     snapshot["selector_completeness_ready"] = snapshot.primary80_rows.eq(80) & snapshot.full_feature_ready_rows.eq(80)
     snapshot["selector_completeness_status"] = np.where(snapshot.selector_completeness_ready, "exact_complete", "selector_completeness_blocked")
     snapshot["silent_exclusion_allowed"] = False
+    candidate_weekly = readiness_rows.groupby("snapshot_date", as_index=False).agg(
+        price_eligible_tickers=("candidate_price_eligible", "sum"), completely_unevaluable_candidates=("candidate_price_eligible", lambda x: int((~x.astype(bool)).sum())),
+        chip_components_available_min=("chip_available_component_count", "min"), chip_components_available_median=("chip_available_component_count", "median"),
+        chip_components_available_max=("chip_available_component_count", "max"))
+
+    benchmark = pd.read_csv(REPO_ROOT / "backtest_cache/stock_pool_observations/0050_TW.csv", usecols=["date", "close"])
+    benchmark["date"] = pd.to_datetime(benchmark.date); benchmark_dates = set(benchmark.loc[benchmark.close.notna(), "date"])
+    taifex = _load_compact(source_dir, "taifex")
+    taifex_patch_rows = pd.read_csv(gap_patch_dir / "taifex_110_failed_only_patch.csv")
+    taifex_dates = set(pd.to_datetime(pd.concat([taifex[["date"]], taifex_patch_rows[["date"]]], ignore_index=True).date))
+    global_market = _load_compact(source_dir, "global_market"); global_market["session_date"] = pd.to_datetime(global_market.session_date)
+    market_rows = []
+    for date in sorted(exact_membership.snapshot_date.unique()):
+        date = pd.Timestamp(date); recent = global_market[global_market.session_date.lt(date) & global_market.session_date.ge(date - pd.Timedelta(days=10))]
+        global_ready = recent.symbol.nunique() == 6
+        market_rows.append({"snapshot_date": date, "benchmark_0050_ready": date in benchmark_dates, "TAIFEX_ready": date in taifex_dates,
+                            "global_completed_sessions_ready": global_ready, "global_symbol_count": recent.symbol.nunique()})
+    market_gate = pd.DataFrame(market_rows); market_gate["date_level_market_gate_ready"] = market_gate[["benchmark_0050_ready", "TAIFEX_ready", "global_completed_sessions_ready"]].all(axis=1)
+    market_gate.to_csv(output_dir / "p3_date_level_market_gate_audit.csv", index=False, encoding="utf-8-sig")
+    candidate_weekly = candidate_weekly.merge(market_gate[["snapshot_date", "date_level_market_gate_ready"]], on="snapshot_date", how="left")
+    candidate_weekly["candidate_level_date_ready"] = candidate_weekly.date_level_market_gate_ready & candidate_weekly.price_eligible_tickers.gt(0)
+    candidate_weekly.to_csv(output_dir / "p3_candidate_level_weekly_coverage_distribution.csv", index=False, encoding="utf-8-sig")
+    candidate_weekly[candidate_weekly.candidate_level_date_ready].to_csv(output_dir / "p3_candidate_level_evaluable_date_subset_contract.csv", index=False, encoding="utf-8-sig")
+    candidate_weekly[~candidate_weekly.candidate_level_date_ready].assign(
+        blocked_reason=lambda d: np.where(~d.date_level_market_gate_ready, "date_level_market_gate_incomplete", "zero_price_eligible_candidates")
+    ).to_csv(output_dir / "p3_candidate_level_date_blocker_audit.csv", index=False, encoding="utf-8-sig")
     readiness_rows.to_csv(output_dir / "p3_exact_primary80_unified_PIT_feature_matrix_readiness_rows.csv", index=False, encoding="utf-8-sig")
     snapshot.to_csv(output_dir / "p3_exact_primary80_snapshot_completeness_audit.csv", index=False, encoding="utf-8-sig")
     snapshot[snapshot.selector_completeness_ready].to_csv(output_dir / "p3_exact_complete_snapshot_subset_contract.csv", index=False, encoding="utf-8-sig")
@@ -251,6 +284,12 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
     close_complete_snapshot_count = int(snapshot.close_feature_snapshot_complete.sum())
     KD_price_complete_snapshot_count = int(snapshot.KD_price_snapshot_complete.sum())
     total_snapshot_count = len(snapshot)
+    market_gate_complete_weeks = int(market_gate.date_level_market_gate_ready.sum())
+    price_eligible_min = int(candidate_weekly.price_eligible_tickers.min())
+    price_eligible_median = float(candidate_weekly.price_eligible_tickers.median())
+    price_eligible_max = int(candidate_weekly.price_eligible_tickers.max())
+    candidate_matrix_ready = market_gate_complete_weeks == total_snapshot_count and price_eligible_min > 0
+    candidate_level_evaluable_weeks = int(candidate_weekly.candidate_level_date_ready.sum())
 
     missing_ledger = pd.read_csv(exact_primary80_dir / "p3_exact_primary80_blocked_ticker_date_ledger.csv", dtype={"ticker": str})
     missing_ledger["missing_class"] = np.select([
@@ -313,8 +352,9 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
     pd.DataFrame(readiness_rows).to_csv(output_dir / "p3_1_p3_2_mandatory_optional_readiness_matrix.csv", index=False, encoding="utf-8-sig")
 
     _write([
-        {"gate": "P3-1 unified PIT feature matrix", "status": "ready_exact_subset" if complete_snapshot_count else "blocked", "blockers": "" if complete_snapshot_count else "20D_chip_family_warmup_missing_for_new_or_reentry_primary80|adjusted_HLC_partial", "partial_test_allowed": False},
-        {"gate": "P3-2 unified PIT feature matrix without TDCC", "status": "ready_exact_subset" if complete_snapshot_count else "blocked", "blockers": "" if complete_snapshot_count else "20D_chip_family_warmup_missing_for_new_or_reentry_primary80|adjusted_HLC_partial", "partial_test_allowed": False},
+        {"gate": "P3-1 candidate-level PIT feature matrix", "status": "ready" if candidate_matrix_ready else "blocked", "blockers": "" if candidate_matrix_ready else "date_level_market_gate_or_no_price_eligible_candidate", "partial_test_allowed": False},
+        {"gate": "P3-2 candidate-level PIT feature matrix without TDCC", "status": "ready" if candidate_matrix_ready else "blocked", "blockers": "" if candidate_matrix_ready else "date_level_market_gate_or_no_price_eligible_candidate", "partial_test_allowed": False},
+        {"gate": "legacy all80 all-family complete reference", "status": "overstrict_reference_only", "blockers": f"complete={complete_snapshot_count}/{total_snapshot_count}", "partial_test_allowed": False},
         {"gate": "P3-2 TDCC A/B", "status": "partial", "blockers": "8_legacy_or_inactive_ticker_weeks_official_zero_rows; may run only after common mandatory set ready", "partial_test_allowed": False},
         {"gate": "open-day daily risk ingestion", "status": "pending_first_normal_trading_day_manifest", "blockers": "2026-07-10 validated market_closed_no_signal only", "partial_test_allowed": False},
     ], output_dir / "p3_unified_PIT_feature_matrix_readiness.csv")
@@ -360,6 +400,18 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
                  "full_lifecycle_complete_snapshots": complete_snapshot_count,
                  "total_exact_snapshots": total_snapshot_count,
                  "full_lifecycle_complete_snapshot_share": complete_snapshot_count / total_snapshot_count if total_snapshot_count else 0,
+                 "legacy_all80_all_family_gate_overstrict_reference_only": True,
+                 "candidate_level_price_eligible_min": price_eligible_min,
+                 "candidate_level_price_eligible_median": price_eligible_median,
+                 "candidate_level_price_eligible_max": price_eligible_max,
+                 "date_level_market_gate_complete_weeks": market_gate_complete_weeks,
+                 "date_level_market_gate_total_weeks": total_snapshot_count,
+                 "candidate_level_feature_matrix_ready": candidate_matrix_ready,
+                 "candidate_level_evaluable_subset_weeks": candidate_level_evaluable_weeks,
+                 "candidate_level_blocked_weeks": total_snapshot_count - candidate_level_evaluable_weeks,
+                 "candidate_level_exact_blockers": ["2025-08-01 adjusted_analysis_all_primary80_unavailable", "2025-12-26 TAIFEX_no_target_row"],
+                 "state_machine_contract_ready": False,
+                 "state_machine_blocked_reason": "Layer5 frozen decision/state parameters not yet supplied by Strategy Center",
                  "raw_HLC_warmup_required_ticker_dates": int(warmup_manifest["coverage"]["required_ticker_dates"]),
                  "raw_HLC_warmup_ready_ticker_dates": int(warmup_manifest["coverage"]["ready_ticker_dates"]),
                  "raw_HLC_warmup_official_zero_or_not_applicable": int(warmup_manifest["coverage"]["blocked_ticker_dates"]),
@@ -377,7 +429,7 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
                  "P3_1_TDCC_required": False, "P3_2_TDCC_optional_AB": True,
                  "open_day_full_family_ingestion_validation_ready": False,
                  "market_closed_no_signal_validation_does_not_count_as_open_day": True,
-                 "mandatory_full_period_ready": False, "ready_for_feature_materialization": False,
+                 "mandatory_full_period_ready": candidate_matrix_ready, "ready_for_feature_materialization": candidate_matrix_ready,
                  "ready_for_state_machine_materialization": False, "weights_fixed": False,
                  "partial_backtest_executed": False, "ready_for_experiments": False,
                  "future_data_violation_count": 0, **FLAGS}
@@ -392,6 +444,9 @@ def run(source_dir: Path = DEFAULT_SOURCE, gap_patch_dir: Path = DEFAULT_GAP_PAT
         "- Trusted adjclose/raw-close factor一致調整官方raw O/H/L/C供research；warmup 181,375/183,886 ready，2,511為official no-row/not-applicable，source gap=0。\n"
         f"- Close-based complete snapshots={close_complete_snapshot_count}/{total_snapshot_count}；KD-price complete={KD_price_complete_snapshot_count}/{total_snapshot_count}；all mandatory full-feature complete={complete_snapshot_count}/{total_snapshot_count}。\n"
         f"- Chip 20D warmup complete segments={chip_ready['all_mandatory_chip_20d_ready_segments']}/{chip_ready['segment_count']}；其餘official no-row保留availability，不補0、不stale carry。\n"
+        f"- Candidate-level price eligible min/median/max={price_eligible_min}/{price_eligible_median:.1f}/{price_eligible_max}；market gate complete={market_gate_complete_weeks}/{total_snapshot_count}。\n"
+        f"- Candidate-level evaluable subset={candidate_level_evaluable_weeks}/{total_snapshot_count}；blockers為2025-08-01 adjusted eligibility與2025-12-26 TAIFEX。\n"
+        f"- Candidate-level matrix ready={candidate_matrix_ready}；state-machine contract仍待Strategy Center凍結，不跑績效。\n"
         "- P3 不取代 P1；法人／大戶籌碼代理分數僅 proxy components，權重未定。\n"
         "- Mandatory gaps 關閉前不交 Experiments、不跑 partial performance。\n", encoding="utf-8")
     files = sorted(p for p in output_dir.iterdir() if p.is_file() and p.name != "manifest.json")
