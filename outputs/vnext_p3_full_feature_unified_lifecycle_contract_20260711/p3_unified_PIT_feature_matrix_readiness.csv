@@ -1,5 +1,5 @@
 ﻿gate,status,blockers,partial_test_allowed
-P3-1 unified PIT feature matrix,blocked,adjusted_HLC_60TD_warmup_missing|11_adjusted_blocked_tickers,False
-P3-2 unified PIT feature matrix without TDCC,blocked,adjusted_HLC_60TD_warmup_missing|11_adjusted_blocked_tickers,False
+P3-1 unified PIT feature matrix,blocked,20D_chip_family_warmup_missing_for_new_or_reentry_primary80|adjusted_HLC_partial,False
+P3-2 unified PIT feature matrix without TDCC,blocked,20D_chip_family_warmup_missing_for_new_or_reentry_primary80|adjusted_HLC_partial,False
 P3-2 TDCC A/B,partial,8_legacy_or_inactive_ticker_weeks_official_zero_rows; may run only after common mandatory set ready,False
 open-day daily risk ingestion,pending_first_normal_trading_day_manifest,2026-07-10 validated market_closed_no_signal only,False

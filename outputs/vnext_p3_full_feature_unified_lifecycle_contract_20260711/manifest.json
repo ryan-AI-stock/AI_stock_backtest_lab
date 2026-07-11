@@ -7,6 +7,9 @@
   "gap_patch_commit": "9a803ca",
   "exact_primary80_source": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_p3_exact_primary80_full_feature_source_scope_repair_20260711",
   "exact_primary80_commit": "6120840",
+  "raw_HLC_warmup_source": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_p3_exact_primary80_raw_hlc_warmup_gap_fill_20260711",
+  "raw_HLC_warmup_commit": "2303e87",
+  "raw_HLC_runner_hygiene_commit": "cfd1542",
   "source_readiness": {
     "task_id": "TASK-RADAR-DATA-VNEXT-P3-RECENT-FULL-FEATURE-DATA-READINESS-AND-ACQUISITION-001",
     "status": "p3_partial_readiness_contract_mandatory_gaps_remain",
@@ -116,6 +119,36 @@
     "not_live_rule": true,
     "forward_returns_live_rule_usage": false
   },
+  "raw_HLC_warmup_readiness": {
+    "task_id": "TASK-RADAR-DATA-VNEXT-P3-EXACT-PRIMARY80-RAW-HLC-WARMUP-GAP-FILL-001",
+    "status": "raw_hlc_warmup_source_package_ready_with_explicit_official_no_rows",
+    "source": "official TWSE/TPEx raw OHLCV; reused exact-key local compact plus bounded market-wide repair",
+    "coverage": {
+      "required_ticker_dates": 183886,
+      "ready_ticker_dates": 181375,
+      "blocked_ticker_dates": 2511,
+      "ready_share": 0.9863448006,
+      "segment_count": 5016,
+      "complete_60td_segments": 3139,
+      "blocked_classification_counts": {
+        "official_zero_or_not_applicable": 2511
+      }
+    },
+    "future_data_violation_count": 0,
+    "ready_for_core_p3_exact_primary80_raw_hlc_warmup_absorption": true,
+    "ready_for_experiments": false,
+    "adjusted_11_reprobed": false,
+    "raw_used_as_adjusted": false,
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "ready_for_strategy_replay": false,
+    "ready_for_formal": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false
+  },
   "readiness": {
     "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-FULL-FEATURE-UNIFIED-LIFECYCLE-CONTRACT-001",
     "status": "partial_readiness_mandatory_gaps_remain",
@@ -124,6 +157,8 @@
     "requested_end": "2026-07-10",
     "gap_patch_hash_mismatch_count": 0,
     "gap_patch_absorbed": true,
+    "raw_HLC_warmup_hash_mismatch_count": 0,
+    "raw_HLC_warmup_absorbed": true,
     "actual_market_start": "2023-07-14",
     "actual_market_end": "2026-06-29",
     "P3_replaces_P1": false,
@@ -142,9 +177,15 @@
     "adjusted_HLC_method_ready_research_only": true,
     "corporate_action_no_event_completeness_ready": false,
     "close_feature_complete_snapshots": 87,
+    "KD_price_complete_snapshots": 63,
     "full_lifecycle_complete_snapshots": 0,
     "total_exact_snapshots": 154,
     "full_lifecycle_complete_snapshot_share": 0.0,
+    "raw_HLC_warmup_required_ticker_dates": 183886,
+    "raw_HLC_warmup_ready_ticker_dates": 181375,
+    "raw_HLC_warmup_official_zero_or_not_applicable": 2511,
+    "raw_HLC_warmup_source_gap_rows": 0,
+    "raw_HLC_warmup_complete_segments": 3139,
     "TDCC_full_P3_ready": false,
     "TDCC_P3_2_AB_only": true,
     "TAIFEX_original_accepted_dates": 615,
@@ -183,7 +224,7 @@
     },
     {
       "name": "final_summary_zh.md",
-      "sha256": "651b75bcac1ab5599dde3140b16a073a80cd9f272cdfbcb054fa7b784086022a"
+      "sha256": "eefb3de6c6130a2c8c9c096978ab3fb17ed90ccb5afd0b7309f4c235740a99fb"
     },
     {
       "name": "future_data_audit.csv",
@@ -215,7 +256,7 @@
     },
     {
       "name": "p3_adjusted_OHLC_factor_method_audit.csv",
-      "sha256": "6d5c3d8e230bb97b8195f97d971d4de7160e2fee883f64fe83837a9488633207"
+      "sha256": "01dd1981016baa678b5224336877863aee01ad28594d4af5303b135fff0e9d49"
     },
     {
       "name": "p3_analysis_execution_price_separation_contract.csv",
@@ -227,15 +268,15 @@
     },
     {
       "name": "p3_exact_complete_snapshot_subset_contract.csv",
-      "sha256": "36406bfbab0fc9f8e8e0ad440c2f8a461dc890ace1a8bc5dc31431ab90d021d1"
+      "sha256": "45f3527d410fc52d0c3e49de2ff81da787311b37ef00e10e3802e7d909df9465"
     },
     {
       "name": "p3_exact_primary80_snapshot_completeness_audit.csv",
-      "sha256": "6d8e7671cd5971c1c0ecba5ff8339b3f6db6eb99f6d945ea247b4c7cd754e61d"
+      "sha256": "d3b8ee56c993f645bdd8db77ee134aafedc6311bcbe367dfd0afd06fe79bdc3b"
     },
     {
       "name": "p3_exact_primary80_unified_PIT_feature_matrix_readiness_rows.csv",
-      "sha256": "e818bc8a6be823b17f12efdc798857f9a2f8b380f39f292cc1c8ac080321c570"
+      "sha256": "0cca4cef361d6ae34a414b844d9c4d1fa1759a5bf230598d19fff842b7b8c6ee"
     },
     {
       "name": "p3_full_feature_blocked_family_ledger.csv",
@@ -266,6 +307,14 @@
       "sha256": "7f31f158a374f9330a87e07297fe5add8ae454786b4d7a24cf0efdb048ed55e6"
     },
     {
+      "name": "p3_raw_HLC_warmup_blocked_ledger.csv",
+      "sha256": "30c5470afc1ad413f623d5efc2c662d14e158dc2ec1fb6fac4c3dd7d28ee7440"
+    },
+    {
+      "name": "p3_raw_HLC_warmup_segment_absorption_audit.csv",
+      "sha256": "07ba2dcfb1d5d9e767aae2d44d7ae1de00e53760d42295f1087e6392f8a63309"
+    },
+    {
       "name": "p3_source_missingness_classification_summary.csv",
       "sha256": "9cd79230305488bf52ebfd44cc42e530cfdb67955407ed085dc92105f36daebb"
     },
@@ -291,7 +340,7 @@
     },
     {
       "name": "p3_unified_PIT_feature_matrix_readiness.csv",
-      "sha256": "3c98079790fb218bd6829d1579d4a385febebf210edfac43684c45c0f66a4cc1"
+      "sha256": "1b529dbd9d4110dd14fea50919e8a5f0b5c254bb3c317897f70548613d9a235c"
     },
     {
       "name": "p3_universe_membership_coverage_audit.csv",
@@ -299,7 +348,7 @@
     },
     {
       "name": "readiness_for_p3_full_feature_unified_lifecycle_contract.json",
-      "sha256": "f7d3f68308fb75f255f483864ebdfde514e572d77d3606f985cd897e83a31e2e"
+      "sha256": "6a8b56c7172db8eaabaa8774231d626a934a25b25c2d7e5f6ee27e15c63e3537"
     }
   ]
 }
