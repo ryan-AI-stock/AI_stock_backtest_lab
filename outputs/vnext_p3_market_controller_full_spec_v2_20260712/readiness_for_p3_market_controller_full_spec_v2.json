@@ -1,0 +1,24 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-MARKET-CONTROLLER-FULL-SPEC-V2-001",
+  "status": "full_spec_v2_feature_state_contract_partial_trade_flow_blocked",
+  "daily_rows": 715,
+  "simple_v0_reference_only": true,
+  "full_spec_v1_superseded_primary": true,
+  "full_spec_v2_primary_candidate": true,
+  "trade_flow_dimension_ready": false,
+  "blocked_dimensions": [
+    "deriv_trade_flow:TAIFEX trade net contracts/amount not materialized in Core P3 compact"
+  ],
+  "ready_for_action_rechain": false,
+  "ready_for_phase_b_experiments": false,
+  "future_data_violation_count": 0,
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "ready_for_strategy_replay": false,
+  "ready_for_formal": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false
+}
