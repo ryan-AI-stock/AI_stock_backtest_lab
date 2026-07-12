@@ -1,0 +1,62 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-DAILY-FEATURE-STATE-ACTION-MATERIALIZATION-001",
+  "readiness": {
+    "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-DAILY-FEATURE-STATE-ACTION-MATERIALIZATION-001",
+    "status": "phase_a_event_materialization_ready",
+    "requested_start": "2023-07-11",
+    "requested_end": "2026-06-29",
+    "actual_start": "2023-07-17",
+    "actual_end": "2026-06-26",
+    "daily_rows": 57200,
+    "daily_dates": 715,
+    "blocked_rows": 12990,
+    "ready_rows": 44210,
+    "daily_technical_ready": true,
+    "daily_chip_ready": true,
+    "daily_market_state_ready": true,
+    "daily_state_action_ready": true,
+    "ready_for_phase_a_event_validation": true,
+    "ready_for_phase_b_unique_position_path": false,
+    "ready_for_experiments": true,
+    "future_data_violation_count": 0,
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "ready_for_strategy_replay": false,
+    "ready_for_formal": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false
+  },
+  "files": [
+    {
+      "name": "final_summary_zh.md",
+      "sha256": "a6ff892b4d2108890cc93b2de8608ad49b9b9f2d1867c16b0c1aeb876ccb5cd7"
+    },
+    {
+      "name": "future_data_audit.csv",
+      "sha256": "42e38e20cb24857a810c323ca17849e71c0947bf475e9789a8c754eb65f6c938"
+    },
+    {
+      "name": "p3_layer5_daily_feature_blocked_ledger.csv",
+      "sha256": "90c64c0a3b1254ce50df0666832ca5609b387197610d52a7d1b975bd9f673866"
+    },
+    {
+      "name": "p3_layer5_daily_feature_state_matrix.csv",
+      "sha256": "a7a93e2223fb8b33d45b93ab1715a18a05d07aaf0d6585f59986be4e193a7474"
+    },
+    {
+      "name": "p3_layer5_daily_incumbent_challenger_action_trace.csv",
+      "sha256": "725440f35aacba3cd95f0c4e5cc8f7fac85a6445c8d5fb62a1f975ff917573c9"
+    },
+    {
+      "name": "p3_layer5_daily_market_state.csv",
+      "sha256": "5534d9bb49972763c5e51722e9054f9c8d0ad6c44d8772bcfe8bf6603c513f2b"
+    },
+    {
+      "name": "readiness_for_p3_layer5_daily_phase_a.json",
+      "sha256": "76b58a4684b29fa5a024901e5969e875a6a0929bd9e4655964d1fda0293a2174"
+    }
+  ]
+}
