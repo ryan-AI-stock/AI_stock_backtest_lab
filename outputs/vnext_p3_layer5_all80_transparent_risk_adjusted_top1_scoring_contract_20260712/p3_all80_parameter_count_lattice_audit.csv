@@ -1,0 +1,6 @@
+﻿parameter_family,raw_parameters,effective_degrees_freedom,bounds,search
+strength_simplex,5,4,nonnegative sum1; fundamental<=0.15,continuous constrained optimization
+individual_risk_penalty,1,1,0..1,continuous constrained optimization
+market_risk_interaction,1,1,0..1 monotonic,continuous constrained optimization
+regularization_strength,1,1,0.01|0.1|1.0,3 fold-internal candidates only
+total,8,7,bounded,no Cartesian coefficient lattice; 3 regularization candidates

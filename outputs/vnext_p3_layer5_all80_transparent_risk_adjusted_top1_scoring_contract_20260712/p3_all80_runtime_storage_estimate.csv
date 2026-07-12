@@ -1,0 +1,3 @@
+﻿artifact,estimated_rows,estimated_MB,runtime_minutes
+all80 feature compact,57200,109.43,1-3 Core materialization; 10-30 Experiments constrained calibration
+candidate label compact,228800,121.6,1-3 join/evaluation

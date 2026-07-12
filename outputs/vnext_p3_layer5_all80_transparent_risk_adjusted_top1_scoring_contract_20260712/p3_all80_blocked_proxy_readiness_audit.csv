@@ -1,0 +1,7 @@
+﻿item,status,detail,blocks_formal,blocks_stage_A_diagnostic
+adjusted_analysis_price,research_grade_proxy,trusted_nonofficial adjusted analysis; raw execution kept separate,True,False
+corporate_action_completeness,partial_guarded,event/factor audit retained; 2025-08-01 remains blocked,True,False
+FCF,official_period_specific_diagnostic_proxy,"OCF plus investing cashflow, not exact capex FCF",True,False
+TDCC_P3_1,not_available,NA; not zero; excluded from common main score,False,False
+TDCC_P3_2,optional_attribution,same-period on/off attribution only; does not alter main model definition,False,False
+2025_08_01,blocked_date,zero candidate with all mandatory blocks; no silent fill,True,False

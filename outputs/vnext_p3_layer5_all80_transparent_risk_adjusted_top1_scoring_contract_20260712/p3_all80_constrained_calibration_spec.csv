@@ -1,0 +1,4 @@
+﻿formula_id,formula,constraint,market_constant_addition,TDCC_main_score
+transparent_constrained_family,strength=sum(w_i*strength_i); final=strength-lambda_risk*individual_risk*(1+lambda_market*(market_risk-50)/50),"w_i>=0; sum(w)=1; fundamental_weight<=0.15; lambda_risk in [0,1]; lambda_market in [0,1]",False,False
+market_interaction,market risk monotonically scales ticker-specific risk penalty and emits entry/switch/exit interaction fields,no different selector by regime; no negative risk coefficient,False,False
+objective,maximize worst of 10TD/20TD decision-date-group rank quality for net excess vs00631L subject to non-worsening downside/MDD-rank and ordinary/weak stop-gates,P3-1 fold validation only; P3-2 never selects coefficients,False,False

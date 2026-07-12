@@ -1,0 +1,4 @@
+﻿stage,policy,P3_2_access
+P3-1_fold_fit,fit constrained coefficients on train only,False
+P3-1_fold_validation,select stable plateau across folds/horizons/regimes; neighbor perturbation +/-10% projected to constraints,False
+P3-2_final_OOS,one untouched evaluation; no retune or second look,True

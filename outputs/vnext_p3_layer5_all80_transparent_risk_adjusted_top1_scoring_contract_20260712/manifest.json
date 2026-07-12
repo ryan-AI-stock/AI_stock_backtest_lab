@@ -1,0 +1,95 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-ALL80-TRANSPARENT-RISK-ADJUSTED-TOP1-SCORING-CONTRACT-001",
+  "inputs": {
+    "score_sha256": "a135811d54846ad41dbb6252c47b96aa835c62d6db28c984aa016c9a9005278c",
+    "market_sha256": "69daac49457581b780109d53c2607c7c3a204a84059a07649ddd496529a7e03d",
+    "outcome_sha256": "ba1b66c40ab4163c4d7cfc9c2a1ce6495bf33283d9adc04e1c04406d720c76f0"
+  },
+  "files": [
+    {
+      "name": "final_summary_zh.md",
+      "sha256": "35a1ddfc3012a34077f9a4610f001886abf7008a73e2264d6d5895bf0dd1febf",
+      "bytes": 392
+    },
+    {
+      "name": "p3_all80_blocked_date_ledger.csv",
+      "sha256": "62c526a697c5a856ba6220f098c5b38b25502fbc5950dffb52d1ff9e0e5d3f6b",
+      "bytes": 114
+    },
+    {
+      "name": "p3_all80_blocked_proxy_readiness_audit.csv",
+      "sha256": "fd7c9dcd5bd6d45d7a17c3ec36f27c11d2f52e15a241af795e1c40c7a837d235",
+      "bytes": 704
+    },
+    {
+      "name": "p3_all80_candidate_quality_label_contract.csv.gz",
+      "sha256": "7e951252d0c91cd924a52e8ab57739f1eefe064df4e771405895a2fbdea0299f",
+      "bytes": 22043299
+    },
+    {
+      "name": "p3_all80_constrained_calibration_spec.csv",
+      "sha256": "901916061b6668bfe39f5b177dc64860804c137e0889b182b0bb63157f9b5684",
+      "bytes": 763
+    },
+    {
+      "name": "p3_all80_correlation_precombine_audit.csv",
+      "sha256": "e9a4320fef2d06e4ffdcbcb704ce69f9bdd7f14480c191dfe2618d81d83a818c",
+      "bytes": 7776
+    },
+    {
+      "name": "p3_all80_daily_key_coverage.csv",
+      "sha256": "a547ab89acbe971f1d5362585ae3a41186b2b314804b7a54807349e4c9af8a12",
+      "bytes": 31643
+    },
+    {
+      "name": "p3_all80_future_PIT_leakage_audit.csv",
+      "sha256": "0b2a00ae4b695bab856f6a1acb0574e05340053b3f6e3aa908db1d530a53c31d",
+      "bytes": 149
+    },
+    {
+      "name": "p3_all80_label_coverage.csv",
+      "sha256": "3b5fc2d262520ac6be764086207d43072ad65a759126046d779e1c2e0868be60",
+      "bytes": 787
+    },
+    {
+      "name": "p3_all80_P3_1_expanding_fold_calendar.csv",
+      "sha256": "152502e75f91d2d819818908b6f8d0b9549a182af43571b46efe4a86b80cc3f8",
+      "bytes": 459
+    },
+    {
+      "name": "p3_all80_P3_1_P3_2_OOS_governance.csv",
+      "sha256": "dcec0addb1056e02820125ca659762588834b140c2bb8967d32f47691a8a7861",
+      "bytes": 300
+    },
+    {
+      "name": "p3_all80_parameter_count_lattice_audit.csv",
+      "sha256": "26d3318aeafb822728239f1705e1e65c35745fc0fd2403840507f7f87cbf89da",
+      "bytes": 475
+    },
+    {
+      "name": "p3_all80_runtime_storage_estimate.csv",
+      "sha256": "1704709fb460424886f658779da7c80f339eae585e489bc3237d504bf3acee9b",
+      "bytes": 219
+    },
+    {
+      "name": "p3_all80_score_block_ownership_contract.csv",
+      "sha256": "767d7d2676019c058048753ff9a130520d28cdc2816a5e93ae4a795eb89442ce",
+      "bytes": 2415
+    },
+    {
+      "name": "p3_all80_Top1_selection_contract.csv",
+      "sha256": "8bcf9e49fb39454d46f16359c4a3b148595cb971f61455a6dd5383959150d138",
+      "bytes": 401
+    },
+    {
+      "name": "p3_all80_transparent_score_component_matrix.csv.gz",
+      "sha256": "c0d31dd4bbcaf0ef511d45c09dd3388400eb5442a47d84bc44fbaeef03eef75f",
+      "bytes": 3414967
+    },
+    {
+      "name": "readiness_for_p3_all80_transparent_top1_scoring.json",
+      "sha256": "9b8683192ca7e4bd129ecef95d7ae94df56ea6092632a3b6f8f11edd1403e0f4",
+      "bytes": 1388
+    }
+  ]
+}

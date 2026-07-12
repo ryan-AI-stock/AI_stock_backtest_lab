@@ -1,0 +1,4 @@
+﻿fold_id,train_start,train_end,embargo_start,embargo_end,embargo_decision_dates,validation_start,validation_end,train_decision_dates,validation_decision_dates,P3_2_used_for_selection
+P3_1_F1,2023-07-17,2024-05-29,2024-05-30,2024-07-29,40,2024-07-30,2024-10-11,212,50,False
+P3_1_F2,2023-07-17,2024-10-11,2024-10-14,2024-12-09,40,2024-12-10,2025-02-27,302,50,False
+P3_1_F3,2023-07-17,2025-02-27,2025-03-03,2025-04-29,40,2025-04-30,2025-07-10,392,50,False

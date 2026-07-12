@@ -1,0 +1,5 @@
+﻿step,rule,tie_break,Top1_rows_per_ready_date
+1,filter calibration_eligible within exact daily primary80,ticker ascending,1
+2,apply fold-frozen constrained strength/risk/market formula,ticker ascending,1
+3,rank descending and emit exactly rank=1; keep all80 compact rank artifact,ticker ascending,1
+4,if zero eligible candidates mark date blocked; do not carry prior or use Layer4 rank1,none,0
