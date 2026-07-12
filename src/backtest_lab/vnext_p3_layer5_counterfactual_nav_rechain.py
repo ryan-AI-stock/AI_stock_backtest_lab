@@ -41,7 +41,7 @@ def fast_transitions(actions: pd.DataFrame, px_lookup: dict, calendar: list[pd.T
     return pd.DataFrame(events)
 
 
-def wealth(events: pd.DataFrame, lookup: pd.DataFrame, raw_lookup: pd.DataFrame, calendar: list[pd.Timestamp], cfid: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+def wealth(events: pd.DataFrame, lookup: pd.DataFrame, raw_lookup: pd.DataFrame, calendar: list[pd.Timestamp], cfid: str, slippage_bp: int = 10) -> tuple[pd.DataFrame, pd.DataFrame]:
     ev, collision = collapse_same_close_events(events)
     ev = ev.sort_values("actual_execution_date")
     active = None
@@ -71,8 +71,9 @@ def wealth(events: pd.DataFrame, lookup: pd.DataFrame, raw_lookup: pd.DataFrame,
             old = active
             new = str(e.new_target) if pd.notna(e.new_target) else None
             transition_type = e.transition_type
-            exit_rate = 0.001425 + 0.003 + 0.001 if old else 0.0
-            entry_rate = 0.001425 + 0.001 if new else 0.0
+            slip = slippage_bp / 10000.0
+            exit_rate = 0.001425 + 0.003 + slip if old else 0.0
+            entry_rate = 0.001425 + slip if new else 0.0
             exit_cost = nav_before * exit_rate
             entry_cost = nav_before * entry_rate
             cost = exit_cost + entry_cost

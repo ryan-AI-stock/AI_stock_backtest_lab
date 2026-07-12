@@ -1,0 +1,9 @@
+﻿scenario,regime,days,net_compound_return,median_daily_return,transition_count,stock_exposure_share
+H1_continuity_fix_only,ordinary_market,536,-0.12284204765775597,0.0,43,0.7835820895522388
+H1_continuity_fix_only,strong_market,64,0.7994091828461984,0.008611323926811743,8,0.953125
+H1_continuity_fix_only,weak_market,45,-0.3539289324665851,-0.006485111277543143,4,0.9777777777777777
+H1_continuity_fix_only,,1,-0.014031619937694861,-0.014031619937694861,1,1.0
+H2_forced_replacement_only,ordinary_market,536,-0.024128390438433178,0.0,43,0.7835820895522388
+H2_forced_replacement_only,strong_market,64,0.7826545428739233,0.007010851794157169,9,0.953125
+H2_forced_replacement_only,weak_market,45,-0.3717633882169815,-0.006485111277543254,2,0.9777777777777777
+H2_forced_replacement_only,,1,-0.006230529595015577,-0.006230529595015577,0,1.0

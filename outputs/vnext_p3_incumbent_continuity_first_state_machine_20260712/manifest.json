@@ -1,0 +1,57 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-INCUMBENT-CONTINUITY-FIRST-STATE-MACHINE-CONTRACT-001",
+  "files": [
+    {
+      "name": "final_summary_zh.md",
+      "sha256": "f25d6ece5ed3bdaaa5e5b51fef7382d90389b1faf3789a6dd7da08d0095e51db"
+    },
+    {
+      "name": "p3_incumbent_continuity_action_reason_audit.csv",
+      "sha256": "240470a5b54daa733d827d5d0509034c4ef8bb2ecb08782bf8297ada383c38ec"
+    },
+    {
+      "name": "p3_incumbent_continuity_annual_metric_hooks.csv",
+      "sha256": "bc0ec19d1f2a825cf111975ca244590c0769b58f37c2f9eb7841a40026b4df25"
+    },
+    {
+      "name": "p3_incumbent_continuity_benchmark_reference_hooks.csv",
+      "sha256": "bcbc9524242edbad46086a93249ff67d585670ba12706fe63ab7c9655eb8418c"
+    },
+    {
+      "name": "p3_incumbent_continuity_corrected_C0_C1_reference_hooks.csv",
+      "sha256": "5bd68511f217e9f109f7888f0cb73a757efa6830bfe0dd8c451cfbc2058fb0e9"
+    },
+    {
+      "name": "p3_incumbent_continuity_corrected_NAV_daily_paths.csv",
+      "sha256": "17cd85a5b71815c17aabf6a7594f456fbd8d454966d6244488e51c4a1c1b9ee8"
+    },
+    {
+      "name": "p3_incumbent_continuity_daily_action_contract.csv",
+      "sha256": "0eea6419b0a17e1ba0b968197af6fd2796ecb233167b5c14e825831818a2bedf"
+    },
+    {
+      "name": "p3_incumbent_continuity_exact_NAV_transition_reconciliation.csv",
+      "sha256": "3f670cf4115fcb4ea16983e9a92ef3827054141e2438909d042562f67f9d6dcf"
+    },
+    {
+      "name": "p3_incumbent_continuity_factor_bracket_audit.csv",
+      "sha256": "44c6dbe151f1d16b24522e5756084b885eec6b51b21b0b37f44a2bcd9ff88250"
+    },
+    {
+      "name": "p3_incumbent_continuity_path_metric_hooks.csv",
+      "sha256": "c4b11c2c7d50b16dc1e23c6f0a728f807e15adb20fcaf7516bcd4cb3cdc213d7"
+    },
+    {
+      "name": "p3_incumbent_continuity_regime_slice_hooks.csv",
+      "sha256": "2a30ccb3b547255ef3ec0b1d5a411c62fe3be0c3316ee65e5d06f01c30f33b68"
+    },
+    {
+      "name": "p3_incumbent_continuity_requested_vs_actual_coverage.csv",
+      "sha256": "cc939e6eac682df0d44b51db0117da1718ea8b04880d4f1d320894ca0fcf66d0"
+    },
+    {
+      "name": "readiness_for_incumbent_continuity_first.json",
+      "sha256": "18e0f1060651adaa89530a4134555e472f52d95e80bd4f5efc1d94715f2b2487"
+    }
+  ]
+}

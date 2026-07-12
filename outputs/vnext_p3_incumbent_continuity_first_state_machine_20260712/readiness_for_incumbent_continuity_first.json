@@ -1,0 +1,27 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-INCUMBENT-CONTINUITY-FIRST-STATE-MACHINE-CONTRACT-001",
+  "status": "incumbent_continuity_first_paths_ready",
+  "architectures": [
+    "H1_continuity_fix_only",
+    "H2_forced_replacement_only"
+  ],
+  "threshold_grid_used": false,
+  "full_spec_v2_parameters_changed": false,
+  "warmup_mapped_to_ordinary_primary": false,
+  "warmup_metric_eligible": false,
+  "primary_actual_start": "2023-10-27",
+  "daily_path_rows": 4296,
+  "transition_rows": 330,
+  "abs_return_gt_15pct_rows": 0,
+  "cross_asset_nominal_price_return_count": 0,
+  "ready_for_experiments": true,
+  "future_data_violation_count": 0,
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "ready_for_formal": false,
+  "ready_for_strategy_replay": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false
+}

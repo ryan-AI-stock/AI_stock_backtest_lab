@@ -1,0 +1,3 @@
+﻿scenario,role,actual_start,actual_end,net_total_return,MDD,transition_count,stock_exposure_share
+C0,current_corrected_reference,2023-10-27,2026-06-29,0.7491538015999564,-0.3962908675189851,52,0.8142414860681114
+C1,current_corrected_reference,2023-10-27,2026-06-29,0.4584440260299478,-0.4223734037084921,55,0.8142414860681114
