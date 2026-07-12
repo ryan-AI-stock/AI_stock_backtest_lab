@@ -1,17 +1,18 @@
 {
   "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-PHASE-B-COMPLETE-PATHS-001",
   "status": "static_actions_complete_waiting_bounded_tradability_event_patch",
-  "scenario_count": 9,
+  "placebo_price_patch_absorbed": true,
+  "placebo_price_patch_commit": "85e22d5",
+  "scenario_count": 10,
   "canonical_counterfactuals": 4,
   "placebo_seeds": 5,
-  "action_rows": 6435,
-  "transition_rows": 282,
-  "mark_rows": 2864,
-  "tradability_audit_rows": 647,
-  "unresolved_transition_count": 11,
+  "action_rows": 7150,
+  "transition_rows": 503,
+  "mark_rows": 4296,
+  "tradability_audit_rows": 879,
+  "unresolved_transition_count": 8,
   "blocked_scenarios": [
     "placebo_seed_17",
-    "placebo_seed_29",
     "placebo_seed_43",
     "placebo_seed_71",
     "placebo_seed_101"
@@ -24,7 +25,9 @@
     "C0",
     "C1",
     "C2",
-    "C3"
+    "C3",
+    "placebo_seed_29",
+    "simple_v0_reference"
   ],
   "placebo_paths_materialized": false,
   "exact_rechain_daily_marks_ready": false,
@@ -39,5 +42,7 @@
   "ready_for_strategy_replay": false,
   "ready_for_formal": false,
   "not_live_rule": true,
-  "forward_returns_live_rule_usage": false
+  "forward_returns_live_rule_usage": false,
+  "primary_controller_version": "full_spec_v1",
+  "simple_v0_role": "reference_only"
 }

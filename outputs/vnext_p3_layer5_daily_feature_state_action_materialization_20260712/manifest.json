@@ -44,15 +44,19 @@
     },
     {
       "name": "p3_layer5_daily_feature_state_matrix.csv",
-      "sha256": "a7a93e2223fb8b33d45b93ab1715a18a05d07aaf0d6585f59986be4e193a7474"
+      "sha256": "aa15623eb5a2b0dbc0bd61c30d9f488f83b4a8d5ae47a50deac3be9ac441b974"
     },
     {
       "name": "p3_layer5_daily_incumbent_challenger_action_trace.csv",
-      "sha256": "725440f35aacba3cd95f0c4e5cc8f7fac85a6445c8d5fb62a1f975ff917573c9"
+      "sha256": "7ea8cca47a6d50d74ea575459bc7c28edb19787d2de110875bbdc747fd5c38d9"
     },
     {
       "name": "p3_layer5_daily_market_state.csv",
-      "sha256": "5534d9bb49972763c5e51722e9054f9c8d0ad6c44d8772bcfe8bf6603c513f2b"
+      "sha256": "910cfd9a7ebb5fc18f93df859185ee09b5077599b8c8befb0e03183a1b01b649"
+    },
+    {
+      "name": "p3_layer5_market_simple_v0_vs_full_spec_v1_diff.csv",
+      "sha256": "977ca8d76e4ede81b552ed07865fb6a86d458f5749c9c452ffe3967c22e40da4"
     },
     {
       "name": "readiness_for_p3_layer5_daily_phase_a.json",

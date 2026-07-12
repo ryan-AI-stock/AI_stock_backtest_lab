@@ -7,16 +7,24 @@ import pandas as pd
 ROOT=Path(__file__).resolve().parents[2]
 SRC=ROOT/'outputs/vnext_p3_layer5_daily_feature_state_action_materialization_20260712'
 RADAR=Path(r'C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p3_recent_full_feature_data_readiness_acquisition_20260711\compact')
+PATCH=Path(r'C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p3_phase_b_placebo_tradability_termination_pit_gap_fill_20260712')
 OUT=ROOT/'outputs/vnext_p3_layer5_phase_b_complete_paths_20260712'
 TASK='TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-PHASE-B-COMPLETE-PATHS-001'
 
 def prices():
- d=pd.concat([pd.read_csv(p,dtype={'ticker':str},low_memory=False) for p in sorted((RADAR/'price').glob('*.csv.gz'))],ignore_index=True); d['date']=pd.to_datetime(d.date); return d[['date','ticker','close','source_quality']].dropna(subset=['close']).drop_duplicates(['date','ticker'],keep='last')
+ d=pd.concat([pd.read_csv(p,dtype={'ticker':str},low_memory=False) for p in sorted((RADAR/'price').glob('*.csv.gz'))],ignore_index=True); d['date']=pd.to_datetime(d.date)
+ ready=json.loads((PATCH/'readiness_for_core_p3_placebo_tradability_termination_patch.json').read_text(encoding='utf-8-sig'))
+ if not ready['ready_for_core_p3_phase_b_placebo_tradability_patch_absorption'] or ready['remaining_blocked_episodes']!=0: raise ValueError('Radar placebo patch not ready')
+ patch=pd.read_csv(PATCH/'p3_placebo_official_ohlcv_patch_rows.csv',dtype={'ticker':str}); patch['date']=pd.to_datetime(patch.date)
+ existing=set(zip(d.date,d.ticker)); patch['registry_key_preexisting']=[(r.date,r.ticker) in existing for r in patch.itertuples(index=False)]
+ patch.to_csv(OUT/'p3_layer5_phase_b_placebo_price_patch_absorption_audit.csv',index=False,encoding='utf-8-sig')
+ add=patch.loc[~patch.registry_key_preexisting,['date','ticker','close','source_quality']]
+ return pd.concat([d[['date','ticker','close','source_quality']],add],ignore_index=True).dropna(subset=['close']).drop_duplicates(['date','ticker'],keep='first')
 
 def make_actions(feature,market_mode):
  rows=[]; incumbent=None
  for dt,day in feature.groupby('decision_date',sort=True):
-  state=day.market_state.iloc[0]
+  state=day.simple_v0_market_state.iloc[0] if market_mode=='simple_v0_reference' else day.market_state.iloc[0]
   if market_mode=='C0': state='ordinary_market'
   elif market_mode=='C2' and state=='strong_market': state='ordinary_market'
   elif market_mode=='C3':
@@ -102,7 +110,7 @@ def audit_tradability(actions,px,calendar):
 def run():
  OUT.mkdir(parents=True,exist_ok=True); f=pd.read_csv(SRC/'p3_layer5_daily_feature_state_matrix.csv',dtype={'ticker':str},low_memory=False); f['decision_date']=pd.to_datetime(f.decision_date); f['next_execution_date']=pd.to_datetime(f.next_execution_date)
  base=pd.read_csv(SRC/'p3_layer5_daily_incumbent_challenger_action_trace.csv',dtype={'incumbent_after':str}); base['decision_date']=pd.to_datetime(base.decision_date); base['requested_execution_date']=pd.to_datetime(base.next_execution_date); base=base.rename(columns={'incumbent_after':'selected_ticker'}); base['scenario']='C1'
- scenarios=[make_actions(f,s) for s in ['C0','C1','C2','C3']]
+ scenarios=[make_actions(f,s) for s in ['C0','C1','C2','C3','simple_v0_reference']]
  for seed in [17,29,43,71,101]: scenarios.append(placebo_actions(scenarios[1],f,seed))
  px=prices(); cal=pd.read_csv(ROOT/'backtest_cache/stock_pool_observations/0050_TW.csv',usecols=['date']); cal['date']=pd.to_datetime(cal.date); calendar=cal.date[(cal.date>=min(s.decision_date.min() for s in scenarios))&(cal.date<=pd.Timestamp('2026-06-30'))].drop_duplicates().sort_values().tolist()
  all_a=[]; all_e=[]; all_m=[]; all_t=[]; blocked_scenarios=[]
@@ -118,7 +126,8 @@ def run():
  tradability.to_csv(OUT/'p3_layer5_phase_b_all_scenario_tradability_horizon_audit.csv',index=False,encoding='utf-8-sig')
  pivot=actions.pivot(index='decision_date',columns='scenario',values='selected_ticker'); pivot.reset_index().to_csv(OUT/'p3_layer5_phase_b_C0_C3_action_diff_audit.csv',index=False,encoding='utf-8-sig')
  blocker_count=int((~tradability.tradability_horizon_ready).sum())
- readiness={'task_id':TASK,'status':'static_actions_complete_waiting_bounded_tradability_event_patch' if blocker_count else 'phase_b_complete_paths_ready','scenario_count':len(scenarios),'canonical_counterfactuals':4,'placebo_seeds':5,'action_rows':len(actions),'transition_rows':len(events),'mark_rows':len(marks),'tradability_audit_rows':len(tradability),'unresolved_transition_count':blocker_count,'blocked_scenarios':blocked_scenarios,'outgoing_exit_marks_ready':blocker_count==0,'counterfactual_actions_materialized':True,'applied_controller_gates_materialized':True,'TAIFEX_TDCC_ablation_trace_materialized':True,'executable_scenario_paths_ready':sorted(set(actions.scenario)-set(blocked_scenarios)),'placebo_paths_materialized':not any(s.startswith('placebo') for s in blocked_scenarios),'exact_rechain_daily_marks_ready':blocker_count==0,'ready_for_phase_b_experiments':blocker_count==0,'ready_for_experiments':blocker_count==0,'future_data_violation_count':0,'formal_model_changed':False,'trade_decision_changed':False,'active_in_trade_decision':False,'report_changed':False,'portfolio_replay_executed':False,'ready_for_strategy_replay':False,'ready_for_formal':False,'not_live_rule':True,'forward_returns_live_rule_usage':False}
+ readiness={'task_id':TASK,'status':'static_actions_complete_waiting_bounded_tradability_event_patch' if blocker_count else 'phase_b_complete_paths_ready','placebo_price_patch_absorbed':True,'placebo_price_patch_commit':'85e22d5','scenario_count':len(scenarios),'canonical_counterfactuals':4,'placebo_seeds':5,'action_rows':len(actions),'transition_rows':len(events),'mark_rows':len(marks),'tradability_audit_rows':len(tradability),'unresolved_transition_count':blocker_count,'blocked_scenarios':blocked_scenarios,'outgoing_exit_marks_ready':blocker_count==0,'counterfactual_actions_materialized':True,'applied_controller_gates_materialized':True,'TAIFEX_TDCC_ablation_trace_materialized':True,'executable_scenario_paths_ready':sorted(set(actions.scenario)-set(blocked_scenarios)),'placebo_paths_materialized':not any(s.startswith('placebo') for s in blocked_scenarios),'exact_rechain_daily_marks_ready':blocker_count==0,'ready_for_phase_b_experiments':blocker_count==0,'ready_for_experiments':blocker_count==0,'future_data_violation_count':0,'formal_model_changed':False,'trade_decision_changed':False,'active_in_trade_decision':False,'report_changed':False,'portfolio_replay_executed':False,'ready_for_strategy_replay':False,'ready_for_formal':False,'not_live_rule':True,'forward_returns_live_rule_usage':False}
+ readiness['primary_controller_version']='full_spec_v1'; readiness['simple_v0_role']='reference_only'
  (OUT/'readiness_for_p3_layer5_phase_b_complete_paths.json').write_text(json.dumps(readiness,ensure_ascii=False,indent=2),encoding='utf-8'); (OUT/'final_summary_zh.md').write_text(f'# P3 Phase B complete paths\n\nC0-C3與5 fixed-seed placebo action已全數materialize。Tradability blockers={blocker_count}；僅零blocker scenarios產生executable mark/path。未計績效。\n',encoding='utf-8')
- files=sorted(q for q in OUT.iterdir() if q.is_file() and q.name!='manifest.json'); (OUT/'manifest.json').write_text(json.dumps({'task_id':TASK,'source_commit':'8822b2e','readiness':readiness,'files':[{'name':q.name,'sha256':hashlib.sha256(q.read_bytes()).hexdigest()} for q in files]},ensure_ascii=False,indent=2),encoding='utf-8'); print(OUT)
+ files=sorted(q for q in OUT.iterdir() if q.is_file() and q.name!='manifest.json'); (OUT/'manifest.json').write_text(json.dumps({'task_id':TASK,'source_commits':['8822b2e','85e22d5'],'patch_source':str(PATCH),'readiness':readiness,'files':[{'name':q.name,'sha256':hashlib.sha256(q.read_bytes()).hexdigest()} for q in files]},ensure_ascii=False,indent=2),encoding='utf-8'); print(OUT)
 if __name__=='__main__': run()
