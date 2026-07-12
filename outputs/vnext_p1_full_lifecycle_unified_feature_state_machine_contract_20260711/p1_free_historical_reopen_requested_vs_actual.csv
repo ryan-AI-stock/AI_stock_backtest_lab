@@ -1,0 +1,4 @@
+﻿family,requested_start,requested_end,actual_start,actual_end,requested_trading_dates,accepted_dates,blocked_dates,status
+TPEx_daily_stock_institutional,2015-01-02,2022-12-29,2015-01-05,2022-12-23,1943,1943,0,ready
+TDCC_holder_distribution,2015-01-02,2022-12-29,,,weekly,0,P1 full period,blocked_official_public_retention
+TAIFEX_TXF_foreign_trade_OI,2015-01-02,2022-12-29,,,daily,0,P1 full period,blocked_free_endpoint_three_year_limit

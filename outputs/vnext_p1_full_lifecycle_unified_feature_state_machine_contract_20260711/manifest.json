@@ -3,6 +3,8 @@
   "runner": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\src\\backtest_lab\\vnext_p1_full_lifecycle_unified_feature_state_machine_contract.py",
   "source_radar": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_p1_full_lifecycle_minimum_data_acquisition_20260710",
   "source_adjusted_63": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_p1_adjusted_analysis_63_bounded_resolution_20260711",
+  "source_free_historical_reopen": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_p1_free_historical_source_reopen_audit_20260712",
+  "source_free_historical_reopen_commit": "5a20866",
   "source_readiness": {
     "task_id": "TASK-RADAR-DATA-VNEXT-P1-FULL-LIFECYCLE-MINIMUM-DATA-ACQUISITION-001",
     "status": "research_grade_lifecycle_source_package_partial_structural_blockers",
@@ -123,6 +125,27 @@
     "blocked_reason": "No authorized free structured adjusted source recovered any of the 63 ticker-specific histories; FinMind adjusted dataset requires paid membership and raw OHLC substitution is prohibited.",
     "next_data_gap": "TPEx institutional history, TDCC history, TAIFEX history, and adjusted-analysis 63 remain blocked with free-route exhaustion evidence."
   },
+  "free_reopen_readiness": {
+    "task_id": "TASK-RADAR-DATA-VNEXT-P1-FREE-HISTORICAL-SOURCE-REOPEN-AUDIT-001",
+    "status": "tpex_official_p1_corrected_and_materialized_tdcc_taifex_confirmed_blocked",
+    "source": "official TDCC/TAIFEX/TPEx route tests plus bounded trusted-provider inventory",
+    "ready_for_core_tpex_p1_institutional_absorption": true,
+    "tpex_p1_dates": 1943,
+    "tpex_p1_rows": 1091250,
+    "tdcc_p1_holder_distribution_ready": false,
+    "taifex_p1_free_history_ready": false,
+    "future_data_violation_count": 0,
+    "ready_for_experiments": false,
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "ready_for_strategy_replay": false,
+    "ready_for_formal": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false
+  },
   "readiness": {
     "task_id": "TASK-BACKTEST-CORE-VNEXT-P1-FULL-LIFECYCLE-UNIFIED-FEATURE-STATE-MACHINE-CONTRACT-001",
     "status": "blocked_for_complete_unified_feature_state_machine_materialization",
@@ -147,7 +170,14 @@
     "adjusted_analysis_63_remaining_blocked_tickers": 63,
     "adjusted_analysis_63_route_status": "bounded_free_routes_exhausted_explicit_blocked",
     "adjusted_analysis_paid_source_authorized": false,
-    "TPEx_institutional_ready": false,
+    "free_historical_reopen_absorbed": true,
+    "TPEx_institutional_prior_exhausted_conclusion_superseded": true,
+    "TPEx_institutional_ready": true,
+    "TPEx_institutional_requested_dates": 1943,
+    "TPEx_institutional_accepted_dates": 1943,
+    "TPEx_institutional_rows": 1091250,
+    "TPEx_institutional_checksum_files": 8,
+    "TPEx_institutional_checksum_match": true,
     "TDCC_P1_ready": false,
     "TAIFEX_P1_ready": false,
     "ready_for_core_full_lifecycle_feature_matrix": false,
@@ -172,11 +202,15 @@
     },
     {
       "name": "final_summary_zh.md",
-      "sha256": "cb52064c4dc2c78a6c9b616a1204f698e8e2bf6eecefec286b09f810e20032cd"
+      "sha256": "25dba17cd00c5e3a4f35920679d62fa0f30fb97158d244eb16f99946184b5a62"
     },
     {
       "name": "future_data_audit.csv",
       "sha256": "9a205599dd1f250245aec4b3379807320191917070d8b01657e7fc88459da0bd"
+    },
+    {
+      "name": "p1_free_historical_reopen_requested_vs_actual.csv",
+      "sha256": "4ca54e5483c6eed62e6b4f1f9e66ca59ca820b4d859d0f4dbeafcbd6cefa318c"
     },
     {
       "name": "p1_full_lifecycle_adjusted_analysis_63_blocked_ledger.csv",
@@ -192,7 +226,7 @@
     },
     {
       "name": "p1_full_lifecycle_blocked_proxy_audit.csv",
-      "sha256": "6f0ad85b9d50b15ac5af126c2a92573949ba39a4578e3974ef1694fe505dc0c1"
+      "sha256": "a6811d55ee66870c5133c23087e9418fc5db70fa6dce36b370a27ac492fc1cf6"
     },
     {
       "name": "p1_full_lifecycle_compact_dedup_exclusion_audit.csv",
@@ -200,7 +234,7 @@
     },
     {
       "name": "p1_full_lifecycle_feature_family_readiness.csv",
-      "sha256": "96fa2aeda3a230046499b0d57137dbfb8cfe0045977b52e1176aa168523401f8"
+      "sha256": "07b28b90e59456509ef4f0968db5161f231403c8deb77b6c386af408b5e28323"
     },
     {
       "name": "p1_full_lifecycle_price_semantics_contract.csv",
@@ -209,6 +243,18 @@
     {
       "name": "p1_full_lifecycle_state_machine_schema_contract.csv",
       "sha256": "5de97ef0092fdde307a0a83b752fa75be01f06df65cc031a9b05f22d008dcf21"
+    },
+    {
+      "name": "p1_full_lifecycle_tpex_institutional_blocked_ledger.csv",
+      "sha256": "8db969668a11e9e41e5cd6cfd62bd7e80820241b79c22eb0474a1d47fd2b54aa"
+    },
+    {
+      "name": "p1_full_lifecycle_tpex_institutional_compact_ingest_audit.csv",
+      "sha256": "86fc950e47ade51d188dd1857a60d7e843e00c6875370ff8c1614bd880622cc6"
+    },
+    {
+      "name": "p1_full_lifecycle_tpex_institutional_source_manifest.csv",
+      "sha256": "3838f9390118bdc275208b6e9494f4fb1bbb5ef0a2b1435a334c2e475af19ad2"
     },
     {
       "name": "p1_full_lifecycle_true_failed_ledger.csv",
@@ -228,7 +274,7 @@
     },
     {
       "name": "readiness_for_p1_full_lifecycle_unified_feature_state_machine_contract.json",
-      "sha256": "c3fa492f6107307a1c90fee229a8de859abec89bdab1595bd778bd6f2e3c1a89"
+      "sha256": "15af1fafd1bd26847bf7e5783882bea073c60e61995f5496a7941d8ce24ccfcf"
     },
     {
       "name": "requested_vs_actual_coverage.csv",

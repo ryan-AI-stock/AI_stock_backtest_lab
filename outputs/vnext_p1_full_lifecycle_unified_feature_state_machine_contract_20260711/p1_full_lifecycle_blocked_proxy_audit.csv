@@ -2,7 +2,6 @@
 trusted_adjusted_analysis_OHLC,partial_structural_blocker,trusted_nonofficial_analysis_only,research_grade_KD_MA_BIAS_RS_only_on_accepted_tickers,accepted=913; blocked=63 after bounded free-route exhaustion; no paid source; not formal
 TWSE_margin_short,partial,official,PIT feature using atomic 2017 shard with explicit missingness,2017 market-trading-day source gaps=22; original corrupt stream excluded
 TPEx_margin_short,partial,official,PIT feature on accepted dates,accepted_dates=2029; remaining missingness explicit
-TPEx_three_institutional,blocked,official_route_partial,none_in_unified_state_machine,accepted_dates=56; historical route mostly valid zero rows
 TDCC_holder_buckets,blocked,official_current_only,none,P1 historical PIT archive unavailable
 TAIFEX_OI_foreign_net,blocked,official_historical_retention_limited,none,P1 free historical route unavailable
 corporate_action_guard,partial,prospective_only_plus_trusted_nonofficial_analysis,warning_and_analysis_price_lineage,historical selected-stock adjusted close not formal-ready
