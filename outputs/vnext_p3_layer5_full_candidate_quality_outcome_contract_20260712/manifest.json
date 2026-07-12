@@ -1,0 +1,37 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-FULL-CANDIDATE-QUALITY-OUTCOME-CONTRACT-001",
+  "files": [
+    {
+      "name": "final_summary_zh.md",
+      "sha256": "d6e7d4717a2929f70546c30b76ed235057b165ef08a2250e08ce16c944bfd11d"
+    },
+    {
+      "name": "p3_candidate_quality_20250801_factor_bracket_audit.csv",
+      "sha256": "6f808b0bf7120dfcb9ede7fc0a6134bb3828aaf983c773c60c817a219181daf1"
+    },
+    {
+      "name": "p3_candidate_quality_future_data_audit.csv",
+      "sha256": "1027f1eb0862b921b711461e9918161b3b06ea0d2a018080dbe7afa91cac7280"
+    },
+    {
+      "name": "p3_candidate_quality_outcome_blocked_ledger.csv",
+      "sha256": "530059d4065d4d21a11dc1a1b7777ba961158597a31a4e0cf45d6738ea64ec2a"
+    },
+    {
+      "name": "p3_candidate_quality_outcome_paths.csv.gz",
+      "sha256": "ba1b66c40ab4163c4d7cfc9c2a1ce6495bf33283d9adc04e1c04406d720c76f0"
+    },
+    {
+      "name": "p3_candidate_quality_requested_vs_actual_horizon_coverage.csv",
+      "sha256": "38957d6e4227fcd694a7df7b0203f61ba7f0263a86c927e0d915c25861cb2de2"
+    },
+    {
+      "name": "p3_candidate_quality_source_corporate_action_cost_audit.csv",
+      "sha256": "35446d1c592218a979e66182e8f2ab0e5d8b58bd7ee0dbeb26a26352192aaea7"
+    },
+    {
+      "name": "readiness_for_candidate_quality_outcome.json",
+      "sha256": "5decef3ebff4c867fb41297e4fc2bb39a89efc6c705415b2d0e5764cefca98be"
+    }
+  ]
+}

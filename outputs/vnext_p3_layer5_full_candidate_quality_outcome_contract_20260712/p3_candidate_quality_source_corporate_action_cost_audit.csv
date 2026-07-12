@@ -1,0 +1,2 @@
+﻿entry_source,return_source,cost,raw_nominal_return_used,neighbor_price_substitution_used,corporate_action_factor_change_audited,selected_adjusted_close_formal_ready
+official raw execution close,trusted event-aware adjusted analysis close,EP05 stock brokerage+0.3% sell tax+5/10/20bp each side,False,False,True,False
