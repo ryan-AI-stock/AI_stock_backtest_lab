@@ -1,0 +1,5 @@
+﻿item,source,ready,accepted_for_formal,neighbor_price_substitution
+analysis_price,trusted_nonofficial event-aware adjusted close plus accepted factor-bracket proof,True,False,False
+execution_price,official TWSE/TPEx raw close,True,False,False
+corporate_action_guard,adjustment factor continuity and anomaly hard gate,True,False,False
+EP05_cost,brokerage + stock sell tax + 5/10/20bp per side,True,False,False

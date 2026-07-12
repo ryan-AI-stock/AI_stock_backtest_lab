@@ -1,0 +1,70 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-WEEKLY-RANK1-CHALLENGER-FROZEN-STATE-MACHINE-CONTRACT-001",
+  "files": [
+    {
+      "name": "final_summary_zh.md",
+      "sha256": "568ba2f4033b0d090eec7229e094d1bd0dfd875ac6ff38acf9ca9f42e44dbe69",
+      "bytes": 296
+    },
+    {
+      "name": "p3_rank1_entry_hold_exit_annual_regime_stability.csv",
+      "sha256": "7069e72a13d233388f70fa880c448fa5675d2bec4f8ea9be5299d850232e1870",
+      "bytes": 666
+    },
+    {
+      "name": "p3_rank1_entry_hold_exit_corrected_NAV_path.csv",
+      "sha256": "8c56c8fa37f2a0183b43c9881afc15a759de16963d5e3ef44478a9b25685ea64",
+      "bytes": 257482
+    },
+    {
+      "name": "p3_rank1_entry_hold_exit_daily_action_trace.csv",
+      "sha256": "6898bf1a01a70119daff93926cbcb5e5a75304bbc2f872cf659e06196af2534a",
+      "bytes": 103887
+    },
+    {
+      "name": "p3_rank1_entry_hold_exit_future_data_audit.csv",
+      "sha256": "1b97eb736ac7c1a336fed9e3ae27b1536c1821e1adbce7aa596adc22a4042430",
+      "bytes": 89
+    },
+    {
+      "name": "p3_rank1_entry_hold_exit_NAV_reconciliation.csv",
+      "sha256": "fdec6c11bacca2466b99ebaeb5fbb905262d54a277d2996f8f19831e0071eec9",
+      "bytes": 2100
+    },
+    {
+      "name": "p3_rank1_entry_hold_exit_price_anomaly_audit.csv",
+      "sha256": "70b0a6e2d94698c9e4fefc3077219ab87f4e00c4991a4d0c3f1dc36b5fdc85e3",
+      "bytes": 167
+    },
+    {
+      "name": "p3_rank1_entry_hold_exit_price_cost_source_audit.csv",
+      "sha256": "61e22246f3ad82ff18815afe283869286ffa03e3e6dc54a2f6da78195157a938",
+      "bytes": 416
+    },
+    {
+      "name": "p3_rank1_entry_hold_exit_requested_vs_actual_coverage.csv",
+      "sha256": "a04d7b2c956be60f17e37046276fd2b6f87a2eb9c0f873b1baa00b0a8bb9ef76",
+      "bytes": 839
+    },
+    {
+      "name": "p3_rank1_entry_hold_exit_summary_metrics.csv",
+      "sha256": "5a8b982fd9046bc31b6627b57e5545f59a4072df75aa77243ca5dc8c6ea11623",
+      "bytes": 1613
+    },
+    {
+      "name": "p3_rank1_entry_hold_exit_transition_ledger.csv",
+      "sha256": "7f8e980117531af7667cf7036bac15bc4c2b83b36211712b1464ca97adee3b47",
+      "bytes": 799
+    },
+    {
+      "name": "p3_rank1_incumbent_daily_multifactor_state.csv.gz",
+      "sha256": "38cb59b716ac9a37c68b2458b43defa6a3254bbcaac7c59f8d0a557e3da6b49f",
+      "bytes": 19469311
+    },
+    {
+      "name": "readiness_for_p3_rank1_entry_hold_exit_state_machine.json",
+      "sha256": "6f966c3296956934df60a391c518cc29c2a074015333412d2e82e0bbb21467d5",
+      "bytes": 1301
+    }
+  ]
+}
