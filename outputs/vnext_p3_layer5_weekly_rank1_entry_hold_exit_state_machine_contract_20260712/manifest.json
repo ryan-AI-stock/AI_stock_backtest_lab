@@ -3,8 +3,8 @@
   "files": [
     {
       "name": "final_summary_zh.md",
-      "sha256": "568ba2f4033b0d090eec7229e094d1bd0dfd875ac6ff38acf9ca9f42e44dbe69",
-      "bytes": 296
+      "sha256": "f39862b6a3d3ced73a77afd7c5ebce9a69cc8d9dcfb249f6f85aee5e44724d70",
+      "bytes": 420
     },
     {
       "name": "p3_rank1_entry_hold_exit_annual_regime_stability.csv",
@@ -58,13 +58,13 @@
     },
     {
       "name": "p3_rank1_incumbent_daily_multifactor_state.csv.gz",
-      "sha256": "38cb59b716ac9a37c68b2458b43defa6a3254bbcaac7c59f8d0a557e3da6b49f",
+      "sha256": "6ef0c700473b99484b05917a5670816797917a3507accd7d258b3b31aa512384",
       "bytes": 19469311
     },
     {
       "name": "readiness_for_p3_rank1_entry_hold_exit_state_machine.json",
-      "sha256": "6f966c3296956934df60a391c518cc29c2a074015333412d2e82e0bbb21467d5",
-      "bytes": 1301
+      "sha256": "541e8f64db047348223165d41a1faae9298457a7cf2e92fd11d8aeac7268ffbc",
+      "bytes": 1702
     }
   ]
 }

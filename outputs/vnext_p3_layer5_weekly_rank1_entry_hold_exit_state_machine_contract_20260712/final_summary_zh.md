@@ -1,3 +1,5 @@
 # P3 weekly rank1 entry/hold/exit state machine
 
-D1-D5固定語義已materialize。Weekly rank1只負責entry；持股期間daily hold/risk exit；normal switch停用。NAV使用同資產event-aware adjusted marks、official execution與EP05+5/10/20bp；00631L只作hurdle，不作fallback。
+**SUPERSEDED FOR TARGET ARCHITECTURE**：本包只測Layer4既有rank1作唯一challenger，不代表真正的primary80 -> Layer5 all80 strength/risk/market -> Top1架構。其結果只能否定此窄路線，不得外推Layer5失敗、作主baseline或後續調參起點。
+
+D1-D5固定語義、corrected NAV與成本證據保留作可重現diagnostic reference。

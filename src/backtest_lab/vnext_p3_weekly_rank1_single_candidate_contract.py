@@ -183,17 +183,22 @@ def run() -> None:
     ready_outcomes = int(outcome.outcome_status.eq("ready").sum())
     ready = len(contract) == 154 and contract.canonical_rank1_lineage_ready.all() and ready_outcomes > 0
     readiness = {
-        "task_id": TASK, "status": "weekly_rank1_single_candidate_contract_ready_for_signal_diagnostic" if ready else "blocked",
+        "task_id": TASK, "status": "superseded_for_target_architecture_non_representative_of_intended_Layer5",
+        "superseded_for_target_architecture": True,
+        "non_representative_of_intended_Layer5": True,
+        "architecture_scope_actually_tested": "Layer4_existing_rank1_as_only_Layer5_candidate",
+        "intended_architecture_not_tested": "Layer0_4_primary80_to_Layer5_all80_strength_risk_market_to_Top1",
+        "allowed_role": "reproducible_diagnostic_reference_only_not_main_baseline",
         "requested_start": "2023-07-11", "requested_end": "2026-06-29", "actual_start": str(contract.decision_date.min().date()), "actual_end": str(contract.decision_date.max().date()),
         "weekly_rank1_rows": len(contract), "weekly_snapshot_count": contract.decision_date.nunique(),
         "same_day_full_layer5_feature_rows": int(contract.same_day_full_layer5_feature_ready.sum()),
         "same_day_partial_layer4_only_rows": int((~contract.same_day_full_layer5_feature_ready).sum()),
         "outcome_rows": len(outcome), "ready_outcome_rows": ready_outcomes, "blocked_outcome_rows": int(outcome.outcome_status.eq("blocked").sum()), "terminal_outcome_rows": int(outcome.outcome_status.eq("terminal_unavailable").sum()),
-        "ready_for_experiments": ready, "ready_for_portfolio_performance": False, "state_machine_created": False, "threshold_tuned": False, "Ridge_used": False, "Top3_used": False,
+        "ready_for_experiments": False, "ready_for_portfolio_performance": False, "state_machine_created": False, "threshold_tuned": False, "Ridge_used": False, "Top3_used": False,
         "future_data_violation_count": 0, "formal_model_changed": False, "trade_decision_changed": False, "active_in_trade_decision": False, "report_changed": False, "portfolio_replay_executed": False, "ready_for_strategy_replay": False, "ready_for_formal": False, "not_live_rule": True, "forward_returns_live_rule_usage": False,
     }
     (OUT / "readiness_for_p3_weekly_rank1_single_candidate.json").write_text(json.dumps(readiness, ensure_ascii=False, indent=2), encoding="utf-8")
-    (OUT / "final_summary_zh.md").write_text(f"# P3 weekly rank1 single-candidate minimum contract\n\nCanonical rank1共154週；同日完整Layer5 features={readiness['same_day_full_layer5_feature_rows']}，其餘保留Layer4同日partial與NA/confidence。Outcome使用next-day official execution、event-aware adjusted analysis與EP05+10bp/side主成本；不含portfolio/state machine/threshold tuning。\n", encoding="utf-8")
+    (OUT / "final_summary_zh.md").write_text(f"# P3 weekly rank1 single-candidate minimum contract\n\n**SUPERSEDED FOR TARGET ARCHITECTURE**：本包只測Layer4既有rank1作唯一候選，不代表真正的primary80 -> Layer5 all80 strength/risk/market -> Top1架構。僅保留可重現diagnostic reference，不得作主baseline、Layer5失敗結論或後續調參起點。\n\nCanonical rank1共154週；同日完整Layer5 features={readiness['same_day_full_layer5_feature_rows']}，其餘保留Layer4同日partial與NA/confidence。Outcome使用next-day official execution、event-aware adjusted analysis與EP05+10bp/side主成本。\n", encoding="utf-8")
     files = sorted(path for path in OUT.iterdir() if path.is_file() and path.name != "manifest.json")
     (OUT / "manifest.json").write_text(json.dumps({"task_id": TASK, "files": [{"name": path.name, "sha256": sha(path), "bytes": path.stat().st_size} for path in files]}, ensure_ascii=False, indent=2), encoding="utf-8")
 

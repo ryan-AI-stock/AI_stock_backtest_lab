@@ -18,6 +18,12 @@ class Rank1EntryHoldExitTest(unittest.TestCase):
         recon = pd.read_csv(OUT / "p3_rank1_entry_hold_exit_NAV_reconciliation.csv")
         self.assertFalse(recon.cross_asset_nominal_price_return_used.astype(bool).any())
 
+    def test_contract_is_superseded_for_target_architecture(self):
+        import json
+        readiness = json.loads((OUT / "readiness_for_p3_rank1_entry_hold_exit_state_machine.json").read_text(encoding="utf-8"))
+        self.assertTrue(readiness["superseded_for_target_architecture"])
+        self.assertFalse(readiness["ready_for_experiments"])
+
 
 if __name__ == "__main__":
     unittest.main()

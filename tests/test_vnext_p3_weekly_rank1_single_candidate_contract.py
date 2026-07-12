@@ -13,6 +13,13 @@ class WeeklyRank1ContractTest(unittest.TestCase):
     def test_stock_cost_exceeds_etf_cost(self):
         self.assertLess(stock_net(0.0, 10), etf_net(0.0, 10))
 
+    def test_contract_is_superseded_for_target_architecture(self):
+        import json
+        from backtest_lab.vnext_p3_weekly_rank1_single_candidate_contract import OUT
+        readiness = json.loads((OUT / "readiness_for_p3_weekly_rank1_single_candidate.json").read_text(encoding="utf-8"))
+        self.assertTrue(readiness["superseded_for_target_architecture"])
+        self.assertFalse(readiness["ready_for_experiments"])
+
 
 if __name__ == "__main__":
     unittest.main()
