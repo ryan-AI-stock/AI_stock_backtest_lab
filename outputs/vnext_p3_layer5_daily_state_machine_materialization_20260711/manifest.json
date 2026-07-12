@@ -2,8 +2,39 @@
   "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-DAILY-STATE-MACHINE-MATERIALIZATION-001",
   "source_commits": [
     "ea5b046",
-    "9c3ea9a"
+    "9c3ea9a",
+    "0d1d4a0"
   ],
+  "market_source_fill": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_p3_market_state_source_fill_20260711",
+  "market_source_readiness": {
+    "task_id": "TASK-RADAR-DATA-VNEXT-P3-MARKET-STATE-SOURCE-FILL-001",
+    "status": "p3_market_state_sources_ready_for_core",
+    "source": "official TWSE/TPEx full-market daily totals plus Yahoo trusted SOX",
+    "coverage": {
+      "full_market_traded_value:TWSE": 728,
+      "full_market_traded_value:TPEx": 728,
+      "full_market_traded_value:ALL": 728,
+      "full_market_margin_balance:TWSE": 728,
+      "full_market_margin_balance:TPEx": 728,
+      "full_market_margin_balance:ALL": 728,
+      "SOX:US": 752
+    },
+    "ready_for_core_p3_market_state_absorption": true,
+    "full_market_traded_value_ready": true,
+    "full_market_margin_balance_ready": true,
+    "sox_research_grade_ready": true,
+    "future_data_violation_count": 0,
+    "ready_for_experiments": false,
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "ready_for_strategy_replay": false,
+    "ready_for_formal": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false
+  },
   "readiness": {
     "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-DAILY-STATE-MACHINE-MATERIALIZATION-001",
     "status": "daily_membership_and_price_core_materialized_feature_state_action_partial",
@@ -21,12 +52,11 @@
     "daily_feature_blocks_ready": false,
     "daily_state_rows_ready": false,
     "daily_action_rows_ready": false,
-    "market_controller_source_ready": false,
-    "market_controller_source_blockers": [
-      "full_market_traded_value",
-      "full_market_margin_balance",
-      "SOX"
-    ],
+    "market_source_fill_absorbed": true,
+    "market_source_fill_commit": "0d1d4a0",
+    "market_source_compact_checksum_match": true,
+    "market_controller_source_ready": true,
+    "market_controller_source_blockers": [],
     "ready_for_phase_a_event_validation": false,
     "ready_for_phase_b_unique_position_path": false,
     "ready_for_experiments": false,
@@ -52,7 +82,7 @@
     },
     {
       "name": "p3_layer5_daily_blocked_ledger.csv",
-      "sha256": "0e972f02026d8361705bf819fbd8243be637d14218e9a77170144a0bc395b7ac"
+      "sha256": "6b0cc1c26c27e00f26faf5e2366ab17c865f34c7db21f181c7b62317bb2a2dc8"
     },
     {
       "name": "p3_layer5_daily_candidate_materialization.csv",
@@ -71,16 +101,24 @@
       "sha256": "5d27a57a2ce03210342596e445507e8f44109435a1c472dc58f3992d84160e38"
     },
     {
+      "name": "p3_layer5_daily_market_source_absorption_audit.csv",
+      "sha256": "88b068f6f3a5b83867281c75b6f050035e9ae60d4117ce2319a70751277cef19"
+    },
+    {
       "name": "p3_layer5_daily_market_source_gate_audit.csv",
-      "sha256": "35edce55ab89fdf1bceb44fc53f96bee2c5e8c20a04c0d4af529250cd83ce0bb"
+      "sha256": "261186609723e50da2fceffeb191dd7d3f6da08ca9b3a27dccc726c01445e099"
     },
     {
       "name": "p3_layer5_daily_readiness.json",
-      "sha256": "2e87d26d9ebfe2780630cbcaa5863394d6c62b1dfb6a0078bd6fc8243502c34f"
+      "sha256": "bb7b7d1b73d5e87efe40194b74ef6f926e45897fcec32d62017e0c51e44033d4"
     },
     {
       "name": "p3_layer5_daily_requested_vs_actual_coverage.csv",
       "sha256": "1191461414b7e667d0b2a4eadec0fc422b508190bc4451f355fc08d8e096bedb"
+    },
+    {
+      "name": "p3_layer5_daily_taifex_tdcc_ablation_contract.csv",
+      "sha256": "efba35383126d2452a736ecceb239e4f60b5b7c1af0f04df62b3c07eee3501c4"
     }
   ]
 }

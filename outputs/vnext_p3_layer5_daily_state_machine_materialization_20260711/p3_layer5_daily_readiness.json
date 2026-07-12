@@ -15,12 +15,11 @@
   "daily_feature_blocks_ready": false,
   "daily_state_rows_ready": false,
   "daily_action_rows_ready": false,
-  "market_controller_source_ready": false,
-  "market_controller_source_blockers": [
-    "full_market_traded_value",
-    "full_market_margin_balance",
-    "SOX"
-  ],
+  "market_source_fill_absorbed": true,
+  "market_source_fill_commit": "0d1d4a0",
+  "market_source_compact_checksum_match": true,
+  "market_controller_source_ready": true,
+  "market_controller_source_blockers": [],
   "ready_for_phase_a_event_validation": false,
   "ready_for_phase_b_unique_position_path": false,
   "ready_for_experiments": false,

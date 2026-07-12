@@ -1,0 +1,6 @@
+﻿ablation_id,period,TAIFEX_enabled,TDCC_enabled,coverage_policy,NA_policy,execution_basis,cost_basis
+P3_full_TAIFEX_on,P3_exact,True,False,same_dates,not_zero,same_next_day,EP05_plus_10bp_per_side
+P3_full_TAIFEX_off,P3_exact,False,False,same_dates,explicit_ablation,same_next_day,EP05_plus_10bp_per_side
+P3_1_TDCC_unavailable,2023-07-14_to_2025-07-10,True,False,TDCC_unavailable_no_fill,not_applicable,same_next_day,EP05_plus_10bp_per_side
+P3_2_TDCC_on,2025-07-11_to_2026-06-29,True,True,same_TDCC_ready_dates,row_availability,same_next_day,EP05_plus_10bp_per_side
+P3_2_TDCC_off,2025-07-11_to_2026-06-29,True,False,same_TDCC_ready_dates,explicit_ablation,same_next_day,EP05_plus_10bp_per_side

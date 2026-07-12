@@ -2,10 +2,10 @@
 0050_adjusted_HLC,backtest_cache/stock_pool_observations/0050_TW.csv,ready,False
 TAIEX,backtest_cache/taiex_yfinance/^TWII.csv,ready_trusted_nonofficial,False
 primary80_breadth,daily candidate adjusted features,blocked_until_daily_technical_compute,False
-full_market_traded_value,,source_missing,False
-full_market_margin_balance,,source_missing,False
+full_market_traded_value,C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p3_market_state_source_fill_20260711\compact\full_market_traded_value\p3_daily.csv.gz,ready_official_derived_all_market,False
+full_market_margin_balance,C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p3_market_state_source_fill_20260711\compact\full_market_margin_balance\p3_daily.csv.gz,ready_official_derived_all_market,False
 TAIFEX_foreign_OI,Radar P3 taifex compact,ready,False
 Nasdaq,Radar P3 global_market compact,ready,False
-SOX,,source_missing,False
+SOX,C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p3_market_state_source_fill_20260711\compact\global_market\p3_sox.csv.gz,ready_trusted_nonofficial_cutoff_PIT,False
 VIX,Radar P3 global_market compact,ready,False
 USD_TWD,Radar P3 global_market compact,ready,False
