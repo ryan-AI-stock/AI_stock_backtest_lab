@@ -1,0 +1,45 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-WEEKLY-RANK1-SINGLE-CANDIDATE-MINIMUM-CONTRACT-001",
+  "files": [
+    {
+      "name": "final_summary_zh.md",
+      "sha256": "7efed4598a82634286ed70711568e55d22b712776cc8b35e4c3ac0c3307596a2",
+      "bytes": 318
+    },
+    {
+      "name": "p3_weekly_rank1_canonical_lineage_audit.csv",
+      "sha256": "3e41df10d06685821d6c38cb18c60a1f55984e9a6ad5c1020a3724b96671cb85",
+      "bytes": 465
+    },
+    {
+      "name": "p3_weekly_rank1_future_cost_source_audit.csv",
+      "sha256": "971b20f685c2cd45f037e2c1f8f23dcd70348f499689684080211051fab3c42c",
+      "bytes": 219
+    },
+    {
+      "name": "p3_weekly_rank1_requested_vs_actual_coverage.csv",
+      "sha256": "ace4807f1d9ac9ebf6acd0a76ac5525874dfbaccb7926514a3bbf6ce7f990d0b",
+      "bytes": 529
+    },
+    {
+      "name": "p3_weekly_rank1_single_candidate_blocked_ledger.csv",
+      "sha256": "3e30d4f3fa6c59425eccfe3a66bca01649f9b138c0d336e1d9c0411ab6a03b3a",
+      "bytes": 3298
+    },
+    {
+      "name": "p3_weekly_rank1_single_candidate_feature_contract.csv",
+      "sha256": "7d96677fbd3eade09bd96a7ee3a7d6f720f0306c2dbbcb7bb17f8b6df9dc9f57",
+      "bytes": 245597
+    },
+    {
+      "name": "p3_weekly_rank1_single_candidate_outcome_contract.csv",
+      "sha256": "d0ced60e6ceac1388ba90a2d61270b1774724a27f81c561535d48053471bcaa3",
+      "bytes": 238145
+    },
+    {
+      "name": "readiness_for_p3_weekly_rank1_single_candidate.json",
+      "sha256": "5563c81171e68398ce3c134ef9555fe9cf2376173075dd0300a2b80671c3154a",
+      "bytes": 1133
+    }
+  ]
+}

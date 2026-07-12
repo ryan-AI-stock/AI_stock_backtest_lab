@@ -1,0 +1,2 @@
+﻿authority,source,source_sha256,ranking_score,ranking_policy,future_return_used,raw_Layer4_rank_substitute_used,Ridge_used,Top3_used
+canonical Layer4 primary80 pool_rank=1,C:\Users\zergv\Documents\Codex\2026-05-30\ep05-chat-ai-stock-backtest-lab\outputs\vnext_layer4_80_primary_pool_contract_20260708\layer4_80_primary_pool_contract.csv,21d5c42ac151ec71706c793f386a1f1e2ab16f656601d0c2474dd1dc496e3901,layer4_risk_aware_score,risk_aware,False,False,False,False
