@@ -15,7 +15,7 @@ capital,cap_volrisk,715,715,1.0,ready_or_warmup_partial
 derivatives,deriv_level,715,715,1.0,ready_or_warmup_partial
 derivatives,deriv_change,715,715,1.0,ready_or_warmup_partial
 derivatives,deriv_persistence,715,715,1.0,ready_or_warmup_partial
-derivatives,deriv_trade_flow,0,715,0.0,blocked
+derivatives,deriv_trade_flow,715,715,1.0,ready_or_warmup_partial
 derivatives,deriv_divergence,715,715,1.0,ready_or_warmup_partial
 external,external_nasdaq,715,715,1.0,ready_or_warmup_partial
 external,external_sox,715,715,1.0,ready_or_warmup_partial

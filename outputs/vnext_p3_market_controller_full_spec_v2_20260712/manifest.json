@@ -2,16 +2,19 @@
   "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-MARKET-CONTROLLER-FULL-SPEC-V2-001",
   "readiness": {
     "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-MARKET-CONTROLLER-FULL-SPEC-V2-001",
-    "status": "full_spec_v2_feature_state_contract_partial_trade_flow_blocked",
+    "status": "full_spec_v2_feature_state_contract_ready",
     "daily_rows": 715,
     "simple_v0_reference_only": true,
     "full_spec_v1_superseded_primary": true,
     "full_spec_v2_primary_candidate": true,
-    "trade_flow_dimension_ready": false,
-    "blocked_dimensions": [
-      "deriv_trade_flow:TAIFEX trade net contracts/amount not materialized in Core P3 compact"
-    ],
-    "ready_for_action_rechain": false,
+    "taifex_four_field_source_commit": "3e6c416",
+    "taifex_same_day_use_prohibited": true,
+    "trade_flow_dimension_ready": true,
+    "blocked_dimensions": [],
+    "architecture_gate_ready": true,
+    "parameter_reliability_gate_ready": false,
+    "ready_for_contract_classification_validation": true,
+    "ready_for_action_rechain": true,
     "ready_for_phase_b_experiments": false,
     "future_data_violation_count": 0,
     "formal_model_changed": false,
@@ -30,20 +33,28 @@
       "sha256": "585eeb195c43651c3deae073887663e5c7b94f2701edb7e9b2c3a4b607940b82"
     },
     {
+      "name": "p3_market_controller_full_spec_v2_bounded_calibration_contract.csv",
+      "sha256": "e071b0a7a020f9a855ef4b4a97c483fc777326b5dc0322ac87b876385dcfeaeb"
+    },
+    {
       "name": "p3_market_controller_full_spec_v2_coverage_audit.csv",
-      "sha256": "3df8e6fd4e54b144191a8cf0f503f79e39f069f1dde4ea11c7d3f871eb36de45"
+      "sha256": "5527bf1101b959578bb279ed724989b774dd3f4b6b998370cae330959d541195"
     },
     {
       "name": "p3_market_controller_full_spec_v2_daily_features.csv",
-      "sha256": "d02cb9feec65cbab96a2042c3add05b7831a53212b82597c9d7920d47c4a4225"
+      "sha256": "d737bc97c66300c757327011506b0e1cf6ac128a2e9adb65a528266ad5536fc7"
+    },
+    {
+      "name": "p3_market_controller_full_spec_v2_validation_stages.csv",
+      "sha256": "b5f7d38ec22935f1b792ef36eb598663222d55beb4f4c8c0716a4c2ab292dd09"
     },
     {
       "name": "p3_market_controller_v0_v1_v2_state_diff.csv",
-      "sha256": "bd7b2f103d67bb9c5d7a33e97ca438de6f7a683b80ea061a755bbdf6c22912c6"
+      "sha256": "5abf5027105ee4675a8d2ac07d811775ee260b751b4efdab97567e8935794190"
     },
     {
       "name": "readiness_for_p3_market_controller_full_spec_v2.json",
-      "sha256": "f9642616cf5a032662cee971312fc70aeefec32c07009470707d618a49704a92"
+      "sha256": "a7d8e546b5d535e46d4256295386eec2e73a6dad27742b76eba779e6ab93ca84"
     }
   ]
 }

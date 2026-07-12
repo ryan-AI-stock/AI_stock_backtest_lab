@@ -1,0 +1,5 @@
+﻿parameter_family,low,base,high,method,selection_rule,future_return_live_rule
+rolling_z_direction_threshold,0.35,0.5,0.75,one_factor_at_a_time,stable_plateau_no_isolated_peak,False
+group_same_direction_votes,base_minus_1_where_semantically_valid,3_of_4_or_5,4_of_5,small_economic_range,stable_plateau_no_isolated_peak,False
+confirmed_bear_days,2,2,3,bounded_neighbor,stable_plateau_no_isolated_peak,False
+rolling_window,60,252,60_and_252_joint_context,no_full_cartesian,stable_plateau_no_isolated_peak,False

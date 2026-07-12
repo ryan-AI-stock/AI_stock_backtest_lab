@@ -7,12 +7,13 @@
   "canonical_counterfactuals": 4,
   "placebo_seeds": 5,
   "action_rows": 7150,
-  "transition_rows": 503,
-  "mark_rows": 4296,
-  "tradability_audit_rows": 879,
-  "unresolved_transition_count": 8,
+  "transition_rows": 361,
+  "mark_rows": 3580,
+  "tradability_audit_rows": 716,
+  "unresolved_transition_count": 10,
   "blocked_scenarios": [
     "placebo_seed_17",
+    "placebo_seed_29",
     "placebo_seed_43",
     "placebo_seed_71",
     "placebo_seed_101"
@@ -26,7 +27,6 @@
     "C1",
     "C2",
     "C3",
-    "placebo_seed_29",
     "simple_v0_reference"
   ],
   "placebo_paths_materialized": false,
@@ -43,6 +43,10 @@
   "ready_for_formal": false,
   "not_live_rule": true,
   "forward_returns_live_rule_usage": false,
-  "primary_controller_version": "full_spec_v1",
-  "simple_v0_role": "reference_only"
+  "primary_controller_version": "full_spec_v2",
+  "simple_v0_role": "reference_only",
+  "price_patch_commits": [
+    "85e22d5",
+    "ba19fda"
+  ]
 }

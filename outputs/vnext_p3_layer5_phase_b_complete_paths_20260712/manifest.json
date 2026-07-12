@@ -14,12 +14,13 @@
     "canonical_counterfactuals": 4,
     "placebo_seeds": 5,
     "action_rows": 7150,
-    "transition_rows": 503,
-    "mark_rows": 4296,
-    "tradability_audit_rows": 879,
-    "unresolved_transition_count": 8,
+    "transition_rows": 361,
+    "mark_rows": 3580,
+    "tradability_audit_rows": 716,
+    "unresolved_transition_count": 10,
     "blocked_scenarios": [
       "placebo_seed_17",
+      "placebo_seed_29",
       "placebo_seed_43",
       "placebo_seed_71",
       "placebo_seed_101"
@@ -33,7 +34,6 @@
       "C1",
       "C2",
       "C3",
-      "placebo_seed_29",
       "simple_v0_reference"
     ],
     "placebo_paths_materialized": false,
@@ -50,41 +50,45 @@
     "ready_for_formal": false,
     "not_live_rule": true,
     "forward_returns_live_rule_usage": false,
-    "primary_controller_version": "full_spec_v1",
-    "simple_v0_role": "reference_only"
+    "primary_controller_version": "full_spec_v2",
+    "simple_v0_role": "reference_only",
+    "price_patch_commits": [
+      "85e22d5",
+      "ba19fda"
+    ]
   },
   "files": [
     {
       "name": "final_summary_zh.md",
-      "sha256": "f666bf089c2dafc1d42e7b66b46bfe409d6b652ac32079af38172c8fc9457d07"
+      "sha256": "f07f8350a6412bdfc1dec39452ea9e5ba7d495861df336a8dc247e487c12ebba"
     },
     {
       "name": "p3_layer5_phase_b_all_scenario_tradability_horizon_audit.csv",
-      "sha256": "436897caf96230a9ca22986b708240123550ec23fb5c0e017cce2630eb4e9f91"
+      "sha256": "872349ed96f2594efc6575b52a156f8ab3b451a4f881b1c0c216ecb1b636fb76"
     },
     {
       "name": "p3_layer5_phase_b_C0_C3_action_diff_audit.csv",
-      "sha256": "308537907375d338e4f92425d049f5e4039dde928c811aa5cf5a9126df0ee887"
+      "sha256": "14e560c17e2cd6bf5d82260a082c82c24e95474843264df34ce927ad1b85ca54"
     },
     {
       "name": "p3_layer5_phase_b_daily_unique_position_marks.csv",
-      "sha256": "0e21a87283446e86b8c88727dfde537e313d0d6651723eaa9a112d7c8295bae3"
+      "sha256": "5a11372206d7ba70f277ecbd0b9915c7a6e8bc2a5c6fa66eab1250c605bc4e41"
     },
     {
       "name": "p3_layer5_phase_b_exact_transition_cost_ledger.csv",
-      "sha256": "0e8656d47cdaaed2ac0cdb51eee7f9814b157dc6dca0331a62630b86b6f07d9c"
+      "sha256": "53fc83f8375cc5c3e1d581273500eb870a0fad7560abc33330488230f09aa0ff"
     },
     {
       "name": "p3_layer5_phase_b_placebo_price_patch_absorption_audit.csv",
-      "sha256": "2de4061e8d07b79963c55de0695286f5fdb4361781028d978cb6d8d0c87f679c"
+      "sha256": "ec3aca956224c582759d2bcecf8a815e2e7b1161517cb811bbd8a817453f5213"
     },
     {
       "name": "p3_layer5_phase_b_scenario_daily_actions.csv",
-      "sha256": "a8da08d6e252ef2814836673ccb859ed34fe5981176e01989663904d0259e353"
+      "sha256": "b8c319c4285e953e9eedc20d21573a63667be0e40d749bfaaa3067cc07b2a7e1"
     },
     {
       "name": "readiness_for_p3_layer5_phase_b_complete_paths.json",
-      "sha256": "7068f6e8e02733db3e44626b60807888dcf966aba6b2fcd83eb96c624c8440cf"
+      "sha256": "de7dda4a993848b2caa16ec70e389fd1d5248b39aef33bc6a5d2aec673160864"
     }
   ]
 }
