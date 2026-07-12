@@ -25,12 +25,14 @@
     "ready_for_strategy_replay": false,
     "ready_for_formal": false,
     "not_live_rule": true,
-    "forward_returns_live_rule_usage": false
+    "forward_returns_live_rule_usage": false,
+    "warmup_low_confidence_rows": 69,
+    "warmup_NA_preserved": true
   },
   "files": [
     {
       "name": "final_summary_zh.md",
-      "sha256": "585eeb195c43651c3deae073887663e5c7b94f2701edb7e9b2c3a4b607940b82"
+      "sha256": "630351e76d50eea88078cb1a13b2cfcbf455711a16edfb34abb41bd2b24da496"
     },
     {
       "name": "p3_market_controller_full_spec_v2_bounded_calibration_contract.csv",
@@ -38,11 +40,11 @@
     },
     {
       "name": "p3_market_controller_full_spec_v2_coverage_audit.csv",
-      "sha256": "5527bf1101b959578bb279ed724989b774dd3f4b6b998370cae330959d541195"
+      "sha256": "8e5021531abf9fd1a1fa4573f14d6a0fa5018d87badff0095d6fab8039f753f8"
     },
     {
       "name": "p3_market_controller_full_spec_v2_daily_features.csv",
-      "sha256": "d737bc97c66300c757327011506b0e1cf6ac128a2e9adb65a528266ad5536fc7"
+      "sha256": "69daac49457581b780109d53c2607c7c3a204a84059a07649ddd496529a7e03d"
     },
     {
       "name": "p3_market_controller_full_spec_v2_validation_stages.csv",
@@ -50,11 +52,11 @@
     },
     {
       "name": "p3_market_controller_v0_v1_v2_state_diff.csv",
-      "sha256": "5abf5027105ee4675a8d2ac07d811775ee260b751b4efdab97567e8935794190"
+      "sha256": "14505c559d7014108f5077f40107d080d20ad2f4d1805d5225ef508a4483be80"
     },
     {
       "name": "readiness_for_p3_market_controller_full_spec_v2.json",
-      "sha256": "a7d8e546b5d535e46d4256295386eec2e73a6dad27742b76eba779e6ab93ca84"
+      "sha256": "c0f6a9c5953c98e715b34ad5bac11090125660eb7ab17b93038fb3bc9821ffed"
     }
   ]
 }

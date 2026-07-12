@@ -23,5 +23,7 @@
   "ready_for_strategy_replay": false,
   "ready_for_formal": false,
   "not_live_rule": true,
-  "forward_returns_live_rule_usage": false
+  "forward_returns_live_rule_usage": false,
+  "warmup_low_confidence_rows": 69,
+  "warmup_NA_preserved": true
 }
