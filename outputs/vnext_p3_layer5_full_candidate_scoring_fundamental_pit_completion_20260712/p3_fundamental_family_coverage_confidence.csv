@@ -1,0 +1,6 @@
+﻿family,available_rows,coverage_share,median_staleness_days,status
+revenue,56755,0.9922202797202797,14.0,ready
+profitability,56772,0.9925174825174825,42.0,ready
+margins,51979,0.9087237762237762,42.0,partial
+cashflow,0,0.0,,blocked
+leverage_liquidity,0,0.0,42.0,blocked

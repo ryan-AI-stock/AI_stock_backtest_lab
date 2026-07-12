@@ -1,0 +1,5 @@
+﻿field,policy,formal_exact
+monthly available_date,conservative next-month day10 weekday-adjusted,False
+quarter available_date,conservative statutory filing deadline by quarter,False
+cashflow/FCF,blocked no accepted PIT source,False
+PE/PB/PS/current ratio,blocked independently; does not erase ready families,False

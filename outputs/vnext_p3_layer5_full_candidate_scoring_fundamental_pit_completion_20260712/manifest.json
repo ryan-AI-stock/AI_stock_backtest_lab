@@ -1,0 +1,41 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-FULL-CANDIDATE-SCORING-FUNDAMENTAL-PIT-COMPLETION-001",
+  "files": [
+    {
+      "name": "final_summary_zh.md",
+      "sha256": "f96f80066cbc8d4ac56401edb998c0523c2ab1f194dcf008540ebc1c63074b0b"
+    },
+    {
+      "name": "p3_full_candidate_spec_v1_fundamental_PIT_completed_matrix.csv.gz",
+      "sha256": "06eda6d2eabbb7495160a76c0372db674222d0dd75d42d11fbd7c426770022da"
+    },
+    {
+      "name": "p3_fundamental_cross_block_dimension_correlation_audit.csv",
+      "sha256": "0ce0285f3cd6696b2cfe9b10332816f386f8dbacffd450ba4ad71e3a535980e1"
+    },
+    {
+      "name": "p3_fundamental_family_coverage_confidence.csv",
+      "sha256": "466f44a63d6e5d0809594404bb8036d19b2929c3bf52f9a05ad6114b04155771"
+    },
+    {
+      "name": "p3_fundamental_future_data_audit.csv",
+      "sha256": "0294068496837b3932fa1e1a339f8468b1ab05a6537d9c37c224973f5063280c"
+    },
+    {
+      "name": "p3_fundamental_PIT_policy_and_blockers.csv",
+      "sha256": "9676f5977d11c3d3405ed1bc9c3a25f312113dc2db61c076c9a0061e3d80e4a2"
+    },
+    {
+      "name": "p3_fundamental_requested_vs_actual_coverage.csv",
+      "sha256": "c4ae8cf670aa8f2c8d387eff20889209c01bfaa30121de610f8c13145b54b86e"
+    },
+    {
+      "name": "p3_fundamental_score_distribution_sanity.csv",
+      "sha256": "8e3e3abd3789adf99aaef32d7d33dcc873c7f3376aa80a6692b4685a0b22b0a1"
+    },
+    {
+      "name": "readiness_for_fundamental_PIT_completion.json",
+      "sha256": "7a0968215281073fad80301a3a835ac819372eece96e06056e2f51892f6a4a4f"
+    }
+  ]
+}
