@@ -1,0 +1,45 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-FULL-CANDIDATE-RISK-ADJUSTED-SCORING-CONTRACT-001",
+  "files": [
+    {
+      "name": "final_summary_zh.md",
+      "sha256": "1b68e601146831a57959e640ac3c2399359cbecd21f08b6d9c9cc79555bf25a1"
+    },
+    {
+      "name": "p3_full_candidate_block_coverage_readiness.csv",
+      "sha256": "b26d5b78fbbf83b99603d2039e626ff4ef8a6f82956bdbc09192599a00d4b9a5"
+    },
+    {
+      "name": "p3_full_candidate_blocked_ledger.csv",
+      "sha256": "972f843e2a66ac57c71c40712e970c2139afa3fc107186d00ee4cd38026c3c2c"
+    },
+    {
+      "name": "p3_full_candidate_direction_audit.csv",
+      "sha256": "11629211b4bf52708548cf7d6ba868ef0fd518adb7ab193ccd61fa6801cdfcde"
+    },
+    {
+      "name": "p3_full_candidate_duplicate_correlation_audit.csv",
+      "sha256": "bf124bd694256dc489c9f0cfb26958207f9b4ce33e264495e64b810d05fe5a45"
+    },
+    {
+      "name": "p3_full_candidate_PIT_available_at_policy.csv",
+      "sha256": "41ddda02efc680b2b05b5363b3b9dedda6b89981fde636889e733cbd41a5476a"
+    },
+    {
+      "name": "p3_full_candidate_raw_field_ownership.csv",
+      "sha256": "f37dd58ff0a3fe6e555a2213bc1a2fa142538da55518ff683e3563f58bafbaeb"
+    },
+    {
+      "name": "p3_full_candidate_raw_self_cross_context.csv.gz",
+      "sha256": "ce88b1e09d64c501d4e3331067802ae9fa5c8e5dd3ab436220c4a71069c006ad"
+    },
+    {
+      "name": "p3_full_candidate_spec_v1_score_matrix.csv.gz",
+      "sha256": "a135811d54846ad41dbb6252c47b96aa835c62d6db28c984aa016c9a9005278c"
+    },
+    {
+      "name": "readiness_for_full_candidate_spec_v1.json",
+      "sha256": "d3bb098521e2887ce8095b3159e55600d550d6c9a9186a90174281a09f8dbc8c"
+    }
+  ]
+}

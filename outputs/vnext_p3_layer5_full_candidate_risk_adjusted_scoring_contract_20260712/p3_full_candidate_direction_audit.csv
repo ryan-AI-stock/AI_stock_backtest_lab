@@ -1,0 +1,7 @@
+﻿raw_field,axis,direction_transform,audit_status
+drawdown60,risk,severity=-drawdown; higher severity=higher risk,pass_no_deep_drawdown_reward
+vol20/vol60,risk,higher percentile=higher risk,pass
+large_down20,risk,higher count=higher risk,pass
+BIAS20/60 z,risk,absolute extreme higher risk,pass
+margin_change,capital/risk,stability in C; crowding in derived D flag,crosswalk_no_raw_double_weight
+lending_change,capital/risk,increase lowers support; crowding derived context,pass

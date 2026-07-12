@@ -1,0 +1,27 @@
+﻿source_block,raw_field_or_dimension,owner_block,no_double_count
+A,RS5,A,True
+A,RS10,A,True
+A,RS20,A,True
+A,RS40,A,True
+A,RS60,A,True
+B,MA20_slope,B,True
+B,MA60_slope,B,True
+B,close_vs_MA20/60,B,True
+B,price_breakdown,B,True
+C,tv5/20/60,C,True
+C,institutional foreign/trust/dealer,C,True
+C,foreign ownership,C,True
+C,margin/short,C,True
+C,lending,C,True
+C,TDCC optional,C,True
+D,BIAS20/60,D,True
+D,K/D,D,True
+D,vol20/60,D,True
+D,drawdown60,D,True
+D,large_down20,D,True
+D,blowoff,D,True
+D,derived crowding flags,D,True
+E,turn/healthy/weak/overheat evidence groups,E,True
+F,Layer1 quality risk percentile,F,True
+F,financial risk flags,F,True
+F,revenue/fundamental availability,F,True

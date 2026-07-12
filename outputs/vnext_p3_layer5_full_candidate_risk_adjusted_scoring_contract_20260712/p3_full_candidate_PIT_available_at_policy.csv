@@ -1,0 +1,5 @@
+﻿family,source_available_at_policy,PIT_alignment
+adjusted price technical,same decision close after market; next-day execution,direct daily observation
+institutional/margin/lending/foreign ownership,official post-close inherited from upstream compact,upstream next-eligible-date aligned; no same-day future backfill
+Layer1 fundamental,weekly snapshot PIT contract,membership_snapshot_date join only
+TDCC,weekly release lag required,P3-1 unavailable; P3-2 optional only
