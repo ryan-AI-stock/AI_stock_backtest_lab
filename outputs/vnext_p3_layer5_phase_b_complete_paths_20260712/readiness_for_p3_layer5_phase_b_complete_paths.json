@@ -1,24 +1,18 @@
 {
   "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-PHASE-B-COMPLETE-PATHS-001",
-  "status": "static_actions_complete_waiting_bounded_tradability_event_patch",
+  "status": "phase_b_complete_paths_ready",
   "placebo_price_patch_absorbed": true,
   "placebo_price_patch_commit": "85e22d5",
   "scenario_count": 10,
   "canonical_counterfactuals": 4,
   "placebo_seeds": 5,
   "action_rows": 7150,
-  "transition_rows": 361,
-  "mark_rows": 3580,
+  "transition_rows": 716,
+  "mark_rows": 7160,
   "tradability_audit_rows": 716,
-  "unresolved_transition_count": 10,
-  "blocked_scenarios": [
-    "placebo_seed_17",
-    "placebo_seed_29",
-    "placebo_seed_43",
-    "placebo_seed_71",
-    "placebo_seed_101"
-  ],
-  "outgoing_exit_marks_ready": false,
+  "unresolved_transition_count": 0,
+  "blocked_scenarios": [],
+  "outgoing_exit_marks_ready": true,
   "counterfactual_actions_materialized": true,
   "applied_controller_gates_materialized": true,
   "TAIFEX_TDCC_ablation_trace_materialized": true,
@@ -27,12 +21,17 @@
     "C1",
     "C2",
     "C3",
+    "placebo_seed_101",
+    "placebo_seed_17",
+    "placebo_seed_29",
+    "placebo_seed_43",
+    "placebo_seed_71",
     "simple_v0_reference"
   ],
-  "placebo_paths_materialized": false,
-  "exact_rechain_daily_marks_ready": false,
-  "ready_for_phase_b_experiments": false,
-  "ready_for_experiments": false,
+  "placebo_paths_materialized": true,
+  "exact_rechain_daily_marks_ready": true,
+  "ready_for_phase_b_experiments": true,
+  "ready_for_experiments": true,
   "future_data_violation_count": 0,
   "formal_model_changed": false,
   "trade_decision_changed": false,
@@ -47,6 +46,8 @@
   "simple_v0_role": "reference_only",
   "price_patch_commits": [
     "85e22d5",
-    "ba19fda"
-  ]
+    "ba19fda",
+    "6f919e5"
+  ],
+  "warmup_controller_policy": "ordinary_thresholds_no_strong_or_weak_evidence"
 }

@@ -9,6 +9,7 @@ SRC=ROOT/'outputs/vnext_p3_layer5_daily_feature_state_action_materialization_202
 RADAR=Path(r'C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p3_recent_full_feature_data_readiness_acquisition_20260711\compact')
 PATCH=Path(r'C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p3_phase_b_placebo_tradability_termination_pit_gap_fill_20260712')
 PATCH2=Path(r'C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p3_phase_b_full_spec_v1_placebo_price_gap_fill_20260712')
+PATCH3=Path(r'C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p3_full_spec_v2_stage_b_placebo_ohlc_gap_fill_20260712')
 V2=ROOT/'outputs/vnext_p3_market_controller_full_spec_v2_20260712/p3_market_controller_full_spec_v2_daily_features.csv'
 OUT=ROOT/'outputs/vnext_p3_layer5_phase_b_complete_paths_20260712'
 TASK='TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-PHASE-B-COMPLETE-PATHS-001'
@@ -17,7 +18,7 @@ def prices():
  d=pd.concat([pd.read_csv(p,dtype={'ticker':str},low_memory=False) for p in sorted((RADAR/'price').glob('*.csv.gz'))],ignore_index=True); d['date']=pd.to_datetime(d.date)
  ready=json.loads((PATCH/'readiness_for_core_p3_placebo_tradability_termination_patch.json').read_text(encoding='utf-8-sig'))
  if not ready['ready_for_core_p3_phase_b_placebo_tradability_patch_absorption'] or ready['remaining_blocked_episodes']!=0: raise ValueError('Radar placebo patch not ready')
- patch=pd.read_csv(PATCH/'p3_placebo_official_ohlcv_patch_rows.csv',dtype={'ticker':str}); patch2=pd.read_csv(PATCH2/'full_spec_v1_placebo_official_ohlcv_patch_rows.csv',dtype={'ticker':str}); patch=pd.concat([patch,patch2],ignore_index=True); patch['date']=pd.to_datetime(patch.date)
+ patch=pd.read_csv(PATCH/'p3_placebo_official_ohlcv_patch_rows.csv',dtype={'ticker':str}); patch2=pd.read_csv(PATCH2/'full_spec_v1_placebo_official_ohlcv_patch_rows.csv',dtype={'ticker':str}); patch3=pd.read_csv(PATCH3/'full_spec_v2_stage_b_placebo_official_ohlcv_patch_rows.csv',dtype={'ticker':str}); patch=pd.concat([patch,patch2,patch3],ignore_index=True); patch['date']=pd.to_datetime(patch.date)
  existing=set(zip(d.date,d.ticker)); patch['registry_key_preexisting']=[(r.date,r.ticker) in existing for r in patch.itertuples(index=False)]
  patch.to_csv(OUT/'p3_layer5_phase_b_placebo_price_patch_absorption_audit.csv',index=False,encoding='utf-8-sig')
  add=patch.loc[~patch.registry_key_preexisting,['date','ticker','close','source_quality']]
@@ -32,8 +33,9 @@ def make_actions(feature,market_mode):
   elif market_mode=='C3':
    gs=['taiwan_group','breadth_group','capital_group','external_group']; bull=(day[gs].iloc[0]=='bullish').sum(); bear=(day[gs].iloc[0]=='bearish').sum()
    state='strong_market' if bull>=3 and bear<=1 else ('weak_market' if bear>=3 else 'ordinary_market')
-  conf_floor={'strong_market':.63,'ordinary_market':.70,'weak_market':.77,'confirmed_bear':.84}[state]
-  margin_req={'strong_market':6.,'ordinary_market':5.,'weak_market':4.,'confirmed_bear':5.}[state]
+  low_confidence_state=state=='PIT_warmup_or_low_confidence'; applied_state='ordinary_market' if low_confidence_state else state
+  conf_floor={'strong_market':.63,'ordinary_market':.70,'weak_market':.77,'confirmed_bear':.84}[applied_state]
+  margin_req={'strong_market':6.,'ordinary_market':5.,'weak_market':4.,'confirmed_bear':5.}[applied_state]
   eligible=day[day.history_ready & (day.total_confidence>=conf_floor) & day.raw_state.isin(['turning_up','healthy_rise','overheat_warning'])].sort_values('score_balanced',ascending=False)
   ch=eligible.iloc[0] if len(eligible) else None; inc=day[day.ticker.eq(incumbent)].iloc[0] if incumbent and day.ticker.eq(incumbent).any() else None
   if state=='confirmed_bear': action='no_position_confirmed_bear'; reason='confirmed_bear'; incumbent=None
@@ -42,12 +44,12 @@ def make_actions(feature,market_mode):
    else: action='forced_replacement'; reason='invalid_or_weak_incumbent'; incumbent=ch.ticker
   elif ch is not None and ch.ticker!=incumbent:
    wins=sum(float(ch[f'block_{b}'])>float(inc[f'block_{b}']) for b in 'ABCDEF' if pd.notna(ch[f'block_{b}']) and pd.notna(inc[f'block_{b}']))
-   weak_req={'strong_market':4,'ordinary_market':3,'weak_market':2,'confirmed_bear':2}[state]
+   weak_req={'strong_market':4,'ordinary_market':3,'weak_market':2,'confirmed_bear':2}[applied_state]
    weakened=int(inc.weak_groups)>=weak_req; margin=float(ch.score_balanced-inc.score_balanced)
    if margin>=margin_req and wins>=3 and weakened: action='switch_to_challenger'; reason='applied_controller_margin_blocks_weakening'; incumbent=ch.ticker
    else: action='hold_incumbent'; reason='applied_controller_switch_gate_failed'
   else: action='hold_incumbent'; reason='valid_incumbent_no_better_challenger'
-  rows.append({'scenario':market_mode,'decision_date':dt,'requested_execution_date':day.next_execution_date.iloc[0],'selected_ticker':incumbent,'selected_action':action,'action_reason':reason,'applied_market_state':state,'confidence_floor':conf_floor,'challenger_margin_required':margin_req})
+  rows.append({'scenario':market_mode,'decision_date':dt,'requested_execution_date':day.next_execution_date.iloc[0],'selected_ticker':incumbent,'selected_action':action,'action_reason':reason,'classified_market_state':state,'applied_market_state':applied_state,'low_confidence_ordinary_fallback':low_confidence_state,'confidence_floor':conf_floor,'challenger_margin_required':margin_req})
  return pd.DataFrame(rows)
 
 def placebo_actions(canonical,feature,seed):
@@ -126,11 +128,13 @@ def run():
  actions=pd.concat(all_a,ignore_index=True); tradability=pd.concat(all_t,ignore_index=True)
  events=pd.concat(all_e,ignore_index=True) if all_e else pd.DataFrame(); marks=pd.concat(all_m,ignore_index=True) if all_m else pd.DataFrame()
  actions.to_csv(OUT/'p3_layer5_phase_b_scenario_daily_actions.csv',index=False,encoding='utf-8-sig'); events.to_csv(OUT/'p3_layer5_phase_b_exact_transition_cost_ledger.csv',index=False,encoding='utf-8-sig'); marks.to_csv(OUT/'p3_layer5_phase_b_daily_unique_position_marks.csv',index=False,encoding='utf-8-sig')
+ pd.DataFrame([{'scenario':s,'requested_start':'2023-07-11','requested_end':'2026-06-29','actual_start':g.date.min(),'actual_end':g.date.max(),'mark_rows':len(g)} for s,g in marks.groupby('scenario')]).to_csv(OUT/'p3_layer5_phase_b_requested_vs_actual_coverage.csv',index=False,encoding='utf-8-sig')
+ pd.DataFrame([{'slippage_bp_per_side':bp,'role':'primary' if bp==10 else 'sensitivity','brokerage_rate':.001425,'stock_sell_tax_rate':.003,'ETF_sell_tax_rate':.001,'switch_double_sided':True} for bp in [5,10,20]]).to_csv(OUT/'p3_layer5_phase_b_cost_slippage_contract.csv',index=False,encoding='utf-8-sig')
  tradability.to_csv(OUT/'p3_layer5_phase_b_all_scenario_tradability_horizon_audit.csv',index=False,encoding='utf-8-sig')
  pivot=actions.pivot(index='decision_date',columns='scenario',values='selected_ticker'); pivot.reset_index().to_csv(OUT/'p3_layer5_phase_b_C0_C3_action_diff_audit.csv',index=False,encoding='utf-8-sig')
  blocker_count=int((~tradability.tradability_horizon_ready).sum())
  readiness={'task_id':TASK,'status':'static_actions_complete_waiting_bounded_tradability_event_patch' if blocker_count else 'phase_b_complete_paths_ready','placebo_price_patch_absorbed':True,'placebo_price_patch_commit':'85e22d5','scenario_count':len(scenarios),'canonical_counterfactuals':4,'placebo_seeds':5,'action_rows':len(actions),'transition_rows':len(events),'mark_rows':len(marks),'tradability_audit_rows':len(tradability),'unresolved_transition_count':blocker_count,'blocked_scenarios':blocked_scenarios,'outgoing_exit_marks_ready':blocker_count==0,'counterfactual_actions_materialized':True,'applied_controller_gates_materialized':True,'TAIFEX_TDCC_ablation_trace_materialized':True,'executable_scenario_paths_ready':sorted(set(actions.scenario)-set(blocked_scenarios)),'placebo_paths_materialized':not any(s.startswith('placebo') for s in blocked_scenarios),'exact_rechain_daily_marks_ready':blocker_count==0,'ready_for_phase_b_experiments':blocker_count==0,'ready_for_experiments':blocker_count==0,'future_data_violation_count':0,'formal_model_changed':False,'trade_decision_changed':False,'active_in_trade_decision':False,'report_changed':False,'portfolio_replay_executed':False,'ready_for_strategy_replay':False,'ready_for_formal':False,'not_live_rule':True,'forward_returns_live_rule_usage':False}
- readiness['primary_controller_version']='full_spec_v2'; readiness['simple_v0_role']='reference_only'; readiness['price_patch_commits']=['85e22d5','ba19fda']
+ readiness['primary_controller_version']='full_spec_v2'; readiness['simple_v0_role']='reference_only'; readiness['price_patch_commits']=['85e22d5','ba19fda','6f919e5']; readiness['warmup_controller_policy']='ordinary_thresholds_no_strong_or_weak_evidence'
  (OUT/'readiness_for_p3_layer5_phase_b_complete_paths.json').write_text(json.dumps(readiness,ensure_ascii=False,indent=2),encoding='utf-8'); (OUT/'final_summary_zh.md').write_text(f'# P3 Phase B complete paths\n\nC0-C3與5 fixed-seed placebo action已全數materialize。Tradability blockers={blocker_count}；僅零blocker scenarios產生executable mark/path。未計績效。\n',encoding='utf-8')
  files=sorted(q for q in OUT.iterdir() if q.is_file() and q.name!='manifest.json'); (OUT/'manifest.json').write_text(json.dumps({'task_id':TASK,'source_commits':['8822b2e','85e22d5'],'patch_source':str(PATCH),'readiness':readiness,'files':[{'name':q.name,'sha256':hashlib.sha256(q.read_bytes()).hexdigest()} for q in files]},ensure_ascii=False,indent=2),encoding='utf-8'); print(OUT)
 if __name__=='__main__': run()

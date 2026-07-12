@@ -7,25 +7,19 @@
   "patch_source": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_p3_phase_b_placebo_tradability_termination_pit_gap_fill_20260712",
   "readiness": {
     "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-PHASE-B-COMPLETE-PATHS-001",
-    "status": "static_actions_complete_waiting_bounded_tradability_event_patch",
+    "status": "phase_b_complete_paths_ready",
     "placebo_price_patch_absorbed": true,
     "placebo_price_patch_commit": "85e22d5",
     "scenario_count": 10,
     "canonical_counterfactuals": 4,
     "placebo_seeds": 5,
     "action_rows": 7150,
-    "transition_rows": 361,
-    "mark_rows": 3580,
+    "transition_rows": 716,
+    "mark_rows": 7160,
     "tradability_audit_rows": 716,
-    "unresolved_transition_count": 10,
-    "blocked_scenarios": [
-      "placebo_seed_17",
-      "placebo_seed_29",
-      "placebo_seed_43",
-      "placebo_seed_71",
-      "placebo_seed_101"
-    ],
-    "outgoing_exit_marks_ready": false,
+    "unresolved_transition_count": 0,
+    "blocked_scenarios": [],
+    "outgoing_exit_marks_ready": true,
     "counterfactual_actions_materialized": true,
     "applied_controller_gates_materialized": true,
     "TAIFEX_TDCC_ablation_trace_materialized": true,
@@ -34,12 +28,17 @@
       "C1",
       "C2",
       "C3",
+      "placebo_seed_101",
+      "placebo_seed_17",
+      "placebo_seed_29",
+      "placebo_seed_43",
+      "placebo_seed_71",
       "simple_v0_reference"
     ],
-    "placebo_paths_materialized": false,
-    "exact_rechain_daily_marks_ready": false,
-    "ready_for_phase_b_experiments": false,
-    "ready_for_experiments": false,
+    "placebo_paths_materialized": true,
+    "exact_rechain_daily_marks_ready": true,
+    "ready_for_phase_b_experiments": true,
+    "ready_for_experiments": true,
     "future_data_violation_count": 0,
     "formal_model_changed": false,
     "trade_decision_changed": false,
@@ -54,41 +53,51 @@
     "simple_v0_role": "reference_only",
     "price_patch_commits": [
       "85e22d5",
-      "ba19fda"
-    ]
+      "ba19fda",
+      "6f919e5"
+    ],
+    "warmup_controller_policy": "ordinary_thresholds_no_strong_or_weak_evidence"
   },
   "files": [
     {
       "name": "final_summary_zh.md",
-      "sha256": "f07f8350a6412bdfc1dec39452ea9e5ba7d495861df336a8dc247e487c12ebba"
+      "sha256": "2ee6eb9ad90c0cdd4aaa5b502dfc5a0a052c794e55463e8599f357ad3993a918"
     },
     {
       "name": "p3_layer5_phase_b_all_scenario_tradability_horizon_audit.csv",
-      "sha256": "872349ed96f2594efc6575b52a156f8ab3b451a4f881b1c0c216ecb1b636fb76"
+      "sha256": "65fc3b5aa806992b6730b424508564292a0af8d8b5c574839f45bc6a597737b9"
     },
     {
       "name": "p3_layer5_phase_b_C0_C3_action_diff_audit.csv",
       "sha256": "14e560c17e2cd6bf5d82260a082c82c24e95474843264df34ce927ad1b85ca54"
     },
     {
+      "name": "p3_layer5_phase_b_cost_slippage_contract.csv",
+      "sha256": "0212531d798ed1d6030bd03a90c191e488b599ccc6ba2942250c6e25488e891e"
+    },
+    {
       "name": "p3_layer5_phase_b_daily_unique_position_marks.csv",
-      "sha256": "5a11372206d7ba70f277ecbd0b9915c7a6e8bc2a5c6fa66eab1250c605bc4e41"
+      "sha256": "5c5b635009c95647750ad11a74abcc1180c612609a40c5fca0709de05aa7f2f4"
     },
     {
       "name": "p3_layer5_phase_b_exact_transition_cost_ledger.csv",
-      "sha256": "53fc83f8375cc5c3e1d581273500eb870a0fad7560abc33330488230f09aa0ff"
+      "sha256": "6e6b2606d49226a228da8d65e4a3c6df48a7d7d0baae233f25cd47c88a842742"
     },
     {
       "name": "p3_layer5_phase_b_placebo_price_patch_absorption_audit.csv",
-      "sha256": "ec3aca956224c582759d2bcecf8a815e2e7b1161517cb811bbd8a817453f5213"
+      "sha256": "32d8d9c167237ec2c236883cfe7cadfd469d440e2f475eef0294697b49a382e7"
+    },
+    {
+      "name": "p3_layer5_phase_b_requested_vs_actual_coverage.csv",
+      "sha256": "733c0f8a4a1faf128535eacaea4970685f058befab400501721ab5e77ab58455"
     },
     {
       "name": "p3_layer5_phase_b_scenario_daily_actions.csv",
-      "sha256": "b8c319c4285e953e9eedc20d21573a63667be0e40d749bfaaa3067cc07b2a7e1"
+      "sha256": "a4dfd4f580c30f4459f6bf0570b74dfea13baa8ed2cbb40616e15c0ae3970a2d"
     },
     {
       "name": "readiness_for_p3_layer5_phase_b_complete_paths.json",
-      "sha256": "de7dda4a993848b2caa16ec70e389fd1d5248b39aef33bc6a5d2aec673160864"
+      "sha256": "3994cd4c0cff2448ade78d935b89cd25b12ae24d45208f4916bd6652bab7a992"
     }
   ]
 }

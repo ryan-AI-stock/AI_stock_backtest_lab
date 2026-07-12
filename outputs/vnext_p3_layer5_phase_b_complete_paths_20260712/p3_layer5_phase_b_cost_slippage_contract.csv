@@ -1,0 +1,4 @@
+﻿slippage_bp_per_side,role,brokerage_rate,stock_sell_tax_rate,ETF_sell_tax_rate,switch_double_sided
+5,sensitivity,0.001425,0.003,0.001,True
+10,primary,0.001425,0.003,0.001,True
+20,sensitivity,0.001425,0.003,0.001,True
