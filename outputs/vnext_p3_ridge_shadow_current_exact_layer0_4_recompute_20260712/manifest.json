@@ -1,0 +1,35 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-RIDGE-SHADOW-CURRENT-EXACT-LAYER0-4-RECOMPUTE-001",
+  "inputs": {
+    "radar_manifest_sha256": "d04340322e2c7494eee05df25c9530145dd33c51f2267f1802dc18afb6dac20a",
+    "historical_daily_market_sha256": "ff7cc72e72a08845e8ff1627dc5ae8e6fe6ccd1e9f79800b6d9637a2107abe97",
+    "historical_layer4_sha256": "21d5c42ac151ec71706c793f386a1f1e2ab16f656601d0c2474dd1dc496e3901"
+  },
+  "files": [
+    {
+      "name": "final_summary_zh.md",
+      "sha256": "9850809ef2c41b4da6ad447386390d2b6b3a4d69eb0c998114fd327fe9aeedf2",
+      "bytes": 318
+    },
+    {
+      "name": "p3_ridge_shadow_current_exact_layer0_snapshot_20260709.csv",
+      "sha256": "1ab4040869445ad485e665fa8862b459fffa2088b05d96df908f6fbcb1d87ffc",
+      "bytes": 104873
+    },
+    {
+      "name": "p3_ridge_shadow_current_layer0_4_gate_audit.csv",
+      "sha256": "b1abd75a0ec87e354b283993aad651a40aa4cd3f5bfcd1db9968719244986b4f",
+      "bytes": 266
+    },
+    {
+      "name": "p3_ridge_shadow_current_layer1_4_bounded_gap_ledger.csv",
+      "sha256": "9a605000617f362a077ad1db2a524ad4c6230843dfb157cd0a6b81812e86c93a",
+      "bytes": 71304
+    },
+    {
+      "name": "readiness_for_current_exact_layer0_4_recompute.json",
+      "sha256": "4949c7dc8257c1c2bb64428eeb358870c70c23a89fe76d6ce89aebd96b253c90",
+      "bytes": 1007
+    }
+  ]
+}
