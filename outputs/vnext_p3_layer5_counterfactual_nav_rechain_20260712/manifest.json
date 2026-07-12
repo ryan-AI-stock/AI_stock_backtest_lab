@@ -1,0 +1,37 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-CORRECTED-NAV-LAYER5-COUNTERFACTUAL-RECHAIN-001",
+  "files": [
+    {
+      "name": "final_summary_zh.md",
+      "sha256": "1ecf0c1ba10f3973228154e705a988a4dbf4f8403ea398391728a519526d20e5"
+    },
+    {
+      "name": "p3_layer5_counterfactual_factor_bracket_audit.csv",
+      "sha256": "44c6dbe151f1d16b24522e5756084b885eec6b51b21b0b37f44a2bcd9ff88250"
+    },
+    {
+      "name": "p3_layer5_counterfactual_NAV_rechain_daily_ledger.csv",
+      "sha256": "9895a39e5e6a0e92e1bb21edb75e32093e97146999769e70e6ae19010dad9b13"
+    },
+    {
+      "name": "p3_layer5_counterfactual_transition_reconciliation.csv",
+      "sha256": "983e7f1ec4db926bcd8c81af861c58f38ce0998af308d005f19af87dec52fb28"
+    },
+    {
+      "name": "p3_layer5_drawdown_episode_counterfactual_link.csv",
+      "sha256": "72a2f4e11aa9ca5ea3c8b7893e907231757f46b7ea96af49ec715652dc7ed9b1"
+    },
+    {
+      "name": "p3_layer5_entry_candidate_evaluation_context.csv",
+      "sha256": "e0d83a125dcc8bc416bf7a52360ec9692add7689babf2b88e9ae97eaa1773ebd"
+    },
+    {
+      "name": "p3_layer5_event_counterfactual_map.csv",
+      "sha256": "b72701ddffb9e6bd772c9d594d00d76d054e1601d96bc402f4c4b3962329b261"
+    },
+    {
+      "name": "readiness_for_counterfactual_NAV_rechain.json",
+      "sha256": "30b4cfc992c96b5daa0266db015cf5d66e5e312a8fc83b6abbd2a7f3e608bfae"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-CORRECTED-NAV-LAYER5-COUNTERFACTUAL-RECHAIN-001",
+  "status": "exact_counterfactual_NAV_rechain_ready",
+  "episode_count": 6,
+  "counterfactual_path_count": 19,
+  "daily_rows": 13604,
+  "transition_rows": 1279,
+  "cross_asset_nominal_price_return_count": 0,
+  "abs_return_gt_15pct_rows": 0,
+  "ready_for_experiments": true,
+  "future_data_violation_count": 0,
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "ready_for_formal": false,
+  "ready_for_strategy_replay": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false
+}
