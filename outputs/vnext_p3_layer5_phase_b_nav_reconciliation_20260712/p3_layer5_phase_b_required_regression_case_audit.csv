@@ -1,0 +1,5 @@
+﻿scenario,date,expected_prior_ticker,expected_new_ticker,ledger_row_found,transition_row_found,gross_return_from_same_asset,cross_asset_nominal_price_return_used,price_status,NAV_reconciled
+C1,2023-11-29,3545,3362,True,True,-0.026415094790877114,False,event_aware_adjusted_research_grade,True
+C1,2024-01-05,2329,3008,True,True,0.03238098097518716,False,event_aware_adjusted_research_grade,True
+C1,2024-01-04,2329,,True,False,-0.015009367420887543,False,event_aware_adjusted_research_grade,True
+C1,2023-10-11,2436,,True,False,-0.009858999069778718,False,event_aware_adjusted_research_grade,True

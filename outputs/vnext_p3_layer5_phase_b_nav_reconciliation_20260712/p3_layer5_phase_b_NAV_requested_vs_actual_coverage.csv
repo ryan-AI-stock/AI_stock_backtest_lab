@@ -1,0 +1,11 @@
+﻿scenario,requested_decision_start,requested_decision_end,actual_mark_start,actual_mark_end,daily_mark_rows,terminal_2026_06_30_role
+C0,2023-07-11,2026-06-29,2023-07-17,2026-06-29,716,next_day_execution_and_terminal_mark_only
+C1,2023-07-11,2026-06-29,2023-07-17,2026-06-29,716,next_day_execution_and_terminal_mark_only
+C2,2023-07-11,2026-06-29,2023-07-17,2026-06-29,716,next_day_execution_and_terminal_mark_only
+C3,2023-07-11,2026-06-29,2023-07-17,2026-06-29,716,next_day_execution_and_terminal_mark_only
+placebo_seed_101,2023-07-11,2026-06-29,2023-07-17,2026-06-29,716,next_day_execution_and_terminal_mark_only
+placebo_seed_17,2023-07-11,2026-06-29,2023-07-17,2026-06-29,716,next_day_execution_and_terminal_mark_only
+placebo_seed_29,2023-07-11,2026-06-29,2023-07-17,2026-06-29,716,next_day_execution_and_terminal_mark_only
+placebo_seed_43,2023-07-11,2026-06-29,2023-07-17,2026-06-29,716,next_day_execution_and_terminal_mark_only
+placebo_seed_71,2023-07-11,2026-06-29,2023-07-17,2026-06-29,716,next_day_execution_and_terminal_mark_only
+simple_v0_reference,2023-07-11,2026-06-29,2023-07-17,2026-06-29,716,next_day_execution_and_terminal_mark_only

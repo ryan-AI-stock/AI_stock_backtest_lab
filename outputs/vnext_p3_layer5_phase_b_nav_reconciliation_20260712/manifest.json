@@ -1,0 +1,111 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-PHASE-B-NAV-RECONCILIATION-001",
+  "source_commit": "cd90cb5",
+  "readiness": {
+    "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-PHASE-B-NAV-RECONCILIATION-001",
+    "status": "NAV_reconciliation_ready_for_fixed_parameter_stage_b_rerun",
+    "performance_authority_file": "p3_layer5_phase_b_NAV_daily_wealth_ledger.csv",
+    "legacy_raw_mark_path_role": "tradability_only_not_performance_authority",
+    "scenario_count": 10,
+    "daily_rows": 7160,
+    "canonical_action_dates": 715,
+    "terminal_execution_mark_date": "2026-06-30",
+    "transition_rows": 687,
+    "same_close_collision_groups_resolved": 29,
+    "cross_asset_nominal_price_return_count": 0,
+    "blocked_rows": 0,
+    "abs_return_gt_15pct_rows": 0,
+    "max_abs_same_asset_gross_return": 0.1000001098790616,
+    "ready_for_stage_b_rerun": true,
+    "ready_for_experiments": true,
+    "prior_NO_GO_withdrawn": true,
+    "future_data_violation_count": 0,
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "ready_for_strategy_replay": false,
+    "ready_for_formal": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false
+  },
+  "files": [
+    {
+      "name": "final_summary_zh.md",
+      "sha256": "dcdf23e42424c8194c3d8f6403792a5f0312584d73e3cf77d92f0b0228b17dad"
+    },
+    {
+      "name": "p3_layer5_20250801_adjustment_factor_bracket_proof.csv",
+      "sha256": "44c6dbe151f1d16b24522e5756084b885eec6b51b21b0b37f44a2bcd9ff88250"
+    },
+    {
+      "name": "p3_layer5_C0_same_close_collision_resolution.csv",
+      "sha256": "26c76e79decf52fc5a91aa911877eec5c8e5c9d736cb0d919641fa8be1d549a5"
+    },
+    {
+      "name": "p3_layer5_C1_same_close_collision_resolution.csv",
+      "sha256": "3193a980988ed0f8910f22e3cf7c7211a7d72d330205da5c286da2ee6c592718"
+    },
+    {
+      "name": "p3_layer5_C2_same_close_collision_resolution.csv",
+      "sha256": "209c947e9ad7cdaf47ce6690780579a9d7455433daac905abdebefda3ab48b41"
+    },
+    {
+      "name": "p3_layer5_C3_same_close_collision_resolution.csv",
+      "sha256": "153b3bf38583ac5495a57b3dd4e559a25991552d8579e8cc9e72606f1274167e"
+    },
+    {
+      "name": "p3_layer5_phase_b_NAV_anomaly_blocked_ledger.csv",
+      "sha256": "f01a374e9c81e3db89b3a42940c4d6a5447684986a1296e42bf13f196eed6295"
+    },
+    {
+      "name": "p3_layer5_phase_b_NAV_daily_wealth_ledger.csv",
+      "sha256": "357be6efb9da9ce66fc269beeb1e30f9c5b089ea48069d54894356afdacdda9b"
+    },
+    {
+      "name": "p3_layer5_phase_b_NAV_requested_vs_actual_coverage.csv",
+      "sha256": "f31abc8a3be65e9035e36a7479bf9f68de7662b788864fdebb4a38fd63907b3a"
+    },
+    {
+      "name": "p3_layer5_phase_b_required_regression_case_audit.csv",
+      "sha256": "64bfa6982b9e644aae6aad683de895497c16aa7b9921f6598b36dc2d52618fd7"
+    },
+    {
+      "name": "p3_layer5_phase_b_transition_NAV_reconciliation.csv",
+      "sha256": "c670efdc8cba8642b57838a1882c2ca3226610940add1406669d3e061ace7447"
+    },
+    {
+      "name": "p3_layer5_placebo_seed_101_same_close_collision_resolution.csv",
+      "sha256": "03d68e54b869b4129edb7e7809622ee2ef6e28b7ae05241a0b0f40608c97555d"
+    },
+    {
+      "name": "p3_layer5_placebo_seed_17_same_close_collision_resolution.csv",
+      "sha256": "bbf7a7d8dfbd135327ca8b00769d85175337800a616c9c3524e15ba3a7366d8a"
+    },
+    {
+      "name": "p3_layer5_placebo_seed_29_same_close_collision_resolution.csv",
+      "sha256": "49c95902101e3a967b4c6edfd0026b1b17530495b3812be32ad00712a9752142"
+    },
+    {
+      "name": "p3_layer5_placebo_seed_43_same_close_collision_resolution.csv",
+      "sha256": "8506f52781c5896a0e384acd4bac017a44dae294dd395ea1c74c37ede7ae3df0"
+    },
+    {
+      "name": "p3_layer5_placebo_seed_71_same_close_collision_resolution.csv",
+      "sha256": "5457aa1bf85d85867f124e31802e95ebeae5dfcd0a6217ed8b261599c6054226"
+    },
+    {
+      "name": "p3_layer5_prior_stage_b_invalidation_audit.csv",
+      "sha256": "a485adf83df439271f44b363046e32a6ccde5bebd874b01e5fa0f7aebcfb1e1c"
+    },
+    {
+      "name": "p3_layer5_simple_v0_reference_same_close_collision_resolution.csv",
+      "sha256": "43a0451bef5cc971f9109c0b5e0e92b274c128c6b9b267435d5c6e81302ad724"
+    },
+    {
+      "name": "readiness_for_p3_layer5_phase_b_NAV_reconciliation.json",
+      "sha256": "2174adbbb24bbf59c9d6a39a2a607f54eb75c20caa442be0342023697ce22f23"
+    }
+  ]
+}

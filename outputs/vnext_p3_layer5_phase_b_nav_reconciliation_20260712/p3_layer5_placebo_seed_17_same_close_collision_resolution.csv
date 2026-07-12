@@ -1,0 +1,3 @@
+﻿scenario,actual_execution_date,input_transition_rows,prior_target,intermediate_targets,final_target,resolution,cost_charged_once
+placebo_seed_17,2023-11-29,2,4129,2454,6643,latest_decision_supersedes_unexecuted_intermediate_at_same_close,True
+placebo_seed_17,2025-04-28,2,3563,8033,1815,latest_decision_supersedes_unexecuted_intermediate_at_same_close,True
