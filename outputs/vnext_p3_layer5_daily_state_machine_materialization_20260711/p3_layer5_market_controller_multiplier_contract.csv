@@ -1,0 +1,5 @@
+﻿market_state,entry_floor_multiplier,hold_tolerance_multiplier,replacement_margin_multiplier,weakening_condition_delta,cash_allowed,required_independent_groups,persistence_requires_daily_reproof
+strong_market,0.9,1.2,1.2,1,False,3,True
+ordinary_market,1.0,1.0,1.0,0,False,0,True
+weak_market,1.1,0.8,0.8,-1,False,3,True
+confirmed_bear,1.2,0.7,0.8,-1,True,4,True

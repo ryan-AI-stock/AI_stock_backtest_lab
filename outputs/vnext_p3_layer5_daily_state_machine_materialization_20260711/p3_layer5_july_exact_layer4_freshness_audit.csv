@@ -1,0 +1,3 @@
+﻿period,membership_status,source_input_status,allowed_use,blocked_reason,future_data_violation_count
+2023-07-14~2026-06-29,exact_PIT_ready,ready,Core exact primary80,,0
+2026-06-30~2026-07-09,not_materialized,official price/chip/market inputs available through 2026-07-09,Core recompute only,cannot carry 2026-06-29 membership forward as exact PIT,0

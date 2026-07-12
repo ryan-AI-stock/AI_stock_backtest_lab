@@ -14,6 +14,7 @@ P3 = ROOT / "outputs/vnext_p3_full_feature_unified_lifecycle_contract_20260711"
 ARCH = ROOT / "outputs/vnext_p3_layer5_single_lifecycle_state_machine_contract_20260711"
 RADAR = Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p3_recent_full_feature_data_readiness_acquisition_20260711\compact")
 MARKET_FILL = Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p3_market_state_source_fill_20260711")
+SOURCE_CONVERGENCE = Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p3_post_market_source_remaining_gap_convergence_20260712")
 OUTPUT = ROOT / "outputs/vnext_p3_layer5_daily_state_machine_materialization_20260711"
 TASK = "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-DAILY-STATE-MACHINE-MATERIALIZATION-001"
 
@@ -23,7 +24,7 @@ def load_years(family: str) -> pd.DataFrame:
     return pd.concat([pd.read_csv(p, dtype={"ticker": str}, low_memory=False) for p in files], ignore_index=True)
 
 
-def run(output: Path = OUTPUT, market_fill: Path = MARKET_FILL) -> Path:
+def run(output: Path = OUTPUT, market_fill: Path = MARKET_FILL, source_convergence: Path = SOURCE_CONVERGENCE) -> Path:
     output.mkdir(parents=True, exist_ok=True)
     market_ready = json.loads((market_fill / "readiness_for_core_p3_market_state_source_fill.json").read_text(encoding="utf-8-sig"))
     checksum = pd.read_csv(market_fill / "p3_market_state_checksum_manifest.csv")
@@ -36,6 +37,14 @@ def run(output: Path = OUTPUT, market_fill: Path = MARKET_FILL) -> Path:
     if len(checksum_rows) != 3 or not all(row["checksum_match"] for row in checksum_rows):
         raise ValueError("P3 market source compact checksum validation failed")
     pd.DataFrame(checksum_rows).to_csv(output / "p3_layer5_daily_market_source_absorption_audit.csv", index=False, encoding="utf-8-sig")
+    convergence_ready = json.loads((source_convergence / "readiness_for_core_p3_post_market_source_convergence.json").read_text(encoding="utf-8-sig"))
+    if not convergence_ready["ready_for_core_daily_feature_materialization"] or convergence_ready["source_gap_count_requiring_download"] != 0:
+        raise ValueError("P3 post-market source convergence contract not ready")
+    for source_name, target_name in [
+        ("p3_remaining_source_family_matrix.csv", "p3_layer5_remaining_source_family_matrix.csv"),
+        ("p3_remaining_source_gap_ledger.csv", "p3_layer5_remaining_source_gap_ledger.csv"),
+        ("p3_layer4_july_freshness_audit.csv", "p3_layer5_july_exact_layer4_freshness_audit.csv")]:
+        pd.read_csv(source_convergence / source_name).to_csv(output / target_name, index=False, encoding="utf-8-sig")
     weekly = pd.read_csv(WEEKLY, dtype={"ticker": str}, low_memory=False)
     weekly["snapshot_date"] = pd.to_datetime(weekly.snapshot_date)
     weekly = weekly.loc[(weekly.is_layer4_primary_pool == True) & weekly.snapshot_date.between("2023-07-14", "2026-06-29")]
@@ -139,6 +148,38 @@ def run(output: Path = OUTPUT, market_fill: Path = MARKET_FILL) -> Path:
         {"comparison": "selected_vs_00631L_or_0050_2x", "execution_basis": "same_next_day_state_hold", "cost": "EP05_asset_specific_plus_10bp_per_side", "coverage": "same_dates", "required_outputs": "net_return|MDD|hit_rate|downside_capture"},
         {"comparison": "slippage_sensitivity", "execution_basis": "same_next_day", "cost": "EP05", "coverage": "same_dates", "required_outputs": "5bp|10bp_primary|20bp"},
     ]).to_csv(output / "p3_layer5_benchmark_excess_comparison_contract.csv", index=False, encoding="utf-8-sig")
+    pd.DataFrame([
+        {"market_state": "strong_market", "entry_floor_multiplier": 0.9, "hold_tolerance_multiplier": 1.2, "replacement_margin_multiplier": 1.2, "weakening_condition_delta": 1, "cash_allowed": False, "required_independent_groups": 3, "persistence_requires_daily_reproof": True},
+        {"market_state": "ordinary_market", "entry_floor_multiplier": 1.0, "hold_tolerance_multiplier": 1.0, "replacement_margin_multiplier": 1.0, "weakening_condition_delta": 0, "cash_allowed": False, "required_independent_groups": 0, "persistence_requires_daily_reproof": True},
+        {"market_state": "weak_market", "entry_floor_multiplier": 1.1, "hold_tolerance_multiplier": 0.8, "replacement_margin_multiplier": 0.8, "weakening_condition_delta": -1, "cash_allowed": False, "required_independent_groups": 3, "persistence_requires_daily_reproof": True},
+        {"market_state": "confirmed_bear", "entry_floor_multiplier": 1.2, "hold_tolerance_multiplier": 0.7, "replacement_margin_multiplier": 0.8, "weakening_condition_delta": -1, "cash_allowed": True, "required_independent_groups": 4, "persistence_requires_daily_reproof": True},
+    ]).to_csv(output / "p3_layer5_market_controller_multiplier_contract.csv", index=False, encoding="utf-8-sig")
+    pd.DataFrame([
+        {"field": "decision_date", "source": "daily_PIT", "required": True},
+        {"field": "effective_execution_date", "source": "next_trading_day", "required": True},
+        {"field": "market_state_before_after", "source": "daily_5group_controller", "required": True},
+        {"field": "five_group_states_confidence_missingness", "source": "Taiwan|breadth|capital_risk|derivatives|external", "required": True},
+        {"field": "risk_multipliers_before_after", "source": "frozen_multiplier_contract", "required": True},
+        {"field": "incumbent_action_impact", "source": "state_action_trace", "required": True},
+        {"field": "entry_blocked_replacement_raised_weakening_accelerated_cash_allowed", "source": "controller_effect", "required": True},
+        {"field": "TAIFEX_participated", "source": "derivatives_group", "required": True},
+        {"field": "TDCC_participated", "source": "P3_2_optional_only", "required": True},
+        {"field": "forward_drawdown_lead_lag", "source": "Experiments_evaluation_only", "required": False},
+    ]).to_csv(output / "p3_layer5_market_regime_transition_trace_schema.csv", index=False, encoding="utf-8-sig")
+    pd.DataFrame([
+        {"counterfactual": "C0_ordinary_always", "selector_same": True, "candidate_same": True, "controller": "disabled_ordinary_thresholds", "TAIFEX": "same_input_not_action", "TDCC": "same_input_not_action"},
+        {"counterfactual": "C1_full_frozen_controller", "selector_same": True, "candidate_same": True, "controller": "strong_ordinary_weak_bear", "TAIFEX": "on", "TDCC": "P3_2_on"},
+        {"counterfactual": "C2_no_strong_relaxation", "selector_same": True, "candidate_same": True, "controller": "ordinary_for_strong_weak_bear_tightening_on", "TAIFEX": "on", "TDCC": "P3_2_on"},
+        {"counterfactual": "C3_TAIFEX_off", "selector_same": True, "candidate_same": True, "controller": "full_except_derivatives_ablation", "TAIFEX": "off", "TDCC": "P3_2_separate_on_off"},
+    ]).assign(execution_basis="same_next_day", cost_basis="EP05_plus_10bp_per_side").to_csv(output / "p3_layer5_market_controller_counterfactual_contract.csv", index=False, encoding="utf-8-sig")
+    pd.DataFrame([
+        {"metric": "regime_downgrade_lead_lag_vs_0050_TAIEX_drawdown", "use": "evaluation_only", "primary_regime": "ordinary|weak"},
+        {"metric": "downside_capture_5_10_20D_around_weak_bear", "use": "evaluation_only", "primary_regime": "ordinary|weak"},
+        {"metric": "false_alarm_count|tightening_duration|early_exit_loss|reentry_delay", "use": "evaluation_only", "primary_regime": "ordinary|weak"},
+        {"metric": "MDD|tail_loss|false_switch|turnover|cost", "use": "Phase_B_net_after_cost", "primary_regime": "ordinary|weak"},
+        {"metric": "C1_bull_return_only_without_risk_improvement", "use": "NO_GO", "primary_regime": "ordinary|weak"},
+        {"metric": "C2_risk_stable_limited_upside_cost", "use": "conservative_primary_candidate", "primary_regime": "ordinary|weak"},
+    ]).to_csv(output / "p3_layer5_market_controller_risk_acceptance_contract.csv", index=False, encoding="utf-8-sig")
     blockers = [
         {"blocker": "daily_RS_MA_BIAS_KD_not_materialized", "scope": "all daily candidate rows", "silent_fill": False},
         {"blocker": "daily_chip_5_10_20D_rollups_not_materialized", "scope": "applicable rows", "silent_fill": False},
@@ -169,12 +210,21 @@ def run(output: Path = OUTPUT, market_fill: Path = MARKET_FILL) -> Path:
                  "daily_price_core_ready_rows": int(daily.price_core_valid.sum()), "daily_membership_timing_ready": True,
                  "daily_feature_blocks_ready": False, "daily_state_rows_ready": False, "daily_action_rows_ready": False,
                  "market_source_fill_absorbed": True, "market_source_fill_commit": "0d1d4a0",
+                 "post_market_source_convergence_absorbed": True, "post_market_source_convergence_commit": "d5044fc",
+                 "true_download_source_gap_count": 0,
+                 "july_exact_Layer4_recompute_ready": True, "july_exact_Layer4_materialized": False,
+                 "Layer4_2026_06_29_carry_forward_after_date_allowed": False,
                  "market_source_compact_checksum_match": True,
                  "market_controller_source_ready": True, "market_controller_source_blockers": [],
                  "anti_mega_bias_acceptance_governance_ready": True,
                  "ordinary_weak_primary_judgment_required": True,
                  "strong_mega_secondary_only": True,
                  "P1_backfill_from_P3_allowed": False,
+                 "selector_market_controller_separation_contract_ready": True,
+                 "market_transition_trace_schema_ready": True,
+                 "market_counterfactual_C0_C3_contract_ready": True,
+                 "rolling_only_calibration_required": True,
+                 "full_period_or_future_threshold_calibration_allowed": False,
                  "ready_for_phase_a_event_validation": False, "ready_for_phase_b_unique_position_path": False, "ready_for_experiments": False,
                  "future_data_violation_count": 0, "formal_model_changed": False, "trade_decision_changed": False, "active_in_trade_decision": False,
                  "report_changed": False, "portfolio_replay_executed": False, "ready_for_strategy_replay": False, "ready_for_formal": False,
@@ -182,16 +232,17 @@ def run(output: Path = OUTPUT, market_fill: Path = MARKET_FILL) -> Path:
     (output / "p3_layer5_daily_readiness.json").write_text(json.dumps(readiness, ensure_ascii=False, indent=2), encoding="utf-8")
     (output / "final_summary_zh.md").write_text("# P3 Layer5 daily materialization\n\n- weekly membership next-day effective expansion與daily raw/adjusted price core已完成。\n- daily technical/chip/market state尚未計算，不得用weekly context冒充，因此Phase A不ready。\n- 未跑績效、未產selected action、未交Experiments。\n", encoding="utf-8")
     files = sorted(p for p in output.iterdir() if p.is_file() and p.name != "manifest.json")
-    manifest = {"task_id": TASK, "source_commits": ["ea5b046", "9c3ea9a", "0d1d4a0"],
-                "market_source_fill": str(market_fill), "market_source_readiness": market_ready, "readiness": readiness,
+    manifest = {"task_id": TASK, "source_commits": ["ea5b046", "9c3ea9a", "0d1d4a0", "d5044fc"],
+                "market_source_fill": str(market_fill), "market_source_readiness": market_ready,
+                "source_convergence": str(source_convergence), "source_convergence_readiness": convergence_ready, "readiness": readiness,
                 "files": [{"name": p.name, "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in files]}
     (output / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     return output
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(); parser.add_argument("--output-dir", type=Path, default=OUTPUT); parser.add_argument("--market-fill-dir", type=Path, default=MARKET_FILL)
-    args = parser.parse_args(); print(run(args.output_dir, args.market_fill_dir))
+    parser = argparse.ArgumentParser(); parser.add_argument("--output-dir", type=Path, default=OUTPUT); parser.add_argument("--market-fill-dir", type=Path, default=MARKET_FILL); parser.add_argument("--source-convergence-dir", type=Path, default=SOURCE_CONVERGENCE)
+    args = parser.parse_args(); print(run(args.output_dir, args.market_fill_dir, args.source_convergence_dir))
 
 
 if __name__ == "__main__": main()

@@ -1,0 +1,7 @@
+﻿metric,use,primary_regime
+regime_downgrade_lead_lag_vs_0050_TAIEX_drawdown,evaluation_only,ordinary|weak
+downside_capture_5_10_20D_around_weak_bear,evaluation_only,ordinary|weak
+false_alarm_count|tightening_duration|early_exit_loss|reentry_delay,evaluation_only,ordinary|weak
+MDD|tail_loss|false_switch|turnover|cost,Phase_B_net_after_cost,ordinary|weak
+C1_bull_return_only_without_risk_improvement,NO_GO,ordinary|weak
+C2_risk_stable_limited_upside_cost,conservative_primary_candidate,ordinary|weak

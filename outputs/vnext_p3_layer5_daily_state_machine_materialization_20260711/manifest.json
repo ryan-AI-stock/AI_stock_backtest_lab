@@ -3,7 +3,8 @@
   "source_commits": [
     "ea5b046",
     "9c3ea9a",
-    "0d1d4a0"
+    "0d1d4a0",
+    "d5044fc"
   ],
   "market_source_fill": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_p3_market_state_source_fill_20260711",
   "market_source_readiness": {
@@ -35,6 +36,37 @@
     "not_live_rule": true,
     "forward_returns_live_rule_usage": false
   },
+  "source_convergence": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-23\\ai-stock-rotation-radar-https-docs\\outputs\\radar_vnext_p3_post_market_source_remaining_gap_convergence_20260712",
+  "source_convergence_readiness": {
+    "task_id": "TASK-RADAR-DATA-VNEXT-P3-POST-MARKET-SOURCE-REMAINING-GAP-CONVERGENCE-001",
+    "status": "source_gap_converged_core_daily_materialization_required",
+    "source": "latest Core/Radar physical compact, manifest, coverage and blocked-ledger audit",
+    "coverage": "P3 requested 2023-07-11~2026-07-10; source actual generally through 2026-07-09; exact Layer4 PIT through 2026-06-29",
+    "new_download_rows": 0,
+    "new_download_reason": "no legally free true source gap remains after compact reuse audit",
+    "source_gap_count_requiring_download": 0,
+    "structural_or_policy_gap_count": 3,
+    "core_compute_gap_count": 1,
+    "ready_for_core_p3_post_market_source_convergence_absorption": true,
+    "ready_for_core_rerun": true,
+    "ready_for_core_daily_feature_materialization": true,
+    "ready_for_core_layer4_july_exact_recompute": true,
+    "ready_for_phase_a": false,
+    "ready_for_phase_b": false,
+    "ready_for_experiments": false,
+    "ready_for_strategy_replay": false,
+    "ready_for_formal": false,
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false,
+    "future_data_violation_count": 0,
+    "next_owner": "Core/Data",
+    "next_task": "materialize daily technical/chip/market-state blocks and recompute July exact Layer4 without carry-forward"
+  },
   "readiness": {
     "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-DAILY-STATE-MACHINE-MATERIALIZATION-001",
     "status": "daily_membership_and_price_core_materialized_feature_state_action_partial",
@@ -54,6 +86,12 @@
     "daily_action_rows_ready": false,
     "market_source_fill_absorbed": true,
     "market_source_fill_commit": "0d1d4a0",
+    "post_market_source_convergence_absorbed": true,
+    "post_market_source_convergence_commit": "d5044fc",
+    "true_download_source_gap_count": 0,
+    "july_exact_Layer4_recompute_ready": true,
+    "july_exact_Layer4_materialized": false,
+    "Layer4_2026_06_29_carry_forward_after_date_allowed": false,
     "market_source_compact_checksum_match": true,
     "market_controller_source_ready": true,
     "market_controller_source_blockers": [],
@@ -61,6 +99,11 @@
     "ordinary_weak_primary_judgment_required": true,
     "strong_mega_secondary_only": true,
     "P1_backfill_from_P3_allowed": false,
+    "selector_market_controller_separation_contract_ready": true,
+    "market_transition_trace_schema_ready": true,
+    "market_counterfactual_C0_C3_contract_ready": true,
+    "rolling_only_calibration_required": true,
+    "full_period_or_future_threshold_calibration_allowed": false,
     "ready_for_phase_a_event_validation": false,
     "ready_for_phase_b_unique_position_path": false,
     "ready_for_experiments": false,
@@ -122,7 +165,7 @@
     },
     {
       "name": "p3_layer5_daily_readiness.json",
-      "sha256": "eeb13966a692ce60be7c9bcbdd9fa230057f278bdc678ed3cf72620ae3fba0dd"
+      "sha256": "fcd5a14f7ace5b195a5b1233974092d52b30d68c225a515a278dea4c79867a49"
     },
     {
       "name": "p3_layer5_daily_requested_vs_actual_coverage.csv",
@@ -131,6 +174,34 @@
     {
       "name": "p3_layer5_daily_taifex_tdcc_ablation_contract.csv",
       "sha256": "efba35383126d2452a736ecceb239e4f60b5b7c1af0f04df62b3c07eee3501c4"
+    },
+    {
+      "name": "p3_layer5_july_exact_layer4_freshness_audit.csv",
+      "sha256": "c8ae4189d5c74c8eac32cae45a78c48a73a7a71f9bc01ae45a69d82321c5bfc9"
+    },
+    {
+      "name": "p3_layer5_market_controller_counterfactual_contract.csv",
+      "sha256": "1fdca3bfc3d0832440f94b4513bea8c37338a248cdc3b7e8bab0ee946950f345"
+    },
+    {
+      "name": "p3_layer5_market_controller_multiplier_contract.csv",
+      "sha256": "92ce4b50eedeb6e4c2d2cd888a38e3d9b7a305c28fff81af26a401e2431723f0"
+    },
+    {
+      "name": "p3_layer5_market_controller_risk_acceptance_contract.csv",
+      "sha256": "ad138b28503b9b62ebbf5b2449cd2c19e05115dc0fc5251c4fbc1c4d75c5e52a"
+    },
+    {
+      "name": "p3_layer5_market_regime_transition_trace_schema.csv",
+      "sha256": "bfe43b802ca9d082b5a2d4ea6b0bc56f9da2274d53b830216e26b8cc4b8c8bd7"
+    },
+    {
+      "name": "p3_layer5_remaining_source_family_matrix.csv",
+      "sha256": "ff39adbbe2add3107a903b4ae645ef83a3b3b960d25b26ebe9f0211b83b0903b"
+    },
+    {
+      "name": "p3_layer5_remaining_source_gap_ledger.csv",
+      "sha256": "e0c463154057916c0cfe56880a1fc219b036289d2dc525ddbbd63fe8f6a663b9"
     }
   ]
 }

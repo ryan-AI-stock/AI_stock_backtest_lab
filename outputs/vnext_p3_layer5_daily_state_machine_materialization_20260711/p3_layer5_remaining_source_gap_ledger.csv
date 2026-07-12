@@ -1,0 +1,6 @@
+﻿gap_id,family,gap_type,row_scope,owner,next_action,prevents_phase_a,prevents_phase_b,prevents_formal,future_data_violation_count
+ADJ-STRUCTURAL,adjusted_analysis_HLC,structural_source_exhausted,2250 ticker-dates / 11 fully blocked tickers,Radar evidence retained,do not repeat free-route probe; keep row blocked,False,False,True,0
+CA-NOEVENT,corporate_action_guard,structural_no_event_proof,701 primary80 union tickers,source governance policy,retain partial event inventory; no current-table historical inference,False,False,True,0
+L4-JULY,Layer4_exact_PIT_membership,not_materialized_not_source_missing,2026-06-30~2026-07-09 source-ready dates,Core/Data,recompute exact weekly Layer4 from frozen Layer0-4 contract; no 2026-06-29 carry-forward claim,True,True,True,0
+DAILY-FEATURES,daily technical/chip/market state,core_compute_not_source_gap,Core 715 dates / 57200 candidates,Core/Data,"compute RS/MA/BIAS/KD, 5/10/20D chip rollups and three-group market state",True,True,True,0
+TDCC-OLD,TDCC_P3_1,source_expired_optional,2023-07-11~2025-07-10,accepted optional-source policy,P3-1 excludes TDCC component; P3-2 A/B only,False,False,False,0
