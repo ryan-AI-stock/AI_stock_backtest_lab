@@ -1,0 +1,44 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-WEEKLY-RANK1-CHALLENGER-FROZEN-STATE-MACHINE-CONTRACT-001",
+  "inputs": {
+    "rank1_contract_sha256": "7d96677fbd3eade09bd96a7ee3a7d6f720f0306c2dbbcb7bb17f8b6df9dc9f57",
+    "frozen_parameter_lattice_sha256": "de518bbe3e28f53209442ed510e952e4c8391b19affb9d58bbe11a32b95f6b95"
+  },
+  "files": [
+    {
+      "name": "final_summary_zh.md",
+      "sha256": "bcca41cdb87be0a1aa42325fce443f78161ea440659d22c45bb944b423ee958c",
+      "bytes": 331
+    },
+    {
+      "name": "p3_rank1_challenger_action_condition_contract.csv",
+      "sha256": "45c748a73e0971b94731f45ea95abad35e31b0eba49ffe92b078bdb8d2ccbae1",
+      "bytes": 1798
+    },
+    {
+      "name": "p3_rank1_challenger_bounded_path_scope_estimate.csv",
+      "sha256": "bdff6f3b34ceb3695535b56363521514c7e943c85d693cd97405d7fe1aef05a4",
+      "bytes": 442
+    },
+    {
+      "name": "p3_rank1_challenger_condition_source_readiness.csv",
+      "sha256": "8d8c9a5745bec940cf6961982c2a9b8cac69a4dee510c7ccfb0d625e85d15921",
+      "bytes": 1402
+    },
+    {
+      "name": "p3_rank1_challenger_minimum_strategy_center_decision_table.csv",
+      "sha256": "ca3358b312fd9cd32da5e9ab27bdcdf9b4bcaa20961021fc6fd6be4b9aba7daf",
+      "bytes": 1634
+    },
+    {
+      "name": "p3_rank1_challenger_weekly_input_trace.csv",
+      "sha256": "2c1c6f7fdce393913f00e722e657d4878b82e9bda32aaa72e9397b8917e2c5b6",
+      "bytes": 31483
+    },
+    {
+      "name": "readiness_for_p3_rank1_challenger_state_machine.json",
+      "sha256": "2ffed3cdde784678019f1466b1a3944328a42934e025109abe99df16abdfc88d",
+      "bytes": 993
+    }
+  ]
+}

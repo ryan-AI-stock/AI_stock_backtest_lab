@@ -1,0 +1,2 @@
+﻿requested_weekly_snapshots,canonical_rank1_rows,unique_rank1_tickers,rank1_change_events_upper_bound,state_machine_decision_events_upper_bound,transition_upper_bound,same_day_full_rank1_feature_rows,same_day_partial_rank1_rows,OHLC_scope,bounded,all80_rerank,Top3,Ridge_GBDT
+154,154,101,136,154,153,131,23,rank1 union plus path-dependent incumbent holdings; official next-day execution and daily event-aware marks,True,False,False,False
