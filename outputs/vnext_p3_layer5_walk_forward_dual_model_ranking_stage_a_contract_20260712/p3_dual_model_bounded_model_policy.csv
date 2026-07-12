@@ -1,0 +1,3 @@
+﻿model,library,hyperparameter,bounded_values,selection,installed
+elastic_net_logistic_and_ridge_baseline,scikit-learn,alpha/C and l1_ratio,3 regularization strengths x 3 l1 ratios maximum,inner validation fold only; stability not final OOS,False
+LightGBM_LambdaRank_GBDT_challenger,lightgbm,num_leaves; learning_rate; min_data_in_leaf,2 x 2 x 2 maximum,inner validation fold only; no final OOS tuning,False

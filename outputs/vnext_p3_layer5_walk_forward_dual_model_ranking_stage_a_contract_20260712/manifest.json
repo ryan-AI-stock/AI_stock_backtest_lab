@@ -1,0 +1,53 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-WALK-FORWARD-DUAL-MODEL-RANKING-STAGE-A-CONTRACT-001",
+  "files": [
+    {
+      "name": "final_summary_zh.md",
+      "sha256": "d063193c7a3005dd849501c1c1752f970a7346f34df547068fb70e94cbbb3fe4"
+    },
+    {
+      "name": "p3_dual_model_bounded_model_policy.csv",
+      "sha256": "f2ef416088d4b4907b496e47ff2bca374f7011fd24588d04797bc5ea8ea96d66"
+    },
+    {
+      "name": "p3_dual_model_exact_label_contract.csv.gz",
+      "sha256": "2f43539302870f0761d9363d62e32e1fad07acb86ee0c985ff036f0951c89e36"
+    },
+    {
+      "name": "p3_dual_model_feature_correlation_audit.csv",
+      "sha256": "65455dd3c39945917000941cca7d5b126dbddf86f9d2fee2cdc5afc04f85a2b3"
+    },
+    {
+      "name": "p3_dual_model_feature_data_dictionary.csv",
+      "sha256": "80fddb4d6f9c3b84bb36241429861c43ce4a0c331fcc94b7fca525ea6cded0ac"
+    },
+    {
+      "name": "p3_dual_model_feature_missingness.csv",
+      "sha256": "18802c8706aac4c04197a5712c9e6c4d2d5aedd4bab51ecf699e40175d318e63"
+    },
+    {
+      "name": "p3_dual_model_frozen_feature_matrix.csv.gz",
+      "sha256": "65e5f21f378af590f96a887db598f91d0cf451dbd54bed5ff8f9d13a267d3f83"
+    },
+    {
+      "name": "p3_dual_model_label_cost_policy.csv",
+      "sha256": "b5ee79e61c4b7779e69038b29cf31b5d5eb4b6833f87c63afa1886fbe287700e"
+    },
+    {
+      "name": "p3_dual_model_label_regime_candidate_coverage.csv",
+      "sha256": "33855a05e6f21b350a4bb48c45c849797af47ead1fb2344526cd2c9290b1412a"
+    },
+    {
+      "name": "p3_dual_model_leakage_future_audit.csv",
+      "sha256": "34f0c276248c9606dd47e961fa40e81922f549db31d7205af930fc580c563186"
+    },
+    {
+      "name": "p3_dual_model_walk_forward_fold_calendar.csv",
+      "sha256": "cc7973996b4e2b6cc58c9e8301c9fdf6001cda0a3459fc5f23b871001f1c63ec"
+    },
+    {
+      "name": "readiness_for_dual_model_stage_a.json",
+      "sha256": "6e6bbdea6dfdca13968c560d3ed42af17c91fb7f4134b5360e90c4d4107409b9"
+    }
+  ]
+}

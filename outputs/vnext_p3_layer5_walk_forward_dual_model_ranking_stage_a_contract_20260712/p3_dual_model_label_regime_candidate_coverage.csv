@@ -1,0 +1,5 @@
+﻿horizon_td,label_rows,decision_dates,candidate_groups,ordinary_rows,weak_rows,strong_rows,warmup_rows,row_base_weight,regime_weight,ordinary_weak_primary_stop_gate
+5,51482,710,75.0,38620,3285,4567,5010,1/candidate_count_on_decision_date,inverse_train_fold_regime_frequency_only,True
+10,50179,705,74.0,37785,3165,4268,4961,1/candidate_count_on_decision_date,inverse_train_fold_regime_frequency_only,True
+20,47975,695,73.0,36101,3131,3824,4919,1/candidate_count_on_decision_date,inverse_train_fold_regime_frequency_only,True
+40,44794,675,71.0,33957,2950,2995,4892,1/candidate_count_on_decision_date,inverse_train_fold_regime_frequency_only,True

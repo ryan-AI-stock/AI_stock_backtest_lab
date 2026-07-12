@@ -1,0 +1,4 @@
+﻿fold_id,train_start,train_end,train_decision_dates,embargo_train_validation_start,embargo_train_validation_end,validation_start,validation_end,validation_decision_dates,embargo_validation_oos_start,embargo_validation_oos_end,OOS_start,OOS_end,OOS_decision_dates,max_label_horizon_TD,in_sample_prediction_allowed
+F1,2023-07-17,2024-07-05,238,2024-07-08,2024-09-03,2024-09-04,2024-11-05,40,2024-11-06,2024-12-31,2025-01-02,2025-06-30,116,40,False
+F2,2023-07-17,2024-12-25,354,2024-12-26,2025-03-04,2025-03-05,2025-05-02,40,2025-05-05,2025-06-30,2025-07-01,2025-12-31,127,40,False
+F3,2023-07-17,2025-07-09,481,2025-07-10,2025-09-03,2025-09-04,2025-11-04,40,2025-11-05,2025-12-31,2026-01-02,2026-06-26,114,40,False

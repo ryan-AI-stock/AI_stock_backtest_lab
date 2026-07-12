@@ -1,0 +1,3 @@
+﻿model,primary_label,secondary_label,continuous_target,cost_basis
+risk_classification,severe_drawdown_event_10TD; severe_drawdown_event_20TD,tail_loss_event_10TD/20TD,future_MDD_rank_10TD/20TD,event-aware path risk; no selector feedback
+opportunity_learning_to_rank,10TD and 20TD net excess vs 0050 kept separate,5TD and 40TD net excess kept separate,EP05+10bp/side stock net return minus same-basis 0050 ETF net return,EP05 stock/ETF tax difference and 10bp each side
