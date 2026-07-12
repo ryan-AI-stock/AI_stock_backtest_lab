@@ -1,0 +1,4 @@
+﻿comparison,execution_basis,cost,coverage,required_outputs
+selected_vs_0050,same_next_day,EP05_plus_10bp_per_side,same_dates,daily_excess|median_excess|hit_rate|downside_capture|MDD
+selected_vs_00631L_or_0050_2x,same_next_day_state_hold,EP05_asset_specific_plus_10bp_per_side,same_dates,net_return|MDD|hit_rate|downside_capture
+slippage_sensitivity,same_next_day,EP05,same_dates,5bp|10bp_primary|20bp

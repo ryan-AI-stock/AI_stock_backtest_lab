@@ -57,6 +57,10 @@
     "market_source_compact_checksum_match": true,
     "market_controller_source_ready": true,
     "market_controller_source_blockers": [],
+    "anti_mega_bias_acceptance_governance_ready": true,
+    "ordinary_weak_primary_judgment_required": true,
+    "strong_mega_secondary_only": true,
+    "P1_backfill_from_P3_allowed": false,
     "ready_for_phase_a_event_validation": false,
     "ready_for_phase_b_unique_position_path": false,
     "ready_for_experiments": false,
@@ -79,6 +83,14 @@
     {
       "name": "future_data_audit.csv",
       "sha256": "34beba604165ac7518668a97460f7b7551171d0e447128d6778af56060f3b20d"
+    },
+    {
+      "name": "p3_layer5_anti_mega_bias_acceptance_governance.csv",
+      "sha256": "7feb628cae68a379cd58ee3c45e80393cef76236cde6bc69590d9e932b390f84"
+    },
+    {
+      "name": "p3_layer5_benchmark_excess_comparison_contract.csv",
+      "sha256": "214e7f5042b0316a02eef10786d81d70c90b46772e59a5b6900c9ac7d54ab88e"
     },
     {
       "name": "p3_layer5_daily_blocked_ledger.csv",
@@ -110,7 +122,7 @@
     },
     {
       "name": "p3_layer5_daily_readiness.json",
-      "sha256": "bb7b7d1b73d5e87efe40194b74ef6f926e45897fcec32d62017e0c51e44033d4"
+      "sha256": "eeb13966a692ce60be7c9bcbdd9fa230057f278bdc678ed3cf72620ae3fba0dd"
     },
     {
       "name": "p3_layer5_daily_requested_vs_actual_coverage.csv",

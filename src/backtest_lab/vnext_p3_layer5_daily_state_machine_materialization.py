@@ -124,6 +124,21 @@ def run(output: Path = OUTPUT, market_fill: Path = MARKET_FILL) -> Path:
         {"ablation_id": "P3_2_TDCC_on", "period": "2025-07-11_to_2026-06-29", "TAIFEX_enabled": True, "TDCC_enabled": True, "coverage_policy": "same_TDCC_ready_dates", "NA_policy": "row_availability", "execution_basis": "same_next_day", "cost_basis": "EP05_plus_10bp_per_side"},
         {"ablation_id": "P3_2_TDCC_off", "period": "2025-07-11_to_2026-06-29", "TAIFEX_enabled": True, "TDCC_enabled": False, "coverage_policy": "same_TDCC_ready_dates", "NA_policy": "explicit_ablation", "execution_basis": "same_next_day", "cost_basis": "EP05_plus_10bp_per_side"},
     ]).to_csv(output / "p3_layer5_daily_taifex_tdcc_ablation_contract.csv", index=False, encoding="utf-8-sig")
+    pd.DataFrame([
+        {"gate_id": "G1_regime_primary", "phase": "B", "scope": "ordinary_market|weak_market", "metric": "net_after_cost_return|median_excess|hit_rate|downside_capture|MDD|false_switch", "primary": True, "go_rule": "must_pass; strong_or_mega_cannot_override_failure"},
+        {"gate_id": "G2_regime_secondary", "phase": "B", "scope": "strong_market|mega_like", "metric": "same_metrics", "primary": False, "go_rule": "secondary_only"},
+        {"gate_id": "G3_market_bonus_removal", "phase": "B", "scope": "same_date_same_execution", "metric": "selected_return_minus_0050_return", "primary": True, "go_rule": "report_median_excess_and_hit_rate"},
+        {"gate_id": "G4_leveraged_hurdle", "phase": "B", "scope": "same_basis", "metric": "00631L_or_0050_2x_state_hold_after_cost", "primary": True, "go_rule": "must_not_hide_underperformance_with_headline_return"},
+        {"gate_id": "G5_walk_forward", "phase": "B", "scope": "year|quarter|walk_forward", "metric": "net_return|MDD|annual_quarter_stability", "primary": True, "go_rule": "stable_platform_not_single_peak"},
+        {"gate_id": "G6_remove_best", "phase": "B", "scope": "exact_full_path_rechain", "metric": "remove_best_year|quarter|episode_1_3_5", "primary": True, "go_rule": "no_interval_subtraction_proxy"},
+        {"gate_id": "G7_concentration", "phase": "B", "scope": "ticker|sector|mega_period", "metric": "contribution_share", "primary": True, "go_rule": "explosive_segment_dependency_blocks_primary"},
+        {"gate_id": "G8_phase_A_semantics", "phase": "A", "scope": "all_events", "metric": "PIT|NA|confidence|state_action_consistency", "primary": True, "go_rule": "must_pass_before_phase_B"},
+    ]).to_csv(output / "p3_layer5_anti_mega_bias_acceptance_governance.csv", index=False, encoding="utf-8-sig")
+    pd.DataFrame([
+        {"comparison": "selected_vs_0050", "execution_basis": "same_next_day", "cost": "EP05_plus_10bp_per_side", "coverage": "same_dates", "required_outputs": "daily_excess|median_excess|hit_rate|downside_capture|MDD"},
+        {"comparison": "selected_vs_00631L_or_0050_2x", "execution_basis": "same_next_day_state_hold", "cost": "EP05_asset_specific_plus_10bp_per_side", "coverage": "same_dates", "required_outputs": "net_return|MDD|hit_rate|downside_capture"},
+        {"comparison": "slippage_sensitivity", "execution_basis": "same_next_day", "cost": "EP05", "coverage": "same_dates", "required_outputs": "5bp|10bp_primary|20bp"},
+    ]).to_csv(output / "p3_layer5_benchmark_excess_comparison_contract.csv", index=False, encoding="utf-8-sig")
     blockers = [
         {"blocker": "daily_RS_MA_BIAS_KD_not_materialized", "scope": "all daily candidate rows", "silent_fill": False},
         {"blocker": "daily_chip_5_10_20D_rollups_not_materialized", "scope": "applicable rows", "silent_fill": False},
@@ -156,6 +171,10 @@ def run(output: Path = OUTPUT, market_fill: Path = MARKET_FILL) -> Path:
                  "market_source_fill_absorbed": True, "market_source_fill_commit": "0d1d4a0",
                  "market_source_compact_checksum_match": True,
                  "market_controller_source_ready": True, "market_controller_source_blockers": [],
+                 "anti_mega_bias_acceptance_governance_ready": True,
+                 "ordinary_weak_primary_judgment_required": True,
+                 "strong_mega_secondary_only": True,
+                 "P1_backfill_from_P3_allowed": False,
                  "ready_for_phase_a_event_validation": False, "ready_for_phase_b_unique_position_path": False, "ready_for_experiments": False,
                  "future_data_violation_count": 0, "formal_model_changed": False, "trade_decision_changed": False, "active_in_trade_decision": False,
                  "report_changed": False, "portfolio_replay_executed": False, "ready_for_strategy_replay": False, "ready_for_formal": False,
