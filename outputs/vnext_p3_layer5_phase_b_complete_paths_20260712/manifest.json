@@ -1,0 +1,77 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-PHASE-B-COMPLETE-PATHS-001",
+  "source_commit": "8822b2e",
+  "readiness": {
+    "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-PHASE-B-COMPLETE-PATHS-001",
+    "status": "static_actions_complete_waiting_bounded_tradability_event_patch",
+    "scenario_count": 9,
+    "canonical_counterfactuals": 4,
+    "placebo_seeds": 5,
+    "action_rows": 6435,
+    "transition_rows": 282,
+    "mark_rows": 2864,
+    "tradability_audit_rows": 647,
+    "unresolved_transition_count": 11,
+    "blocked_scenarios": [
+      "placebo_seed_17",
+      "placebo_seed_29",
+      "placebo_seed_43",
+      "placebo_seed_71",
+      "placebo_seed_101"
+    ],
+    "outgoing_exit_marks_ready": false,
+    "counterfactual_actions_materialized": true,
+    "applied_controller_gates_materialized": true,
+    "TAIFEX_TDCC_ablation_trace_materialized": true,
+    "executable_scenario_paths_ready": [
+      "C0",
+      "C1",
+      "C2",
+      "C3"
+    ],
+    "placebo_paths_materialized": false,
+    "exact_rechain_daily_marks_ready": false,
+    "ready_for_phase_b_experiments": false,
+    "ready_for_experiments": false,
+    "future_data_violation_count": 0,
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "ready_for_strategy_replay": false,
+    "ready_for_formal": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false
+  },
+  "files": [
+    {
+      "name": "final_summary_zh.md",
+      "sha256": "272c2d117dddc52fc1bcccf7ce0923811379fd68bcea0230f43826a8057c2577"
+    },
+    {
+      "name": "p3_layer5_phase_b_all_scenario_tradability_horizon_audit.csv",
+      "sha256": "9b79cbc1eb73c71f9f5089028753d8ac5ea86429d704f626b1e49e31ab7e5a68"
+    },
+    {
+      "name": "p3_layer5_phase_b_C0_C3_action_diff_audit.csv",
+      "sha256": "3504d3a9ea8b0e2cead9b6bd1bab8c156e6f321149c2eb3260d211fbe2f658d5"
+    },
+    {
+      "name": "p3_layer5_phase_b_daily_unique_position_marks.csv",
+      "sha256": "8be01e5c2a1b5a6948224bf54eb3303f12ab91143cf1d88bafd83d6fa7812004"
+    },
+    {
+      "name": "p3_layer5_phase_b_exact_transition_cost_ledger.csv",
+      "sha256": "0e465c4eeded7cf5f3dd0c7921469df5d8fee4dce9d32b9b380d2d8e360df1e6"
+    },
+    {
+      "name": "p3_layer5_phase_b_scenario_daily_actions.csv",
+      "sha256": "8fc2a4eeb9f50424db2f5b753adb31d5eeb64558ac6be6c8f037437dcd597d69"
+    },
+    {
+      "name": "readiness_for_p3_layer5_phase_b_complete_paths.json",
+      "sha256": "d96e0fd8dc07394d452d75b1fdecfdb443d06ad820501b2b8b989a8c7657a8ff"
+    }
+  ]
+}

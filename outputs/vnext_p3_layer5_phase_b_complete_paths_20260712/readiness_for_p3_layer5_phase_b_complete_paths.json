@@ -1,0 +1,43 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-PHASE-B-COMPLETE-PATHS-001",
+  "status": "static_actions_complete_waiting_bounded_tradability_event_patch",
+  "scenario_count": 9,
+  "canonical_counterfactuals": 4,
+  "placebo_seeds": 5,
+  "action_rows": 6435,
+  "transition_rows": 282,
+  "mark_rows": 2864,
+  "tradability_audit_rows": 647,
+  "unresolved_transition_count": 11,
+  "blocked_scenarios": [
+    "placebo_seed_17",
+    "placebo_seed_29",
+    "placebo_seed_43",
+    "placebo_seed_71",
+    "placebo_seed_101"
+  ],
+  "outgoing_exit_marks_ready": false,
+  "counterfactual_actions_materialized": true,
+  "applied_controller_gates_materialized": true,
+  "TAIFEX_TDCC_ablation_trace_materialized": true,
+  "executable_scenario_paths_ready": [
+    "C0",
+    "C1",
+    "C2",
+    "C3"
+  ],
+  "placebo_paths_materialized": false,
+  "exact_rechain_daily_marks_ready": false,
+  "ready_for_phase_b_experiments": false,
+  "ready_for_experiments": false,
+  "future_data_violation_count": 0,
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "ready_for_strategy_replay": false,
+  "ready_for_formal": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false
+}
