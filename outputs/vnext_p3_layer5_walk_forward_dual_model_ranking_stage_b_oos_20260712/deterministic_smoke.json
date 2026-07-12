@@ -1,0 +1,12 @@
+{
+  "python": "3.11.9",
+  "platform": "Windows-10-10.0.26200-SP0",
+  "processor": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+  "sklearn": "1.7.2",
+  "lightgbm": "4.6.0",
+  "seed": 20260712,
+  "threads": 1,
+  "ridge_checksum": 5.782058671758,
+  "logit_checksum": 6.768985626712,
+  "lightgbm_checksum": 3.693469622441
+}

@@ -1,0 +1,56 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-WALK-FORWARD-DUAL-MODEL-RANKING-STAGE-B-OOS-CONTRACT-001",
+  "runtime": {
+    "python": "3.11.9",
+    "platform": "Windows-10-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+    "sklearn": "1.7.2",
+    "lightgbm": "4.6.0",
+    "numpy": "2.4.6",
+    "seed": 20260712,
+    "threads": 1,
+    "install_command": ".venv-ml\\Scripts\\python.exe -m pip install --require-hashes -r requirements-ml.lock"
+  },
+  "files": [
+    {
+      "name": "deterministic_smoke.json",
+      "sha256": "d46245d69991442a37ce30cdbd186b70acd25c589a9ca5cb098dbdce1dbae397"
+    },
+    {
+      "name": "final_summary_zh.md",
+      "sha256": "ac92df302d137d2f50f43fdb47b6393c380d9a3b38219c014f39db5ddd73f2c0"
+    },
+    {
+      "name": "ml_dependency_install_audit.json",
+      "sha256": "a75b04284a9fa9effdc7c6246dae7d90f7da70da81a7e706317457f267b921b8"
+    },
+    {
+      "name": "ml_runtime_environment.json",
+      "sha256": "c448bd195d4fec1788502224e94f152b771fc0f3e5fde0ee10625b2226b2b687"
+    },
+    {
+      "name": "p3_dual_model_feature_importance_sign_stability.csv.gz",
+      "sha256": "06d0e6ed21756d7b9241c14f46d241a631e8b3561759226f2d948de233056393"
+    },
+    {
+      "name": "p3_dual_model_fold_lineage_selected_params.csv",
+      "sha256": "862f80a333bd1cceac95c61baa194d43584fd34b5c907cc51cf74da5044d97d2"
+    },
+    {
+      "name": "p3_dual_model_OOS_regime_coverage.csv",
+      "sha256": "ee1b48575681d8f68c51e1ba7cf3fefa97d38b5a682a498ef500099c3c8e96f1"
+    },
+    {
+      "name": "p3_dual_model_OOS_risk_calibration.csv",
+      "sha256": "0405b9f34e08145ce27149ed1f67d97ea364aba26fe3dfd79ee6183e9fdc4316"
+    },
+    {
+      "name": "p3_dual_model_strict_OOS_predictions.csv.gz",
+      "sha256": "2e3f481aa46f572f4cddcd2ce24114e29d27b07020ef2da7092711da45e97117"
+    },
+    {
+      "name": "readiness_for_dual_model_OOS.json",
+      "sha256": "817d7f21cff08ae2cd131db0015cce1529c63c5c998b7d467b77f599a2a5261b"
+    }
+  ]
+}

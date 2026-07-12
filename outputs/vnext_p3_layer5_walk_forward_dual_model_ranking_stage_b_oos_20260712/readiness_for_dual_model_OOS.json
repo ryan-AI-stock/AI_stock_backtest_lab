@@ -1,0 +1,31 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-WALK-FORWARD-DUAL-MODEL-RANKING-STAGE-B-OOS-CONTRACT-001",
+  "status": "strict_OOS_dual_model_predictions_ready_for_candidate_quality_validation",
+  "OOS_prediction_rows": 46173,
+  "fold_count": 3,
+  "horizons": [
+    10,
+    20
+  ],
+  "models": [
+    "opportunity_ridge",
+    "risk_logistic",
+    "opportunity_lambdarank",
+    "risk_gbdt"
+  ],
+  "risk_logistic_all_folds_converged": true,
+  "final_OOS_used_for_tuning": false,
+  "portfolio_selector_combined": false,
+  "ready_for_oos_candidate_quality": true,
+  "ready_for_portfolio_performance": false,
+  "ready_for_experiments": true,
+  "future_data_violation_count": 0,
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "ready_for_formal": false,
+  "ready_for_strategy_replay": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false
+}

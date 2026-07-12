@@ -1,0 +1,10 @@
+{
+  "lock_file": "requirements-ml.lock",
+  "lock_sha256": "3bf9da2d84d862165501cb1694229c5fe6d6ac5c31f1e16677ae727c42ccdadd",
+  "install_command": ".venv-ml\\\\Scripts\\\\python.exe -m pip install --require-hashes -r requirements-ml.lock",
+  "venv_path": ".venv-ml",
+  "global_environment_modified": false,
+  "wheel_binaries_committed": false,
+  "pip_check": "pass",
+  "smoke_repeated_checksum_match": true
+}
