@@ -1,0 +1,491 @@
+﻿ticker,metric,status,blocked_reason,attempt_batch_key,formal_model_changed,trade_decision_changed,active_in_trade_decision,report_changed,portfolio_replay_executed,ready_for_strategy_replay,ready_for_formal,not_live_rule,forward_returns_live_rule_usage
+9105,OperatingCashflow,official_indicator_company_not_returned,MOPS comparison API returned no series for requested ticker,OperatingCashflow_b034,False,False,False,False,False,False,False,True,False
+9105,InvestingCashflow,official_indicator_company_not_returned,MOPS comparison API returned no series for requested ticker,InvestingCashflow_b034,False,False,False,False,False,False,False,True,False
+9105,DebtRatio,official_indicator_company_not_returned,MOPS comparison API returned no series for requested ticker,DebtRatio_b034,False,False,False,False,False,False,False,True,False
+9105,CurrentRatio,official_indicator_company_not_returned,MOPS comparison API returned no series for requested ticker,CurrentRatio_b034,False,False,False,False,False,False,False,True,False
+2207,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2207,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2207,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2207,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2207,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2207,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2311,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2311,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2311,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2311,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2311,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2311,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2311,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2311,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2311,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2311,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2311,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2311,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2311,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2311,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2311,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2325,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2325,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2325,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2325,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2325,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2325,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2325,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2325,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2325,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2325,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2325,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2325,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2325,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2325,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2325,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2448,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2448,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2448,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2448,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2448,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2448,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2448,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2448,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2448,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2448,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2448,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2448,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2448,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2448,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2448,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2456,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2456,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2456,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2456,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2456,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2456,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2456,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2456,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2456,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2456,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2456,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2456,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2456,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2456,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2456,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2645,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2645,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2645,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2645,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2645,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2646,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2646,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2646,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2646,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2646,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2801,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2801,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2801,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2801,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2801,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2801,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2801,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2801,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2801,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2801,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2801,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2801,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2801,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2801,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2801,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2809,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2809,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2809,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2809,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2809,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2809,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2809,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2809,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2812,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2812,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2812,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2816,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2816,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2816,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2816,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2816,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2823,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2823,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2823,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2834,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2834,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2834,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2834,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2834,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2834,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2834,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2834,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2834,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2834,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2834,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2834,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2834,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2834,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2834,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2834,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2867,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2867,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2867,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2880,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2880,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2880,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2880,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2880,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2880,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2880,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2880,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2880,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2880,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2880,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2880,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2880,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2880,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2880,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2881,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2881,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2881,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2881,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2881,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2881,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2881,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2881,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2881,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2881,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2881,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2881,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2881,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2881,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2881,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2882,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2882,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2882,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2882,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2882,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2882,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2882,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2882,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2882,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2882,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2882,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2882,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2882,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2882,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2882,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2882,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2883,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2883,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2883,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2883,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2883,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2883,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2883,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2883,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2883,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2883,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2883,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2883,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2883,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2883,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2883,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2883,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2883,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2884,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2884,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2884,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2884,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2884,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2884,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2884,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2884,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2884,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2884,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2884,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2884,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2884,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2884,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2884,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2884,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2884,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2885,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2885,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2885,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2885,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2885,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2885,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2885,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2885,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2885,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2885,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2885,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2885,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2885,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2885,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2885,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2885,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2885,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2886,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2886,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2886,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2886,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2886,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2886,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2886,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2886,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2886,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2886,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2886,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2886,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2886,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2886,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2886,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2886,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2886,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2887,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2887,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2887,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2887,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2887,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2887,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2887,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2887,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2887,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2887,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2887,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2887,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2887,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2887,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2887,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2887,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2888,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2888,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2888,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2888,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2888,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2888,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2888,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2888,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2888,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2888,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2888,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2888,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2888,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+2890,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2890,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2890,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2890,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2890,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2890,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2890,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2890,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2890,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2890,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2890,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2890,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2890,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2890,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2890,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2890,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2890,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2891,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2891,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2891,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2891,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2891,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2891,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2891,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2891,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2891,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2891,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2891,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2891,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2891,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2891,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2891,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2891,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2891,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2892,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2892,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2892,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2892,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2892,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2892,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2892,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2892,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2892,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2892,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2892,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2892,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2892,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2892,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2892,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2892,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+2892,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+3135,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+3135,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+3135,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+3135,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+3135,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+3698,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+3698,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+3698,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+3698,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+3698,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+3698,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+3698,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+3698,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+3698,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+3698,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+3698,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+3698,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+3698,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+3698,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+3698,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+3715,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+3715,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+3715,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+3715,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+3715,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+3715,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+3715,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+3715,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+4585,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+4585,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+4585,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+4585,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+4585,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+4772,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+4772,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+4772,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+4772,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+4772,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+5264,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+5264,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+5264,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+5264,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+5264,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+5264,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+5264,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+5264,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+5264,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+5264,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+5264,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+5264,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+5264,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+5264,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+5264,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+5876,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+5876,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+5876,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+5876,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+5876,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+5876,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+5876,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+5876,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+5876,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+5876,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+5876,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+5876,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+5876,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+5876,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+5880,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+5880,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+5880,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+5880,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+5880,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+5880,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+5880,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+5880,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+5880,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+5880,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+5880,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+5880,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+5880,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+5880,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+5880,,official_not_applicable_financial_profile,financial-industry taxonomy does not expose a comparable value,,False,False,False,False,False,False,False,True,False
+6725,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6725,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6725,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6725,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6725,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6805,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6805,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6805,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6805,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6805,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6890,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6890,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6890,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6890,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6890,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6944,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6944,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6944,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6944,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6944,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6962,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6962,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6962,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6962,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6962,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6962,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6962,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6962,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6962,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6962,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6962,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6962,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6962,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6962,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6962,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+6962,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+7722,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+7722,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+7722,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+7722,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+7722,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+7751,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+7751,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+7751,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+7751,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+7751,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+7769,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+7769,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+7769,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+7769,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+7769,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+7795,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+7795,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+7795,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+7795,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+7795,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+9105,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+9105,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+9105,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+9105,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+9105,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+9105,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+9105,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+9105,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+9105,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+9105,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+9105,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+9105,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+9105,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+9105,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+9105,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+9105,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+9105,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+9105,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+9105,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+9105,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+9105,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+9105,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+9105,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+9105,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False
+9105,,official_field_missing,MOPS official trend API has no finite value; no zero fill,,False,False,False,False,False,False,False,True,False

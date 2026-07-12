@@ -1,0 +1,6 @@
+﻿family,available_rows,coverage_share,status,NA_zero_fill_used
+revenue,56755,0.9922202797202797,ready,False
+profitability,56772,0.9925174825174825,ready,False
+margins,51979,0.9087237762237762,partial_applicability_aware,False
+cashflow,54442,0.9517832167832168,ready,False
+leverage_liquidity,57150,0.9991258741258742,ready,False

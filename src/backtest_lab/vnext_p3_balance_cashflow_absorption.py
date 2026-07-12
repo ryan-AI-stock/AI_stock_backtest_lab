@@ -1,0 +1,52 @@
+from __future__ import annotations
+import hashlib,json
+from pathlib import Path
+import numpy as np
+import pandas as pd
+
+ROOT=Path(__file__).resolve().parents[2]
+BASE=ROOT/'outputs/vnext_p3_layer5_full_candidate_scoring_fundamental_pit_completion_20260712'
+RADAR=Path(r'C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p3_layer5_fundamental_balance_cashflow_pit_source_fill_20260712')
+OUT=ROOT/'outputs/vnext_p3_layer5_fundamental_balance_cashflow_pit_absorption_20260712'
+TASK='TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-FUNDAMENTAL-BALANCE-CASHFLOW-PIT-ABSORPTION-001'
+
+def self_pct(s): return s.rolling(20,min_periods=8).rank(pct=True)*100
+def add_context(x,col):
+ x[f'{col}_cross_pct']=x.groupby('decision_date')[col].rank(pct=True)*100
+ x[f'{col}_self_pct']=x.groupby('ticker',group_keys=False)[col].apply(self_pct)
+ return x[[f'{col}_cross_pct',f'{col}_self_pct']].mean(axis=1)
+def asof(x,e):
+ out=[]; cols=['available_date','report_period','operating_cash_flow','operating_cash_flow_yoy','investing_cash_flow','free_cash_flow_proxy_candidate','free_cash_flow_proxy_yoy','debt_ratio_percent','current_ratio_percent','financial_profile','source_quality','exact_publication_timestamp_available','accepted_for_formal','human_review_required']
+ for ticker,g in x.groupby('ticker',sort=False):
+  z=g.sort_values('decision_date'); q=e[e.ticker.eq(ticker)].sort_values('available_date')
+  out.append(pd.merge_asof(z,q[cols],left_on='decision_date',right_on='available_date',direction='backward') if len(q) else z.assign(**{c:np.nan for c in cols}))
+ return pd.concat(out,ignore_index=True)
+
+def run():
+ OUT.mkdir(parents=True,exist_ok=True)
+ ready=json.loads((RADAR/'readiness_for_core_p3_layer5_balance_cashflow_absorption.json').read_text(encoding='utf-8-sig')); assert ready['ready_for_core_p3_layer5_balance_cashflow_absorption'] and ready['future_data_violation_count']==0
+ x=pd.read_csv(BASE/'p3_full_candidate_spec_v1_fundamental_PIT_completed_matrix.csv.gz',dtype={'ticker':str},low_memory=False); x['decision_date']=pd.to_datetime(x.decision_date)
+ score=pd.read_csv(ROOT/'outputs/vnext_p3_layer5_full_candidate_risk_adjusted_scoring_contract_20260712/p3_full_candidate_spec_v1_score_matrix.csv.gz',dtype={'ticker':str},usecols=['decision_date','ticker','opportunity_momentum_score','trend_continuation_score','capital_chip_support_score','lifecycle_fit_score']); score['decision_date']=pd.to_datetime(score.decision_date); x=x.merge(score,on=['decision_date','ticker'],how='left',validate='one_to_one')
+ e=pd.read_csv(RADAR/'p3_layer5_balance_cashflow_official_indicator_rows.csv.gz',dtype={'ticker':str},low_memory=False); e['available_date']=pd.to_datetime(e.available_date); e=e.sort_values(['ticker','fiscal_year','quarter']); eg=e.groupby('ticker'); e['operating_cash_flow_yoy']=eg.operating_cash_flow.pct_change(4,fill_method=None); e['free_cash_flow_proxy_yoy']=eg.free_cash_flow_proxy_candidate.pct_change(4,fill_method=None)
+ x=asof(x,e); x['balance_cashflow_staleness_days']=(x.decision_date-x.available_date).dt.days; x['future_violation']=x.available_date.gt(x.decision_date)
+ # Cashflow uses growth/self context, not absolute cross-company cash size.
+ ocf=add_context(x,'operating_cash_flow_yoy'); fcf=add_context(x,'free_cash_flow_proxy_yoy'); ocf_self=x.groupby('ticker',group_keys=False).operating_cash_flow.apply(self_pct); fcf_self=x.groupby('ticker',group_keys=False).free_cash_flow_proxy_candidate.apply(self_pct)
+ x['F_cashflow_score']=pd.concat([ocf,fcf,ocf_self,fcf_self],axis=1).mean(axis=1); x['F_cashflow_confidence']=pd.concat([ocf,fcf,ocf_self,fcf_self],axis=1).notna().mean(axis=1); x['F_cashflow_status']=np.where(x.F_cashflow_score.notna(),'official_OCF_plus_diagnostic_FCF_proxy_human_review','blocked_or_not_applicable')
+ debt=100-add_context(x,'debt_ratio_percent'); current=add_context(x,'current_ratio_percent'); x['F_leverage_liquidity_score']=pd.concat([debt,current],axis=1).mean(axis=1); x['F_leverage_liquidity_confidence']=pd.concat([debt,current],axis=1).notna().mean(axis=1); x['F_leverage_liquidity_status']=np.where(x.F_leverage_liquidity_score.notna(),'official_debt_current_ratio_proxy','blocked_or_not_applicable')
+ families=['F_revenue_score','F_profitability_score','F_margins_score','F_cashflow_score','F_leverage_liquidity_score']; x['fundamental_family_available_count']=x[families].notna().sum(axis=1); x['fundamental_quality_confidence']=x.fundamental_family_available_count/5; x['fundamental_quality_score']=x[families].mean(axis=1,skipna=True); x['fundamental_quality_status']=np.select([x.fundamental_family_available_count.eq(5),x.fundamental_family_available_count.eq(4),x.fundamental_family_available_count.eq(3)],['ready_all_five_families_diagnostic_PIT','four_family_ready_one_not_applicable_or_missing','three_family_ready_two_missing'],'partial_less_than_three')
+ x['opportunity_axis_with_F']=x[['opportunity_momentum_score','trend_continuation_score','capital_chip_support_score','lifecycle_fit_score','fundamental_quality_score']].mean(axis=1); x['risk_adjusted_opportunity_axis_with_F']=x.opportunity_axis_with_F*(1-x.risk_axis/200); x['FCF_exact_capex_based']=False; x['FCF_proxy_human_review_required']=x.human_review_required.fillna(True); x['fundamental_source_quality']='official_period_specific_diagnostic_PIT_proxy'; x['accepted_for_formal']=False; x['future_return_used_as_rule']=False
+ keep=['decision_date','membership_snapshot_date','next_execution_date','ticker','name','market','raw_state','selected_eligibility','m_revenue_period','m_available_date','q_quarter_period','q_available_date','available_date','report_period','balance_cashflow_staleness_days','operating_cash_flow','operating_cash_flow_yoy','investing_cash_flow','free_cash_flow_proxy_candidate','free_cash_flow_proxy_yoy','debt_ratio_percent','current_ratio_percent','financial_profile',*families,'F_cashflow_confidence','F_leverage_liquidity_confidence','fundamental_family_available_count','fundamental_quality_confidence','fundamental_quality_score','fundamental_quality_status','F_cashflow_status','F_leverage_liquidity_status','FCF_exact_capex_based','FCF_proxy_human_review_required','fundamental_source_quality','exact_publication_timestamp_available','accepted_for_formal','opportunity_axis_with_F','risk_axis','risk_adjusted_opportunity_axis_with_F','future_return_used_as_rule']
+ x[keep].to_csv(OUT/'p3_full_candidate_F_five_family_PIT_matrix.csv.gz',index=False,compression='gzip',encoding='utf-8')
+ coverage=[]
+ for f,c in [('revenue','F_revenue_score'),('profitability','F_profitability_score'),('margins','F_margins_score'),('cashflow','F_cashflow_score'),('leverage_liquidity','F_leverage_liquidity_score')]:
+  share=float(x[c].notna().mean()); coverage.append({'family':f,'available_rows':int(x[c].notna().sum()),'coverage_share':share,'status':'ready' if share>=.95 else ('partial_applicability_aware' if share>0 else 'blocked'),'NA_zero_fill_used':False})
+ pd.DataFrame(coverage).to_csv(OUT/'p3_F_five_family_coverage_confidence.csv',index=False,encoding='utf-8-sig')
+ pd.DataFrame([{'requested_start':'2023-07-11','requested_end':'2026-06-29','actual_start':x.decision_date.min(),'actual_end':x.decision_date.max(),'candidate_rows':len(x),'unique_tickers':x.ticker.nunique(),'source_period_start':e.report_period.min(),'source_period_end':e.report_period.max()}]).to_csv(OUT/'p3_F_requested_vs_actual_coverage.csv',index=False,encoding='utf-8-sig')
+ pd.DataFrame([{'future_data_violation_count':int(x.future_violation.sum()),'future_return_rule_count':int(x.future_return_used_as_rule.sum()),'period_end_used_as_available_date':False,'retrieval_time_used_as_available_date':False}]).to_csv(OUT/'p3_F_future_PIT_audit.csv',index=False,encoding='utf-8-sig')
+ applicability=pd.read_csv(RADAR/'p3_layer5_balance_cashflow_applicability_blocked_ledger.csv',dtype={'ticker':str},low_memory=False); applicability.to_csv(OUT/'p3_F_applicability_blocked_ledger_absorbed.csv',index=False,encoding='utf-8-sig')
+ dims=['opportunity_momentum_score','trend_continuation_score','capital_chip_support_score','risk_axis','lifecycle_fit_score',*families]; corr=x[dims].corr(method='spearman').stack().reset_index(); corr.columns=['dimension_a','dimension_b','spearman']; corr=corr[corr.dimension_a<corr.dimension_b]; corr['high_correlation_flag']=corr.spearman.abs().ge(.8); corr['precombine_policy']='each_family_or_block_once_no_raw_duplicate_vote'; corr.to_csv(OUT/'p3_F_cross_block_precombined_correlation_audit.csv',index=False,encoding='utf-8-sig')
+ dist=x[[*families,'fundamental_quality_score','fundamental_quality_confidence']].describe().T.reset_index().rename(columns={'index':'score'}); dist.to_csv(OUT/'p3_F_score_distribution_direction_sanity.csv',index=False,encoding='utf-8-sig')
+ complete_share=float(x.fundamental_family_available_count.eq(5).mean()); four_plus=float(x.fundamental_family_available_count.ge(4).mean()); readiness={'task_id':TASK,'status':'five_family_diagnostic_PIT_absorbed_ready_for_stage_a_revalidation','candidate_rows':len(x),'five_family_complete_share':complete_share,'four_plus_family_share':four_plus,'cashflow_exact_capex_ready':False,'FCF_proxy_human_review_required':True,'statutory_available_date_proxy_not_formal':True,'NA_as_zero_used':False,'future_data_violation_count':int(x.future_violation.sum()),'ready_for_stage_a_revalidation':True,'ready_for_candidate_quality_evaluation':False,'ready_for_portfolio_performance':False,'ready_for_experiments':True,'formal_model_changed':False,'trade_decision_changed':False,'active_in_trade_decision':False,'report_changed':False,'ready_for_formal':False,'ready_for_strategy_replay':False,'not_live_rule':True,'forward_returns_live_rule_usage':False}
+ (OUT/'readiness_for_F_balance_cashflow_absorption.json').write_text(json.dumps(readiness,ensure_ascii=False,indent=2),encoding='utf-8'); (OUT/'final_summary_zh.md').write_text('# F balance/cashflow absorption\n\n五family diagnostic PIT matrix已建立。FCF為OCF+investing proxy且需人工檢視；available_date為保守法定deadline，不可formal。只交Stage A revalidation。\n',encoding='utf-8')
+ files=sorted(p for p in OUT.iterdir() if p.is_file() and p.name!='manifest.json'); (OUT/'manifest.json').write_text(json.dumps({'task_id':TASK,'radar_commit':'8ce1b27','files':[{'name':p.name,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in files]},ensure_ascii=False,indent=2),encoding='utf-8'); print(OUT)
+if __name__=='__main__':run()

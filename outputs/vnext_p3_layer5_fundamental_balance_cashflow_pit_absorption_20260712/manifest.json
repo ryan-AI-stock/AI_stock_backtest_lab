@@ -1,0 +1,42 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-FUNDAMENTAL-BALANCE-CASHFLOW-PIT-ABSORPTION-001",
+  "radar_commit": "8ce1b27",
+  "files": [
+    {
+      "name": "final_summary_zh.md",
+      "sha256": "3247f8a643221c77e9856aa0e6575fefa3d49ba241f6f2aa66be0a71cf9b56b7"
+    },
+    {
+      "name": "p3_F_applicability_blocked_ledger_absorbed.csv",
+      "sha256": "ff95fe11f6d406b20617ba685e71152411ead7b07a03eb4aa06c8218df48e7b1"
+    },
+    {
+      "name": "p3_F_cross_block_precombined_correlation_audit.csv",
+      "sha256": "4aa09414c2179451a57b175ddb03d91c23feab62064c8018f49f0cfc66e62910"
+    },
+    {
+      "name": "p3_F_five_family_coverage_confidence.csv",
+      "sha256": "228a66a53cda4b812e773d63e14454a5cbd787d7a94ab38cf8f970aa5f182729"
+    },
+    {
+      "name": "p3_F_future_PIT_audit.csv",
+      "sha256": "e5a6e6091c96d56e09b6e85b23583298df9b9899dc19918c993fac4467ab54d5"
+    },
+    {
+      "name": "p3_F_requested_vs_actual_coverage.csv",
+      "sha256": "00ec345ec445e9e7db47965d98cdb28ccafb922e2e0e028552b9fe0ca271851b"
+    },
+    {
+      "name": "p3_F_score_distribution_direction_sanity.csv",
+      "sha256": "1599f4f11b2a761ef722af19ebaae0f35a0c728dacc2b4525c1f8a0218075e79"
+    },
+    {
+      "name": "p3_full_candidate_F_five_family_PIT_matrix.csv.gz",
+      "sha256": "86ab1b0be0a7a26b2d7606a3077c55d2b5a2d1121c8623a04ef6fc011840ddff"
+    },
+    {
+      "name": "readiness_for_F_balance_cashflow_absorption.json",
+      "sha256": "166760242d2c9e3de2efa5bd115e9fe4e9084ff3cb66e3f116fbbf2dcbdbc90a"
+    }
+  ]
+}
