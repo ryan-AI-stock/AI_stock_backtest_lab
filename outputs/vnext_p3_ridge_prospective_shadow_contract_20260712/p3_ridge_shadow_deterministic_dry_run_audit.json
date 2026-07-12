@@ -1,0 +1,12 @@
+{
+  "scope": "historical_exact_dry_run_only_not_prospective_ledger",
+  "decision_date": "2026-06-26",
+  "input_candidate_rows": 80,
+  "R0_rows": 10,
+  "R1_rows": 10,
+  "run_1_sha256": "81d6157c60d2a5dd8effa362562ea1bcab488ba7cef7fe212f3c89660f65e0d1",
+  "run_2_sha256": "81d6157c60d2a5dd8effa362562ea1bcab488ba7cef7fe212f3c89660f65e0d1",
+  "same_input_deterministic": true,
+  "prospective_history_backfilled": false,
+  "future_data_violation_count": 0
+}

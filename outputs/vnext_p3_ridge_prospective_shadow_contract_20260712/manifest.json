@@ -1,0 +1,46 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-RIDGE-PROSPECTIVE-SHADOW-CONTRACT-001",
+  "generated_at": "2026-07-12T11:45:40.386157+00:00",
+  "files": [
+    {
+      "path": "dry_run_input_20260626/candidate_features.csv.gz",
+      "sha256": "bfc0feb8237f72861257880094d79b4db5bf7f61517efb2307e8cb9cd54e1b02",
+      "bytes": 6531
+    },
+    {
+      "path": "final_summary_zh.md",
+      "sha256": "3fe0957d9974af3835ba246f1096f88bbeb1a5e4c5c93dfe4583642f7a8c438a",
+      "bytes": 263
+    },
+    {
+      "path": "model/feature_schema.json",
+      "sha256": "a15cd8f14ab8e52aa7899ddc36d54537d50a9f1a3447d2e3803d5dfa5ef5b583",
+      "bytes": 968
+    },
+    {
+      "path": "model/model_metadata.json",
+      "sha256": "babe77eaed18c2d6e766c4bcd24071f2429cfc87620842ad573985db415992e7",
+      "bytes": 1179
+    },
+    {
+      "path": "model/p3_frozen_prospective_ridge_20td.joblib",
+      "sha256": "fa7bf1d5644a99cafa8ff113fc79a2452e8dc0633d9ffecc60102d403785cda5",
+      "bytes": 3585
+    },
+    {
+      "path": "p3_ridge_shadow_deterministic_dry_run_audit.json",
+      "sha256": "d0b76b30cf9f2c9d789755eff080f300c0f8d0a812cecee8d0346e7e30685edc",
+      "bytes": 454
+    },
+    {
+      "path": "p3_ridge_shadow_frozen_policy.csv",
+      "sha256": "ec5f0cf319d6868fafb04ce395441eca866079e0c8ad8c031e99b4d902a25307",
+      "bytes": 504
+    },
+    {
+      "path": "readiness_for_p3_ridge_prospective_shadow.json",
+      "sha256": "ba5e3a04f350a831214f24d80f1d0ac4c428cfea1d4a2a3920a75970d1ced29c",
+      "bytes": 1174
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+name: vNext Ridge prospective shadow
+
+on:
+  workflow_dispatch:
+    inputs:
+      decision_date:
+        description: Taiwan market decision date (YYYY-MM-DD)
+        required: true
+  schedule:
+    - cron: "15 14 * * 1-5"
+
+jobs:
+  shadow:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13.5"
+          cache: pip
+      - name: Install controlled ML runtime
+        run: python -m pip install --require-hashes -r requirements-ml.lock
+      - name: Resolve decision date
+        shell: pwsh
+        run: |
+          $date = "${{ inputs.decision_date }}"
+          if (-not $date) { $date = [System.TimeZoneInfo]::ConvertTimeBySystemTimeZoneId([datetime]::UtcNow, 'Taipei Standard Time').ToString('yyyy-MM-dd') }
+          "DECISION_DATE=$date" >> $env:GITHUB_ENV
+      - name: Run append-only shadow hook
+        shell: pwsh
+        run: |
+          $input = "data/vnext_shadow/inbox/$env:DECISION_DATE"
+          if (-not (Test-Path "$input/manifest.json")) { throw "Exact current Layer0-4 manifest missing: $input" }
+          python -X utf8 -m backtest_lab.vnext_p3_ridge_prospective_shadow predict --input-dir $input
+        env:
+          PYTHONPATH: src

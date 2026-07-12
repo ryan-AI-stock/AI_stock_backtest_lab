@@ -1,0 +1,15 @@
+{
+  "decision_date": "2026-06-26",
+  "market_status": "open",
+  "data_ready": true,
+  "exact_layer4_primary80": true,
+  "candidate_count": 80,
+  "candidate_scope_semantics": "historical_exact_dry_run_only",
+  "available_at": "2026-06-26T18:00:00+08:00",
+  "candidate_universe_version": "layer4_exact_20260626_dry_run",
+  "candidate_universe_hash": "5e7042729aa13c94125b915868c02edac426db1b8f6709a53a0185578e446ed2",
+  "corporate_action_guard_status": "diagnostic_ready",
+  "market_state": "ordinary_market",
+  "market_confidence": 0.6799999999999999,
+  "data_freshness_status": "historical_exact_dry_run"
+}

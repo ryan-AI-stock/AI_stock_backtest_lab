@@ -1,0 +1,32 @@
+{
+  "features": [
+    "opportunity_momentum_score",
+    "trend_continuation_score",
+    "capital_chip_support_score",
+    "risk_overheat_crowding_score",
+    "lifecycle_fit_score",
+    "F_revenue_score",
+    "F_profitability_score",
+    "F_margins_score",
+    "F_cashflow_score",
+    "F_leverage_liquidity_score",
+    "fundamental_quality_confidence",
+    "total_score_confidence",
+    "taiwan_score",
+    "taiwan_confidence",
+    "breadth_score",
+    "breadth_confidence",
+    "capital_score",
+    "capital_confidence",
+    "derivatives_score",
+    "derivatives_confidence",
+    "external_score",
+    "external_confidence",
+    "TDCC_available",
+    "TDCC_missing_indicator"
+  ],
+  "feature_count": 24,
+  "feature_source_hash": "80fddb4d6f9c3b84bb36241429861c43ce4a0c331fcc94b7fca525ea6cded0ac",
+  "target": "20TD_EP05_plus_10bp_per_side_net_excess_vs_0050",
+  "risk_guard": "existing_fixed_cross_sectional_risk_decile_9_10_exclusion"
+}
