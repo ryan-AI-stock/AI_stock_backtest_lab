@@ -1,0 +1,28 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-CANONICAL-ACTION-CONSOLIDATION-AND-PHASE-B-PATH-CONTRACT-001",
+  "status": "canonical_action_ready_phase_b_contract_ready",
+  "canonical_rows": 715,
+  "action_counts": {
+    "hold_incumbent": 514,
+    "watch_only": 120,
+    "forced_replacement": 69,
+    "switch_to_challenger": 12
+  },
+  "watch_semantics": "no_position_no_valid_replacement_not_cash_trade",
+  "watch_rows": 120,
+  "ready_target_join_pass": true,
+  "execution_price_blocked_rows": 0,
+  "ready_for_phase_b_experiments": true,
+  "ready_for_experiments": true,
+  "phase_b_performance_executed": false,
+  "future_data_violation_count": 0,
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "portfolio_replay_executed": false,
+  "ready_for_strategy_replay": false,
+  "ready_for_formal": false,
+  "not_live_rule": true,
+  "forward_returns_live_rule_usage": false
+}

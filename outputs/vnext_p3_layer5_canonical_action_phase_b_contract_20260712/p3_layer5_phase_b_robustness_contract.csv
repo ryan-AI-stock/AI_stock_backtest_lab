@@ -1,0 +1,5 @@
+﻿robustness,exact_rechain
+walk_forward|year|quarter,True
+remove_best_year|quarter|episode_1_3_5,True
+ticker|sector|mega_period_concentration,False
+ordinary_weak_primary_strong_secondary,False

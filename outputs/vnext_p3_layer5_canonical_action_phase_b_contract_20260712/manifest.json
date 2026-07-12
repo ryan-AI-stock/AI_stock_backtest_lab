@@ -1,0 +1,70 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-CANONICAL-ACTION-CONSOLIDATION-AND-PHASE-B-PATH-CONTRACT-001",
+  "source_commit": "6c6d38b",
+  "readiness": {
+    "task_id": "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-CANONICAL-ACTION-CONSOLIDATION-AND-PHASE-B-PATH-CONTRACT-001",
+    "status": "canonical_action_ready_phase_b_contract_ready",
+    "canonical_rows": 715,
+    "action_counts": {
+      "hold_incumbent": 514,
+      "watch_only": 120,
+      "forced_replacement": 69,
+      "switch_to_challenger": 12
+    },
+    "watch_semantics": "no_position_no_valid_replacement_not_cash_trade",
+    "watch_rows": 120,
+    "ready_target_join_pass": true,
+    "execution_price_blocked_rows": 0,
+    "ready_for_phase_b_experiments": true,
+    "ready_for_experiments": true,
+    "phase_b_performance_executed": false,
+    "future_data_violation_count": 0,
+    "formal_model_changed": false,
+    "trade_decision_changed": false,
+    "active_in_trade_decision": false,
+    "report_changed": false,
+    "portfolio_replay_executed": false,
+    "ready_for_strategy_replay": false,
+    "ready_for_formal": false,
+    "not_live_rule": true,
+    "forward_returns_live_rule_usage": false
+  },
+  "files": [
+    {
+      "name": "final_summary_zh.md",
+      "sha256": "510aa419bc16bd66d4ab7045b11b6a81ecf6d335c663c28493b75bb3c4b850f2"
+    },
+    {
+      "name": "p3_layer5_canonical_daily_selected_action.csv",
+      "sha256": "8f2fbb08baee65c4e69a218ff0aef3b588b325613d4d00f8eff55e61c8b19aca"
+    },
+    {
+      "name": "p3_layer5_phase_b_contract_audit.csv",
+      "sha256": "ab4cad2c1abafffec16a426d36955585b6bf82a85e4fc2c61cb43a05c4a97ec1"
+    },
+    {
+      "name": "p3_layer5_phase_b_cost_slippage_scenarios.csv",
+      "sha256": "fbd9a7bf0cf46290cab40da77e71b4fc67e5d621ad9f47e77254659833202311"
+    },
+    {
+      "name": "p3_layer5_phase_b_counterfactual_placebo_contract.csv",
+      "sha256": "fe2c5c2ad5bc5c586351e97cc623a97058a7e7e919586ebe021240b937144133"
+    },
+    {
+      "name": "p3_layer5_phase_b_execution_price_blocked_ledger.csv",
+      "sha256": "f6954dbc847573bbad74a65373072c17809dcd37715efa53a4ec3253af06c35d"
+    },
+    {
+      "name": "p3_layer5_phase_b_robustness_contract.csv",
+      "sha256": "c0d3961b006810f33c69efe5b18c94e09f568d8d6a777ec2a292de2685640963"
+    },
+    {
+      "name": "p3_layer5_phase_b_unique_position_execution_path_contract.csv",
+      "sha256": "7604fd5b69d8a7cb79d99a423c89a58a6f982ae2e9779e60041e1b2bf3412880"
+    },
+    {
+      "name": "readiness_for_p3_layer5_phase_b_contract.json",
+      "sha256": "06e9f6f1e9747e58f5dc5bebfb517d05285e7aa009f95464270314bebf7deb55"
+    }
+  ]
+}

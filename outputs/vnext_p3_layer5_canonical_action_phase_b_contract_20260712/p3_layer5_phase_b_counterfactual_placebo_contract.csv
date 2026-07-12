@@ -1,0 +1,6 @@
+﻿counterfactual,same_selector,same_candidates,controller,TAIFEX,TDCC,fixed_seeds,execution_basis,cost_basis
+C0_ordinary_always,True,True,ordinary,off_action,off_action,,same_next_day,EP05_plus_10bp_per_side
+C1_full_controller,True,True,full,on,P3_2_on,,same_next_day,EP05_plus_10bp_per_side
+C2_no_strong_loosening,True,True,weak_bear_only,on,P3_2_on,,same_next_day,EP05_plus_10bp_per_side
+C3_TAIFEX_off,True,True,full_ablation,off,P3_2_on_off,,same_next_day,EP05_plus_10bp_per_side
+random_primary80_placebo,False,True,matched_entry_hold_transition_exposure,matched,matched,17|29|43|71|101,same_next_day,EP05_plus_10bp_per_side

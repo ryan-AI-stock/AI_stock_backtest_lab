@@ -1,0 +1,4 @@
+﻿slippage_bp_per_side,role,EP05_fee_tax,single_position,next_day_execution
+5,sensitivity,True,True,True
+10,primary,True,True,True
+20,sensitivity,True,True,True
