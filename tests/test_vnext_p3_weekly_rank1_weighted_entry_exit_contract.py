@@ -26,7 +26,14 @@ class WeeklyRank1WeightedEntryExitContractTest(unittest.TestCase):
         self.assertFalse(folds.P3_2_used_for_selection.astype(bool).any())
         ready = json.loads((OUT / "readiness_for_p3_rank1_weighted_entry_exit.json").read_text(encoding="utf-8"))
         self.assertFalse(ready["portfolio_NAV_materialized"])
+        self.assertTrue(ready["mechanically_reproducible"])
+        self.assertTrue(ready["diagnostic_subproblem"])
+        self.assertTrue(ready["user_explicitly_authorized_rank1_timing_scope"])
+        self.assertFalse(ready["representative_of_full_intended_layer5"])
+        self.assertFalse(ready["may_be_used_to_reject_full_layer5"])
+        self.assertTrue(ready["may_be_used_to_assess_rank1_timing_hypothesis"])
         self.assertTrue(ready["ready_for_stage_A_candidate_quality"])
+        self.assertTrue(ready["ready_for_experiments"])
 
     def test_tdcc_not_zero_filled_or_used(self):
         p31 = self.frame[self.frame.P3_segment.str.startswith("P3-1")]
