@@ -24,15 +24,18 @@ class Rank1SequentialLifecycleContractTest(unittest.TestCase):
         self.assertTrue(((transitions.from_state == "S0") & (transitions.to_state == "S3") & ~transitions.allowed).any())
         self.assertTrue(((transitions.from_state == "S5") & (transitions.to_state == "S7") & ~transitions.allowed).any())
 
-    def test_blocked_without_continuous_kd_self_history(self):
+    def test_kd_absorbed_but_state_labeling_waits_for_parameters(self):
         ready = json.loads((OUT / "readiness_for_p3_rank1_sequential_lifecycle.json").read_text(encoding="utf-8"))
-        self.assertFalse(ready["KD_3_6_12M_self_percentiles_ready"])
+        self.assertTrue(ready["KD_3_6_12M_self_percentiles_ready"])
+        self.assertEqual(ready["adjusted_HLC_ready_tickers"], 100)
+        self.assertEqual(ready["adjusted_HLC_blocked_tickers"], 1)
+        self.assertTrue(ready["parameter_freeze_required_before_state_labeling"])
         self.assertFalse(ready["sufficient_for_walk_forward"])
         self.assertFalse(ready["ready_for_experiments"])
         self.assertFalse(ready["P3_2_outcome_read"])
         self.assertFalse(ready["requires_strategy_center_scope_ruling"])
         self.assertTrue(ready["supports_sequential_lifecycle_rank1_timing"])
-        self.assertFalse(ready["radar_download_executed"])
+        self.assertTrue(ready["radar_download_executed"])
 
 
 if __name__ == "__main__":
