@@ -17,6 +17,7 @@ OUT = ROOT / "outputs/vnext_p3_layer04_top20_ticker_specific_KD_price_range_timi
 TASK = "TASK-BACKTEST-CORE-VNEXT-P3-LAYER04-TOP20-TICKER-SPECIFIC-KD-PRICE-RANGE-TIMING-STAGE-A-CONTRACT-001"
 P3_1_END = pd.Timestamp("2025-07-10")
 RADAR_6712_EXECUTION_PATCH = Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p3_layer5_all80_kd_range_6712_post_20231117_official_ohlc_gap_fill_20260713\p3_all80_KD_range_6712_post_20231117_official_ohlc_filled_rows.csv")
+RADAR_MATCHED_EXIT_EXECUTION_PATCH = Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p3_layer5_all80_krangegt30_matched_exit_ohlc_gap_fill_20260713\p3_all80_KrangeGT30_matched_exit_official_ohlc_filled_legs.csv")
 STOPPED_GOVERNANCE = {
     "superseded_by_all80_K_range_eligibility_comparison": True,
     "non_representative_of_current_scope": True,
@@ -75,6 +76,11 @@ def _official_raw() -> pd.DataFrame:
     if RADAR_6712_EXECUTION_PATCH.exists():
         patch = pd.read_csv(RADAR_6712_EXECUTION_PATCH, dtype={"ticker": str})
         patch = patch.drop(columns=["decision_date"])
+        patch = patch.rename(columns={"exact_execution_date":"decision_date","close":"official_raw_close","source_quality":"official_raw_source_quality"})
+        patch["decision_date"] = pd.to_datetime(patch.decision_date)
+        frames.append(patch[["decision_date","ticker","official_raw_close","official_raw_source_quality"]])
+    if RADAR_MATCHED_EXIT_EXECUTION_PATCH.exists():
+        patch = pd.read_csv(RADAR_MATCHED_EXIT_EXECUTION_PATCH, dtype={"ticker": str})
         patch = patch.rename(columns={"exact_execution_date":"decision_date","close":"official_raw_close","source_quality":"official_raw_source_quality"})
         patch["decision_date"] = pd.to_datetime(patch.decision_date)
         frames.append(patch[["decision_date","ticker","official_raw_close","official_raw_source_quality"]])
