@@ -13,6 +13,7 @@ DAILY = ROOT / "outputs/vnext_p3_layer5_daily_feature_state_action_materializati
 SCORE = ROOT / "outputs/vnext_p3_layer5_full_candidate_risk_adjusted_scoring_contract_20260712/p3_full_candidate_spec_v1_score_matrix.csv.gz"
 MARKET = ROOT / "outputs/vnext_p3_market_controller_full_spec_v2_20260712/p3_market_controller_full_spec_v2_daily_features.csv"
 LABEL = ROOT / "outputs/vnext_p3_layer5_all80_transparent_risk_adjusted_top1_scoring_contract_20260712/p3_all80_candidate_quality_label_contract.csv.gz"
+OUTCOME = ROOT / "outputs/vnext_p3_layer5_full_candidate_quality_outcome_contract_20260712/p3_candidate_quality_outcome_paths.csv.gz"
 FOLDS = ROOT / "outputs/vnext_p3_layer5_all80_transparent_risk_adjusted_top1_scoring_contract_20260712/p3_all80_P3_1_expanding_fold_calendar.csv"
 OUT = ROOT / "outputs/vnext_p3_layer04_canonical_rank1_stock_market_weighted_timing_contract_20260713"
 TASK = "TASK-BACKTEST-CORE-VNEXT-P3-LAYER04-CANONICAL-RANK1-STOCK-MARKET-WEIGHTED-TIMING-CONTRACT-001"
@@ -174,6 +175,47 @@ def write_contracts(frame: pd.DataFrame) -> None:
     ).to_csv(OUT / "p3_rank1_correlation_precombine_audit.csv", index=False, encoding="utf-8-sig")
 
 
+def calibration_policy() -> pd.DataFrame:
+    rows = [
+        ("authority", "P3_1_split", "three expanding walk-forward folds; 40 decision-date embargo each; date/weekly-episode clustered aggregation"),
+        ("authority", "P3_2_access", "prohibited until every P3-1 mechanical gate passes; then exactly one untouched read"),
+        ("target", "entry_target", "0.5*net_excess_vs_00631L_10TD_10bp + 0.5*net_excess_vs_00631L_20TD_10bp"),
+        ("target", "entry_horizon_guard", "10TD and 20TD excess retained separately and each must be nonnegative"),
+        ("target", "entry_risk_constraints", "future MDD, P10 and large-down remain separate constraints; 5/40TD secondary only"),
+        ("target", "exit_hold_net", "(1+event_aware_hold_gross)*(1-stock_sell_fee-tax-10bp)-1 for each 5TD/10TD horizon"),
+        ("target", "exit_target", "-0.5*stock_hold_net_return_5TD - 0.5*stock_hold_net_return_10TD; cash return=0"),
+        ("target", "exit_independence", "fit exit deterioration independently; entry target sign inversion prohibited"),
+        ("comparator", "C0", "immediate entry at first next-day official tradable close; fixed 5/10/20/40TD event reference; no score gate"),
+        ("comparator", "C1", "stock-only: entry if stock_entry_score>=frozen entry quantile threshold; exit if stock_deterioration>=frozen exit threshold"),
+        ("comparator", "C2", "market-only executable reference: entry if market_risk<=frozen market-entry threshold; exit if market_risk>=frozen market-exit threshold"),
+        ("comparator", "C3", "combined primary: monotonic market penalty on entry and amplification on exit; market weakness cannot loosen either gate"),
+        ("action", "allowed_labels", "entry_pass|hold_or_wait|exit_pass only; no normal switch and no portfolio path"),
+        ("regularization", "alpha_candidates", "0.01|0.1|1.0; selected in P3-1 inner validation only"),
+        ("regularization", "coefficient_constraints", "all directions fixed; no sign flip; precombined dimensions; no raw duplicate fit"),
+        ("entry_threshold", "quantile_candidates", "0.50|0.60|0.70|0.80 from each fold train score distribution only"),
+        ("exit_threshold", "quantile_candidates", "0.70|0.80|0.90 from each fold train score distribution only"),
+        ("selection", "primary_objective", "maximize validation decision-date/weekly-episode clustered mean entry_target"),
+        ("selection", "entry_constraints", "10/20 excess each>=0; at least two of MDD/P10/large-down not worse than C0; ordinary 10/20 each>=0; weak<20 clusters low-sample else not both negative"),
+        ("selection", "entry_tiebreak", "lower MDD severity; lower large-down; larger alpha; higher cluster coverage; then lower entry threshold"),
+        ("selection", "exit_objective", "maximize clustered mean exit_target among exit-pass rows"),
+        ("selection", "exit_constraints", "5/10 hold net each<0; false positive where both future holds positive<=40%; at least 20 validation clusters"),
+        ("selection", "exit_tiebreak", "lower false-positive rate; then higher exit threshold"),
+        ("P3_1_gate", "fold_direction", "at least 2 of 3 folds have C3 10TD>0 and 20TD>0"),
+        ("P3_1_gate", "ordinary", "pooled C3 ordinary 10TD>0 and 20TD>0"),
+        ("P3_1_gate", "C3_vs_C1", "one primary horizon improves; other deterioration<=0.25pp; at least one of MDD/P10/large-down improves and other two do not materially worsen"),
+        ("P3_1_gate", "threshold_stability", "selected quantile across folds differs by at most one candidate step"),
+        ("P3_1_gate", "neighbor_stability", "one threshold neighbor keeps 10/20 positive; one alpha neighbor keeps ordinary 10/20 positive"),
+        ("P3_1_gate", "coefficient_stability", "directions consistent; no block >50% absolute weight; at least 2 of top3 blocks repeat across all folds"),
+        ("P3_2_gate", "lock_before_read", "freeze coefficients, alpha, entry/exit quantiles, threshold generation, missingness and C0-C3 semantics"),
+        ("P3_2_gate", "return_hit_rate", "C3 10/20 excess each>0; one hit rate>50% and other>=45%; ordinary 10/20 each>0"),
+        ("P3_2_gate", "C3_vs_C1", "one horizon improves; other deterioration<=0.25pp"),
+        ("P3_2_gate", "risk", "at least two of MDD/P10/large-down beat C0; not all three worse than C1"),
+        ("P3_2_gate", "cost_sensitivity", "10bp primary positive; at 20bp at least one of 10/20 positive and other has no material reversal"),
+        ("P3_2_gate", "failure", "any failure => NO_GO_RANK1_TIMING_FORMULA_FAMILY; no retune, NAV, Top3 or full-Layer5 inference"),
+    ]
+    return pd.DataFrame(rows, columns=["policy_section", "policy_id", "machine_rule"])
+
+
 def run() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     # Exit inputs must be available before the score merge computes independent exit blocks.
@@ -211,16 +253,49 @@ def run() -> None:
     labels = pd.read_csv(LABEL, dtype={"ticker":str}, low_memory=False); labels["decision_date"]=pd.to_datetime(labels.decision_date)
     labels = labels.merge(frame[["decision_date","ticker","P3_segment"]], on=["decision_date","ticker"], how="inner", validate="many_to_one", suffixes=("","_rank1"))
     labels["candidate_scope"]="canonical_Layer0_4_weekly_rank1_only"; labels["used_as_live_rule"]=False
+    entry_wide = labels.loc[labels.horizon_td.isin([10, 20])].pivot(index=["decision_date", "ticker"], columns="horizon_td", values=["net_excess_vs_00631L_10bp", "path_MDD", "tail_daily_return_p05", "large_down_7pct_count"])
+    entry_wide.columns = [f"{name}_{int(horizon)}TD" for name, horizon in entry_wide.columns]
+    entry_wide = entry_wide.reset_index()
+    entry_wide["entry_target"] = 0.5 * entry_wide.net_excess_vs_00631L_10bp_10TD + 0.5 * entry_wide.net_excess_vs_00631L_10bp_20TD
+    entry_wide["entry_10TD_nonnegative"] = entry_wide.net_excess_vs_00631L_10bp_10TD.ge(0)
+    entry_wide["entry_20TD_nonnegative"] = entry_wide.net_excess_vs_00631L_10bp_20TD.ge(0)
+    entry_wide["evaluation_metadata_only"] = True
+    entry_wide["used_as_live_feature"] = False
+
+    outcome = pd.read_csv(OUTCOME, dtype={"ticker": str}, low_memory=False)
+    outcome["decision_date"] = pd.to_datetime(outcome.decision_date)
+    outcome = outcome.merge(frame[["decision_date", "ticker"]], on=["decision_date", "ticker"], how="inner", validate="many_to_one")
+    outcome = outcome.loc[outcome.horizon_td.isin([5, 10])].copy()
+    stock_sell_cost_10bp = 0.001425 + 0.003 + 0.001
+    outcome["stock_hold_net_after_sell_10bp"] = (1 + outcome.gross_event_aware_return) * (1 - stock_sell_cost_10bp) - 1
+    exit_wide = outcome.pivot(index=["decision_date", "ticker"], columns="horizon_td", values=["stock_hold_net_after_sell_10bp", "path_MDD", "tail_daily_return_p05", "large_down_7pct_count"])
+    exit_wide.columns = [f"{name}_{int(horizon)}TD" for name, horizon in exit_wide.columns]
+    exit_wide = exit_wide.reset_index()
+    exit_wide["exit_target"] = -0.5 * exit_wide.stock_hold_net_after_sell_10bp_5TD - 0.5 * exit_wide.stock_hold_net_after_sell_10bp_10TD
+    exit_wide["future_hold_5TD_negative"] = exit_wide.stock_hold_net_after_sell_10bp_5TD.lt(0)
+    exit_wide["future_hold_10TD_negative"] = exit_wide.stock_hold_net_after_sell_10bp_10TD.lt(0)
+    exit_wide["exit_false_positive_both_holds_positive"] = exit_wide.stock_hold_net_after_sell_10bp_5TD.gt(0) & exit_wide.stock_hold_net_after_sell_10bp_10TD.gt(0)
+    exit_wide["stock_sell_fee"] = 0.001425
+    exit_wide["stock_transaction_tax"] = 0.003
+    exit_wide["slippage_per_side"] = 0.001
+    exit_wide["cash_return"] = 0.0
+    exit_wide["evaluation_metadata_only"] = True
+    exit_wide["used_as_live_feature"] = False
     folds=pd.read_csv(FOLDS); folds["P3_2_used_for_selection"]=False
     write_contracts(frame)
     frame.to_csv(OUT/"p3_rank1_daily_stock_market_feature_contract.csv.gz",index=False,compression="gzip",encoding="utf-8")
     labels.to_csv(OUT/"p3_rank1_candidate_quality_label_contract.csv.gz",index=False,compression="gzip",encoding="utf-8")
+    entry_wide.to_csv(OUT/"p3_rank1_entry_target_contract.csv.gz",index=False,compression="gzip",encoding="utf-8")
+    exit_wide.to_csv(OUT/"p3_rank1_exit_target_contract.csv.gz",index=False,compression="gzip",encoding="utf-8")
     folds.to_csv(OUT/"p3_rank1_P3_1_expanding_fold_calendar.csv",index=False,encoding="utf-8-sig")
+    calibration_policy().to_csv(OUT/"p3_rank1_timing_calibration_policy.csv",index=False,encoding="utf-8-sig")
     pd.DataFrame([{"requested_start":"2023-07-11","requested_end":"2026-06-29","actual_start":frame.decision_date.min().date(),"actual_end":frame.decision_date.max().date(),"daily_rank1_rows":len(frame),"decision_dates":frame.decision_date.nunique(),"weekly_membership_snapshots":frame.membership_snapshot_date.nunique(),"P3_1_rows":frame.P3_segment.str.startswith("P3-1").sum(),"P3_2_rows":frame.P3_segment.str.startswith("P3-2").sum(),"calibration_eligible_rows":frame.calibration_eligible.sum()}]).to_csv(OUT/"p3_rank1_PIT_coverage.csv",index=False,encoding="utf-8-sig")
     pd.DataFrame([{"audit":"future_outcome_feature_intersection","violations":0},{"audit":"P3_2_parameter_selection","violations":0},{"audit":"TDCC_P3_1_zero_fill","violations":int(frame.loc[frame.P3_segment.str.startswith('P3-1'),'tdcc_score'].notna().sum())},{"audit":"weekly_rank1_change_auto_switch","violations":0},{"audit":"portfolio_NAV_executed","violations":0}]).to_csv(OUT/"p3_rank1_future_PIT_audit.csv",index=False,encoding="utf-8-sig")
     pd.DataFrame([{"item":"adjusted_analysis","status":"trusted_nonofficial_research_diagnostic","stage_A_blocked":False},{"item":"corporate_action_total_return","status":"not_formal_complete","stage_A_blocked":False},{"item":"TDCC_P3_1","status":"NA_excluded_common_model","stage_A_blocked":False},{"item":"TDCC_P3_2","status":"optional_attribution_only","stage_A_blocked":False},{"item":"portfolio_path","status":"not_authorized_before_stage_A","stage_A_blocked":False}]).to_csv(OUT/"p3_rank1_proxy_blocked_readiness_audit.csv",index=False,encoding="utf-8-sig")
     mechanically_reproducible=len(frame)==715 and frame.decision_date.nunique()==715 and len(folds)==3 and labels.loc[labels.horizon_td.isin([10,20]),"label_mature_and_ready"].sum()>0
-    readiness={"task_id":TASK,"status":"blocked_pending_strategy_calibration_freeze","requested_start":"2023-07-11","requested_end":"2026-06-29","actual_start":str(frame.decision_date.min().date()),"actual_end":str(frame.decision_date.max().date()),"daily_rank1_rows":len(frame),"decision_dates":frame.decision_date.nunique(),"P3_1_fold_count":len(folds),"P3_2_untouched_OOS":True,"P3_2_read_prohibited_until_P3_1_gate_pass":True,"parameter_effective_degrees_freedom":17,"non_cartesian_calibration":True,"stock_and_exit_scores_separate":True,"old_hardcoded_thresholds_used":False,"normal_switch_enabled":False,"portfolio_NAV_materialized":False,"mechanically_reproducible":bool(mechanically_reproducible),"calibration_policy_unique":False,"pending_strategy_decision_count":6,"diagnostic_subproblem":True,"user_explicitly_authorized_rank1_timing_scope":True,"representative_of_full_intended_layer5":False,"non_representative_of_full_Layer5":True,"may_be_used_to_reject_full_layer5":False,"may_be_used_to_assess_rank1_timing_hypothesis":True,"all80_rerank_executed":False,"Top3_executed":False,"ready_for_stage_A_candidate_quality":False,"ready_for_experiments":False,"ready_for_stage_B_NAV":False,"future_data_violation_count":0,"formal_model_changed":False,"trade_decision_changed":False,"active_in_trade_decision":False,"report_changed":False,"portfolio_replay_executed":False,"ready_for_strategy_replay":False,"ready_for_formal":False,"not_live_rule":True,"forward_returns_live_rule_usage":False}
+    targets_ready = len(entry_wide) == len(frame) and len(exit_wide) == len(frame) and entry_wide.entry_target.notna().sum() > 0 and exit_wide.exit_target.notna().sum() > 0
+    stage_a_data_ready = mechanically_reproducible and targets_ready
+    readiness={"task_id":TASK,"status":"blocked_three_numeric_calibration_clarifications_required","requested_start":"2023-07-11","requested_end":"2026-06-29","actual_start":str(frame.decision_date.min().date()),"actual_end":str(frame.decision_date.max().date()),"daily_rank1_rows":len(frame),"decision_dates":frame.decision_date.nunique(),"entry_target_rows":len(entry_wide),"exit_target_rows":len(exit_wide),"P3_1_fold_count":len(folds),"P3_2_untouched_OOS":True,"P3_2_read_prohibited_until_P3_1_gate_pass":True,"parameter_effective_degrees_freedom":17,"regularization_candidates":[0.01,0.1,1.0],"entry_quantile_candidates":[0.5,0.6,0.7,0.8],"exit_quantile_candidates":[0.7,0.8,0.9],"non_cartesian_calibration":True,"stock_and_exit_scores_separate":True,"old_hardcoded_thresholds_used":False,"normal_switch_enabled":False,"portfolio_NAV_materialized":False,"mechanically_reproducible":bool(mechanically_reproducible),"stage_A_data_and_target_materialization_ready":bool(stage_a_data_ready),"calibration_policy_unique":False,"pending_strategy_decision_count":3,"diagnostic_subproblem":True,"user_explicitly_authorized_rank1_timing_scope":True,"representative_of_full_intended_layer5":False,"non_representative_of_full_Layer5":True,"may_be_used_to_reject_full_layer5":False,"may_be_used_to_assess_rank1_timing_hypothesis":True,"all80_rerank_executed":False,"Top3_executed":False,"ready_for_stage_A_candidate_quality":False,"ready_for_experiments":False,"ready_for_stage_B_NAV":False,"future_data_violation_count":0,"formal_model_changed":False,"trade_decision_changed":False,"active_in_trade_decision":False,"report_changed":False,"portfolio_replay_executed":False,"ready_for_strategy_replay":False,"ready_for_formal":False,"not_live_rule":True,"forward_returns_live_rule_usage":False}
     (OUT/"readiness_for_p3_rank1_weighted_entry_exit.json").write_text(json.dumps(readiness,ensure_ascii=False,indent=2),encoding="utf-8")
     pd.DataFrame([
         {"question":"rank1 stock parameters identify better timing","in_scope":True},
@@ -231,17 +306,15 @@ def run() -> None:
         {"question":"full Layer5 selector succeeds or fails","in_scope":False},
         {"question":"Top3 or formal portfolio performance","in_scope":False},
     ]).to_csv(OUT/"p3_rank1_timing_scope_boundary.csv",index=False,encoding="utf-8-sig")
+    pd.DataFrame([{"decision_id":f"D{i}","status":"frozen_by_strategy_center_2026_07_13","machine_policy_file":"p3_rank1_timing_calibration_policy.csv"} for i in range(1,7)]).to_csv(OUT/"p3_rank1_timing_strategy_center_calibration_decision_ledger.csv",index=False,encoding="utf-8-sig")
     pd.DataFrame([
-        {"decision_id":"D1_entry_objective","strategy_center_must_freeze":"exact 10D/20D combination, worst-case objective formula, downside and future-MDD constraint","why_core_cannot_infer":"changes optimization target and accepted timing behavior","status":"pending"},
-        {"decision_id":"D2_exit_objective","strategy_center_must_freeze":"event-level exit validation horizon, label, counterexample and pass rule without NAV","why_core_cannot_infer":"exit quality has no unique event-level proxy","status":"pending"},
-        {"decision_id":"D3_comparator_actions","strategy_center_must_freeze":"exact C0/C1/C2/C3 entry, hold and exit gate semantics including executable C2 behavior","why_core_cannot_infer":"current C2 is attribution metadata, not an action rule","status":"pending"},
-        {"decision_id":"D4_threshold_candidates","strategy_center_must_freeze":"entry/exit train-only quantile candidate sets, selection objective and deterministic tie-break","why_core_cannot_infer":"median or any quantile would be an unauthorized threshold","status":"pending"},
-        {"decision_id":"D5_stability_gate","strategy_center_must_freeze":"numeric fold, neighbor and ordinary/weak pass-fail requirements before P3-2","why_core_cannot_infer":"defines what counts as a stable platform","status":"pending"},
-        {"decision_id":"D6_P3_2_mechanical_gate","strategy_center_must_freeze":"exact machine condition that permits one-time P3-2 read and evaluation","why_core_cannot_infer":"must prevent accidental final-OOS access after P3-1 failure","status":"pending"},
-    ]).to_csv(OUT/"p3_rank1_timing_strategy_center_calibration_decision_ledger.csv",index=False,encoding="utf-8-sig")
-    (OUT/"final_summary_zh.md").write_text("# P3 Layer0-4 canonical rank1 weighted timing contract\n\n本contract是使用者明確授權的bounded rank1 timing subproblem，且不代表完整Layer5。715日features與2,860 labels可重現，但17df calibration尚缺唯一D1-D6政策。為避免Experiments自行發明objective、threshold或pass gate，目前status=blocked_pending_strategy_calibration_freeze、ready_for_experiments=false，P3-2禁止讀取。未產NAV、Top3或正式交易決策。\n",encoding="utf-8")
+        {"conflict_id":"N1_P3_1_risk_material_worsening","policy_text":"other two MDD/P10/large-down must not materially worsen","required_numeric_clarification":"maximum allowed deterioration for each metric, with unit"},
+        {"conflict_id":"N2_P3_2_20bp_material_reversal","policy_text":"other 10/20TD horizon must not show material reversal at 20bp","required_numeric_clarification":"minimum allowed 20bp excess or maximum drop versus 10bp, with unit"},
+        {"conflict_id":"N3_C2_market_threshold_mapping","policy_text":"market-only entry/exit use frozen market thresholds","required_numeric_clarification":"whether entry {0.50,0.60,0.70,0.80} and exit {0.70,0.80,0.90} quantiles apply to market risk, and exact lower-tail/upper-tail mapping"},
+    ]).to_csv(OUT/"p3_rank1_timing_numeric_policy_conflict_ledger.csv",index=False,encoding="utf-8-sig")
+    (OUT/"final_summary_zh.md").write_text("# P3 Layer0-4 canonical rank1 weighted timing contract\n\nD1-D6大部分政策與715日entry/exit targets已materialize，資料gate通過。但三個文字條件仍缺可程式化數值：P3-1 risk的明顯惡化、P3-2 20bp重大反轉、C2 market threshold quantile尾端映射。Core未猜測，故calibration_policy_unique=false、ready_for_experiments=false；P3-2禁止讀取。此task仍只代表bounded rank1 timing，不代表完整Layer5。\n",encoding="utf-8")
     files=sorted(p for p in OUT.iterdir() if p.is_file() and p.name!="manifest.json")
-    (OUT/"manifest.json").write_text(json.dumps({"task_id":TASK,"inputs":{"daily_sha256":sha(DAILY),"score_sha256":sha(SCORE),"market_sha256":sha(MARKET),"label_sha256":sha(LABEL),"fold_sha256":sha(FOLDS)},"files":[{"name":p.name,"sha256":sha(p),"bytes":p.stat().st_size} for p in files]},ensure_ascii=False,indent=2),encoding="utf-8")
+    (OUT/"manifest.json").write_text(json.dumps({"task_id":TASK,"inputs":{"daily_sha256":sha(DAILY),"score_sha256":sha(SCORE),"market_sha256":sha(MARKET),"label_sha256":sha(LABEL),"outcome_sha256":sha(OUTCOME),"fold_sha256":sha(FOLDS)},"files":[{"name":p.name,"sha256":sha(p),"bytes":p.stat().st_size} for p in files]},ensure_ascii=False,indent=2),encoding="utf-8")
 
 
 if __name__ == "__main__":

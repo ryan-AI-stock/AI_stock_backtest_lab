@@ -32,11 +32,22 @@ class WeeklyRank1WeightedEntryExitContractTest(unittest.TestCase):
         self.assertFalse(ready["representative_of_full_intended_layer5"])
         self.assertFalse(ready["may_be_used_to_reject_full_layer5"])
         self.assertTrue(ready["may_be_used_to_assess_rank1_timing_hypothesis"])
+        self.assertTrue(ready["stage_A_data_and_target_materialization_ready"])
         self.assertFalse(ready["calibration_policy_unique"])
-        self.assertEqual(ready["pending_strategy_decision_count"], 6)
+        self.assertEqual(ready["pending_strategy_decision_count"], 3)
         self.assertTrue(ready["P3_2_read_prohibited_until_P3_1_gate_pass"])
         self.assertFalse(ready["ready_for_stage_A_candidate_quality"])
         self.assertFalse(ready["ready_for_experiments"])
+
+    def test_targets_and_policy_are_materialized(self):
+        entry = pd.read_csv(OUT / "p3_rank1_entry_target_contract.csv.gz")
+        exit_target = pd.read_csv(OUT / "p3_rank1_exit_target_contract.csv.gz")
+        policy = pd.read_csv(OUT / "p3_rank1_timing_calibration_policy.csv")
+        self.assertEqual(len(entry), 715)
+        self.assertEqual(len(exit_target), 715)
+        self.assertIn("entry_target", entry.columns)
+        self.assertIn("exit_target", exit_target.columns)
+        self.assertGreaterEqual(len(policy), 30)
 
     def test_tdcc_not_zero_filled_or_used(self):
         p31 = self.frame[self.frame.P3_segment.str.startswith("P3-1")]
