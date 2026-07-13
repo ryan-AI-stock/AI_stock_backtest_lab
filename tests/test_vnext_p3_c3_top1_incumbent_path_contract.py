@@ -22,6 +22,11 @@ class IncumbentPathContractTest(unittest.TestCase):
         self.assertEqual(len(self.actions), 482)
         self.assertFalse(self.actions.decision_date.duplicated().any())
 
+    def test_radar_fill_closes_incumbent_pit_gap(self):
+        if subject.RADAR_COMPACT.exists():
+            self.assertEqual(self.ready["incumbent_PIT_missing_rows"], 0)
+            self.assertTrue(self.ready["exact_path_ready"])
+
 
 if __name__ == "__main__":
     unittest.main()
