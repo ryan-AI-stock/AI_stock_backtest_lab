@@ -22,6 +22,13 @@ class LifecycleV1StageATest(unittest.TestCase):
         self.assertEqual(len(self.top), 482)
         self.assertFalse(self.top.decision_date.duplicated().any())
 
+    def test_stopped_checkpoint_governance(self):
+        self.assertTrue(self.ready["non_representative_of_current_rank1_stock_only_timing_stage"])
+        self.assertFalse(self.ready["may_be_used_to_reject_stock_only_low_buy_high_sell_hypothesis"])
+        self.assertTrue(self.ready["follow_up_stopped"])
+        self.assertFalse(self.ready["ready_for_experiments"])
+        self.assertEqual(self.ready["allowed_role"], "supply_reference_only")
+
 
 if __name__ == "__main__":
     unittest.main()

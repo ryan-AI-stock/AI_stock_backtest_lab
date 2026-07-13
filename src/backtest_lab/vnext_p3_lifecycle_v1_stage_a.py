@@ -328,6 +328,13 @@ def run() -> None:
         "PF_5871_2327_supply_pass": pf_required_pass,
         "stage_A_pass": stage_pass,
         "ready_for_experiments": False,
+        "non_representative_of_current_staged_diagnostic": True,
+        "non_representative_of_current_rank1_stock_only_timing_stage": True,
+        "may_be_used_to_reject_stock_only_low_buy_high_sell_hypothesis": False,
+        "follow_up_stopped": True,
+        "may_be_used_as_primary_baseline": False,
+        "checkpoint_only": True,
+        "allowed_role": "supply_reference_only",
         "architecture_reset_from_fixed_V0": True,
         "fixed_V1_only": True,
         "weight_grid_authorized": False,
@@ -343,9 +350,9 @@ def run() -> None:
         "forward_returns_live_rule_usage": False,
     }
     (OUT / "readiness_for_V1_stage_A.json").write_text(json.dumps(readiness, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
-    (OUT / "final_summary_zh.md").write_text(f"# V1 expanded candidate + dual exit Stage A\n\nHorizontal gate={horizontal_pass}，score ready={score_ready}，PF 5871/2327 supply={pf_required_pass}，Stage A={stage_pass}。本輪只讀P3-1 PIT/state/supply，未讀future outcome/P3-2或NAV。\n", encoding="utf-8")
+    (OUT / "final_summary_zh.md").write_text(f"# V1 expanded candidate + dual exit Stage A\n\n此輸出已停止，只保留 checkpoint：`non_representative_of_current_rank1_stock_only_timing_stage=true`、`may_be_used_to_reject_stock_only_low_buy_high_sell_hypothesis=false`、`follow_up_stopped=true`、`ready_for_experiments=false`、`allowed_role=supply_reference_only`。不得作目前主線結論或 primary baseline。\n\nHorizontal gate={horizontal_pass}，score ready={score_ready}，PF 5871/2327 supply={pf_required_pass}，Stage A={stage_pass}。本輪只讀 P3-1 PIT/state/supply，未讀 future outcome/P3-2 或 NAV。\n", encoding="utf-8")
     files = sorted(p for p in OUT.iterdir() if p.is_file() and p.name != "manifest.json")
-    (OUT / "manifest.json").write_text(json.dumps({"task_id": TASK, "files": [{"name": p.name, "sha256": _sha(p), "bytes": p.stat().st_size} for p in files]}, ensure_ascii=False, indent=2), encoding="utf-8")
+    (OUT / "manifest.json").write_text(json.dumps({"task_id": TASK, "non_representative_of_current_rank1_stock_only_timing_stage": True, "may_be_used_to_reject_stock_only_low_buy_high_sell_hypothesis": False, "follow_up_stopped": True, "ready_for_experiments": False, "allowed_role": "supply_reference_only", "files": [{"name": p.name, "sha256": _sha(p), "bytes": p.stat().st_size} for p in files]}, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 if __name__ == "__main__":
