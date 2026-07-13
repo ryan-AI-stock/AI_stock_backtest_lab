@@ -124,8 +124,20 @@ def run() -> None:
     pd.DataFrame([{"audit":"future_outcome_feature","violations":0},{"audit":"P3_2_outcome_read","violations":0},{"audit":"candidate_day_KD_used_as_continuous_self_history","violations":0},{"audit":"TDCC_P3_1_zero_fill","violations":0}]).to_csv(OUT / "p3_rank1_sequential_future_PIT_audit.csv", index=False, encoding="utf-8-sig")
 
     readiness = {"task_id":TASK,"status":"blocked_KD_continuous_adjusted_HLC_required_before_sequence_supply","requested_start":"2023-07-11","requested_end":"2026-06-29","actual_start":str(frame.decision_date.min().date()),"actual_end":str(frame.decision_date.max().date()),"rank1_daily_rows":len(frame),"rank1_unique_tickers":frame.ticker.nunique(),"state_definition_ready":True,"transition_contract_ready":True,"price_BIAS_3_6_12M_percentiles_ready":True,"KD_3_6_12M_self_percentiles_ready":False,"complete_entry_sequence_supply_ready":False,"complete_exit_sequence_supply_ready":False,"sufficient_for_walk_forward":False,"ready_for_experiments":False,"performance_executed":False,"P3_2_outcome_read":False,"NAV_executed":False,"Top3_executed":False,"future_data_violation_count":0,"formal_model_changed":False,"trade_decision_changed":False,"active_in_trade_decision":False,"report_changed":False,"portfolio_replay_executed":False,"ready_for_strategy_replay":False,"ready_for_formal":False,"not_live_rule":True,"forward_returns_live_rule_usage":False}
+    readiness.update({
+        "status": "authorized_waiting_bounded_adjusted_HLC_source",
+        "source_acquisition_started": False,
+        "radar_download_executed": False,
+        "governance_conflict": None,
+        "requires_strategy_center_scope_ruling": False,
+        "diagnostic_subproblem": True,
+        "supports_sequential_lifecycle_rank1_timing": True,
+        "representative_of_full_all80_layer5": False,
+        "may_be_used_to_reject_full_layer5": False,
+        "broad_additive_formula_followup": False,
+    })
     (OUT / "readiness_for_p3_rank1_sequential_lifecycle.json").write_text(json.dumps(readiness, ensure_ascii=False, indent=2), encoding="utf-8")
-    (OUT / "final_summary_zh.md").write_text("# P3 rank1 sequential low-turn-up/high-turn-down lifecycle contract\n\nS0-S7與合法/禁止轉移已凍結。101檔rank1連續adjusted close已materialize price/BIAS 3/6/12月自身percentile；但來源沒有adjusted high/low，無法建立連續KD自身percentile。候選日KD不得冒充連續自身歷史。因此完整S1->S3與S5->S7供給尚不可判，sufficient_for_walk_forward=false，未交Experiments、未讀future outcome或P3-2績效。\n", encoding="utf-8")
+    (OUT / "final_summary_zh.md").write_text("# P3 rank1 sequential low-turn-up/high-turn-down lifecycle contract\n\nStrategy Center已確認：停止的是broad additive formula，新sequential rank1 bounded diagnostic合法有效。S0-S7 contract與price/BIAS evidence保留；目前等待Radar補rank1-only adjusted HLC/factor，以建立KD 3/6/12月自身歷史與sequence供給。未交Experiments、未讀future outcome或P3-2績效。\n", encoding="utf-8")
     files = sorted(p for p in OUT.iterdir() if p.is_file() and p.name != "manifest.json")
     (OUT / "manifest.json").write_text(json.dumps({"task_id":TASK,"inputs":{"daily_sha256":sha(DAILY)},"files":[{"name":p.name,"sha256":sha(p),"bytes":p.stat().st_size} for p in files]}, ensure_ascii=False, indent=2), encoding="utf-8")
 

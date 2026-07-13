@@ -30,6 +30,9 @@ class Rank1SequentialLifecycleContractTest(unittest.TestCase):
         self.assertFalse(ready["sufficient_for_walk_forward"])
         self.assertFalse(ready["ready_for_experiments"])
         self.assertFalse(ready["P3_2_outcome_read"])
+        self.assertFalse(ready["requires_strategy_center_scope_ruling"])
+        self.assertTrue(ready["supports_sequential_lifecycle_rank1_timing"])
+        self.assertFalse(ready["radar_download_executed"])
 
 
 if __name__ == "__main__":
