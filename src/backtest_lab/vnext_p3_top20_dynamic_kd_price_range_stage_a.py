@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "outputs/vnext_p3_layer04_top20_ticker_specific_KD_price_range_timing_stage_A_contract_20260713"
 TASK = "TASK-BACKTEST-CORE-VNEXT-P3-LAYER04-TOP20-TICKER-SPECIFIC-KD-PRICE-RANGE-TIMING-STAGE-A-CONTRACT-001"
 P3_1_END = pd.Timestamp("2025-07-10")
+RADAR_6712_EXECUTION_PATCH = Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p3_layer5_all80_kd_range_6712_post_20231117_official_ohlc_gap_fill_20260713\p3_all80_KD_range_6712_post_20231117_official_ohlc_filled_rows.csv")
 STOPPED_GOVERNANCE = {
     "superseded_by_all80_K_range_eligibility_comparison": True,
     "non_representative_of_current_scope": True,
@@ -64,7 +65,14 @@ def _official_raw() -> pd.DataFrame:
     daily = pd.read_csv(rank1_source.DAILY, dtype={"ticker": str}, usecols=["decision_date", "ticker", "close", "raw_execution_source_quality"])
     daily["decision_date"] = pd.to_datetime(daily.decision_date)
     daily = daily.rename(columns={"close": "official_raw_close", "raw_execution_source_quality": "official_raw_source_quality"})
-    return daily.dropna(subset=["official_raw_close"]).drop_duplicates(["decision_date", "ticker"], keep="last")
+    frames = [daily]
+    if RADAR_6712_EXECUTION_PATCH.exists():
+        patch = pd.read_csv(RADAR_6712_EXECUTION_PATCH, dtype={"ticker": str})
+        patch = patch.drop(columns=["decision_date"])
+        patch = patch.rename(columns={"exact_execution_date":"decision_date","close":"official_raw_close","source_quality":"official_raw_source_quality"})
+        patch["decision_date"] = pd.to_datetime(patch.decision_date)
+        frames.append(patch[["decision_date","ticker","official_raw_close","official_raw_source_quality"]])
+    return pd.concat(frames,ignore_index=True).dropna(subset=["official_raw_close"]).drop_duplicates(["decision_date", "ticker"], keep="last")
 
 
 def _candidate_events(membership: pd.DataFrame, features: pd.DataFrame, window: int, zone: float, latch: int, gate: int) -> tuple[pd.DataFrame, pd.DataFrame]:
