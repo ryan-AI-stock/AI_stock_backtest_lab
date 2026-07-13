@@ -65,7 +65,13 @@ def _official_raw() -> pd.DataFrame:
     daily = pd.read_csv(rank1_source.DAILY, dtype={"ticker": str}, usecols=["decision_date", "ticker", "close", "raw_execution_source_quality"])
     daily["decision_date"] = pd.to_datetime(daily.decision_date)
     daily = daily.rename(columns={"close": "official_raw_close", "raw_execution_source_quality": "official_raw_source_quality"})
-    frames = [daily]
+    raw_paths = sorted((all80.P3 / "compact/price").glob("*.csv.gz")) + sorted((all80.WARMUP / "compact/raw_hlc_warmup").glob("*.csv.gz"))
+    locked = all80._load(raw_paths, ["ticker", "date", "close"])
+    if len(locked):
+        locked = locked.rename(columns={"date":"decision_date", "close":"official_raw_close"})
+        locked["decision_date"] = pd.to_datetime(locked.decision_date)
+        locked["official_raw_source_quality"] = "official_locked_P3_raw_compact_exact_ticker_date"
+    frames = [locked[["decision_date","ticker","official_raw_close","official_raw_source_quality"]], daily] if len(locked) else [daily]
     if RADAR_6712_EXECUTION_PATCH.exists():
         patch = pd.read_csv(RADAR_6712_EXECUTION_PATCH, dtype={"ticker": str})
         patch = patch.drop(columns=["decision_date"])
