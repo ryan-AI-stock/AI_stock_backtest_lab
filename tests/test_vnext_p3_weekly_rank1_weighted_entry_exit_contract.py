@@ -32,8 +32,11 @@ class WeeklyRank1WeightedEntryExitContractTest(unittest.TestCase):
         self.assertFalse(ready["representative_of_full_intended_layer5"])
         self.assertFalse(ready["may_be_used_to_reject_full_layer5"])
         self.assertTrue(ready["may_be_used_to_assess_rank1_timing_hypothesis"])
-        self.assertTrue(ready["ready_for_stage_A_candidate_quality"])
-        self.assertTrue(ready["ready_for_experiments"])
+        self.assertFalse(ready["calibration_policy_unique"])
+        self.assertEqual(ready["pending_strategy_decision_count"], 6)
+        self.assertTrue(ready["P3_2_read_prohibited_until_P3_1_gate_pass"])
+        self.assertFalse(ready["ready_for_stage_A_candidate_quality"])
+        self.assertFalse(ready["ready_for_experiments"])
 
     def test_tdcc_not_zero_filled_or_used(self):
         p31 = self.frame[self.frame.P3_segment.str.startswith("P3-1")]
