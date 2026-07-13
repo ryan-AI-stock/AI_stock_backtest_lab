@@ -22,6 +22,11 @@ class C3Top1FixedContractTest(unittest.TestCase):
         self.assertFalse(self.winners.decision_date.duplicated().any())
         self.assertEqual(len(self.winners), 482)
 
+    def test_execution_keys_complete(self):
+        self.assertEqual(self.ready["top1_execution_ready"], 123)
+        self.assertEqual(self.ready["top1_execution_blocked"], 0)
+        self.assertTrue(self.ready["daily_target_materialization_feasible"])
+
 
 if __name__ == "__main__":
     unittest.main()

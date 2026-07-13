@@ -15,6 +15,7 @@ DUAL = ROOT / "outputs/vnext_p3_layer5_all80_candidate_opportunity_vs_selected_p
 SCORE = ROOT / "outputs/vnext_p3_layer5_full_candidate_risk_adjusted_scoring_contract_20260712/p3_full_candidate_spec_v1_score_matrix.csv.gz"
 FUND = ROOT / "outputs/vnext_p3_layer5_full_candidate_scoring_fundamental_pit_completion_20260712/p3_full_candidate_spec_v1_fundamental_PIT_completed_matrix.csv.gz"
 OUT = ROOT / "outputs/vnext_p3_layer5_C3_eligible_top1_incumbent_lifecycle_fixed_contract_20260713"
+EXECUTION_PATCH = sources.RADAR / "radar_vnext_p3_layer5_c3_top1_6805_20240822_official_ohlc_gap_fill_20260713/p3_C3_top1_6805_20240822_official_ohlc_filled_rows.csv"
 TASK = "TASK-BACKTEST-CORE-VNEXT-P3-LAYER5-C3-ELIGIBLE-TOP1-AND-INCUMBENT-LIFECYCLE-FIXED-CONTRACT-001"
 
 
@@ -30,6 +31,11 @@ def _raw_execution() -> pd.DataFrame:
     delta = delta.rename(columns={"official_raw_open":"open","official_raw_high":"high","official_raw_low":"low","official_raw_close":"close","raw_source_quality":"source_quality"})
     use = [column for column in ["ticker","date","open","high","low","close","source_quality"] if column in delta]
     raw = pd.concat([raw, delta[use]], ignore_index=True)
+    if EXECUTION_PATCH.exists():
+        patch = pd.read_csv(EXECUTION_PATCH, dtype={"ticker":str})
+        patch["ticker"] = patch.ticker.str.zfill(4)
+        patch = patch.rename(columns={"next_execution_date":"date"})
+        raw = pd.concat([raw, patch[["ticker","date","open","high","low","close","source_quality"]]], ignore_index=True)
     raw["date"] = pd.to_datetime(raw.date)
     raw["official_raw_ready"] = raw[["open","high","low","close"]].notna().all(axis=1)
     return raw.drop_duplicates(["ticker","date"], keep="last")
@@ -84,6 +90,7 @@ def run() -> None:
     execution["execution_status"] = np.where(execution.official_raw_ready.fillna(False), "exact_next_day_official_raw_ready", "blocked_exact_next_day_official_raw_missing")
     execution[["decision_date","top1_ticker","next_execution_date","open","high","low","close","source_quality","execution_status"]].to_csv(OUT / "p3_C3_top1_execution_exact_key_readiness.csv", index=False, encoding="utf-8-sig")
     execution.loc[execution.execution_status.ne("exact_next_day_official_raw_ready"), ["decision_date","top1_ticker","next_execution_date","execution_status"]].to_csv(OUT / "p3_C3_top1_execution_gap_ledger.csv", index=False, encoding="utf-8-sig")
+    pd.DataFrame([{"ticker":"6805","date":"2024-08-22","patch_absorbed":EXECUTION_PATCH.exists(),"source_commit":"a04a57a","future_data_violation_count":0}]).to_csv(OUT / "p3_C3_top1_6805_execution_patch_absorption_audit.csv", index=False, encoding="utf-8-sig")
 
     transitions = pd.DataFrame([
         {"position_state":"P0","condition":"valid C3 Top1 exists and confirmed_bear=false","action":"entry_target","reason_code":"ENTRY_C3_TOP1_READY"},
