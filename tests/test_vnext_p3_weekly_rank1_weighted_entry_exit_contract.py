@@ -37,7 +37,10 @@ class WeeklyRank1WeightedEntryExitContractTest(unittest.TestCase):
         self.assertEqual(ready["pending_strategy_decision_count"], 0)
         self.assertTrue(ready["P3_2_read_prohibited_until_P3_1_gate_pass"])
         self.assertTrue(ready["ready_for_stage_A_candidate_quality"])
-        self.assertTrue(ready["ready_for_experiments"])
+        self.assertTrue(ready["non_representative_of_requested_sequential_lifecycle_logic"])
+        self.assertFalse(ready["may_be_used_to_reject_sequential_low_buy_high_sell_hypothesis"])
+        self.assertTrue(ready["follow_up_of_broad_additive_formula_stopped"])
+        self.assertFalse(ready["ready_for_experiments"])
 
     def test_targets_and_policy_are_materialized(self):
         entry = pd.read_csv(OUT / "p3_rank1_entry_target_contract.csv.gz")
