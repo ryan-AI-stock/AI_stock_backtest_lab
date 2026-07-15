@@ -16,7 +16,7 @@ import pandas as pd
 from backtest_lab.costs import COST_MODEL_VERSION, TaiwanCostModel
 
 
-TASK_ID = "TASK-BACKTEST-EXPERIMENTS-P1-P2-0050-SIGNAL-00631L-MA-SLOPE-EXIT-DIAGNOSTIC-001"
+TASK_ID = "TASK-BACKTEST-EXPERIMENTS-P1-P2-0050-SIGNAL-00631L-BELOW-MA-SLOPE-EXIT-DIAGNOSTIC-002"
 INITIAL_CAPITAL = 1_000_000.0
 SLIPPAGE_PER_SIDE = 0.001
 PERIODS = (
@@ -54,7 +54,7 @@ def add_signals(frame: pd.DataFrame, exit_window: int) -> pd.DataFrame:
     exit_ma = analysis.rolling(exit_window, min_periods=exit_window).mean()
     out["exit_ma"] = exit_ma
     out["exit_ma_slope"] = exit_ma - exit_ma.shift(1)
-    out["sell_signal"] = (analysis > exit_ma) & (out["exit_ma_slope"] < 0)
+    out["sell_signal"] = (analysis < exit_ma) & (out["exit_ma_slope"] < 0)
     return out
 
 
@@ -112,7 +112,7 @@ def simulate(
                 cash += gross - breakdown["total_transaction_cost"]
                 total_cost += breakdown["total_transaction_cost"] + (shares * price * SLIPPAGE_PER_SIDE if after_cost else 0.0)
                 action = "sell"
-                signal_reason = f"0050_close_above_MA{exit_window}_while_MA{exit_window}_slope_down"
+                signal_reason = f"0050_close_below_MA{exit_window}_while_MA{exit_window}_slope_down"
                 trade_rows.append(_trade_row(period, exit_window, row["date"], signal_date, action, price, execution_price, shares, gross, breakdown["sell_fee"], breakdown["securities_transaction_tax"], signal_reason))
                 shares = 0
 
@@ -249,10 +249,10 @@ def run_backtest(
     trades = pd.concat(trade_parts, ignore_index=True) if trade_parts else pd.DataFrame()
     annual = _annual_returns(daily)
     interpretation = pd.DataFrame([
-        {"exit_window": 3, "institutional_reading_zh": "最短線的反彈減碼：價格仍在短均線上，但短均線已下彎，像是利用反彈先撤；容易太早賣與增加交易。"},
-        {"exit_window": 5, "institutional_reading_zh": "與進場MA5同尺度的短波段撤退：確認最近一週平均成本開始下彎；速度與雜訊較平衡。"},
-        {"exit_window": 7, "institutional_reading_zh": "等待約一週半平均成本轉弱：較能容忍震盪，但可能多吐回一段漲幅。"},
-        {"exit_window": 10, "institutional_reading_zh": "等待兩週平均成本轉弱：偏向趨勢資金撤退確認，換手較少，但遇急跌反應最慢。"},
+        {"exit_window": 3, "institutional_reading_zh": "最敏感的短線跌破：價格跌破3日均線且均線下彎，代表短線承接轉弱；反應快，但容易被正常震盪洗出。"},
+        {"exit_window": 5, "institutional_reading_zh": "一週趨勢跌破：價格跌破5日平均成本且均線下彎，代表短波段資金開始撤退；仍可能出現假跌破。"},
+        {"exit_window": 7, "institutional_reading_zh": "約一週半趨勢確認：要求價格與均線方向同步轉弱，較能過濾短暫震盪，但退出會比MA3/5慢。"},
+        {"exit_window": 10, "institutional_reading_zh": "兩週趨勢確認：較接近中短期資金撤退後的結構破壞，假訊號較少，但急跌時會承受較多回吐。"},
     ])
 
     summary.to_csv(output / "p1_p2_strategy_summary.csv", index=False, encoding="utf-8-sig", float_format="%.6f")
@@ -275,7 +275,8 @@ def run_backtest(
         "execution_and_holding_basis": "provider_adjusted_close_total_return_research_proxy",
         "execution_timing": "next_common_trading_day_close",
         "entry_rule": "0050 adjusted close > MA5 and > adjusted close 4 trading days ago",
-        "exit_rules": [f"0050 adjusted close > MA{window} and MA{window} slope < 0" for window in EXIT_WINDOWS],
+        "exit_rules": [f"0050 adjusted close < MA{window} and MA{window} slope < 0" for window in EXIT_WINDOWS],
+        "supersedes_incorrect_exit_semantics_output": "vnext_p1_p2_0050_signal_00631l_ma_slope_exit_diagnostic_20260715",
         "market_environment_risk_used": False,
         "layer0_4_candidate_pool_used": False,
         "cost_model_version": COST_MODEL_VERSION,
@@ -329,8 +330,12 @@ def _coverage(common: pd.DataFrame) -> pd.DataFrame:
 
 
 def _summary_text(summary: pd.DataFrame) -> str:
+    buy_hold = summary[summary["cost_basis"].eq("after_cost_10bp_buy_side")]
     primary = summary[summary["cost_basis"].eq("after_cost_10bp_side")]
     lines = ["# 0050訊號／00631L執行 P1-P2 診斷", "", "主結果使用next-day close、ETF費稅與10bp/side滑價。", ""]
+    for row in buy_hold.to_dict(orient="records"):
+        lines.append(f"- {row['period']} 00631L buy-and-hold: net {row['total_return_pct']:.2f}%, CAGR {row['cagr_pct']:.2f}%, MDD {row['max_drawdown_pct']:.2f}%")
+    lines.append("")
     for row in primary.to_dict(orient="records"):
         lines.append(f"- {row['period']} {row['strategy']}: net {row['total_return_pct']:.2f}%, CAGR {row['cagr_pct']:.2f}%, MDD {row['max_drawdown_pct']:.2f}%, transitions {row['transitions']}")
     return "\n".join(lines) + "\n"
