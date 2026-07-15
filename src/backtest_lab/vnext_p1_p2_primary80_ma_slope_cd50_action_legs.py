@@ -19,12 +19,16 @@ from backtest_lab.vnext_p1_p2_primary80_ma_slope_cd50_contract import (
 
 ROOT = Path(__file__).resolve().parents[2]
 RADAR = Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p1_p2_primary80_ma_slope_cd50_price_source_convergence_20260715")
+CLOSURE = Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p1_p2_ma_slope_cd50_action_leg_frontier_local_audit_bounded_fill_20260715")
 OUT = ROOT / "outputs/vnext_p1_p2_layer4_primary80_individual_MA_slope_CD50_action_legs_20260715"
 ADJUSTED = RADAR / "p1_p2_primary80_adjusted_analysis_close_reuse_compact.csv.gz"
 RAW = RADAR / "p1_p2_primary80_official_raw_execution_close_reuse_compact.csv.gz"
 REUSE_A = RADAR / "reuse_A_existing_raw_close.csv.gz"
 REUSE_D = RADAR / "reuse_D_raw_ready_adjusted_factor_incomplete.csv.gz"
 REUSE_E = RADAR / "reuse_E_not_applicable_or_no_trade_review.csv.gz"
+CLOSURE_RAW = CLOSURE / "frontier_official_raw_accepted_patch.csv"
+CLOSURE_NO_TRADE = CLOSURE / "frontier_official_no_trade_ledger.csv"
+CLOSURE_CONTINUITY = CLOSURE / "incumbent_continuity_local_classification.csv.gz"
 
 
 def _sha(path: Path) -> str:
@@ -54,6 +58,32 @@ def load_prices() -> tuple[pd.DataFrame, pd.DataFrame]:
         frame["source_quality"] = frame.source_quality_raw.fillna("existing_raw_close_analysis_fallback") + ";unadjusted_MA_slope_research_fallback"
         fallback.append(frame[["period", "ticker", "date", "value", "source_quality"]].dropna(subset=["value"]))
     adjusted = pd.concat([*fallback, adjusted], ignore_index=True).drop_duplicates(["period", "ticker", "date"], keep="last")
+    continuity = pd.read_csv(CLOSURE_CONTINUITY, dtype={"ticker": str})
+    continuity["ticker"] = continuity.ticker.str.zfill(4)
+    continuity["date"] = pd.to_datetime(continuity.decision_date)
+    continuity["adjusted_value"] = pd.to_numeric(continuity.adjusted_close, errors="coerce")
+    continuity["raw_fallback_value"] = pd.to_numeric(continuity.full_raw_close, errors="coerce").where(
+        continuity.unadjusted_ma_slope_research_fallback_allowed.fillna(False)
+    )
+    continuity["value"] = continuity.adjusted_value.fillna(continuity.raw_fallback_value)
+    continuity["source_quality"] = np.where(
+        continuity.adjusted_value.notna(),
+        continuity.full_adjusted_source_quality.fillna("local_adjusted_continuity_reuse"),
+        continuity.full_raw_source_quality.fillna("local_raw_continuity_reuse") + ";unadjusted_MA_slope_research_fallback",
+    )
+    adjusted = pd.concat(
+        [adjusted, continuity[["period", "ticker", "date", "value", "source_quality"]].dropna(subset=["value"])],
+        ignore_index=True,
+    ).drop_duplicates(["period", "ticker", "date"], keep="last")
+    closure_raw = pd.read_csv(CLOSURE_RAW, dtype={"ticker": str})
+    closure_raw["ticker"] = closure_raw.ticker.str.zfill(4)
+    closure_raw["date"] = pd.to_datetime(closure_raw.requested_execution_date)
+    closure_raw["value"] = pd.to_numeric(closure_raw.close, errors="coerce")
+    closure_raw["source_quality"] = closure_raw.source_quality
+    raw = pd.concat(
+        [raw, closure_raw[["period", "ticker", "date", "value", "source_quality"]].dropna(subset=["value"])],
+        ignore_index=True,
+    ).drop_duplicates(["period", "ticker", "date"], keep="last")
     return adjusted, raw
 
 
@@ -115,6 +145,11 @@ def simulate_actions(features: pd.DataFrame, candidates: pd.DataFrame, raw: pd.D
     feature_map = features.set_index(["period", "ticker", "date"])
     analysis_dates = {(p, t): list(g.date.sort_values()) for (p, t), g in features.groupby(["period", "ticker"])}
     raw_map = raw.set_index(["period", "ticker", "date"])
+    raw_dates = {(p, t): list(g.date.sort_values()) for (p, t), g in raw.groupby(["period", "ticker"])}
+    no_trade = pd.read_csv(CLOSURE_NO_TRADE, dtype={"ticker": str})
+    no_trade["ticker"] = no_trade.ticker.str.zfill(4)
+    no_trade["requested_execution_date"] = pd.to_datetime(no_trade.requested_execution_date)
+    no_trade_keys = set(no_trade[["period", "ticker", "requested_execution_date"]].itertuples(index=False, name=None))
     candidate_groups = {(s, p, d): g.sort_values("candidate_rank") for (s, p, d), g in candidates.groupby(["signal_family", "period", "date"])}
     actions, requirements, blocked = [], [], []
     for variant in parameter_matrix().itertuples(index=False):
@@ -162,6 +197,8 @@ def simulate_actions(features: pd.DataFrame, candidates: pd.DataFrame, raw: pd.D
                     requested_dates = []
                     for role, ticker in legs:
                         req_date = _next_ticker_date(analysis_dates, period, ticker, decision)
+                        if (period, ticker, req_date) in no_trade_keys:
+                            req_date = _next_ticker_date(raw_dates, period, ticker, req_date)
                         requested_dates.append(req_date)
                         ready = req_date is not None and (period, ticker, req_date) in raw_map.index
                         leg_ready &= ready
@@ -215,7 +252,18 @@ def run() -> None:
     e["decision_date"] = pd.to_datetime(e.pop("date"))
     e["official_no_trade_or_NA_evidence"] = True
     no_observation = no_observation.merge(e, on=["period", "ticker", "decision_date"], how="left")
-    no_observation["classification"] = np.where(no_observation.official_no_trade_or_NA_evidence.fillna(False), "E_official_no_trade_or_NA_no_analysis_gap", "incumbent_continuity_unclassified_local_audit_required")
+    continuity_class = pd.read_csv(
+        CLOSURE_CONTINUITY,
+        usecols=["period", "ticker", "decision_date", "local_A_to_E_classification", "network_download_authorized"],
+        dtype={"ticker": str},
+    )
+    continuity_class["ticker"] = continuity_class.ticker.str.zfill(4)
+    continuity_class["decision_date"] = pd.to_datetime(continuity_class.decision_date)
+    continuity_class = continuity_class.drop_duplicates(["period", "ticker", "decision_date"])
+    no_observation = no_observation.merge(continuity_class, on=["period", "ticker", "decision_date"], how="left")
+    no_observation["classification"] = no_observation.local_A_to_E_classification
+    no_observation.loc[no_observation.official_no_trade_or_NA_evidence.fillna(False), "classification"] = "E_official_no_trade_or_NA_no_analysis_gap"
+    no_observation["classification"] = no_observation.classification.fillna("incumbent_continuity_unclassified_local_audit_required")
     no_observation.to_csv(OUT / "p1_p2_MA_slope_CD50_incumbent_analysis_gap_audit.csv.gz", index=False, compression="gzip")
     incumbent_request = no_observation.loc[no_observation.classification.eq("incumbent_continuity_unclassified_local_audit_required")].groupby(["period", "ticker"]).agg(
         requested_start=("decision_date", "min"), requested_end=("decision_date", "max"), unclassified_dates=("decision_date", "nunique")
@@ -227,6 +275,7 @@ def run() -> None:
     summary.to_csv(OUT / "p1_p2_MA_slope_CD50_action_supply_summary.csv", index=False, encoding="utf-8-sig")
     provisional_unique_raw = missing_raw.drop_duplicates(["period", "ticker", "role", "requested_execution_date"]) if len(missing_raw) else missing_raw
     incumbent_unclassified = int(no_observation.classification.eq("incumbent_continuity_unclassified_local_audit_required").sum())
+    incumbent_local_policy_blocked = int(no_observation.classification.str.startswith("E_").sum())
     pd.DataFrame([{"frontier_exact_raw_legs": len(frontier), "frontier_unique_dates": frontier.requested_execution_date.nunique() if len(frontier) else 0, "estimated_source_minutes_low": 15 if len(frontier) else 0, "estimated_source_minutes_high": 60 if len(frontier) else 0, "estimate_basis": "selected date-market cache/bulk reuse plus bounded retrieval; subsequent iterative frontier excluded"}]).to_csv(OUT / "p1_p2_MA_slope_CD50_remaining_source_time_estimate.csv", index=False, encoding="utf-8-sig")
     readiness = {
         "task_id": TASK, "status": "frontier_action_leg_and_incumbent_audit_required" if len(frontier) or incumbent_unclassified else "ready_for_experiments",
@@ -237,6 +286,7 @@ def run() -> None:
         "blocked_action_rows": len(blocked), "all_provisional_unique_raw_gap_legs": len(provisional_unique_raw),
         "frontier_exact_official_raw_gap_legs": len(frontier), "atomic_policy_blockers": len(atomic),
         "incumbent_no_observation_rows": len(no_observation), "incumbent_analysis_unclassified_rows": incumbent_unclassified,
+        "incumbent_local_policy_blocked_rows": incumbent_local_policy_blocked,
         "ready_for_experiments": len(frontier) == 0 and incumbent_unclassified == 0,
         "formal_model_changed": False, "trade_decision_changed": False,
         "active_in_trade_decision": False, "report_changed": False,
