@@ -32,6 +32,27 @@ class MaPriceSlopeCooldownGridBacktestTests(unittest.TestCase):
         self.assertTrue(bool(signaled.iloc[-1]["buy_signal"]))
         self.assertFalse(bool(signaled.iloc[-1]["sell_signal"]))
 
+    def test_seven_observation_slope_compares_six_trading_days_ago(self) -> None:
+        dates = pd.date_range("2020-01-01", periods=20, freq="B")
+        prices = [95] * 12 + [101, 99, 99, 99, 99, 99, 99, 100]
+        frame = pd.DataFrame({"date": dates, "0050_adj_close": prices, "00631L_adj_close": [20] * 20})
+
+        signaled = add_signals(frame, SignalRule("B", 4, 7), SignalRule("X", 10, 20))
+
+        self.assertEqual(float(signaled.iloc[-1]["buy_slope"]), 1.0)
+        self.assertTrue(bool(signaled.iloc[-1]["buy_signal"]))
+        self.assertEqual(prices[-1] - prices[-8], -1)
+
+    def test_twenty_observation_slope_compares_nineteen_trading_days_ago(self) -> None:
+        dates = pd.date_range("2020-01-01", periods=20, freq="B")
+        prices = [101] + [100] * 18 + [99]
+        frame = pd.DataFrame({"date": dates, "0050_adj_close": prices, "00631L_adj_close": [20] * 20})
+
+        signaled = add_signals(frame, SignalRule("B", 4, 7), SignalRule("X", 10, 20))
+
+        self.assertEqual(float(signaled.iloc[-1]["sell_slope"]), -2.0)
+        self.assertTrue(bool(signaled.iloc[-1]["sell_signal"]))
+
     def test_cd5_blocks_five_following_trading_days(self) -> None:
         self.assertFalse(cooldown_complete(11, 10, 5))
         self.assertFalse(cooldown_complete(15, 10, 5))
