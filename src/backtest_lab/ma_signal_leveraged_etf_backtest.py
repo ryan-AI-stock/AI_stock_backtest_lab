@@ -16,7 +16,7 @@ import pandas as pd
 from backtest_lab.costs import COST_MODEL_VERSION, TaiwanCostModel
 
 
-TASK_ID = "TASK-BACKTEST-EXPERIMENTS-P1-P2-0050-SIGNAL-00631L-BELOW-MA-SLOPE-EXIT-DIAGNOSTIC-002"
+TASK_ID = "TASK-BACKTEST-EXPERIMENTS-P1-P2-0050-SIGNAL-00631L-ENTRY-MA7-MA10-BELOW-MA-SLOPE-EXIT-DIAGNOSTIC-003"
 INITIAL_CAPITAL = 1_000_000.0
 SLIPPAGE_PER_SIDE = 0.001
 PERIODS = (
@@ -24,6 +24,7 @@ PERIODS = (
     {"period": "P2", "requested_start": "2023-01-02", "requested_end": "2026-06-30"},
 )
 EXIT_WINDOWS = (3, 5, 7, 10)
+ENTRY_WINDOWS = (7, 10)
 
 
 @dataclass(frozen=True)
@@ -46,11 +47,11 @@ def load_price(path: str | Path) -> pd.DataFrame:
     return frame.dropna(subset=["date", "close", "adj_close"]).sort_values("date").drop_duplicates("date")
 
 
-def add_signals(frame: pd.DataFrame, exit_window: int) -> pd.DataFrame:
+def add_signals(frame: pd.DataFrame, entry_window: int, exit_window: int) -> pd.DataFrame:
     out = frame.copy().sort_values("date")
     analysis = out["0050_adj_close"]
-    out["ma5"] = analysis.rolling(5, min_periods=5).mean()
-    out["buy_signal"] = (analysis > out["ma5"]) & (analysis > analysis.shift(4))
+    out["entry_ma"] = analysis.rolling(entry_window, min_periods=entry_window).mean()
+    out["buy_signal"] = (analysis > out["entry_ma"]) & (analysis > analysis.shift(entry_window - 1))
     exit_ma = analysis.rolling(exit_window, min_periods=exit_window).mean()
     out["exit_ma"] = exit_ma
     out["exit_ma_slope"] = exit_ma - exit_ma.shift(1)
@@ -62,11 +63,12 @@ def simulate(
     common: pd.DataFrame,
     *,
     period: dict[str, str],
+    entry_window: int,
     exit_window: int,
     after_cost: bool,
     initial_capital: float = INITIAL_CAPITAL,
 ) -> SimulationResult:
-    signaled = add_signals(common, exit_window)
+    signaled = add_signals(common, entry_window, exit_window)
     start = pd.Timestamp(period["requested_start"])
     end = pd.Timestamp(period["requested_end"])
     frame = signaled[(signaled["date"] >= start) & (signaled["date"] <= end)].copy().reset_index(drop=True)
@@ -103,8 +105,8 @@ def simulate(
                     cash -= gross + fee
                     total_cost += fee + (shares * price * SLIPPAGE_PER_SIDE if after_cost else 0.0)
                     action = "buy"
-                    signal_reason = "0050_close_above_MA5_and_above_close_4TD_ago"
-                    trade_rows.append(_trade_row(period, exit_window, row["date"], signal_date, action, price, execution_price, shares, gross, fee, 0, signal_reason))
+                    signal_reason = f"0050_close_above_MA{entry_window}_and_above_close_{entry_window - 1}TD_ago"
+                    trade_rows.append(_trade_row(period, entry_window, exit_window, row["date"], signal_date, action, price, execution_price, shares, gross, fee, 0, signal_reason))
             elif shares > 0 and bool(previous["sell_signal"]):
                 execution_price = price * (1.0 - SLIPPAGE_PER_SIDE if after_cost else 1.0)
                 gross = shares * execution_price
@@ -113,19 +115,20 @@ def simulate(
                 total_cost += breakdown["total_transaction_cost"] + (shares * price * SLIPPAGE_PER_SIDE if after_cost else 0.0)
                 action = "sell"
                 signal_reason = f"0050_close_below_MA{exit_window}_while_MA{exit_window}_slope_down"
-                trade_rows.append(_trade_row(period, exit_window, row["date"], signal_date, action, price, execution_price, shares, gross, breakdown["sell_fee"], breakdown["securities_transaction_tax"], signal_reason))
+                trade_rows.append(_trade_row(period, entry_window, exit_window, row["date"], signal_date, action, price, execution_price, shares, gross, breakdown["sell_fee"], breakdown["securities_transaction_tax"], signal_reason))
                 shares = 0
 
         equity = cash + shares * float(row["00631L_adj_close"])
         daily_rows.append({
             "period": period["period"],
+            "entry_window": entry_window,
             "exit_window": exit_window,
             "cost_basis": "after_cost_10bp_side" if after_cost else "gross_no_cost",
             "date": row["date"].date().isoformat(),
             "signal_date": signal_date.date().isoformat() if pd.notna(signal_date) else "",
             "0050_adj_close": float(row["0050_adj_close"]),
             "00631L_adj_close": float(row["00631L_adj_close"]),
-            "ma5": float(row["ma5"]) if pd.notna(row["ma5"]) else None,
+            "entry_ma": float(row["entry_ma"]) if pd.notna(row["entry_ma"]) else None,
             "exit_ma": float(row["exit_ma"]) if pd.notna(row["exit_ma"]) else None,
             "exit_ma_slope": float(row["exit_ma_slope"]) if pd.notna(row["exit_ma_slope"]) else None,
             "buy_signal": bool(row["buy_signal"]),
@@ -144,8 +147,9 @@ def simulate(
     years = _years(daily.iloc[0]["date"], daily.iloc[-1]["date"])
     final_equity = float(daily.iloc[-1]["equity"])
     summary = {
-        "strategy": f"exit_MA{exit_window}_slope_down",
+        "strategy": f"entry_MA{entry_window}_exit_MA{exit_window}_slope_down",
         "period": period["period"],
+        "entry_window": entry_window,
         "requested_start": period["requested_start"],
         "requested_end": period["requested_end"],
         "actual_start": daily.iloc[0]["date"],
@@ -236,13 +240,14 @@ def run_backtest(
     for period in PERIODS:
         summaries.append(buy_hold_summary(load_price(price_00631l), period, after_cost=False))
         summaries.append(buy_hold_summary(load_price(price_00631l), period, after_cost=True))
-        for window in EXIT_WINDOWS:
-            for after_cost in (False, True):
-                result = simulate(common, period=period, exit_window=window, after_cost=after_cost)
-                summaries.append(result.summary)
-                daily_parts.append(result.daily)
-                if not result.trades.empty:
-                    trade_parts.append(result.trades)
+        for entry_window in ENTRY_WINDOWS:
+            for exit_window in EXIT_WINDOWS:
+                for after_cost in (False, True):
+                    result = simulate(common, period=period, entry_window=entry_window, exit_window=exit_window, after_cost=after_cost)
+                    summaries.append(result.summary)
+                    daily_parts.append(result.daily)
+                    if not result.trades.empty:
+                        trade_parts.append(result.trades)
 
     summary = pd.DataFrame(summaries)
     daily = pd.concat(daily_parts, ignore_index=True)
@@ -274,9 +279,9 @@ def run_backtest(
         "signal_price_basis": "adjusted_close",
         "execution_and_holding_basis": "provider_adjusted_close_total_return_research_proxy",
         "execution_timing": "next_common_trading_day_close",
-        "entry_rule": "0050 adjusted close > MA5 and > adjusted close 4 trading days ago",
+        "entry_rules": [f"0050 adjusted close > MA{window} and > adjusted close {window - 1} trading days ago" for window in ENTRY_WINDOWS],
         "exit_rules": [f"0050 adjusted close < MA{window} and MA{window} slope < 0" for window in EXIT_WINDOWS],
-        "supersedes_incorrect_exit_semantics_output": "vnext_p1_p2_0050_signal_00631l_ma_slope_exit_diagnostic_20260715",
+        "extends_corrected_exit_semantics_output": "vnext_p1_p2_0050_signal_00631l_below_ma_slope_exit_diagnostic_20260715",
         "market_environment_risk_used": False,
         "layer0_4_candidate_pool_used": False,
         "cost_model_version": COST_MODEL_VERSION,
@@ -296,9 +301,9 @@ def run_backtest(
     return manifest
 
 
-def _trade_row(period: dict[str, str], window: int, execution_date: pd.Timestamp, signal_date: pd.Timestamp, side: str, reference_price: float, execution_price: float, shares: int, gross: float, fee: float, tax: float, reason: str) -> dict[str, Any]:
+def _trade_row(period: dict[str, str], entry_window: int, exit_window: int, execution_date: pd.Timestamp, signal_date: pd.Timestamp, side: str, reference_price: float, execution_price: float, shares: int, gross: float, fee: float, tax: float, reason: str) -> dict[str, Any]:
     return {
-        "period": period["period"], "exit_window": window, "cost_basis": "after_cost_10bp_side" if execution_price != reference_price else "gross_no_cost",
+        "period": period["period"], "entry_window": entry_window, "exit_window": exit_window, "cost_basis": "after_cost_10bp_side" if execution_price != reference_price else "gross_no_cost",
         "signal_date": signal_date.date().isoformat(), "execution_date": execution_date.date().isoformat(), "side": side,
         "reference_adj_close": reference_price, "execution_price_after_slippage": execution_price, "shares": shares,
         "gross_amount": gross, "broker_fee": fee, "etf_sell_tax": tax, "signal_reason": reason,
@@ -314,10 +319,10 @@ def _annual_returns(daily: pd.DataFrame) -> pd.DataFrame:
     frame = daily.copy()
     frame["year"] = pd.to_datetime(frame["date"]).dt.year
     rows = []
-    for keys, group in frame.groupby(["period", "exit_window", "cost_basis", "year"], sort=True):
+    for keys, group in frame.groupby(["period", "entry_window", "exit_window", "cost_basis", "year"], sort=True):
         start_equity = float(group.iloc[0]["equity"])
         end_equity = float(group.iloc[-1]["equity"])
-        rows.append({"period": keys[0], "exit_window": keys[1], "cost_basis": keys[2], "year": keys[3], "start_equity": start_equity, "end_equity": end_equity, "return_pct": (end_equity / start_equity - 1.0) * 100.0})
+        rows.append({"period": keys[0], "entry_window": keys[1], "exit_window": keys[2], "cost_basis": keys[3], "year": keys[4], "start_equity": start_equity, "end_equity": end_equity, "return_pct": (end_equity / start_equity - 1.0) * 100.0})
     return pd.DataFrame(rows)
 
 
