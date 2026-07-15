@@ -39,6 +39,11 @@ def _read_closures(filename: str, **kwargs: object) -> pd.DataFrame:
     return pd.concat([pd.read_csv(path / filename, **kwargs) for path in CLOSURES], ignore_index=True)
 
 
+def _read_optional_closures(filename: str, **kwargs: object) -> pd.DataFrame:
+    paths = [path / filename for path in CLOSURES if (path / filename).exists()]
+    return pd.concat([pd.read_csv(path, **kwargs) for path in paths], ignore_index=True) if paths else pd.DataFrame()
+
+
 def _sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -158,6 +163,17 @@ def simulate_actions(features: pd.DataFrame, candidates: pd.DataFrame, raw: pd.D
     no_trade["ticker"] = no_trade.ticker.str.zfill(4)
     no_trade["requested_execution_date"] = pd.to_datetime(no_trade.requested_execution_date)
     no_trade_keys = set(no_trade[["period", "ticker", "requested_execution_date"]].itertuples(index=False, name=None))
+    resolved = _read_optional_closures("frontier_missing_execution_date_resolution_audit.csv", dtype={"ticker": str})
+    execution_date_resolutions: dict[tuple[str, str, str, pd.Timestamp], pd.Timestamp] = {}
+    if len(resolved):
+        resolved["ticker"] = resolved.ticker.str.zfill(4)
+        resolved["decision_date"] = pd.to_datetime(resolved.decision_date)
+        resolved["resolved_execution_date"] = pd.to_datetime(resolved.resolved_execution_date)
+        execution_date_resolutions = {
+            (row.period, row.ticker, row.role, row.decision_date): row.resolved_execution_date
+            for row in resolved.itertuples(index=False)
+            if not row.silent_fill
+        }
     candidate_groups = {(s, p, d): g.sort_values("candidate_rank") for (s, p, d), g in candidates.groupby(["signal_family", "period", "date"])}
     actions, requirements, blocked = [], [], []
     for variant in parameter_matrix().itertuples(index=False):
@@ -205,6 +221,8 @@ def simulate_actions(features: pd.DataFrame, candidates: pd.DataFrame, raw: pd.D
                     requested_dates = []
                     for role, ticker in legs:
                         req_date = _next_ticker_date(analysis_dates, period, ticker, decision)
+                        if req_date is None:
+                            req_date = execution_date_resolutions.get((period, ticker, role, decision))
                         if (period, ticker, req_date) in no_trade_keys:
                             req_date = _next_ticker_date(raw_dates, period, ticker, req_date)
                         requested_dates.append(req_date)
