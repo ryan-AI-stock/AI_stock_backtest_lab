@@ -5,34 +5,105 @@ on:
     inputs:
       decision_date:
         description: Taiwan market decision date (YYYY-MM-DD)
-        required: true
+        required: false
+        default: ""
   schedule:
     - cron: "15 14 * * 1-5"
+
+concurrency:
+  group: vnext-ridge-prospective-shadow
+  cancel-in-progress: false
 
 jobs:
   shadow:
     runs-on: windows-latest
     permissions:
-      contents: read
+      contents: write
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout shared schedule rules
+        uses: actions/checkout@v4
+        with:
+          repository: ryan-AI-stock/AI_stock_schedule_rules
+          path: schedule_rules
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13.5"
           cache: pip
-      - name: Install controlled ML runtime
-        run: python -m pip install --require-hashes -r requirements-ml.lock
-      - name: Resolve decision date
+
+      - name: Shared daily schedule gate
+        id: schedule-gate
         shell: pwsh
         run: |
+          $env:PYTHONPATH = "schedule_rules"
+          python -m stock_schedule_rules.gate --profile daily --github-output $env:GITHUB_OUTPUT
+
+      - name: Resolve exact-current input readiness
+        id: readiness
+        shell: pwsh
+        run: |
+          $manual = "${{ github.event_name }}" -eq "workflow_dispatch"
+          $gateOpen = "${{ steps.schedule-gate.outputs.should_run }}" -eq "true"
+          if (-not $manual -and -not $gateOpen) {
+            "ready=false" >> $env:GITHUB_OUTPUT
+            "status=skipped_market_closed" >> $env:GITHUB_OUTPUT
+            "## Ridge shadow skipped`n`nShared Taiwan schedule gate is closed: ${{ steps.schedule-gate.outputs.reason }}" >> $env:GITHUB_STEP_SUMMARY
+            exit 0
+          }
+
           $date = "${{ inputs.decision_date }}"
-          if (-not $date) { $date = [System.TimeZoneInfo]::ConvertTimeBySystemTimeZoneId([datetime]::UtcNow, 'Taipei Standard Time').ToString('yyyy-MM-dd') }
+          if (-not $date) { $date = "${{ steps.schedule-gate.outputs.target_date }}" }
+          if (-not $date) { throw "Schedule gate did not provide target_date" }
+          "decision_date=$date" >> $env:GITHUB_OUTPUT
           "DECISION_DATE=$date" >> $env:GITHUB_ENV
-      - name: Run append-only shadow hook
+
+          $input = "data/vnext_shadow/inbox/$date"
+          if (-not (Test-Path "$input/manifest.json")) {
+            "ready=false" >> $env:GITHUB_OUTPUT
+            "status=blocked_exact_current_layer0_4_input" >> $env:GITHUB_OUTPUT
+            "## Ridge shadow blocked`n`nNo exact current Layer0-4 primary80 package exists for $date. No prediction was generated and the ML runtime was not installed." >> $env:GITHUB_STEP_SUMMARY
+            exit 0
+          }
+
+          "ready=true" >> $env:GITHUB_OUTPUT
+          "status=ready" >> $env:GITHUB_OUTPUT
+          "input_dir=$input" >> $env:GITHUB_OUTPUT
+
+      - name: Install controlled ML runtime
+        if: steps.readiness.outputs.ready == 'true'
+        run: python -m pip install --require-hashes -r requirements-ml.lock
+
+      - name: Validate shadow hook
+        if: steps.readiness.outputs.ready == 'true'
         shell: pwsh
-        run: |
-          $input = "data/vnext_shadow/inbox/$env:DECISION_DATE"
-          if (-not (Test-Path "$input/manifest.json")) { throw "Exact current Layer0-4 manifest missing: $input" }
-          python -X utf8 -m backtest_lab.vnext_p3_ridge_prospective_shadow predict --input-dir $input
+        run: python -X utf8 -m unittest tests.test_vnext_p3_ridge_prospective_shadow -v
         env:
           PYTHONPATH: src
+
+      - name: Run append-only shadow hook
+        if: steps.readiness.outputs.ready == 'true'
+        shell: pwsh
+        run: python -X utf8 -m backtest_lab.vnext_p3_ridge_prospective_shadow predict --input-dir "${{ steps.readiness.outputs.input_dir }}"
+        env:
+          PYTHONPATH: src
+
+      - name: Persist append-only prediction ledger
+        if: steps.readiness.outputs.ready == 'true'
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/vnext_shadow/predictions
+          if (git diff --cached --quiet) {
+            Write-Output "Deterministic existing prediction; nothing to persist."
+          } else {
+            git commit -m "Append Ridge shadow prediction $env:DECISION_DATE"
+            git pull --rebase origin $env:GITHUB_REF_NAME
+            git push origin "HEAD:$env:GITHUB_REF_NAME"
+          }
