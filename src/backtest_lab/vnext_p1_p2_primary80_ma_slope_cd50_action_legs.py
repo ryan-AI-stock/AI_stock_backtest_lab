@@ -19,10 +19,11 @@ from backtest_lab.vnext_p1_p2_primary80_ma_slope_cd50_contract import (
 
 ROOT = Path(__file__).resolve().parents[2]
 RADAR = Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p1_p2_primary80_ma_slope_cd50_price_source_convergence_20260715")
-CLOSURES = [
-    Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p1_p2_ma_slope_cd50_action_leg_frontier_local_audit_bounded_fill_20260715"),
-    Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p1_p2_ma_slope_cd50_action_leg_frontier_iteration_002_20260715"),
-]
+RADAR_OUTPUTS = RADAR.parent
+CLOSURES = sorted(
+    [RADAR_OUTPUTS / "radar_vnext_p1_p2_ma_slope_cd50_action_leg_frontier_local_audit_bounded_fill_20260715"]
+    + list(RADAR_OUTPUTS.glob("radar_vnext_p1_p2_ma_slope_cd50_action_leg_frontier_iteration_*_20260715"))
+)
 OUT = ROOT / "outputs/vnext_p1_p2_layer4_primary80_individual_MA_slope_CD50_action_legs_20260715"
 ADJUSTED = RADAR / "p1_p2_primary80_adjusted_analysis_close_reuse_compact.csv.gz"
 RAW = RADAR / "p1_p2_primary80_official_raw_execution_close_reuse_compact.csv.gz"
