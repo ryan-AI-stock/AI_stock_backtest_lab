@@ -16,11 +16,13 @@ from backtest_lab.ma_price_slope_cooldown_grid_backtest import (
 
 class MaPriceSlopeCooldownGridBacktestTests(unittest.TestCase):
     def test_all_36_combinations_are_unique(self) -> None:
-        combinations = combination_matrix()
+        combinations = combination_matrix(7)
         self.assertEqual(len(BUY_RULES), 6)
         self.assertEqual(len(SELL_RULES), 6)
         self.assertEqual(len(combinations), 36)
         self.assertEqual(combinations["strategy"].nunique(), 36)
+        self.assertTrue(combinations["strategy"].str.endswith("CD7").all())
+        self.assertTrue(combinations["cooldown_days"].eq(7).all())
 
     def test_signal_uses_independent_ma_and_price_slope_windows(self) -> None:
         dates = pd.date_range("2020-01-01", periods=20, freq="B")

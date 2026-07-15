@@ -20,7 +20,7 @@ from backtest_lab.ma_signal_leveraged_etf_backtest import (
 )
 
 
-TASK_ID = "TASK-BACKTEST-EXPERIMENTS-P1-P2-0050-SIGNAL-00631L-MA-PRICE-SLOPE-CD5-GRID-DIAGNOSTIC-001"
+TASK_ID = "TASK-BACKTEST-EXPERIMENTS-P1-P2-0050-SIGNAL-00631L-MA-PRICE-SLOPE-CD-GRID-DIAGNOSTIC-002"
 COOLDOWN_DAYS = 5
 
 
@@ -50,19 +50,19 @@ class SimulationResult:
     summary: dict[str, Any]
 
 
-def combination_matrix() -> pd.DataFrame:
+def combination_matrix(cooldown_days: int = COOLDOWN_DAYS) -> pd.DataFrame:
     rows = []
     for buy_rule, sell_rule in product(BUY_RULES, SELL_RULES):
         rows.append(
             {
-                "strategy": f"{buy_rule.rule_id}__{sell_rule.rule_id}__CD{COOLDOWN_DAYS}",
+                "strategy": f"{buy_rule.rule_id}__{sell_rule.rule_id}__CD{cooldown_days}",
                 "buy_rule": buy_rule.rule_id,
                 "buy_ma_window": buy_rule.ma_window,
                 "buy_slope_window": buy_rule.slope_window,
                 "sell_rule": sell_rule.rule_id,
                 "sell_ma_window": sell_rule.ma_window,
                 "sell_slope_window": sell_rule.slope_window,
-                "cooldown_days": COOLDOWN_DAYS,
+                "cooldown_days": cooldown_days,
             }
         )
     return pd.DataFrame(rows)
@@ -271,7 +271,13 @@ def simulate(
     return SimulationResult(daily=daily, trades=trades, summary=summary)
 
 
-def run_backtest(*, price_0050: str | Path, price_00631l: str | Path, output_dir: str | Path) -> dict[str, Any]:
+def run_backtest(
+    *,
+    price_0050: str | Path,
+    price_00631l: str | Path,
+    output_dir: str | Path,
+    cooldown_days: int = COOLDOWN_DAYS,
+) -> dict[str, Any]:
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
     p0050_raw = load_price(price_0050)
@@ -282,7 +288,7 @@ def run_backtest(*, price_0050: str | Path, price_00631l: str | Path, output_dir
         p00631[["date", "00631L_adj_close"]], on="date", how="inner"
     )
 
-    combinations = combination_matrix()
+    combinations = combination_matrix(cooldown_days)
     if len(combinations) != 36 or combinations["strategy"].nunique() != 36:
         raise AssertionError("expected exactly 36 unique buy/sell combinations")
 
@@ -300,6 +306,7 @@ def run_backtest(*, price_0050: str | Path, price_00631l: str | Path, output_dir
                     buy_rule=buy_rule,
                     sell_rule=sell_rule,
                     after_cost=after_cost,
+                    cooldown_days=cooldown_days,
                 )
                 summaries.append(result.summary)
                 daily_parts.append(result.daily)
@@ -314,17 +321,21 @@ def run_backtest(*, price_0050: str | Path, price_00631l: str | Path, output_dir
         if not trades.empty
         else 0
     )
-    cooldown_violations = _cooldown_violation_count(trades)
+    cooldown_violations = _cooldown_violation_count(trades, cooldown_days)
 
-    summary.to_csv(output / "p1_p2_cd5_grid_summary.csv", index=False, encoding="utf-8-sig", float_format="%.6f")
-    daily.to_csv(output / "p1_p2_cd5_daily_nav_ledger.csv", index=False, encoding="utf-8-sig", float_format="%.8f")
-    trades.to_csv(output / "p1_p2_cd5_trade_ledger.csv", index=False, encoding="utf-8-sig", float_format="%.8f")
+    artifact_prefix = f"p1_p2_cd{cooldown_days}"
+    summary.to_csv(output / f"{artifact_prefix}_grid_summary.csv", index=False, encoding="utf-8-sig", float_format="%.6f")
+    daily.to_csv(output / f"{artifact_prefix}_daily_nav_ledger.csv", index=False, encoding="utf-8-sig", float_format="%.8f")
+    trades.to_csv(output / f"{artifact_prefix}_trade_ledger.csv", index=False, encoding="utf-8-sig", float_format="%.8f")
     combinations.to_csv(output / "buy_sell_combination_matrix.csv", index=False, encoding="utf-8-sig")
     _coverage(common).to_csv(output / "requested_vs_actual_coverage.csv", index=False, encoding="utf-8-sig")
     pd.DataFrame(
         [
             {"audit": "signal_date_strictly_before_execution_date", "violation_count": future_violations},
-            {"audit": "execution_gap_strictly_greater_than_CD5", "violation_count": cooldown_violations},
+            {
+                "audit": f"execution_gap_strictly_greater_than_CD{cooldown_days}",
+                "violation_count": cooldown_violations,
+            },
         ]
     ).to_csv(output / "execution_and_future_data_audit.csv", index=False, encoding="utf-8-sig")
 
@@ -334,8 +345,8 @@ def run_backtest(*, price_0050: str | Path, price_00631l: str | Path, output_dir
         "combination_count": int(len(combinations)),
         "buy_rule_count": len(BUY_RULES),
         "sell_rule_count": len(SELL_RULES),
-        "cooldown_days_after_each_execution": COOLDOWN_DAYS,
-        "earliest_next_execution": "sixth_common_trading_day_after_execution",
+        "cooldown_days_after_each_execution": cooldown_days,
+        "earliest_next_execution": f"trading_day_{cooldown_days + 1}_after_execution",
         "signal_asset": "0050.TW",
         "execution_asset": "00631L.TW",
         "signal_price_basis": "adjusted_close",
@@ -356,7 +367,7 @@ def run_backtest(*, price_0050: str | Path, price_00631l: str | Path, output_dir
         "not_live_rule": True,
     }
     (output / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
-    (output / "final_summary_zh.md").write_text(_summary_text(summary), encoding="utf-8")
+    (output / "final_summary_zh.md").write_text(_summary_text(summary, cooldown_days), encoding="utf-8")
     return manifest
 
 
@@ -398,12 +409,12 @@ def _trade_row(
     }
 
 
-def _cooldown_violation_count(trades: pd.DataFrame) -> int:
+def _cooldown_violation_count(trades: pd.DataFrame, cooldown_days: int) -> int:
     if trades.empty:
         return 0
     ordered = trades.sort_values(["period", "strategy", "cost_basis", "execution_index"])
     gaps = ordered.groupby(["period", "strategy", "cost_basis"])["execution_index"].diff()
-    return int((gaps.dropna() <= COOLDOWN_DAYS).sum())
+    return int((gaps.dropna() <= cooldown_days).sum())
 
 
 def _years(start: str | pd.Timestamp, end: str | pd.Timestamp) -> float:
@@ -431,13 +442,13 @@ def _coverage(common: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def _summary_text(summary: pd.DataFrame) -> str:
+def _summary_text(summary: pd.DataFrame, cooldown_days: int) -> str:
     buy_hold = summary[summary["cost_basis"].eq("after_cost_10bp_buy_side")]
     primary = summary[summary["cost_basis"].eq("after_cost_10bp_side")]
     lines = [
         "# 0050 MA/price-slope CD5 full grid diagnostic",
         "",
-        "Primary results use next-day close, ETF fee/tax, 10bp/side slippage and CD5.",
+        f"Primary results use next-day close, ETF fee/tax, 10bp/side slippage and CD{cooldown_days}.",
         "",
     ]
     for row in buy_hold.to_dict(orient="records"):
@@ -462,11 +473,13 @@ def main() -> None:
     parser.add_argument("--price-0050", required=True)
     parser.add_argument("--price-00631l", required=True)
     parser.add_argument("--output-dir", required=True)
+    parser.add_argument("--cooldown-days", type=int, default=COOLDOWN_DAYS)
     args = parser.parse_args()
     manifest = run_backtest(
         price_0050=args.price_0050,
         price_00631l=args.price_00631l,
         output_dir=args.output_dir,
+        cooldown_days=args.cooldown_days,
     )
     print(json.dumps(manifest, ensure_ascii=False, indent=2))
 
