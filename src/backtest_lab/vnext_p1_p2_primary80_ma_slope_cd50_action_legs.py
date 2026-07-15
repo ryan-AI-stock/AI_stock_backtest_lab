@@ -19,16 +19,23 @@ from backtest_lab.vnext_p1_p2_primary80_ma_slope_cd50_contract import (
 
 ROOT = Path(__file__).resolve().parents[2]
 RADAR = Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p1_p2_primary80_ma_slope_cd50_price_source_convergence_20260715")
-CLOSURE = Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p1_p2_ma_slope_cd50_action_leg_frontier_local_audit_bounded_fill_20260715")
+CLOSURES = [
+    Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p1_p2_ma_slope_cd50_action_leg_frontier_local_audit_bounded_fill_20260715"),
+    Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p1_p2_ma_slope_cd50_action_leg_frontier_iteration_002_20260715"),
+]
 OUT = ROOT / "outputs/vnext_p1_p2_layer4_primary80_individual_MA_slope_CD50_action_legs_20260715"
 ADJUSTED = RADAR / "p1_p2_primary80_adjusted_analysis_close_reuse_compact.csv.gz"
 RAW = RADAR / "p1_p2_primary80_official_raw_execution_close_reuse_compact.csv.gz"
 REUSE_A = RADAR / "reuse_A_existing_raw_close.csv.gz"
 REUSE_D = RADAR / "reuse_D_raw_ready_adjusted_factor_incomplete.csv.gz"
 REUSE_E = RADAR / "reuse_E_not_applicable_or_no_trade_review.csv.gz"
-CLOSURE_RAW = CLOSURE / "frontier_official_raw_accepted_patch.csv"
-CLOSURE_NO_TRADE = CLOSURE / "frontier_official_no_trade_ledger.csv"
-CLOSURE_CONTINUITY = CLOSURE / "incumbent_continuity_local_classification.csv.gz"
+CLOSURE_RAW = "frontier_official_raw_accepted_patch.csv"
+CLOSURE_NO_TRADE = "frontier_official_no_trade_ledger.csv"
+CLOSURE_CONTINUITY = "incumbent_continuity_local_classification.csv.gz"
+
+
+def _read_closures(filename: str, **kwargs: object) -> pd.DataFrame:
+    return pd.concat([pd.read_csv(path / filename, **kwargs) for path in CLOSURES], ignore_index=True)
 
 
 def _sha(path: Path) -> str:
@@ -58,7 +65,7 @@ def load_prices() -> tuple[pd.DataFrame, pd.DataFrame]:
         frame["source_quality"] = frame.source_quality_raw.fillna("existing_raw_close_analysis_fallback") + ";unadjusted_MA_slope_research_fallback"
         fallback.append(frame[["period", "ticker", "date", "value", "source_quality"]].dropna(subset=["value"]))
     adjusted = pd.concat([*fallback, adjusted], ignore_index=True).drop_duplicates(["period", "ticker", "date"], keep="last")
-    continuity = pd.read_csv(CLOSURE_CONTINUITY, dtype={"ticker": str})
+    continuity = _read_closures(CLOSURE_CONTINUITY, dtype={"ticker": str})
     continuity["ticker"] = continuity.ticker.str.zfill(4)
     continuity["date"] = pd.to_datetime(continuity.decision_date)
     continuity["adjusted_value"] = pd.to_numeric(continuity.adjusted_close, errors="coerce")
@@ -75,7 +82,7 @@ def load_prices() -> tuple[pd.DataFrame, pd.DataFrame]:
         [adjusted, continuity[["period", "ticker", "date", "value", "source_quality"]].dropna(subset=["value"])],
         ignore_index=True,
     ).drop_duplicates(["period", "ticker", "date"], keep="last")
-    closure_raw = pd.read_csv(CLOSURE_RAW, dtype={"ticker": str})
+    closure_raw = _read_closures(CLOSURE_RAW, dtype={"ticker": str})
     closure_raw["ticker"] = closure_raw.ticker.str.zfill(4)
     closure_raw["date"] = pd.to_datetime(closure_raw.requested_execution_date)
     closure_raw["value"] = pd.to_numeric(closure_raw.close, errors="coerce")
@@ -146,7 +153,7 @@ def simulate_actions(features: pd.DataFrame, candidates: pd.DataFrame, raw: pd.D
     analysis_dates = {(p, t): list(g.date.sort_values()) for (p, t), g in features.groupby(["period", "ticker"])}
     raw_map = raw.set_index(["period", "ticker", "date"])
     raw_dates = {(p, t): list(g.date.sort_values()) for (p, t), g in raw.groupby(["period", "ticker"])}
-    no_trade = pd.read_csv(CLOSURE_NO_TRADE, dtype={"ticker": str})
+    no_trade = _read_closures(CLOSURE_NO_TRADE, dtype={"ticker": str})
     no_trade["ticker"] = no_trade.ticker.str.zfill(4)
     no_trade["requested_execution_date"] = pd.to_datetime(no_trade.requested_execution_date)
     no_trade_keys = set(no_trade[["period", "ticker", "requested_execution_date"]].itertuples(index=False, name=None))
@@ -252,7 +259,7 @@ def run() -> None:
     e["decision_date"] = pd.to_datetime(e.pop("date"))
     e["official_no_trade_or_NA_evidence"] = True
     no_observation = no_observation.merge(e, on=["period", "ticker", "decision_date"], how="left")
-    continuity_class = pd.read_csv(
+    continuity_class = _read_closures(
         CLOSURE_CONTINUITY,
         usecols=["period", "ticker", "decision_date", "local_A_to_E_classification", "network_download_authorized"],
         dtype={"ticker": str},
