@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parents[2]
 RADAR = Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p1_p2_primary80_ma_slope_cd50_price_source_convergence_20260715")
 RADAR_OUTPUTS = RADAR.parent
 ONE_SHOT = RADAR_OUTPUTS / "radar_vnext_p1_p2_primary80_ma_slope_cd50_one_shot_close_fill_20260716"
+SHIFTED_PATH = RADAR_OUTPUTS / "radar_vnext_p1_p2_ma_slope_cd50_shifted_path_local_close_extraction_20260716"
 CLOSURES = sorted(
     [RADAR_OUTPUTS / "radar_vnext_p1_p2_ma_slope_cd50_action_leg_frontier_local_audit_bounded_fill_20260715"]
     + list(RADAR_OUTPUTS.glob("radar_vnext_p1_p2_ma_slope_cd50_action_leg_frontier_iteration_*_20260715"))
@@ -35,6 +36,10 @@ ONE_SHOT_ADJUSTED = ONE_SHOT / "one_shot_adjusted_analysis_close_patch.csv.gz"
 ONE_SHOT_RAW = ONE_SHOT / "one_shot_official_raw_execution_close_patch.csv.gz"
 ONE_SHOT_NO_TRADE = ONE_SHOT / "one_shot_official_no_trade_ledger.csv.gz"
 ONE_SHOT_BLOCKED = ONE_SHOT / "one_shot_close_remaining_blocked.csv.gz"
+SHIFTED_ADJUSTED = SHIFTED_PATH / "bounded_network_adjusted_exact_patch.csv.gz"
+SHIFTED_RAW = SHIFTED_PATH / "bounded_network_raw_exact_patch.csv.gz"
+SHIFTED_ADJUSTED_BLOCKED = SHIFTED_PATH / "bounded_network_adjusted_remaining_blocked.csv.gz"
+SHIFTED_RAW_BLOCKED = SHIFTED_PATH / "bounded_network_raw_remaining_blocked.csv"
 CLOSURE_RAW = "frontier_official_raw_accepted_patch.csv"
 CLOSURE_NO_TRADE = "frontier_official_no_trade_ledger.csv"
 CLOSURE_CONTINUITY = "incumbent_continuity_local_classification.csv.gz"
@@ -87,6 +92,16 @@ def load_prices() -> tuple[pd.DataFrame, pd.DataFrame]:
         [adjusted, one_adjusted[["period", "ticker", "date", "value", "source_quality"]].dropna(subset=["value"])],
         ignore_index=True,
     ).drop_duplicates(["period", "ticker", "date"], keep="last")
+    shifted_adjusted = pd.read_csv(SHIFTED_ADJUSTED, dtype={"ticker": str}).rename(
+        columns={"adjusted_analysis_close": "value"}
+    )
+    shifted_adjusted["ticker"] = shifted_adjusted.ticker.str.zfill(4)
+    shifted_adjusted["date"] = pd.to_datetime(shifted_adjusted.date)
+    shifted_adjusted["value"] = pd.to_numeric(shifted_adjusted.value, errors="coerce")
+    adjusted = pd.concat(
+        [adjusted, shifted_adjusted[["period", "ticker", "date", "value", "source_quality"]].dropna(subset=["value"])],
+        ignore_index=True,
+    ).drop_duplicates(["period", "ticker", "date"], keep="last")
     closure_raw = _read_closures(CLOSURE_RAW, dtype={"ticker": str})
     closure_raw["ticker"] = closure_raw.ticker.str.zfill(4)
     closure_raw["date"] = pd.to_datetime(closure_raw.requested_execution_date)
@@ -104,6 +119,14 @@ def load_prices() -> tuple[pd.DataFrame, pd.DataFrame]:
     one_raw["value"] = pd.to_numeric(one_raw.value, errors="coerce")
     raw = pd.concat(
         [raw, one_raw[["period", "ticker", "date", "value", "source_quality"]].dropna(subset=["value"])],
+        ignore_index=True,
+    ).drop_duplicates(["period", "ticker", "date"], keep="last")
+    shifted_raw = pd.read_csv(SHIFTED_RAW, dtype={"ticker": str}).rename(columns={"official_raw_close": "value"})
+    shifted_raw["ticker"] = shifted_raw.ticker.str.zfill(4)
+    shifted_raw["date"] = pd.to_datetime(shifted_raw.date)
+    shifted_raw["value"] = pd.to_numeric(shifted_raw.value, errors="coerce")
+    raw = pd.concat(
+        [raw, shifted_raw[["period", "ticker", "date", "value", "source_quality"]].dropna(subset=["value"])],
         ignore_index=True,
     ).drop_duplicates(["period", "ticker", "date"], keep="last")
     return adjusted, raw
@@ -349,7 +372,13 @@ def run() -> None:
         "fixed_variants": 50, "feature_rows": len(features), "candidate_rows": len(candidates),
         "action_rows": len(actions), "execution_leg_rows": len(requirements),
         "blocked_action_rows": len(blocked), "all_provisional_unique_raw_gap_legs": len(provisional_unique_raw),
-        "one_shot_close_absorbed": True, "iterative_frontier_disabled": True, "further_radar_probe_authorized": False,
+        "one_shot_close_absorbed": True, "shifted_path_close_absorbed": True,
+        "shifted_adjusted_exact_rows_absorbed": len(pd.read_csv(SHIFTED_ADJUSTED)),
+        "shifted_raw_exact_rows_absorbed": len(pd.read_csv(SHIFTED_RAW)),
+        "shifted_adjusted_source_blocked_rows": len(pd.read_csv(SHIFTED_ADJUSTED_BLOCKED)),
+        "shifted_raw_source_blocked_rows": len(pd.read_csv(SHIFTED_RAW_BLOCKED)),
+        "shifted_raw_fallback_adjusted_rows_rejected": 145,
+        "iterative_frontier_disabled": True, "further_radar_probe_authorized": False,
         "final_exact_official_raw_blocked_legs": len(frontier), "atomic_policy_blockers": len(atomic),
         "incumbent_no_observation_rows": len(no_observation), "incumbent_analysis_unclassified_rows": incumbent_unclassified,
         "incumbent_adjusted_analysis_source_blocked_rows": incumbent_adjusted_blocked,
