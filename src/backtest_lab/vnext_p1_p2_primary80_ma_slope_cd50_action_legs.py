@@ -194,7 +194,13 @@ def _next_market_date(index: dict[str, list[pd.Timestamp]], period: str, decisio
     return dates[pos] if pos < len(dates) else None
 
 
-def simulate_actions(features: pd.DataFrame, candidates: pd.DataFrame, raw: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def simulate_actions(
+    features: pd.DataFrame,
+    candidates: pd.DataFrame,
+    raw: pd.DataFrame,
+    termination_events: dict[tuple[str, str], dict[str, object]] | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    termination_events = termination_events or {}
     feature_map = features.set_index(["period", "ticker", "date"])
     analysis_dates = {(p, t): list(g.date.sort_values()) for (p, t), g in features.groupby(["period", "ticker"])}
     market_dates = {
@@ -239,6 +245,37 @@ def simulate_actions(features: pd.DataFrame, candidates: pd.DataFrame, raw: pd.D
             last_sold = None
             for decision in calendar:
                 decision = pd.Timestamp(decision)
+                event = termination_events.get((period, incumbent)) if incumbent is not None else None
+                if event and decision >= pd.Timestamp(event["effective_date"]):
+                    requirements.append({
+                        "variant_id": variant.variant_id,
+                        "period": period,
+                        "decision_date": decision,
+                        "execution_role": "holder_treatment_cash",
+                        "ticker": incumbent,
+                        "requested_execution_date": pd.Timestamp(event["effective_date"]),
+                        "official_raw_ready": False,
+                        "official_raw_close": event["cash_per_share"],
+                        "official_raw_source_quality": event["source_quality"],
+                        "holder_treatment_authority": True,
+                        "strategy_sell": False,
+                        "market_sell_slippage": 0.0,
+                        "transition_cost": 0.0,
+                        "tax_fee_contract_status": "diagnostic_caveat_no_accepted_contract_no_cost_invented",
+                    })
+                    actions.append({
+                        "variant_id": variant.variant_id,
+                        "period": period,
+                        "decision_date": decision,
+                        "action": "holder_treatment_cash_event",
+                        "incumbent": None,
+                        "target": None,
+                        "reason": "PIT_known_cash_share_swap_effective",
+                        "sell_signal": False,
+                        "exit_lock_days": cooldown,
+                    })
+                    last_sold, incumbent, entry_execution_date = incumbent, None, None
+                    continue
                 action, target, reason = "cash_wait" if incumbent is None else "hold", incumbent, ""
                 sell_signal = False
                 incumbent_row = None

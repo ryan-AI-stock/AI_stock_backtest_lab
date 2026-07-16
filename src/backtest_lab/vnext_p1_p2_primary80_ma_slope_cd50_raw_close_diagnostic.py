@@ -24,6 +24,10 @@ PATH_INDEPENDENT_RAW = PATH_INDEPENDENT / "path_independent_primary80_official_r
 PATH_INDEPENDENT_BLOCKED = PATH_INDEPENDENT / "path_independent_final_blocked.csv.gz"
 PATH_INDEPENDENT_NO_TRADE = PATH_INDEPENDENT / "path_independent_final_official_no_trade_termination.csv.gz"
 EVENT_DIR = Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p1_full_lifecycle_minimum_data_acquisition_20260710\compact\trusted_corporate_action_events")
+TRANSFER_TERMINATION = Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_4739_market_transfer_3474_termination_source_package_20260716")
+TRANSFER_CLOSE_PATCH = TRANSFER_TERMINATION / "ticker_4739_post_transition_exact_close_patch.csv.gz"
+TRANSFER_REMAINING = TRANSFER_TERMINATION / "ticker_4739_post_transition_remaining_local_gap.csv"
+TERMINATION_LEDGER = TRANSFER_TERMINATION / "ticker_3474_termination_event_ledger.csv"
 
 
 def _sha(path: Path) -> str:
@@ -35,6 +39,13 @@ def load_path_independent_raw() -> pd.DataFrame:
     source["ticker"] = source.ticker.str.zfill(4)
     source["date"] = pd.to_datetime(source.date)
     source = source.rename(columns={"close": "value"})
+    transfer = pd.read_csv(TRANSFER_CLOSE_PATCH, dtype={"ticker": str}).rename(columns={"close": "value"})
+    transfer["ticker"] = transfer.ticker.str.zfill(4)
+    transfer["date"] = pd.to_datetime(transfer.date)
+    source = pd.concat(
+        [source, transfer[["ticker", "date", "market", "value", "source_quality"]]],
+        ignore_index=True,
+    ).drop_duplicates(["ticker", "date"], keep="last")
     pieces = []
     for period, (start, end) in PERIODS.items():
         warmup_start = start - pd.Timedelta(days=100)
@@ -42,6 +53,18 @@ def load_path_independent_raw() -> pd.DataFrame:
         part["period"] = period
         pieces.append(part[["period", "ticker", "date", "value", "source_quality"]])
     return pd.concat(pieces, ignore_index=True).drop_duplicates(["period", "ticker", "date"], keep="last")
+
+
+def load_termination_events() -> dict[tuple[str, str], dict[str, object]]:
+    ledger = pd.read_csv(TERMINATION_LEDGER, dtype={"ticker": str})
+    closing = ledger.loc[ledger.event_type.eq("cash_share_swap_closing_date_confirmation")].iloc[0]
+    return {
+        ("P1", str(closing.ticker).zfill(4)): {
+            "effective_date": pd.Timestamp(closing.termination_effective_date),
+            "cash_per_share": 30.0,
+            "source_quality": "PIT_official_cash_share_swap_holder_treatment",
+        }
+    }
 
 
 def load_explicit_events() -> pd.DataFrame:
@@ -92,7 +115,7 @@ def run() -> None:
     features = raw_close_features(raw, events)
     panel = active_candidate_panel(features)
     candidates = ranked_candidates(panel)
-    actions, requirements, blocked = simulate_actions(features, candidates, raw)
+    actions, requirements, blocked = simulate_actions(features, candidates, raw, termination_events=load_termination_events())
     no_trade_keys = expand_period_keys(PATH_INDEPENDENT_NO_TRADE, "official_no_trade_or_termination")
     conflict_keys = expand_period_keys(PATH_INDEPENDENT_BLOCKED, "local_source_conflict")
 
@@ -114,6 +137,11 @@ def run() -> None:
     no_observation["path_independent_classification"] = no_observation.path_independent_classification.fillna(
         "exact_raw_close_absent_from_path_independent_partition"
     )
+    pending_3474 = (
+        no_observation.incumbent.eq("3474")
+        & no_observation.decision_date.between(pd.Timestamp("2016-11-30"), pd.Timestamp("2016-12-05"))
+    )
+    no_observation.loc[pending_3474, "path_independent_classification"] = "PIT_known_termination_pending_holder_treatment_last_mark_carry"
     last_raw = raw.groupby(["period", "ticker"], as_index=False).date.max().rename(columns={"date": "last_official_raw_close_date"})
     no_observation = no_observation.merge(last_raw, left_on=["period", "incumbent"], right_on=["period", "ticker"], how="left", suffixes=("", "_last"))
     post_last_trade = (
@@ -136,7 +164,10 @@ def run() -> None:
         b = blocked.loc[blocked.variant_id.eq(variant)]
         g = held_guard.loc[held_guard.variant_id.eq(variant)]
         n = no_observation.loc[no_observation.variant_id.eq(variant)]
-        n_hard = n.loc[~n.path_independent_classification.eq("official_no_trade_or_termination")]
+        n_hard = n.loc[~n.path_independent_classification.isin([
+            "official_no_trade_or_termination",
+            "PIT_known_termination_pending_holder_treatment_last_mark_carry",
+        ])]
         b_hard = b.loc[~b.precise_source_class.eq("official_no_trade_or_termination")]
         req = requirements.loc[requirements.variant_id.eq(variant)]
         close_ready = len(b_hard) == 0 and len(n_hard) == 0
@@ -183,7 +214,7 @@ def run() -> None:
     (OUT / "raw_close_diagnostic_policy.json").write_text(json.dumps(policy, ensure_ascii=False, indent=2), encoding="utf-8")
     readiness = {
         "task_id": TASK,
-        "status": "ready_for_experiments" if ready_variants else "data_readiness_blocked_missing_corporate_action_and_termination_event_contract",
+        "status": "ready_for_experiments" if ready_variants else "data_readiness_blocked_4739_remaining_close_gaps_and_local_source_conflicts",
         "analysis_price_basis": "official_raw_close_intentional_diagnostic",
         "fixed_variants": 50,
         "ready_variant_count": len(ready_variants),
@@ -198,6 +229,13 @@ def run() -> None:
         "incumbent_hard_close_blocked_rows": int(readiness_table.incumbent_hard_close_blocked_rows.sum()),
         "path_independent_official_raw_close_rows": len(pd.read_csv(PATH_INDEPENDENT_RAW, usecols=["ticker"])),
         "path_independent_local_source_conflict_rows": len(pd.read_csv(PATH_INDEPENDENT_BLOCKED, usecols=["ticker"])),
+        "ticker_4739_cross_venue_exact_close_patch_rows": len(pd.read_csv(TRANSFER_CLOSE_PATCH, usecols=["ticker"])),
+        "ticker_4739_cross_venue_remaining_local_scope_gap_rows": len(pd.read_csv(TRANSFER_REMAINING, usecols=["ticker"])),
+        "ticker_3474_holder_treatment_materialized": True,
+        "ticker_3474_holder_treatment_strategy_sell": False,
+        "ticker_3474_holder_treatment_market_sell_slippage": 0.0,
+        "ticker_3474_holder_treatment_transition_cost": 0.0,
+        "ticker_3474_holder_treatment_tax_fee_status": "diagnostic_caveat_no_accepted_contract_no_cost_invented",
         "explicit_event_rows_loaded": len(events),
         "corporate_action_event_authority_complete_for_P1_P2": False,
         "ready_for_experiments": bool(ready_variants),
@@ -209,7 +247,7 @@ def run() -> None:
         "same_ticker_cross_venue_close_continuity_required": True,
         "termination_requires_PIT_official_announcement_authority": True,
         "forced_exit_holder_treatment_requires_announcement_last_trade_effective_consideration_authority": True,
-        "termination_event_and_forced_exit_contract_ready": False,
+        "termination_event_and_forced_exit_contract_ready": True,
         "further_radar_probe_authorized": False,
         "formal_model_changed": False,
         "trade_decision_changed": False,
