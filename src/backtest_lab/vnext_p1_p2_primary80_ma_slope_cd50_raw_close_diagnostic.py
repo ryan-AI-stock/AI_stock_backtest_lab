@@ -120,7 +120,7 @@ def run() -> None:
         no_observation.path_independent_classification.eq("exact_raw_close_absent_from_path_independent_partition")
         & no_observation.decision_date.gt(no_observation.last_official_raw_close_date)
     )
-    no_observation.loc[post_last_trade, "path_independent_classification"] = "post_last_official_trade_termination_event_contract_missing"
+    no_observation.loc[post_last_trade, "path_independent_classification"] = "post_last_official_trade_event_or_venue_transition_contract_missing"
 
     source_class = pd.concat([no_trade_keys, conflict_keys], ignore_index=True).rename(columns={"date": "requested_execution_date"})
     if len(blocked):
@@ -205,6 +205,10 @@ def run() -> None:
         "may_be_used_to_reject_strategy": False,
         "path_independent_close_authority_absorbed": True,
         "path_dependent_close_authority_not_sufficient_for_final_readiness": False,
+        "market_transfer_forced_exit_prohibited": True,
+        "same_ticker_cross_venue_close_continuity_required": True,
+        "termination_requires_PIT_official_announcement_authority": True,
+        "forced_exit_holder_treatment_requires_announcement_last_trade_effective_consideration_authority": True,
         "termination_event_and_forced_exit_contract_ready": False,
         "further_radar_probe_authorized": False,
         "formal_model_changed": False,
