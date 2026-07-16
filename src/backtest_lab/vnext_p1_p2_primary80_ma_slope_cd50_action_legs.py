@@ -154,11 +154,20 @@ def _next_ticker_date(index: dict[tuple[str, str], list[pd.Timestamp]], period: 
     return dates[pos] if pos < len(dates) else None
 
 
+def _next_market_date(index: dict[str, list[pd.Timestamp]], period: str, decision: pd.Timestamp) -> pd.Timestamp | None:
+    dates = index.get(period, [])
+    pos = np.searchsorted(dates, decision, side="right")
+    return dates[pos] if pos < len(dates) else None
+
+
 def simulate_actions(features: pd.DataFrame, candidates: pd.DataFrame, raw: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     feature_map = features.set_index(["period", "ticker", "date"])
     analysis_dates = {(p, t): list(g.date.sort_values()) for (p, t), g in features.groupby(["period", "ticker"])}
+    market_dates = {
+        period: sorted(set(features.loc[features.period.eq(period), "date"]) | set(raw.loc[raw.period.eq(period), "date"]))
+        for period in PERIODS
+    }
     raw_map = raw.set_index(["period", "ticker", "date"])
-    raw_dates = {(p, t): list(g.date.sort_values()) for (p, t), g in raw.groupby(["period", "ticker"])}
     no_trade = _read_closures(CLOSURE_NO_TRADE, dtype={"ticker": str})
     no_trade["ticker"] = no_trade.ticker.str.zfill(4)
     no_trade["requested_execution_date"] = pd.to_datetime(no_trade.requested_execution_date)
@@ -206,8 +215,8 @@ def simulate_actions(features: pd.DataFrame, candidates: pd.DataFrame, raw: pd.D
                 if incumbent is None and replacement is not None:
                     action, target, reason = "entry_signal", replacement, "top_ranked_buy_signal"
                 elif incumbent is not None and sell_signal:
-                    next_exit = _next_ticker_date(analysis_dates, period, incumbent, decision)
-                    follow = [d for d in analysis_dates.get((period, incumbent), []) if entry_execution_date is not None and d > entry_execution_date]
+                    next_exit = _next_market_date(market_dates, period, decision)
+                    follow = [d for d in market_dates.get(period, []) if entry_execution_date is not None and d > entry_execution_date]
                     exit_unlocked = next_exit is not None and next_exit in follow and follow.index(next_exit) >= cooldown
                     if exit_unlocked:
                         action, target, reason = ("switch_signal", replacement, "sell_signal_and_different_candidate") if replacement else ("exit_signal", None, "sell_signal_no_replacement")
@@ -220,11 +229,11 @@ def simulate_actions(features: pd.DataFrame, candidates: pd.DataFrame, raw: pd.D
                     leg_rows, leg_ready = [], True
                     requested_dates = []
                     for role, ticker in legs:
-                        req_date = _next_ticker_date(analysis_dates, period, ticker, decision)
+                        req_date = _next_market_date(market_dates, period, decision)
                         if req_date is None:
                             req_date = execution_date_resolutions.get((period, ticker, role, decision))
-                        if (period, ticker, req_date) in no_trade_keys:
-                            req_date = _next_ticker_date(raw_dates, period, ticker, req_date)
+                        while (period, ticker, req_date) in no_trade_keys:
+                            req_date = _next_market_date(market_dates, period, req_date)
                         requested_dates.append(req_date)
                         ready = req_date is not None and (period, ticker, req_date) in raw_map.index
                         leg_ready &= ready

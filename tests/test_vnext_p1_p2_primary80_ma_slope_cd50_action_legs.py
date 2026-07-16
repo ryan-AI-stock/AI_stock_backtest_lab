@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 import pandas as pd
 
-from backtest_lab.vnext_p1_p2_primary80_ma_slope_cd50_action_legs import feature_panel
+from backtest_lab.vnext_p1_p2_primary80_ma_slope_cd50_action_legs import _next_market_date, feature_panel
 
 
 class MASlopeActionLegTest(unittest.TestCase):
@@ -18,6 +18,10 @@ class MASlopeActionLegTest(unittest.TestCase):
         result = feature_panel(frame)
         self.assertFalse(result.iloc[-2].history_ready)
         self.assertTrue(result.iloc[-1].history_ready)
+
+    def test_execution_uses_next_market_date_not_next_ticker_analysis_observation(self):
+        market = {"P1": list(pd.to_datetime(["2017-12-15", "2017-12-18", "2017-12-19"]))}
+        self.assertEqual(_next_market_date(market, "P1", pd.Timestamp("2017-12-15")), pd.Timestamp("2017-12-18"))
 
 
 if __name__ == "__main__":
