@@ -22,6 +22,7 @@ RADAR = Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar
 RADAR_OUTPUTS = RADAR.parent
 ONE_SHOT = RADAR_OUTPUTS / "radar_vnext_p1_p2_primary80_ma_slope_cd50_one_shot_close_fill_20260716"
 SHIFTED_PATH = RADAR_OUTPUTS / "radar_vnext_p1_p2_ma_slope_cd50_shifted_path_local_close_extraction_20260716"
+PATH_INDEPENDENT = RADAR_OUTPUTS / "radar_vnext_p1_p2_primary80_path_independent_raw_close_bulk_fill_20260716"
 CLOSURES = sorted(
     [RADAR_OUTPUTS / "radar_vnext_p1_p2_ma_slope_cd50_action_leg_frontier_local_audit_bounded_fill_20260715"]
     + list(RADAR_OUTPUTS.glob("radar_vnext_p1_p2_ma_slope_cd50_action_leg_frontier_iteration_*_20260715"))
@@ -40,6 +41,7 @@ SHIFTED_ADJUSTED = SHIFTED_PATH / "bounded_network_adjusted_exact_patch.csv.gz"
 SHIFTED_RAW = SHIFTED_PATH / "bounded_network_raw_exact_patch.csv.gz"
 SHIFTED_ADJUSTED_BLOCKED = SHIFTED_PATH / "bounded_network_adjusted_remaining_blocked.csv.gz"
 SHIFTED_RAW_BLOCKED = SHIFTED_PATH / "bounded_network_raw_remaining_blocked.csv"
+PATH_INDEPENDENT_NO_TRADE = PATH_INDEPENDENT / "path_independent_final_official_no_trade_termination.csv.gz"
 CLOSURE_RAW = "frontier_official_raw_accepted_patch.csv"
 CLOSURE_NO_TRADE = "frontier_official_no_trade_ledger.csv"
 CLOSURE_CONTINUITY = "incumbent_continuity_local_classification.csv.gz"
@@ -208,6 +210,12 @@ def simulate_actions(features: pd.DataFrame, candidates: pd.DataFrame, raw: pd.D
     one_no_trade["ticker"] = one_no_trade.ticker.str.zfill(4)
     one_no_trade["date"] = pd.to_datetime(one_no_trade.date)
     no_trade_keys.update(one_no_trade[["period", "ticker", "date"]].itertuples(index=False, name=None))
+    path_no_trade = pd.read_csv(PATH_INDEPENDENT_NO_TRADE, dtype={"ticker": str}, low_memory=False)
+    path_no_trade["ticker"] = path_no_trade.ticker.str.zfill(4)
+    path_no_trade["date"] = pd.to_datetime(path_no_trade.date)
+    for row in path_no_trade.itertuples(index=False):
+        for period in str(row.periods).split("|"):
+            no_trade_keys.add((period, row.ticker, row.date))
     resolved = _read_optional_closures("frontier_missing_execution_date_resolution_audit.csv", dtype={"ticker": str})
     execution_date_resolutions: dict[tuple[str, str, str, pd.Timestamp], pd.Timestamp] = {}
     if len(resolved):

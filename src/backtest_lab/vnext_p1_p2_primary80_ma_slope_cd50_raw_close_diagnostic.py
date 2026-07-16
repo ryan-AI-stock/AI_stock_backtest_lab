@@ -7,6 +7,7 @@ from pathlib import Path
 import pandas as pd
 
 from backtest_lab.vnext_p1_p2_primary80_ma_slope_cd50_action_legs import (
+    PATH_INDEPENDENT,
     SHIFTED_RAW_BLOCKED,
     active_candidate_panel,
     feature_panel,
@@ -14,18 +15,55 @@ from backtest_lab.vnext_p1_p2_primary80_ma_slope_cd50_action_legs import (
     ranked_candidates,
     simulate_actions,
 )
-from backtest_lab.vnext_p1_p2_primary80_ma_slope_cd50_contract import TASK, parameter_matrix
+from backtest_lab.vnext_p1_p2_primary80_ma_slope_cd50_contract import PERIODS, TASK, parameter_matrix
 
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "outputs/vnext_p1_p2_primary80_MA_slope_CD50_official_raw_close_diagnostic_20260716"
+PATH_INDEPENDENT_RAW = PATH_INDEPENDENT / "path_independent_primary80_official_raw_close_compact.csv.gz"
+PATH_INDEPENDENT_BLOCKED = PATH_INDEPENDENT / "path_independent_final_blocked.csv.gz"
+PATH_INDEPENDENT_NO_TRADE = PATH_INDEPENDENT / "path_independent_final_official_no_trade_termination.csv.gz"
+EVENT_DIR = Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_p1_full_lifecycle_minimum_data_acquisition_20260710\compact\trusted_corporate_action_events")
 
 
 def _sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def raw_close_features(raw: pd.DataFrame) -> pd.DataFrame:
+def load_path_independent_raw() -> pd.DataFrame:
+    source = pd.read_csv(PATH_INDEPENDENT_RAW, dtype={"ticker": str})
+    source["ticker"] = source.ticker.str.zfill(4)
+    source["date"] = pd.to_datetime(source.date)
+    source = source.rename(columns={"close": "value"})
+    pieces = []
+    for period, (start, end) in PERIODS.items():
+        warmup_start = start - pd.Timedelta(days=100)
+        part = source.loc[source.date.between(warmup_start, end)].copy()
+        part["period"] = period
+        pieces.append(part[["period", "ticker", "date", "value", "source_quality"]])
+    return pd.concat(pieces, ignore_index=True).drop_duplicates(["period", "ticker", "date"], keep="last")
+
+
+def load_explicit_events() -> pd.DataFrame:
+    files = sorted(EVENT_DIR.glob("*.csv.gz"))
+    if not files:
+        return pd.DataFrame(columns=["ticker", "event_date", "event_type", "source_quality"])
+    events = pd.concat([pd.read_csv(path, dtype={"ticker": str}) for path in files], ignore_index=True)
+    events["ticker"] = events.ticker.str.zfill(4)
+    events["event_date"] = pd.to_datetime(events.event_date)
+    return events.drop_duplicates(["ticker", "event_date", "event_type"])
+
+
+def expand_period_keys(path: Path, classification: str) -> pd.DataFrame:
+    source = pd.read_csv(path, dtype={"ticker": str}, low_memory=False)
+    rows = []
+    for row in source.itertuples(index=False):
+        for period in str(row.periods).split("|"):
+            rows.append({"period": period, "ticker": str(row.ticker).zfill(4), "date": pd.Timestamp(row.date), "path_independent_classification": classification})
+    return pd.DataFrame(rows).drop_duplicates(["period", "ticker", "date"])
+
+
+def raw_close_features(raw: pd.DataFrame, events: pd.DataFrame) -> pd.DataFrame:
     analysis = raw.copy()
     analysis["source_quality"] = analysis.source_quality.astype(str) + ";official_raw_close_intentional_diagnostic"
     features = feature_panel(analysis)
@@ -35,33 +73,59 @@ def raw_close_features(raw: pd.DataFrame) -> pd.DataFrame:
         features.groupby(["period", "ticker"], sort=False).large_raw_close_move_warning
         .transform(lambda s: s.rolling(60, min_periods=1).max().astype(bool))
     )
-    features["corporate_action_guard_60obs"] = False
+    event_keys = set(events[["ticker", "event_date"]].itertuples(index=False, name=None))
+    features["explicit_corporate_action_event"] = [
+        (ticker, date) in event_keys for ticker, date in features[["ticker", "date"]].itertuples(index=False, name=None)
+    ]
+    features["corporate_action_guard_60obs"] = (
+        features.groupby(["period", "ticker"], sort=False).explicit_corporate_action_event
+        .transform(lambda s: s.rolling(60, min_periods=1).max().astype(bool))
+    )
     return features
 
 
 def run() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "current_step.txt").write_text("materialize_raw_close_diagnostic\n", encoding="utf-8")
-    _, raw = load_prices()
-    features = raw_close_features(raw)
+    raw = load_path_independent_raw()
+    events = load_explicit_events()
+    features = raw_close_features(raw, events)
     panel = active_candidate_panel(features)
     candidates = ranked_candidates(panel)
     actions, requirements, blocked = simulate_actions(features, candidates, raw)
+    no_trade_keys = expand_period_keys(PATH_INDEPENDENT_NO_TRADE, "official_no_trade_or_termination")
+    conflict_keys = expand_period_keys(PATH_INDEPENDENT_BLOCKED, "local_source_conflict")
 
-    guard = features.loc[features.corporate_action_guard_60obs, ["period", "ticker", "date", "raw_close_return", "corporate_action_or_scale_discontinuity"]]
+    guard = features.loc[
+        features.corporate_action_guard_60obs,
+        ["period", "ticker", "date", "raw_close_return", "explicit_corporate_action_event", "large_raw_close_move_warning"],
+    ]
     held = actions.loc[actions.incumbent.notna(), ["variant_id", "period", "decision_date", "incumbent"]].rename(
         columns={"decision_date": "date", "incumbent": "ticker"}
     )
     held_guard = held.merge(guard, on=["period", "ticker", "date"], how="inner").drop_duplicates()
     no_observation = actions.loc[actions.action.eq("hold_no_ticker_observation")].copy()
+    no_observation = no_observation.merge(
+        pd.concat([no_trade_keys, conflict_keys], ignore_index=True),
+        left_on=["period", "incumbent", "decision_date"],
+        right_on=["period", "ticker", "date"],
+        how="left",
+    )
+    no_observation["path_independent_classification"] = no_observation.path_independent_classification.fillna(
+        "exact_raw_close_absent_from_path_independent_partition"
+    )
+    last_raw = raw.groupby(["period", "ticker"], as_index=False).date.max().rename(columns={"date": "last_official_raw_close_date"})
+    no_observation = no_observation.merge(last_raw, left_on=["period", "incumbent"], right_on=["period", "ticker"], how="left", suffixes=("", "_last"))
+    post_last_trade = (
+        no_observation.path_independent_classification.eq("exact_raw_close_absent_from_path_independent_partition")
+        & no_observation.decision_date.gt(no_observation.last_official_raw_close_date)
+    )
+    no_observation.loc[post_last_trade, "path_independent_classification"] = "post_last_official_trade_termination_event_contract_missing"
 
-    shifted_blocked = pd.read_csv(SHIFTED_RAW_BLOCKED, dtype={"ticker": str})
-    shifted_blocked["ticker"] = shifted_blocked.ticker.str.zfill(4)
-    shifted_blocked["requested_execution_date"] = pd.to_datetime(shifted_blocked.date)
-    source_class = shifted_blocked[["period", "ticker", "requested_execution_date", "blocked_reason_after_bounded_network"]].drop_duplicates()
+    source_class = pd.concat([no_trade_keys, conflict_keys], ignore_index=True).rename(columns={"date": "requested_execution_date"})
     if len(blocked):
         blocked = blocked.merge(source_class, on=["period", "ticker", "requested_execution_date"], how="left")
-        blocked["precise_source_class"] = blocked.blocked_reason_after_bounded_network.fillna(
+        blocked["precise_source_class"] = blocked.path_independent_classification.fillna(
             "exact_raw_close_absent_after_local_only_close_basis_rechain"
         )
     else:
@@ -72,15 +136,23 @@ def run() -> None:
         b = blocked.loc[blocked.variant_id.eq(variant)]
         g = held_guard.loc[held_guard.variant_id.eq(variant)]
         n = no_observation.loc[no_observation.variant_id.eq(variant)]
+        n_hard = n.loc[~n.path_independent_classification.eq("official_no_trade_or_termination")]
+        b_hard = b.loc[~b.precise_source_class.eq("official_no_trade_or_termination")]
         req = requirements.loc[requirements.variant_id.eq(variant)]
-        ready = len(b) == 0 and len(g) == 0 and len(n) == 0
+        close_ready = len(b_hard) == 0 and len(n_hard) == 0
+        event_guard_ready = False
+        ready = close_ready and event_guard_ready
         rows.append(
             {
                 "variant_id": variant,
                 "execution_legs_ready": len(req),
                 "execution_blocked_rows": len(b),
+                "execution_hard_source_blocked_rows": len(b_hard),
                 "corporate_action_guard_held_rows": len(g),
                 "incumbent_no_close_observation_rows": len(n),
+                "incumbent_hard_close_blocked_rows": len(n_hard),
+                "close_path_ready": close_ready,
+                "corporate_action_guard_ready": event_guard_ready,
                 "exact_path_coverage_pass": ready,
                 "ready_for_experiments": ready,
             }
@@ -104,26 +176,36 @@ def run() -> None:
         "non_close_family_used": False,
         "new_radar_download_authorized": False,
         "large_raw_close_move_warning": "abs_same_ticker_raw_close_return_gt_15pct_audit_only_not_a_hard_guard",
-        "corporate_action_hard_guard": "actual_event_ledger_or_accepted_explicit_event_evidence_only",
+        "corporate_action_hard_guard": "actual_event_ledger_or_accepted_explicit_event_evidence_only; current local ledger is P1 diagnostic and not complete P1/P2 authority",
         "neighbor_price_substitution": False,
         "fixed_variants": 50,
     }
     (OUT / "raw_close_diagnostic_policy.json").write_text(json.dumps(policy, ensure_ascii=False, indent=2), encoding="utf-8")
     readiness = {
         "task_id": TASK,
-        "status": "ready_for_experiments" if ready_variants else "blocked_no_variant_has_complete_raw_close_and_corporate_action_safe_path",
+        "status": "ready_for_experiments" if ready_variants else "data_readiness_blocked_missing_corporate_action_and_termination_event_contract",
         "analysis_price_basis": "official_raw_close_intentional_diagnostic",
         "fixed_variants": 50,
         "ready_variant_count": len(ready_variants),
+        "close_path_ready_variant_count": int(readiness_table.close_path_ready.sum()),
+        "corporate_action_guard_ready_variant_count": int(readiness_table.corporate_action_guard_ready.sum()),
         "ready_variants": ready_variants,
         "execution_blocked_rows": len(blocked),
+        "execution_hard_source_blocked_rows": int(readiness_table.execution_hard_source_blocked_rows.sum()),
         "execution_blocked_unique_keys": len(blocked.drop_duplicates(["period", "ticker", "role", "requested_execution_date"])) if len(blocked) else 0,
         "corporate_action_guard_held_rows": len(held_guard),
         "incumbent_no_close_observation_rows": len(no_observation),
+        "incumbent_hard_close_blocked_rows": int(readiness_table.incumbent_hard_close_blocked_rows.sum()),
+        "path_independent_official_raw_close_rows": len(pd.read_csv(PATH_INDEPENDENT_RAW, usecols=["ticker"])),
+        "path_independent_local_source_conflict_rows": len(pd.read_csv(PATH_INDEPENDENT_BLOCKED, usecols=["ticker"])),
+        "explicit_event_rows_loaded": len(events),
+        "corporate_action_event_authority_complete_for_P1_P2": False,
         "ready_for_experiments": bool(ready_variants),
         "data_readiness_blocked_only": not bool(ready_variants),
         "may_be_used_to_reject_strategy": False,
-        "path_dependent_close_authority_not_sufficient_for_final_readiness": True,
+        "path_independent_close_authority_absorbed": True,
+        "path_dependent_close_authority_not_sufficient_for_final_readiness": False,
+        "termination_event_and_forced_exit_contract_ready": False,
         "further_radar_probe_authorized": False,
         "formal_model_changed": False,
         "trade_decision_changed": False,
