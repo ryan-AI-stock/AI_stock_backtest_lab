@@ -28,6 +28,9 @@ TRANSFER_TERMINATION = Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock
 TRANSFER_CLOSE_PATCH = TRANSFER_TERMINATION / "ticker_4739_post_transition_exact_close_patch.csv.gz"
 TRANSFER_REMAINING = TRANSFER_TERMINATION / "ticker_4739_post_transition_remaining_local_gap.csv"
 TERMINATION_LEDGER = TRANSFER_TERMINATION / "ticker_3474_termination_event_ledger.csv"
+TRANSFER_4739_FILL = Path(r"C:\Users\zergv\Documents\Codex\2026-05-23\ai-stock-rotation-radar-https-docs\outputs\radar_vnext_4739_post_transfer_twse_close_fill_20260716")
+TRANSFER_4739_FILL_PATCH = TRANSFER_4739_FILL / "ticker_4739_exact_twse_close_patch.csv.gz"
+TRANSFER_4739_FILL_NO_TRADE = TRANSFER_4739_FILL / "ticker_4739_exact_twse_official_no_trade.csv"
 
 
 def _sha(path: Path) -> str:
@@ -44,6 +47,13 @@ def load_path_independent_raw() -> pd.DataFrame:
     transfer["date"] = pd.to_datetime(transfer.date)
     source = pd.concat(
         [source, transfer[["ticker", "date", "market", "value", "source_quality"]]],
+        ignore_index=True,
+    ).drop_duplicates(["ticker", "date"], keep="last")
+    transfer_fill = pd.read_csv(TRANSFER_4739_FILL_PATCH, dtype={"ticker": str}).rename(columns={"close": "value"})
+    transfer_fill["ticker"] = transfer_fill.ticker.str.zfill(4)
+    transfer_fill["date"] = pd.to_datetime(transfer_fill.date)
+    source = pd.concat(
+        [source, transfer_fill[["ticker", "date", "market", "value", "source_quality"]]],
         ignore_index=True,
     ).drop_duplicates(["ticker", "date"], keep="last")
     pieces = []
@@ -86,6 +96,23 @@ def expand_period_keys(path: Path, classification: str) -> pd.DataFrame:
     return pd.DataFrame(rows).drop_duplicates(["period", "ticker", "date"])
 
 
+def unresolved_4739_transition_gap_rows() -> int:
+    remaining = pd.read_csv(TRANSFER_REMAINING, dtype={"ticker": str})
+    if not len(remaining):
+        return 0
+    remaining["ticker"] = remaining.ticker.str.zfill(4)
+    remaining["date"] = pd.to_datetime(remaining.date)
+    filled = pd.read_csv(TRANSFER_4739_FILL_PATCH, usecols=["ticker", "date"], dtype={"ticker": str})
+    filled["ticker"] = filled.ticker.str.zfill(4)
+    filled["date"] = pd.to_datetime(filled.date)
+    no_trade = pd.read_csv(TRANSFER_4739_FILL_NO_TRADE, usecols=["ticker", "date"], dtype={"ticker": str})
+    no_trade["ticker"] = no_trade.ticker.str.zfill(4)
+    no_trade["date"] = pd.to_datetime(no_trade.date)
+    resolved = pd.concat([filled, no_trade], ignore_index=True).drop_duplicates(["ticker", "date"])
+    unresolved = remaining.merge(resolved.assign(_resolved=True), on=["ticker", "date"], how="left")
+    return int(unresolved._resolved.isna().sum())
+
+
 def raw_close_features(raw: pd.DataFrame, events: pd.DataFrame) -> pd.DataFrame:
     analysis = raw.copy()
     analysis["source_quality"] = analysis.source_quality.astype(str) + ";official_raw_close_intentional_diagnostic"
@@ -117,6 +144,20 @@ def run() -> None:
     candidates = ranked_candidates(panel)
     actions, requirements, blocked = simulate_actions(features, candidates, raw, termination_events=load_termination_events())
     no_trade_keys = expand_period_keys(PATH_INDEPENDENT_NO_TRADE, "official_no_trade_or_termination")
+    transfer_no_trade = pd.read_csv(TRANSFER_4739_FILL_NO_TRADE, dtype={"ticker": str})
+    transfer_no_trade["ticker"] = transfer_no_trade.ticker.str.zfill(4)
+    transfer_no_trade["date"] = pd.to_datetime(transfer_no_trade.date)
+    transfer_no_trade_keys = []
+    for period in PERIODS:
+        transfer_no_trade_keys.append(
+            transfer_no_trade.assign(period=period, path_independent_classification="official_no_trade_or_termination")[
+                ["period", "ticker", "date", "path_independent_classification"]
+            ]
+        )
+    if transfer_no_trade_keys:
+        no_trade_keys = pd.concat([no_trade_keys, *transfer_no_trade_keys], ignore_index=True).drop_duplicates(
+            ["period", "ticker", "date"]
+        )
     conflict_keys = expand_period_keys(PATH_INDEPENDENT_BLOCKED, "local_source_conflict")
 
     guard = features.loc[
@@ -212,9 +253,10 @@ def run() -> None:
         "fixed_variants": 50,
     }
     (OUT / "raw_close_diagnostic_policy.json").write_text(json.dumps(policy, ensure_ascii=False, indent=2), encoding="utf-8")
+    unresolved_4739_rows = unresolved_4739_transition_gap_rows()
     readiness = {
         "task_id": TASK,
-        "status": "ready_for_experiments" if ready_variants else "data_readiness_blocked_4739_remaining_close_gaps_and_local_source_conflicts",
+        "status": "ready_for_experiments" if ready_variants else "data_readiness_blocked_local_source_conflicts_or_corporate_action_guard",
         "analysis_price_basis": "official_raw_close_intentional_diagnostic",
         "fixed_variants": 50,
         "ready_variant_count": len(ready_variants),
@@ -230,7 +272,11 @@ def run() -> None:
         "path_independent_official_raw_close_rows": len(pd.read_csv(PATH_INDEPENDENT_RAW, usecols=["ticker"])),
         "path_independent_local_source_conflict_rows": len(pd.read_csv(PATH_INDEPENDENT_BLOCKED, usecols=["ticker"])),
         "ticker_4739_cross_venue_exact_close_patch_rows": len(pd.read_csv(TRANSFER_CLOSE_PATCH, usecols=["ticker"])),
-        "ticker_4739_cross_venue_remaining_local_scope_gap_rows": len(pd.read_csv(TRANSFER_REMAINING, usecols=["ticker"])),
+        "ticker_4739_post_transfer_exact_close_fill_rows": len(pd.read_csv(TRANSFER_4739_FILL_PATCH, usecols=["ticker"])),
+        "ticker_4739_post_transfer_official_no_trade_rows": len(pd.read_csv(TRANSFER_4739_FILL_NO_TRADE, usecols=["ticker"])),
+        "ticker_4739_cross_venue_original_remaining_local_scope_gap_rows": len(pd.read_csv(TRANSFER_REMAINING, usecols=["ticker"])),
+        "ticker_4739_cross_venue_remaining_local_scope_gap_rows": unresolved_4739_rows,
+        "ticker_4739_post_transfer_fill_absorbed": unresolved_4739_rows == 0,
         "ticker_3474_holder_treatment_materialized": True,
         "ticker_3474_holder_treatment_strategy_sell": False,
         "ticker_3474_holder_treatment_market_sell_slippage": 0.0,
