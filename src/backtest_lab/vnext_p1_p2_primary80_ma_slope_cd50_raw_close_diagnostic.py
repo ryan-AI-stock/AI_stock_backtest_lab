@@ -30,12 +30,12 @@ def raw_close_features(raw: pd.DataFrame) -> pd.DataFrame:
     analysis["source_quality"] = analysis.source_quality.astype(str) + ";official_raw_close_intentional_diagnostic"
     features = feature_panel(analysis)
     features["raw_close_return"] = features.groupby(["period", "ticker"], sort=False).value.pct_change(fill_method=None)
-    features["corporate_action_or_scale_discontinuity"] = features.raw_close_return.abs().gt(0.15)
-    features["corporate_action_guard_60obs"] = (
-        features.groupby(["period", "ticker"], sort=False).corporate_action_or_scale_discontinuity
+    features["large_raw_close_move_warning"] = features.raw_close_return.abs().gt(0.15)
+    features["large_raw_close_move_warning_60obs"] = (
+        features.groupby(["period", "ticker"], sort=False).large_raw_close_move_warning
         .transform(lambda s: s.rolling(60, min_periods=1).max().astype(bool))
     )
-    features["history_ready"] &= ~features.corporate_action_guard_60obs
+    features["corporate_action_guard_60obs"] = False
     return features
 
 
@@ -103,7 +103,8 @@ def run() -> None:
         "formal_basis": False,
         "non_close_family_used": False,
         "new_radar_download_authorized": False,
-        "corporate_action_guard": "abs_same_ticker_raw_close_return_gt_15pct_blocks_current_and_following_59_observations",
+        "large_raw_close_move_warning": "abs_same_ticker_raw_close_return_gt_15pct_audit_only_not_a_hard_guard",
+        "corporate_action_hard_guard": "actual_event_ledger_or_accepted_explicit_event_evidence_only",
         "neighbor_price_substitution": False,
         "fixed_variants": 50,
     }
@@ -120,6 +121,9 @@ def run() -> None:
         "corporate_action_guard_held_rows": len(held_guard),
         "incumbent_no_close_observation_rows": len(no_observation),
         "ready_for_experiments": bool(ready_variants),
+        "data_readiness_blocked_only": not bool(ready_variants),
+        "may_be_used_to_reject_strategy": False,
+        "path_dependent_close_authority_not_sufficient_for_final_readiness": True,
         "further_radar_probe_authorized": False,
         "formal_model_changed": False,
         "trade_decision_changed": False,
