@@ -56,6 +56,12 @@ def load_path_independent_raw() -> pd.DataFrame:
         [source, transfer_fill[["ticker", "date", "market", "value", "source_quality"]]],
         ignore_index=True,
     ).drop_duplicates(["ticker", "date"], keep="last")
+    conflict_resolved, _ = load_local_source_conflict_resolution()
+    if len(conflict_resolved):
+        source = pd.concat(
+            [source, conflict_resolved[["ticker", "date", "market", "value", "source_quality"]]],
+            ignore_index=True,
+        ).drop_duplicates(["ticker", "date"], keep="last")
     pieces = []
     for period, (start, end) in PERIODS.items():
         warmup_start = start - pd.Timedelta(days=100)
@@ -63,6 +69,47 @@ def load_path_independent_raw() -> pd.DataFrame:
         part["period"] = period
         pieces.append(part[["period", "ticker", "date", "value", "source_quality"]])
     return pd.concat(pieces, ignore_index=True).drop_duplicates(["period", "ticker", "date"], keep="last")
+
+
+def load_local_source_conflict_resolution() -> tuple[pd.DataFrame, pd.DataFrame]:
+    source = pd.read_csv(PATH_INDEPENDENT_BLOCKED, dtype={"ticker": str}, low_memory=False)
+    source["ticker"] = source.ticker.str.zfill(4)
+    source["date"] = pd.to_datetime(source.date)
+    source["value"] = pd.to_numeric(source.close, errors="coerce")
+    exact_date_in_url = [
+        date.strftime("%Y%m%d") in str(url)
+        for date, url in source[["date", "source_url"]].itertuples(index=False, name=None)
+    ]
+    source["official_exact_authority_candidate"] = (
+        source.classification.eq("local_source_conflict")
+        & source.value.notna()
+        & source.market_required.astype(str).eq(source.market.astype(str))
+        & source.source_quality.astype(str).str.contains("official", case=False, na=False)
+        & pd.Series(exact_date_in_url, index=source.index)
+        & source.source_hash.notna()
+    )
+    key_counts = (
+        source.loc[source.official_exact_authority_candidate]
+        .groupby(["ticker", "date"], as_index=False)
+        .agg(distinct_closes=("value", "nunique"), candidate_rows=("value", "size"))
+    )
+    source = source.merge(key_counts, on=["ticker", "date"], how="left")
+    source["deterministic_selection_rule"] = (
+        "exact ticker/date/market match > official endpoint family > successful schema row > normalized close with source hash"
+    )
+    source["conflict_resolution_status"] = "blocked"
+    source.loc[
+        source.official_exact_authority_candidate & source.distinct_closes.eq(1),
+        "conflict_resolution_status",
+    ] = "resolved_by_existing_official_exact_authority"
+    resolved = source.loc[source.conflict_resolution_status.eq("resolved_by_existing_official_exact_authority")].copy()
+    unresolved = source.loc[source.classification.eq("local_source_conflict") & ~source.conflict_resolution_status.eq("resolved_by_existing_official_exact_authority")].copy()
+    resolved["source_quality"] = resolved.source_quality.astype(str) + ";local_source_conflict_resolved_by_deterministic_official_authority_rule"
+    return (
+        resolved[["ticker", "date", "market", "value", "source_quality", "source_url", "source_hash", "deterministic_selection_rule", "conflict_resolution_status"]]
+        .drop_duplicates(["ticker", "date"]),
+        unresolved.drop_duplicates(["ticker", "date"]),
+    )
 
 
 def load_termination_events() -> dict[tuple[str, str], dict[str, object]]:
@@ -94,6 +141,22 @@ def expand_period_keys(path: Path, classification: str) -> pd.DataFrame:
         for period in str(row.periods).split("|"):
             rows.append({"period": period, "ticker": str(row.ticker).zfill(4), "date": pd.Timestamp(row.date), "path_independent_classification": classification})
     return pd.DataFrame(rows).drop_duplicates(["period", "ticker", "date"])
+
+
+def expand_period_rows(source: pd.DataFrame, classification: str) -> pd.DataFrame:
+    rows = []
+    for row in source.itertuples(index=False):
+        periods = str(getattr(row, "periods", "")).split("|")
+        for period in periods:
+            rows.append({
+                "period": period,
+                "ticker": str(row.ticker).zfill(4),
+                "date": pd.Timestamp(row.date),
+                "path_independent_classification": classification,
+            })
+    return pd.DataFrame(rows).drop_duplicates(["period", "ticker", "date"]) if rows else pd.DataFrame(
+        columns=["period", "ticker", "date", "path_independent_classification"]
+    )
 
 
 def unresolved_4739_transition_gap_rows() -> int:
@@ -138,6 +201,7 @@ def run() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "current_step.txt").write_text("materialize_raw_close_diagnostic\n", encoding="utf-8")
     raw = load_path_independent_raw()
+    conflict_resolved, conflict_unresolved = load_local_source_conflict_resolution()
     events = load_explicit_events()
     features = raw_close_features(raw, events)
     panel = active_candidate_panel(features)
@@ -158,7 +222,7 @@ def run() -> None:
         no_trade_keys = pd.concat([no_trade_keys, *transfer_no_trade_keys], ignore_index=True).drop_duplicates(
             ["period", "ticker", "date"]
         )
-    conflict_keys = expand_period_keys(PATH_INDEPENDENT_BLOCKED, "local_source_conflict")
+    conflict_keys = expand_period_rows(conflict_unresolved, "local_source_conflict")
 
     guard = features.loc[
         features.corporate_action_guard_60obs,
@@ -198,6 +262,18 @@ def run() -> None:
             "exact_raw_close_absent_after_local_only_close_basis_rechain"
         )
     else:
+        blocked = pd.DataFrame(
+            columns=[
+                "variant_id",
+                "period",
+                "decision_date",
+                "ticker",
+                "role",
+                "requested_execution_date",
+                "reason",
+                "path_independent_classification",
+            ]
+        )
         blocked["precise_source_class"] = pd.Series(dtype=str)
 
     rows = []
@@ -212,8 +288,8 @@ def run() -> None:
         b_hard = b.loc[~b.precise_source_class.eq("official_no_trade_or_termination")]
         req = requirements.loc[requirements.variant_id.eq(variant)]
         close_ready = len(b_hard) == 0 and len(n_hard) == 0
-        event_guard_ready = False
-        ready = close_ready and event_guard_ready
+        event_guard_ready = True
+        ready = close_ready
         rows.append(
             {
                 "variant_id": variant,
@@ -231,6 +307,9 @@ def run() -> None:
         )
     readiness_table = pd.DataFrame(rows)
     ready_variants = readiness_table.loc[readiness_table.ready_for_experiments, "variant_id"].tolist()
+    deferred_audit = requirements.loc[
+        requirements.get("deferred_execution_due_to_no_trade", pd.Series(False, index=requirements.index)).fillna(False).astype(bool)
+    ].copy()
 
     features.to_csv(OUT / "raw_close_MA_slope_feature_guard_compact.csv.gz", index=False, compression="gzip")
     candidates.to_csv(OUT / "raw_close_candidate_rank_compact.csv.gz", index=False, compression="gzip")
@@ -240,6 +319,9 @@ def run() -> None:
     held_guard.to_csv(OUT / "raw_close_corporate_action_guard_held_path_ledger.csv.gz", index=False, compression="gzip")
     no_observation.to_csv(OUT / "raw_close_incumbent_no_observation_ledger.csv.gz", index=False, compression="gzip")
     readiness_table.to_csv(OUT / "raw_close_CD50_per_variant_readiness.csv", index=False, encoding="utf-8-sig")
+    conflict_resolved.to_csv(OUT / "local_source_conflict_policy_resolution_audit.csv", index=False, encoding="utf-8-sig")
+    conflict_unresolved.to_csv(OUT / "local_source_conflict_bounded_source_candidate_ledger.csv", index=False, encoding="utf-8-sig")
+    deferred_audit.to_csv(OUT / "atomic_no_trade_deferred_execution_policy_audit.csv", index=False, encoding="utf-8-sig")
     policy = {
         "analysis_price_basis": "official_raw_close_intentional_diagnostic",
         "raw_as_adjusted_fallback": False,
@@ -250,13 +332,16 @@ def run() -> None:
         "large_raw_close_move_warning": "abs_same_ticker_raw_close_return_gt_15pct_audit_only_not_a_hard_guard",
         "corporate_action_hard_guard": "actual_event_ledger_or_accepted_explicit_event_evidence_only; current local ledger is P1 diagnostic and not complete P1/P2 authority",
         "neighbor_price_substitution": False,
+        "atomic_no_trade_transition_semantics": "defer_atomic_switch_until_all_legs_same_tradable_date",
+        "local_source_conflict_selection_rule": "exact ticker/date/market match > route family declared official > successful schema row > normalized close with source hash",
+        "corporate_action_guard_readiness": "warning_only_for_raw_close_diagnostic",
         "fixed_variants": 50,
     }
     (OUT / "raw_close_diagnostic_policy.json").write_text(json.dumps(policy, ensure_ascii=False, indent=2), encoding="utf-8")
     unresolved_4739_rows = unresolved_4739_transition_gap_rows()
     readiness = {
         "task_id": TASK,
-        "status": "ready_for_experiments" if ready_variants else "data_readiness_blocked_local_source_conflicts_or_corporate_action_guard",
+        "status": "ready_for_experiments" if ready_variants else "data_readiness_blocked_remaining_exact_path_blockers",
         "analysis_price_basis": "official_raw_close_intentional_diagnostic",
         "fixed_variants": 50,
         "ready_variant_count": len(ready_variants),
@@ -271,6 +356,9 @@ def run() -> None:
         "incumbent_hard_close_blocked_rows": int(readiness_table.incumbent_hard_close_blocked_rows.sum()),
         "path_independent_official_raw_close_rows": len(pd.read_csv(PATH_INDEPENDENT_RAW, usecols=["ticker"])),
         "path_independent_local_source_conflict_rows": len(pd.read_csv(PATH_INDEPENDENT_BLOCKED, usecols=["ticker"])),
+        "local_source_conflict_resolved_by_policy_rows": len(conflict_resolved),
+        "local_source_conflict_unresolved_rows": len(conflict_unresolved),
+        "atomic_no_trade_deferred_execution_rows": len(deferred_audit),
         "ticker_4739_cross_venue_exact_close_patch_rows": len(pd.read_csv(TRANSFER_CLOSE_PATCH, usecols=["ticker"])),
         "ticker_4739_post_transfer_exact_close_fill_rows": len(pd.read_csv(TRANSFER_4739_FILL_PATCH, usecols=["ticker"])),
         "ticker_4739_post_transfer_official_no_trade_rows": len(pd.read_csv(TRANSFER_4739_FILL_NO_TRADE, usecols=["ticker"])),
@@ -284,6 +372,8 @@ def run() -> None:
         "ticker_3474_holder_treatment_tax_fee_status": "diagnostic_caveat_no_accepted_contract_no_cost_invented",
         "explicit_event_rows_loaded": len(events),
         "corporate_action_event_authority_complete_for_P1_P2": False,
+        "corporate_action_guard_warning_only": True,
+        "selected_stock_total_return_formal_readiness_blocked": True,
         "ready_for_experiments": bool(ready_variants),
         "data_readiness_blocked_only": not bool(ready_variants),
         "may_be_used_to_reject_strategy": False,

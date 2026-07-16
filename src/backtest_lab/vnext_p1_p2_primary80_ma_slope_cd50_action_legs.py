@@ -194,6 +194,27 @@ def _next_market_date(index: dict[str, list[pd.Timestamp]], period: str, decisio
     return dates[pos] if pos < len(dates) else None
 
 
+def _next_raw_date(index: dict[tuple[str, str], list[pd.Timestamp]], period: str, ticker: str, decision: pd.Timestamp) -> pd.Timestamp | None:
+    dates = index.get((period, ticker), [])
+    pos = np.searchsorted(dates, decision, side="right")
+    return dates[pos] if pos < len(dates) else None
+
+
+def _next_common_raw_date(
+    index: dict[tuple[str, str], list[pd.Timestamp]],
+    period: str,
+    tickers: list[str],
+    decision: pd.Timestamp,
+) -> pd.Timestamp | None:
+    if not tickers:
+        return None
+    common = set(index.get((period, tickers[0]), []))
+    for ticker in tickers[1:]:
+        common &= set(index.get((period, ticker), []))
+    dates = sorted(date for date in common if date > decision)
+    return dates[0] if dates else None
+
+
 def simulate_actions(
     features: pd.DataFrame,
     candidates: pd.DataFrame,
@@ -203,6 +224,7 @@ def simulate_actions(
     termination_events = termination_events or {}
     feature_map = features.set_index(["period", "ticker", "date"])
     analysis_dates = {(p, t): list(g.date.sort_values()) for (p, t), g in features.groupby(["period", "ticker"])}
+    raw_dates = {(p, t): list(g.date.sort_values()) for (p, t), g in raw.groupby(["period", "ticker"])}
     market_dates = {
         period: sorted(set(features.loc[features.period.eq(period), "date"]) | set(raw.loc[raw.period.eq(period), "date"]))
         for period in PERIODS
@@ -310,16 +332,35 @@ def simulate_actions(
                     leg_rows, leg_ready = [], True
                     requested_dates = []
                     no_trade_transition = False
+                    intended_date = _next_market_date(market_dates, period, decision)
+                    actual_atomic_date = None
+                    if action == "switch_signal":
+                        actual_atomic_date = _next_common_raw_date(raw_dates, period, [ticker for _, ticker in legs], decision)
                     for role, ticker in legs:
-                        req_date = _next_market_date(market_dates, period, decision)
+                        req_date = intended_date
                         if req_date is None:
                             req_date = execution_date_resolutions.get((period, ticker, role, decision))
                         if (period, ticker, req_date) in no_trade_keys:
                             no_trade_transition = True
+                            if action in {"entry_signal", "exit_signal"}:
+                                req_date = _next_raw_date(raw_dates, period, ticker, decision)
+                        if action == "switch_signal" and actual_atomic_date is not None:
+                            req_date = actual_atomic_date
                         requested_dates.append(req_date)
-                        ready = not no_trade_transition and req_date is not None and (period, ticker, req_date) in raw_map.index
+                        ready = req_date is not None and (period, ticker, req_date) in raw_map.index
                         leg_ready &= ready
-                        row = {"variant_id": variant.variant_id, "period": period, "decision_date": decision, "execution_role": role, "ticker": ticker, "requested_execution_date": req_date, "official_raw_ready": ready}
+                        row = {
+                            "variant_id": variant.variant_id,
+                            "period": period,
+                            "decision_date": decision,
+                            "execution_role": role,
+                            "ticker": ticker,
+                            "intended_execution_date": intended_date,
+                            "requested_execution_date": req_date,
+                            "deferred_execution_due_to_no_trade": no_trade_transition and req_date != intended_date,
+                            "atomic_no_trade_policy": "defer_atomic_until_all_legs_same_tradable_date" if no_trade_transition else "",
+                            "official_raw_ready": ready,
+                        }
                         if ready:
                             raw_row = raw_map.loc[(period, ticker, req_date)]
                             row.update({"official_raw_close": raw_row.value, "official_raw_source_quality": raw_row.source_quality})
