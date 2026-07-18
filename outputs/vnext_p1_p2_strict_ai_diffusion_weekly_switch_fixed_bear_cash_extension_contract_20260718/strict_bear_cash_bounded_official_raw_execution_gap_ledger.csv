@@ -1,5 +1,4 @@
 ﻿ticker,date,blocker_class,blocked_reason,authorized_source_scope,network_family_allowed
-00631L,2018-01-22,missing_official_raw_execution_close,no accepted official raw close source for exact execution leg,exact official raw close for transition execution leg only,official close/OHLC only; no non-close family
-00631L,2022-08-22,missing_official_raw_execution_close,no accepted official raw close source for exact execution leg,exact official raw close for transition execution leg only,official close/OHLC only; no non-close family
-00631L,2025-06-09,missing_official_raw_execution_close,no accepted official raw close source for exact execution leg,exact official raw close for transition execution leg only,official close/OHLC only; no non-close family
-00631L,2025-06-23,missing_official_raw_execution_close,no accepted official raw close source for exact execution leg,exact official raw close for transition execution leg only,official close/OHLC only; no non-close family
+00631L,2018-05-21,missing_official_raw_execution_close,no accepted official raw close source for exact execution leg,exact official raw close for transition execution leg only,official close/OHLC only; no non-close family
+00631L,2018-11-19,missing_official_raw_execution_close,no accepted official raw close source for exact execution leg,exact official raw close for transition execution leg only,official close/OHLC only; no non-close family
+00631L,2022-10-31,missing_official_raw_execution_close,no accepted official raw close source for exact execution leg,exact official raw close for transition execution leg only,official close/OHLC only; no non-close family
