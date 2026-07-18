@@ -20,10 +20,37 @@ AI = base.STATE_AI
 DIFFUSION = base.STATE_DIFFUSION
 AI_SLEEVE = "fixed7_S10_CD10"
 DIFFUSION_SLEEVE = "0050_signal_to_00631L_MA4_S7_MA10_S20_CD7"
+RADAR_SLEEVE_TIMING_CLOSE_FILL = Path(
+    r"C:\Users\zergv\Documents\Codex\2026-05-23"
+    r"\ai-stock-rotation-radar-https-docs\outputs"
+    r"\radar_vnext_p1_p2_sleeve_internal_timing_close_fill_20260718"
+)
 
 
 def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def load_official_close_index() -> pd.DataFrame:
+    parts = [close_index.load_official_close_index()]
+    patch_path = RADAR_SLEEVE_TIMING_CLOSE_FILL / "sleeve_internal_timing_exact_close_patch.csv"
+    if patch_path.exists():
+        patch = pd.read_csv(patch_path, dtype={"ticker": str})
+        patch["date"] = pd.to_datetime(patch["date"]).dt.tz_localize(None)
+        patch["close"] = pd.to_numeric(patch["close"], errors="coerce")
+        patch["official_source_role"] = "radar_sleeve_internal_timing_close_fill"
+        parts.append(patch[["ticker", "date", "market", "close", "source_quality", "source_url", "source_hash", "official_source_role"]])
+    return pd.concat(parts, ignore_index=True).dropna(subset=["ticker", "date", "close"]).sort_values(["ticker", "date", "official_source_role"]).drop_duplicates(["ticker", "date"], keep="last")
+
+
+def load_no_trade_lookup() -> dict[tuple[str, pd.Timestamp], dict]:
+    lookup = base.load_no_trade_lookup()
+    path = RADAR_SLEEVE_TIMING_CLOSE_FILL / "sleeve_internal_timing_exact_close_no_trade.csv"
+    if path.exists():
+        frame = pd.read_csv(path, dtype={"ticker": str})
+        frame["date"] = pd.to_datetime(frame["date"]).dt.tz_localize(None)
+        lookup.update({(str(row.ticker), pd.Timestamp(row.date)): row._asdict() for row in frame.itertuples(index=False)})
+    return lookup
 
 
 def build_prices() -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -199,8 +226,8 @@ def main() -> None:
     (OUT / "current_step.txt").write_text("running_contract_readiness\n", encoding="utf-8")
     prices, market = build_prices()
     weekly = weekly_strict()
-    official_lookup = base.build_source_lookup(close_index.load_official_close_index())
-    no_trade_lookup = base.load_no_trade_lookup()
+    official_lookup = base.build_source_lookup(load_official_close_index())
+    no_trade_lookup = load_no_trade_lookup()
     daily_parts, action_parts, mark_parts = [], [], []
     for period in base.PERIODS:
         daily, actions, marks = materialize_virtual_path(period, prices, market, weekly)
