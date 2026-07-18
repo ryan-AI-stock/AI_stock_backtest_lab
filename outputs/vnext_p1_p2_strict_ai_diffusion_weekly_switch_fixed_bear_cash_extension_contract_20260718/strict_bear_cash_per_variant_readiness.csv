@@ -1,9 +1,9 @@
 ﻿variant_id,period,execution_requirement_rows,official_raw_ready_rows,execution_blocker_rows,official_no_trade_deferred_rows,exact_path_ready
-crash_dd20,P1,60,57,3,0,False
+crash_dd20,P1,63,60,3,0,False
 crash_dd20,P2,81,81,0,0,True
-current_score,P1,12,9,3,0,False
-current_score,P2,72,69,3,0,False
+current_score,P1,15,12,3,0,False
+current_score,P2,75,72,3,0,False
 strict_no_bear_baseline,P1,57,57,0,0,True
 strict_no_bear_baseline,P2,81,81,0,0,True
-trend_dd10,P1,12,9,3,0,False
-trend_dd10,P2,72,69,3,0,False
+trend_dd10,P1,15,12,3,0,False
+trend_dd10,P2,75,72,3,0,False

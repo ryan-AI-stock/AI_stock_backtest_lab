@@ -15,6 +15,14 @@ OUT = (
     base.ROOT
     / "outputs/vnext_p1_p2_strict_ai_diffusion_weekly_switch_fixed_bear_cash_extension_contract_20260718"
 )
+RADAR_STRICT_BEAR_CASH_CLOSE_FILL = (
+    Path(
+        r"C:\Users\zergv\Documents\Codex\2026-05-23"
+        r"\ai-stock-rotation-radar-https-docs\outputs"
+        r"\radar_vnext_p1_p2_strict_ai_diffusion_bear_cash_close_fill_20260718"
+    )
+    / "strict_bear_cash_exact_close_patch.csv"
+)
 
 STATE_BEAR = "確認空頭"
 RULES = ["strict_no_bear_baseline", "current_score", "trend_dd10", "crash_dd20"]
@@ -35,6 +43,32 @@ def bear_candidate(row: pd.Series, rule_id: str) -> bool:
     if rule_id == "crash_dd20":
         return below and drawdown <= -0.20
     raise ValueError(rule_id)
+
+
+def load_official_close_index() -> pd.DataFrame:
+    official = base.load_official_close_index()
+    if not RADAR_STRICT_BEAR_CASH_CLOSE_FILL.exists():
+        return official
+    patch = pd.read_csv(RADAR_STRICT_BEAR_CASH_CLOSE_FILL, dtype={"ticker": str})
+    patch["date"] = pd.to_datetime(patch["date"]).dt.tz_localize(None)
+    patch["close"] = pd.to_numeric(patch["close"], errors="coerce")
+    patch["official_source_role"] = "radar_strict_bear_cash_bounded_close_fill"
+    patch = patch[
+        [
+            "ticker",
+            "date",
+            "market",
+            "close",
+            "source_quality",
+            "source_url",
+            "source_hash",
+            "official_source_role",
+        ]
+    ].copy()
+    merged = pd.concat([official, patch], ignore_index=True).dropna(subset=["ticker", "date", "close"])
+    return merged.sort_values(["ticker", "date", "official_source_role"]).drop_duplicates(
+        ["ticker", "date"], keep="last"
+    )
 
 
 def load_weekly_path(rule_id: str) -> pd.DataFrame:
@@ -339,7 +373,7 @@ def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "current_step.txt").write_text("running\n", encoding="utf-8")
     prices = base.load_prices()
-    official_lookup = base.build_source_lookup(base.load_official_close_index())
+    official_lookup = base.build_source_lookup(load_official_close_index())
     no_trade_lookup = base.load_no_trade_lookup()
 
     daily_parts = []
