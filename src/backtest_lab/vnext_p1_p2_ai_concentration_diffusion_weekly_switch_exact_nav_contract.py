@@ -23,6 +23,11 @@ OFFICIAL_PRIMARY80_CLOSE = Path(
     r"\path_independent_primary80_official_raw_close_compact.csv.gz"
 )
 OFFICIAL_00631L_2014_2015 = ROOT / "data/normalized_prices/00631L_twse_stock_day_201411_201512.csv"
+RADAR_WEEKLY_SWITCH_CLOSE_FILL = Path(
+    r"C:\Users\zergv\Documents\Codex\2026-05-23"
+    r"\ai-stock-rotation-radar-https-docs\outputs"
+    r"\radar_vnext_p1_p2_ai_diffusion_weekly_switch_close_fill_20260718"
+)
 OUT = ROOT / "outputs/vnext_p1_p2_ai_concentration_diffusion_weekly_switch_exact_nav_contract_20260718"
 
 INITIAL_CAPITAL = 1_000_000.0
@@ -136,6 +141,26 @@ def load_official_close_index() -> pd.DataFrame:
                 ]
             ].copy()
         )
+    radar_patch = RADAR_WEEKLY_SWITCH_CLOSE_FILL / "weekly_switch_exact_official_raw_close_patch.csv.gz"
+    if radar_patch.exists():
+        patch = pd.read_csv(radar_patch, dtype={"ticker": str})
+        patch["date"] = pd.to_datetime(patch["date"]).dt.tz_localize(None)
+        patch["close"] = pd.to_numeric(patch["close"], errors="coerce")
+        patch["official_source_role"] = "radar_weekly_switch_bounded_close_fill"
+        parts.append(
+            patch[
+                [
+                    "ticker",
+                    "date",
+                    "market",
+                    "close",
+                    "source_quality",
+                    "source_url",
+                    "source_hash",
+                    "official_source_role",
+                ]
+            ].copy()
+        )
     if not parts:
         return pd.DataFrame()
     index = pd.concat(parts, ignore_index=True).dropna(subset=["ticker", "date", "close"])
@@ -143,6 +168,36 @@ def load_official_close_index() -> pd.DataFrame:
         ["ticker", "date"], keep="first"
     )
     return index
+
+
+def load_no_trade_lookup() -> dict[tuple[str, pd.Timestamp], dict]:
+    path = RADAR_WEEKLY_SWITCH_CLOSE_FILL / "weekly_switch_exact_official_no_trade.csv"
+    if not path.exists():
+        return {}
+    frame = pd.read_csv(path, dtype={"ticker": str})
+    frame["date"] = pd.to_datetime(frame["date"]).dt.tz_localize(None)
+    lookup = {
+        (str(row.ticker), pd.Timestamp(row.date)): row._asdict()
+        for row in frame.itertuples(index=False)
+    }
+    # Radar established 6669 official TWSE listing date. Treat earlier attempted
+    # execution dates as non-executable prelisting, not source gaps.
+    listing = pd.Timestamp("2019-03-27")
+    for date in pd.date_range("2015-01-01", listing - pd.Timedelta(days=1), freq="D"):
+        lookup.setdefault(
+            ("6669", pd.Timestamp(date)),
+            {
+                "ticker": "6669",
+                "date": pd.Timestamp(date),
+                "market": "TWSE",
+                "classification": "official_no_trade_prelisting",
+                "reason": "target_date_before_official_twse_listing_date_2019-03-27",
+                "source_url": "https://openapi.twse.com.tw/v1/company/newlisting",
+                "source_hash": "c289ede8248e3fe1ac74cec62e01f08d774d183e9ddaca77b93b55808e2600d8",
+                "future_data_violation_count": 0,
+            },
+        )
+    return lookup
 
 
 def first_stage_week_for_period(period: str) -> pd.Timestamp:
@@ -299,6 +354,7 @@ def simulate_variant_period(
     period: str,
     prices: pd.DataFrame,
     official_lookup: dict[tuple[str, pd.Timestamp], dict],
+    no_trade_lookup: dict[tuple[str, pd.Timestamp], dict],
     slippage: float,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     calendar = calendar_for_period(prices, period)
@@ -352,6 +408,7 @@ def simulate_variant_period(
         action_reason = ""
         transition_cost = 0.0
         source_ready = True
+        no_trade_deferred = False
         if target_ticker != current_ticker:
             action = (
                 "entry"
@@ -373,19 +430,24 @@ def simulate_variant_period(
                 ) else pd.DataFrame()
                 raw_close = float(cache_row.iloc[0]["close"]) if not cache_row.empty else np.nan
                 official_ready = bool(src)
+                no_trade = no_trade_lookup.get((leg_ticker, date), {})
+                no_trade_ready = bool(no_trade)
                 if not official_ready:
-                    source_ready = False
-                    blockers.append(
-                        {
-                            "variant_id": variant_id,
-                            "period": period,
-                            "date": date,
-                            "ticker": leg_ticker,
-                            "role": side,
-                            "blocker_class": "missing_official_raw_execution_close",
-                            "blocked_reason": "no accepted official raw close source for exact execution leg",
-                        }
-                    )
+                    if no_trade_ready:
+                        no_trade_deferred = True
+                    else:
+                        source_ready = False
+                        blockers.append(
+                            {
+                                "variant_id": variant_id,
+                                "period": period,
+                                "date": date,
+                                "ticker": leg_ticker,
+                                "role": side,
+                                "blocker_class": "missing_official_raw_execution_close",
+                                "blocked_reason": "no accepted official raw close source for exact execution leg",
+                            }
+                        )
                 requirements.append(
                     {
                         "variant_id": variant_id,
@@ -400,42 +462,61 @@ def simulate_variant_period(
                         "official_source_quality": src.get("source_quality", "") if src else "",
                         "official_source_hash": src.get("source_hash", "") if src else "",
                         "official_raw_ready": official_ready,
+                        "official_no_trade_ready": no_trade_ready,
+                        "official_no_trade_classification": no_trade.get("classification", "") if no_trade else "",
+                        "official_no_trade_reason": no_trade.get("reason", "") if no_trade else "",
                     }
                 )
-            # Keep the path deterministic with local cache for planning, but do not
-            # mark the contract exact-ready unless every transition leg has official
-            # raw close authority. This prevents one missing source row from creating
-            # a repeated daily phantom frontier.
-            if current_ticker is not None:
-                cost = nav * tax_rate(current_ticker, "sell", slippage)
-                nav -= cost
-                transition_cost += cost
-            if target_ticker is not None:
-                cost = nav * tax_rate(str(target_ticker), "buy", slippage)
-                nav -= cost
-                transition_cost += cost
-            actions.append(
-                {
-                    "variant_id": variant_id,
-                    "period": period,
-                    "execution_date": date,
-                    "prior_ticker": current_ticker,
-                    "target_ticker": target_ticker,
-                    "action": action,
-                    "action_reason": action_reason,
-                    "state": state,
-                    "state_decision_week": state_decision_week,
-                    "transition_cost": transition_cost,
-                    "slippage_bp_per_side": int(round(slippage * 10000)),
-                    "official_raw_all_legs_ready": source_ready,
-                    "path_preview_basis": (
-                        "official_raw_execution_ready"
-                        if source_ready
-                        else "local_cache_execution_preview_not_experiments_ready"
-                    ),
-                }
-            )
-            current_ticker = str(target_ticker) if target_ticker is not None else None
+            if source_ready and not no_trade_deferred:
+                if current_ticker is not None:
+                    cost = nav * tax_rate(current_ticker, "sell", slippage)
+                    nav -= cost
+                    transition_cost += cost
+                if target_ticker is not None:
+                    cost = nav * tax_rate(str(target_ticker), "buy", slippage)
+                    nav -= cost
+                    transition_cost += cost
+                actions.append(
+                    {
+                        "variant_id": variant_id,
+                        "period": period,
+                        "execution_date": date,
+                        "prior_ticker": current_ticker,
+                        "target_ticker": target_ticker,
+                        "action": action,
+                        "action_reason": action_reason,
+                        "state": state,
+                        "state_decision_week": state_decision_week,
+                        "transition_cost": transition_cost,
+                        "slippage_bp_per_side": int(round(slippage * 10000)),
+                        "official_raw_all_legs_ready": source_ready,
+                        "execution_status": "executed",
+                    }
+                )
+                current_ticker = str(target_ticker) if target_ticker is not None else None
+            elif no_trade_deferred:
+                action = "deferred_no_trade"
+                action_reason = "official_no_trade_prelisting_atomic_transition_not_executed"
+                actions.append(
+                    {
+                        "variant_id": variant_id,
+                        "period": period,
+                        "execution_date": date,
+                        "prior_ticker": current_ticker,
+                        "target_ticker": target_ticker,
+                        "action": action,
+                        "action_reason": action_reason,
+                        "state": state,
+                        "state_decision_week": state_decision_week,
+                        "transition_cost": 0.0,
+                        "slippage_bp_per_side": int(round(slippage * 10000)),
+                        "official_raw_all_legs_ready": False,
+                        "execution_status": "deferred_no_trade",
+                    }
+                )
+            else:
+                action = "blocked_no_transition"
+                action_reason = "official_raw_execution_close_missing_atomic_transition_not_applied"
 
         rows.append(
             {
@@ -522,6 +603,7 @@ def main() -> None:
     prices = load_prices()
     official_index = load_official_close_index()
     official_lookup = build_source_lookup(official_index)
+    no_trade_lookup = load_no_trade_lookup()
 
     daily_parts = []
     action_parts = []
@@ -535,7 +617,7 @@ def main() -> None:
             benchmark_parts.append(benchmark)
             for variant_id in VARIANTS:
                 daily, actions, requirements, blockers = simulate_variant_period(
-                    variant_id, period, prices, official_lookup, slippage
+                    variant_id, period, prices, official_lookup, no_trade_lookup, slippage
                 )
                 daily_parts.append(daily)
                 if not actions.empty:
@@ -567,7 +649,11 @@ def main() -> None:
                 "execution_requirement_rows": int(len(group)),
                 "official_raw_ready_rows": int(group["official_raw_ready"].sum()),
                 "execution_blocker_rows": int(len(blockers)),
-                "exact_path_ready": bool(blockers.empty and group["official_raw_ready"].all()),
+                "official_no_trade_deferred_rows": int(group["official_no_trade_ready"].sum()),
+                "exact_path_ready": bool(
+                    blockers.empty
+                    and (group["official_raw_ready"] | group["official_no_trade_ready"]).all()
+                ),
             }
         )
     readiness_frame = pd.DataFrame(readiness_by_variant)
