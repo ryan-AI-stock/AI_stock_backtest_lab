@@ -4,47 +4,52 @@
   "files": [
     {
       "path": "strict_bear_cash_corrected_NAV_daily_wealth_ledger.csv.gz",
-      "sha256": "3ff767e286443c1ad71f4fa3a6c4d7462d208e19872f26abc04341ba1917b9cd",
-      "bytes": 663732
+      "sha256": "a38b432526f7e9e80cf1cbf121f56f5a8c8e55aed944d6eb5621b01e130346eb",
+      "bytes": 665910
     },
     {
       "path": "strict_bear_cash_unique_position_action_ledger.csv",
-      "sha256": "1a1fcfdcfa2c2e6988981ca8b213853da6b649c16991d561cb6e84a939a44f59",
-      "bytes": 61101
+      "sha256": "b14f7059e096a7f1d997175085a319044c001852260bccf3913a681567f2cc4a",
+      "bytes": 62598
     },
     {
       "path": "strict_bear_cash_execution_requirement_ledger.csv",
-      "sha256": "880e12bef647d561df215870e0439d173795a3b0b740c6e8b826f94db5325314",
-      "bytes": 95373
+      "sha256": "130c156e931970a3df8121fa384e6e3b371da664d225fff665673c9eeecda7ee",
+      "bytes": 97209
+    },
+    {
+      "path": "strict_bear_cash_path_independent_execution_requirement_union.csv",
+      "sha256": "eab27baf32db00b8d34b7f522bb013d9fa36c40237c85fe89662160e769a5b46",
+      "bytes": 58393
     },
     {
       "path": "strict_bear_cash_blocked_ledger.csv",
-      "sha256": "6ec23bb8ab0972b86a8c5cefa2ab57a21db22ddae1f27d3ec23a263801adc866",
-      "bytes": 1310
+      "sha256": "664c0e2933698afb3c1e8505922268731b521201951b6caaaa07cbc81fa5aa74",
+      "bytes": 1301
     },
     {
       "path": "strict_bear_cash_bounded_official_raw_execution_gap_ledger.csv",
-      "sha256": "d85fc4918d244fe9098130ac2bc5041d81e9252c581be36e42abd15664246634",
-      "bytes": 761
+      "sha256": "8307ca4a2022676775b0e5ffd1ff3487c57fed678f6fbb266075f6135d2a155d",
+      "bytes": 2333
     },
     {
       "path": "strict_bear_cash_00631L_benchmark_daily_ledger.csv.gz",
-      "sha256": "5c90ff090ce54a80e902d6d5e4f779b00550cb6be0e3a4389d48c096135e5b2f",
+      "sha256": "3f92c257dea54e3d35f82620b42835b34c8a5382719543a54fde54280b50d4c4",
       "bytes": 114591
     },
     {
       "path": "strict_bear_cash_exact_nav_metrics_preview.csv",
-      "sha256": "1033098f1e6ffb67c69bcf8c46a4390fa16befba1d7f6aa7d3fd2fd806009ecd",
-      "bytes": 6295
+      "sha256": "7c783bd42837ac4aa213bd579a9c8b4308e0d1174aa4889fec7f7b092a1d2508",
+      "bytes": 6297
     },
     {
       "path": "strict_bear_cash_per_variant_readiness.csv",
-      "sha256": "8428dcf71c077735db21dfdbe3c2690523df70a970385528ac0a8f78a65ceb65",
+      "sha256": "e4ac78b3d19e994d1b4fdf9f38ff4c356cd9e6a2cf7653f7be8255ed0aa28bbc",
       "bytes": 420
     },
     {
       "path": "strict_bear_cash_weekly_state_matrix.csv.gz",
-      "sha256": "8853964b5609bfb1a7a755a34a65027baeba6628363cdb9f9a97ee0a8ac35a21",
+      "sha256": "0e0534884959c5fa9ca0c2a2c41a92eae6af249c123f0886dd9b90d904653c43",
       "bytes": 277626
     },
     {
@@ -54,8 +59,8 @@
     },
     {
       "path": "readiness_for_experiments.json",
-      "sha256": "7ea38c1d81928ddcde83b77733b730d5c5431c986d9f2239861cf195ac4d8c6e",
-      "bytes": 473
+      "sha256": "ec33e65dc9fc81c37aeb8fafed5fb888b6b76eaf8c35905c2c8c2fc682c412ba",
+      "bytes": 634
     }
   ]
 }

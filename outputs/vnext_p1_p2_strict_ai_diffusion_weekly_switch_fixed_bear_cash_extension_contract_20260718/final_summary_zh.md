@@ -2,7 +2,7 @@
 
 - ready_for_experiments：False
 - execution_blocked_rows：9
-- bounded official raw execution gap unique keys：3
+- bounded official raw execution gap unique keys：9
 - variants：strict_no_bear_baseline / current_score / trend_dd10 / crash_dd20
 
 本包只 materialize 固定 bear/cash extension；不調 AI/擴散切換，不新增 threshold/grid，不作策略結論。

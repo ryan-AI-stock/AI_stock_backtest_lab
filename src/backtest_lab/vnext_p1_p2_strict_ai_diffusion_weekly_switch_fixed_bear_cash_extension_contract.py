@@ -31,6 +31,14 @@ RADAR_STRICT_BEAR_CASH_RECHAIN_CLOSE_FILL = (
     )
     / "strict_bear_cash_rechain_exact_close_patch.csv"
 )
+RADAR_STRICT_BEAR_CASH_INCREMENTAL_CLOSE_FILL = (
+    Path(
+        r"C:\Users\zergv\Documents\Codex\2026-05-23"
+        r"\ai-stock-rotation-radar-https-docs\outputs"
+        r"\radar_vnext_p1_p2_strict_bear_cash_incremental_close_fill_20260718"
+    )
+    / "strict_bear_cash_incremental_exact_close_patch.csv"
+)
 
 STATE_BEAR = "確認空頭"
 RULES = ["strict_no_bear_baseline", "current_score", "trend_dd10", "crash_dd20"]
@@ -59,6 +67,7 @@ def load_official_close_index() -> pd.DataFrame:
     for patch_path, role in (
         (RADAR_STRICT_BEAR_CASH_CLOSE_FILL, "radar_strict_bear_cash_bounded_close_fill"),
         (RADAR_STRICT_BEAR_CASH_RECHAIN_CLOSE_FILL, "radar_strict_bear_cash_rechain_close_fill"),
+        (RADAR_STRICT_BEAR_CASH_INCREMENTAL_CLOSE_FILL, "radar_strict_bear_cash_incremental_close_fill"),
     ):
         if not patch_path.exists():
             continue
@@ -371,6 +380,74 @@ def simulate_period(
     )
 
 
+def materialize_execution_requirement_union(
+    prices: pd.DataFrame,
+    official_lookup: dict[tuple[str, pd.Timestamp], dict],
+    no_trade_lookup: dict[tuple[str, pd.Timestamp], dict],
+) -> pd.DataFrame:
+    rows: list[dict] = []
+    for rule_id in RULES:
+        weekly = load_weekly_path(rule_id)
+        for period in base.PERIODS:
+            calendar = base.calendar_for_period(prices, period)
+            fixed7 = base.fixed7_target_path(prices, calendar).set_index("date")
+            current_ticker: str | None = None
+            for date in calendar:
+                state, state_decision_week = state_for_date(weekly, date)
+                if state == base.STATE_AI:
+                    target_ticker = fixed7.loc[date, "fixed7_ticker"] if date in fixed7.index else None
+                    target_strategy = "fixed7_S10_CD10"
+                elif state == STATE_BEAR:
+                    target_ticker = None
+                    target_strategy = "cash"
+                else:
+                    target_ticker = "00631L"
+                    target_strategy = "00631L_buyhold"
+                if pd.isna(target_ticker):
+                    target_ticker = None
+                if target_ticker == current_ticker:
+                    continue
+                action = (
+                    "entry"
+                    if current_ticker is None and target_ticker is not None
+                    else "exit_to_cash"
+                    if current_ticker is not None and target_ticker is None
+                    else "atomic_switch"
+                )
+                legs = []
+                if current_ticker is not None:
+                    legs.append(("sell", current_ticker))
+                if target_ticker is not None:
+                    legs.append(("buy", str(target_ticker)))
+                for side, leg_ticker in legs:
+                    src = official_lookup.get((leg_ticker, date), {})
+                    no_trade = no_trade_lookup.get((leg_ticker, date), {})
+                    rows.append(
+                        {
+                            "variant_id": rule_id,
+                            "period": period,
+                            "decision_date": state_decision_week,
+                            "actual_execution_date": date,
+                            "role": side,
+                            "ticker": leg_ticker,
+                            "action": action,
+                            "target_strategy": target_strategy,
+                            "prior_ticker_before_virtual_transition": current_ticker,
+                            "target_ticker_after_virtual_transition": target_ticker,
+                            "official_raw_close": src.get("close", np.nan) if src else np.nan,
+                            "official_market": src.get("market", "") if src else "",
+                            "official_source_quality": src.get("source_quality", "") if src else "",
+                            "official_source_hash": src.get("source_hash", "") if src else "",
+                            "official_raw_ready": bool(src),
+                            "official_no_trade_ready": bool(no_trade),
+                            "official_no_trade_classification": no_trade.get("classification", "") if no_trade else "",
+                            "requirement_discovery_policy": "path_independent_virtual_transition_for_source_authority_only",
+                        }
+                    )
+                current_ticker = str(target_ticker) if target_ticker is not None else None
+    return pd.DataFrame(rows)
+
+
 def metric_row(frame: pd.DataFrame, benchmark: pd.DataFrame) -> dict:
     row = base.metric_row(frame, benchmark)
     counts = frame["state"].value_counts()
@@ -427,6 +504,10 @@ def main() -> None:
     benchmark_frame = pd.concat(benchmark_parts, ignore_index=True)
     weekly_frame = pd.concat(weekly_parts, ignore_index=True)
     metrics = pd.DataFrame(metric_rows)
+    requirement_union = materialize_execution_requirement_union(prices, official_lookup, no_trade_lookup)
+    union_missing = requirement_union.loc[
+        ~(requirement_union["official_raw_ready"] | requirement_union["official_no_trade_ready"])
+    ].copy()
 
     readiness_rows = []
     for (variant_id, period), group in requirement_frame.groupby(["variant_id", "period"], dropna=False):
@@ -448,12 +529,16 @@ def main() -> None:
         and readiness_frame.loc[readiness_frame["period"].isin(["P1", "P2"]), "exact_path_ready"].all()
     )
 
-    if not blocker_frame.empty:
+    if not union_missing.empty:
         bounded = (
-            blocker_frame[["ticker", "date", "blocker_class", "blocked_reason"]]
+            union_missing.rename(columns={"actual_execution_date": "date"})[
+                ["ticker", "date"]
+            ]
             .drop_duplicates()
             .sort_values(["ticker", "date"])
         )
+        bounded["blocker_class"] = "missing_official_raw_execution_close"
+        bounded["blocked_reason"] = "no accepted official raw close source for exact execution leg in full requirement union"
         bounded["authorized_source_scope"] = "exact official raw close for transition execution leg only"
         bounded["network_family_allowed"] = "official close/OHLC only; no non-close family"
     else:
@@ -462,6 +547,7 @@ def main() -> None:
     daily_frame.to_csv(OUT / "strict_bear_cash_corrected_NAV_daily_wealth_ledger.csv.gz", index=False, compression="gzip")
     action_frame.to_csv(OUT / "strict_bear_cash_unique_position_action_ledger.csv", index=False, encoding="utf-8-sig")
     requirement_frame.to_csv(OUT / "strict_bear_cash_execution_requirement_ledger.csv", index=False, encoding="utf-8-sig")
+    requirement_union.to_csv(OUT / "strict_bear_cash_path_independent_execution_requirement_union.csv", index=False, encoding="utf-8-sig")
     blocker_frame.to_csv(OUT / "strict_bear_cash_blocked_ledger.csv", index=False, encoding="utf-8-sig")
     bounded.to_csv(OUT / "strict_bear_cash_bounded_official_raw_execution_gap_ledger.csv", index=False, encoding="utf-8-sig")
     benchmark_frame.to_csv(OUT / "strict_bear_cash_00631L_benchmark_daily_ledger.csv.gz", index=False, compression="gzip")
@@ -504,6 +590,9 @@ def main() -> None:
         "official_raw_requirement_rows": int(len(requirement_frame)),
         "official_raw_ready_rows": int(requirement_frame["official_raw_ready"].sum()) if not requirement_frame.empty else 0,
         "exact_bounded_delta_required": bool(len(blocker_frame) > 0),
+        "path_independent_execution_requirement_rows": int(len(requirement_union)),
+        "path_independent_execution_missing_rows": int(len(union_missing)),
+        "path_independent_execution_missing_unique_keys": int(len(bounded)),
         "bounded_official_raw_execution_gap_unique_keys": int(len(bounded)),
         "data_readiness_blocked_only": bool(len(blocker_frame) > 0),
         "may_be_used_to_reject_strategy": False,
@@ -515,6 +604,7 @@ def main() -> None:
         "strict_bear_cash_corrected_NAV_daily_wealth_ledger.csv.gz",
         "strict_bear_cash_unique_position_action_ledger.csv",
         "strict_bear_cash_execution_requirement_ledger.csv",
+        "strict_bear_cash_path_independent_execution_requirement_union.csv",
         "strict_bear_cash_blocked_ledger.csv",
         "strict_bear_cash_bounded_official_raw_execution_gap_ledger.csv",
         "strict_bear_cash_00631L_benchmark_daily_ledger.csv.gz",
