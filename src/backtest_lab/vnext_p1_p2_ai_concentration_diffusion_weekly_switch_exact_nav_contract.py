@@ -28,6 +28,11 @@ RADAR_WEEKLY_SWITCH_CLOSE_FILL = Path(
     r"\ai-stock-rotation-radar-https-docs\outputs"
     r"\radar_vnext_p1_p2_ai_diffusion_weekly_switch_close_fill_20260718"
 )
+RADAR_WEEKLY_SWITCH_DEFERRED_6669_FILL = Path(
+    r"C:\Users\zergv\Documents\Codex\2026-05-23"
+    r"\ai-stock-rotation-radar-https-docs\outputs"
+    r"\radar_vnext_p1_p2_ai_diffusion_weekly_switch_deferred_6669_close_fill_20260718"
+)
 OUT = ROOT / "outputs/vnext_p1_p2_ai_concentration_diffusion_weekly_switch_exact_nav_contract_20260718"
 
 INITIAL_CAPITAL = 1_000_000.0
@@ -142,11 +147,20 @@ def load_official_close_index() -> pd.DataFrame:
             ].copy()
         )
     radar_patch = RADAR_WEEKLY_SWITCH_CLOSE_FILL / "weekly_switch_exact_official_raw_close_patch.csv.gz"
-    if radar_patch.exists():
-        patch = pd.read_csv(radar_patch, dtype={"ticker": str})
+    deferred_patch = (
+        RADAR_WEEKLY_SWITCH_DEFERRED_6669_FILL
+        / "weekly_switch_deferred_6669_exact_close_patch.csv"
+    )
+    for patch_path, role in (
+        (radar_patch, "radar_weekly_switch_bounded_close_fill"),
+        (deferred_patch, "radar_weekly_switch_deferred_6669_close_fill"),
+    ):
+        if not patch_path.exists():
+            continue
+        patch = pd.read_csv(patch_path, dtype={"ticker": str})
         patch["date"] = pd.to_datetime(patch["date"]).dt.tz_localize(None)
         patch["close"] = pd.to_numeric(patch["close"], errors="coerce")
-        patch["official_source_role"] = "radar_weekly_switch_bounded_close_fill"
+        patch["official_source_role"] = role
         parts.append(
             patch[
                 [
@@ -634,6 +648,18 @@ def main() -> None:
         pd.concat(requirement_parts, ignore_index=True) if requirement_parts else pd.DataFrame()
     )
     blocker_frame = pd.concat(blocker_parts, ignore_index=True) if blocker_parts else pd.DataFrame()
+    if blocker_frame.empty:
+        blocker_frame = pd.DataFrame(
+            columns=[
+                "variant_id",
+                "period",
+                "date",
+                "ticker",
+                "role",
+                "blocker_class",
+                "blocked_reason",
+            ]
+        )
     benchmark_frame = pd.concat(benchmark_parts, ignore_index=True)
     metrics = pd.DataFrame(metric_rows)
 
@@ -796,8 +822,11 @@ def main() -> None:
         f"- official_raw_requirement_rows：{len(requirement_frame)}",
         "",
         "本包只驗證 balanced_no_bear / strict_no_bear 的 no-bear 兩狀態 exact path；Stage A proxy 不作 exact 績效權威。",
-        "目前不可交 Experiments；下一棒是 Radar/Data 只補 bounded ledger 內的 official close/OHLC execution legs，不得擴到非 close family。",
     ]
+    if ready_for_experiments:
+        lines.append("目前 4/4 variant-period exact path ready，可交 Experiments 執行固定 no-bear exact NAV diagnostic；不得調 threshold/grid 或讀取 bear/cash。")
+    else:
+        lines.append("目前不可交 Experiments；下一棒是 Radar/Data 只補 bounded ledger 內的 official close/OHLC execution legs，不得擴到非 close family。")
     (OUT / "final_summary_zh.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     (OUT / "current_step.txt").write_text(
         "completed_contract_ready\n" if ready_for_experiments else "completed_blocked_exact_delta_required\n",

@@ -1,1 +1,1 @@
-completed_blocked_exact_delta_required
+completed_contract_ready

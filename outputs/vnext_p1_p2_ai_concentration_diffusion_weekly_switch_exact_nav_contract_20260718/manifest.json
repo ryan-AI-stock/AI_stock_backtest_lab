@@ -4,43 +4,43 @@
   "files": [
     {
       "path": "weekly_switch_corrected_NAV_daily_wealth_ledger.csv.gz",
-      "sha256": "f8cb552cab9b527743e036b6cef8ea587e8b6441e12ca3e4697eb2c7d8e4c2c4",
-      "bytes": 462033
+      "sha256": "7edbebe33cc3d3151c8a6631292a8c73b29d669365deb3e2e8b6951b48090f77",
+      "bytes": 462295
     },
     {
       "path": "weekly_switch_unique_position_action_ledger.csv",
-      "sha256": "563f705eb64bca2f05e4e2ea5d06d8b9f0a55cfa4f5dc3061f4cef2b7e1d9b0b",
-      "bytes": 92626
+      "sha256": "c210adaa08af347f29dda898395e680b7c35f843f0f9f2a060d70c26516037c2",
+      "bytes": 93488
     },
     {
       "path": "weekly_switch_execution_requirement_ledger.csv",
-      "sha256": "27213b43081995fc4684e15a17714d322aa15037840b89aae5a9691404ab6bef",
-      "bytes": 132522
+      "sha256": "9d45710c534c0d9ba3fe10eb7036461c255426e2c3230b06f121b8b38552a04a",
+      "bytes": 132777
     },
     {
       "path": "weekly_switch_blocked_ledger.csv",
-      "sha256": "97ac44a8578929017dd46466c8c04b7fe0ef1f72e536539aa91aa47d3557997d",
-      "bytes": 1748
+      "sha256": "73c9cd2df8fdd87008e8e5852423f3590353dafd2dd66695bf20288bd6cca828",
+      "bytes": 68
     },
     {
       "path": "weekly_switch_bounded_official_raw_execution_gap_ledger.csv",
-      "sha256": "d2677b317a917a9e64138f12d17309f74fd077811aabc186ffbeb046d7fe7f59",
-      "bytes": 976
+      "sha256": "8f1a770021820bbbff41b3ab98c471526af2d0d88a1c843e8c073e3999eecb2a",
+      "bytes": 92
     },
     {
       "path": "weekly_switch_00631L_benchmark_daily_ledger.csv.gz",
-      "sha256": "a061032fd4b49e1eda6f53eda1640c606cb6ae9bf19540bddf5adaa77c2c7743",
+      "sha256": "759971da547223909dc73eb6402c6021f79a7df724fd047eab31abf55b98a2dd",
       "bytes": 114588
     },
     {
       "path": "weekly_switch_exact_nav_metrics_preview.csv",
-      "sha256": "b4dfe8bdea6f67cc2f3850467e15e341f94599a0ae59539707b2921fb7a137ea",
-      "bytes": 3145
+      "sha256": "8f0d68b9185c487dd1dd7184e5d78149a7fdc50b89c5763207ba1c8e3f74e507",
+      "bytes": 3143
     },
     {
       "path": "weekly_switch_per_variant_readiness.csv",
-      "sha256": "983e4a6853667ce53986784fab6dd9019f4a56ef9e0bbd42cd7282a3a51f8392",
-      "bytes": 293
+      "sha256": "d89cc8ed1408a85b1d8c5c1e6767c2f5bb6ab8cb9b22e8f294be7ea0545cc1f9",
+      "bytes": 291
     },
     {
       "path": "weekly_switch_policy.json",
@@ -49,8 +49,8 @@
     },
     {
       "path": "readiness_for_experiments.json",
-      "sha256": "78a779f51b3ee6bc3adc92b12e920f573c8a2aab5d7d15cf84ca8c74b70344ee",
-      "bytes": 611
+      "sha256": "8b6cb37fcd1dcb63667acd1e01ddc01cbeb2e5339c235fc9627611f3ff53350d",
+      "bytes": 612
     }
   ]
 }

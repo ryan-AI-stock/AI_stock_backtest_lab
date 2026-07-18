@@ -1,5 +1,5 @@
 ﻿variant_id,period,execution_requirement_rows,official_raw_ready_rows,execution_blocker_rows,official_no_trade_deferred_rows,exact_path_ready
-balanced_no_bear,P1,435,201,12,222,False
+balanced_no_bear,P1,429,207,0,222,True
 balanced_no_bear,P2,141,141,0,0,True
 strict_no_bear,P1,57,57,0,0,True
 strict_no_bear,P2,81,81,0,0,True
