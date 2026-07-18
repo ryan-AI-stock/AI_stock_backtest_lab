@@ -1,0 +1,42 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P1-P2-AI-CONCENTRATION-DIFFUSION-WEEKLY-SWITCH-EXACT-NAV-CONTRACT-001",
+  "diagnostic_only": true,
+  "stage_a_proxy_superseded_for_performance": true,
+  "bear_cash_module_used": false,
+  "variants": {
+    "balanced_no_bear": {
+      "ai_score_rule": "ai_score>=4/5",
+      "confirmation_weeks": 2,
+      "minimum_hold_weeks": 4
+    },
+    "strict_no_bear": {
+      "ai_score_rule": "ai_score=5/5",
+      "confirmation_weeks": 3,
+      "minimum_hold_weeks": 6
+    }
+  },
+  "state_to_strategy": {
+    "AI集中行情": "fixed7_S10_CD10",
+    "大盤擴散行情": "00631L_buyhold"
+  },
+  "execution_semantics": "weekly close decision or fixed7 internal execution target; transition at actual execution date; sell before buy for atomic switch",
+  "analysis_mark_basis": "event-aware adjusted close from local stock_pool_observations cache; research diagnostic, not formal total return",
+  "execution_price_basis": "official raw close required for transition legs; cache close retained only for audit",
+  "cost_model": {
+    "brokerage": 0.001425,
+    "stock_sell_tax": 0.003,
+    "etf_sell_tax": 0.001,
+    "primary_slippage_bp_per_side": 10,
+    "sensitivity_slippage_bp_per_side": [
+      5,
+      10,
+      20
+    ]
+  },
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "not_live_rule": true,
+  "future_data_violation_count": 0
+}

@@ -1,0 +1,5 @@
+﻿variant_id,period,execution_requirement_rows,official_raw_ready_rows,execution_blocker_rows,exact_path_ready
+balanced_no_bear,P1,219,132,87,False
+balanced_no_bear,P2,141,102,39,False
+strict_no_bear,P1,57,39,18,False
+strict_no_bear,P2,81,51,30,False

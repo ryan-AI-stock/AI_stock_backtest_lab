@@ -1,0 +1,56 @@
+{
+  "output_dir": "C:\\Users\\zergv\\Documents\\Codex\\2026-05-30\\ep05-chat-ai-stock-backtest-lab\\outputs\\vnext_p1_p2_ai_concentration_diffusion_weekly_switch_exact_nav_contract_20260718",
+  "stage_a_output": "C:\\Users\\zergv\\Documents\\Codex\\2026-07-06\\strategy-center-core-experiments-research-materials\\outputs\\vnext_three_state_weekly_switch_stage_a_20260718",
+  "files": [
+    {
+      "path": "weekly_switch_corrected_NAV_daily_wealth_ledger.csv.gz",
+      "sha256": "a3ec47aa8625582c3c60b78ebc2e1a8e6a61ec866f65b2be1be90aee1a1cec67",
+      "bytes": 466540
+    },
+    {
+      "path": "weekly_switch_unique_position_action_ledger.csv",
+      "sha256": "a05b8916318100a53836ce370e13adc0e6181f8ab9dcc5b5e8857aaf1a79693d",
+      "bytes": 68160
+    },
+    {
+      "path": "weekly_switch_execution_requirement_ledger.csv",
+      "sha256": "64e4f42205ff2e25d3c5ad9b786c7d69a314acce00a1a8ee4c7de905bbf33c26",
+      "bytes": 72866
+    },
+    {
+      "path": "weekly_switch_blocked_ledger.csv",
+      "sha256": "7aba0661390bc579f7f9c54909eb5eaa403f08596c66d487fea43d402915f972",
+      "bytes": 24725
+    },
+    {
+      "path": "weekly_switch_bounded_official_raw_execution_gap_ledger.csv",
+      "sha256": "f3f8cdd4146838e4ff9f42b16d6271e8930b2f9d1e7ae6ebcc21e53197d93f12",
+      "bytes": 12343
+    },
+    {
+      "path": "weekly_switch_00631L_benchmark_daily_ledger.csv.gz",
+      "sha256": "b2804b013261687b71ebbad6de0bc026d3bba5e9b88784df9c2a47bce0085096",
+      "bytes": 114588
+    },
+    {
+      "path": "weekly_switch_exact_nav_metrics_preview.csv",
+      "sha256": "0b3b2c01817c017d187aae10b7e3d2b9c95c705033eeffa4f5bfe76a65941216",
+      "bytes": 3143
+    },
+    {
+      "path": "weekly_switch_per_variant_readiness.csv",
+      "sha256": "e8b05549b1a71b673060b0de93e5dafdcc348206a9b0eeb8e15790aa82ae0ace",
+      "bytes": 257
+    },
+    {
+      "path": "weekly_switch_policy.json",
+      "sha256": "33d4ecf4342b92f17d2041fded807d528565110c28c2af35ed0b620b86fc3c4e",
+      "bytes": 1496
+    },
+    {
+      "path": "readiness_for_experiments.json",
+      "sha256": "aff85a0ac3d9adc3ebf2343efc08e5d4cc735507eef7bb89f6f8e999a02bc029",
+      "bytes": 614
+    }
+  ]
+}
