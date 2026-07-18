@@ -4,52 +4,52 @@
   "files": [
     {
       "path": "strict_bear_cash_corrected_NAV_daily_wealth_ledger.csv.gz",
-      "sha256": "a38b432526f7e9e80cf1cbf121f56f5a8c8e55aed944d6eb5621b01e130346eb",
-      "bytes": 665910
+      "sha256": "333551b8fbd308db3286f690a491e7dc730bb012978c5f1e18b172c05eae48a9",
+      "bytes": 821642
     },
     {
       "path": "strict_bear_cash_unique_position_action_ledger.csv",
-      "sha256": "b14f7059e096a7f1d997175085a319044c001852260bccf3913a681567f2cc4a",
-      "bytes": 62598
+      "sha256": "b289ab8b8bf7a2a38dca964b51295e3e25097d225d1613c2280ac5a038252fe5",
+      "bytes": 79056
     },
     {
       "path": "strict_bear_cash_execution_requirement_ledger.csv",
-      "sha256": "130c156e931970a3df8121fa384e6e3b371da664d225fff665673c9eeecda7ee",
-      "bytes": 97209
+      "sha256": "8ff8f37c94a5b92c0f979e00b56a970d46d77246bda99474a2001cf9189e963c",
+      "bytes": 124269
     },
     {
       "path": "strict_bear_cash_path_independent_execution_requirement_union.csv",
-      "sha256": "eab27baf32db00b8d34b7f522bb013d9fa36c40237c85fe89662160e769a5b46",
-      "bytes": 58393
+      "sha256": "05d72ed871c9211cb5cb7209d4174ccb5276e027e17c1c2239d4723eaa65bccd",
+      "bytes": 59574
     },
     {
       "path": "strict_bear_cash_blocked_ledger.csv",
-      "sha256": "664c0e2933698afb3c1e8505922268731b521201951b6caaaa07cbc81fa5aa74",
-      "bytes": 1301
+      "sha256": "73c9cd2df8fdd87008e8e5852423f3590353dafd2dd66695bf20288bd6cca828",
+      "bytes": 68
     },
     {
       "path": "strict_bear_cash_bounded_official_raw_execution_gap_ledger.csv",
-      "sha256": "8307ca4a2022676775b0e5ffd1ff3487c57fed678f6fbb266075f6135d2a155d",
-      "bytes": 2333
+      "sha256": "8f1a770021820bbbff41b3ab98c471526af2d0d88a1c843e8c073e3999eecb2a",
+      "bytes": 92
     },
     {
       "path": "strict_bear_cash_00631L_benchmark_daily_ledger.csv.gz",
-      "sha256": "3f92c257dea54e3d35f82620b42835b34c8a5382719543a54fde54280b50d4c4",
+      "sha256": "7af6ab043f53e9406b560bca2de325a43b8235bc2207be83af6a9fd27750b7b3",
       "bytes": 114591
     },
     {
       "path": "strict_bear_cash_exact_nav_metrics_preview.csv",
-      "sha256": "7c783bd42837ac4aa213bd579a9c8b4308e0d1174aa4889fec7f7b092a1d2508",
-      "bytes": 6297
+      "sha256": "a1649a62e4c224fcc04b77174bbe2e13e89adcbd896e7fdb6ba96dd24ac96ac3",
+      "bytes": 6345
     },
     {
       "path": "strict_bear_cash_per_variant_readiness.csv",
-      "sha256": "e4ac78b3d19e994d1b4fdf9f38ff4c356cd9e6a2cf7653f7be8255ed0aa28bbc",
-      "bytes": 420
+      "sha256": "52ebdbcc45b6254991bcd14cbc31a163c33b782fe700dc0b4b8991e2452196c9",
+      "bytes": 417
     },
     {
       "path": "strict_bear_cash_weekly_state_matrix.csv.gz",
-      "sha256": "0e0534884959c5fa9ca0c2a2c41a92eae6af249c123f0886dd9b90d904653c43",
+      "sha256": "7e1d96357c0eabf02e97b13af28cebe6b6a9a8a386b4df3b4032dda85aef554d",
       "bytes": 277626
     },
     {
@@ -59,7 +59,7 @@
     },
     {
       "path": "readiness_for_experiments.json",
-      "sha256": "ec33e65dc9fc81c37aeb8fafed5fb888b6b76eaf8c35905c2c8c2fc682c412ba",
+      "sha256": "2bc0ad55010bb10efdf3165141ec37d99e2b2f215443c380fe637cc80b26cea8",
       "bytes": 634
     }
   ]

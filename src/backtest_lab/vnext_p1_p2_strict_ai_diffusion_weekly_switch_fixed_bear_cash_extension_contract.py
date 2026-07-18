@@ -39,6 +39,14 @@ RADAR_STRICT_BEAR_CASH_INCREMENTAL_CLOSE_FILL = (
     )
     / "strict_bear_cash_incremental_exact_close_patch.csv"
 )
+RADAR_STRICT_BEAR_CASH_FINAL_UNION_CLOSE_FILL = (
+    Path(
+        r"C:\\Users\\zergv\\Documents\\Codex\\2026-05-23"
+        r"\\ai-stock-rotation-radar-https-docs\\outputs"
+        r"\\radar_vnext_p1_p2_strict_bear_cash_final_union_close_fill_20260718"
+    )
+    / "strict_bear_cash_incremental_exact_close_patch.csv"
+)
 
 STATE_BEAR = "確認空頭"
 RULES = ["strict_no_bear_baseline", "current_score", "trend_dd10", "crash_dd20"]
@@ -68,6 +76,7 @@ def load_official_close_index() -> pd.DataFrame:
         (RADAR_STRICT_BEAR_CASH_CLOSE_FILL, "radar_strict_bear_cash_bounded_close_fill"),
         (RADAR_STRICT_BEAR_CASH_RECHAIN_CLOSE_FILL, "radar_strict_bear_cash_rechain_close_fill"),
         (RADAR_STRICT_BEAR_CASH_INCREMENTAL_CLOSE_FILL, "radar_strict_bear_cash_incremental_close_fill"),
+        (RADAR_STRICT_BEAR_CASH_FINAL_UNION_CLOSE_FILL, "radar_strict_bear_cash_final_union_close_fill"),
     ):
         if not patch_path.exists():
             continue
