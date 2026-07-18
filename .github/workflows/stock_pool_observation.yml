@@ -21,9 +21,6 @@ on:
         required: false
         type: boolean
         default: false
-  schedule:
-    # Operational stock-pool overview. Run after Taiwan close data is usually available.
-    - cron: "30 11 * * 1-5"
 
 jobs:
   stock-pool-observation:
@@ -393,22 +390,6 @@ jobs:
               handle.write(f"actual_signal_date={manifest.get('actual_signal_date') or manifest.get('signal_date') or ''}\n")
           print(f"Formal stock-pool latest PDF ready: {path.as_posix()}")
           PY
-
-      - name: Publish latest PDF to Google Drive
-        if: steps.schedule-gate.outputs.should_run == 'true' && steps.observation-pdf.outputs.exists == 'true'
-        env:
-          PYTHONPATH: src
-          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
-          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
-          GOOGLE_OAUTH_REFRESH_TOKEN: ${{ secrets.GOOGLE_OAUTH_REFRESH_TOKEN }}
-          STOCK_POOL_OBSERVATION_DRIVE_FOLDER_ID: ${{ secrets.STOCK_POOL_OBSERVATION_DRIVE_FOLDER_ID || vars.STOCK_POOL_OBSERVATION_DRIVE_FOLDER_ID || '1O6Se-HfI7ZDTQ-LWeAO6f8vtvoLcCzIj' }}
-          STOCK_POOL_OBSERVATION_DRIVE_FILE_ID: ${{ secrets.STOCK_POOL_OBSERVATION_DRIVE_FILE_ID || vars.STOCK_POOL_OBSERVATION_DRIVE_FILE_ID }}
-        run: |
-          python -m backtest_lab.drive_publish \
-            --folder-id "$STOCK_POOL_OBSERVATION_DRIVE_FOLDER_ID" \
-            --file-id "$STOCK_POOL_OBSERVATION_DRIVE_FILE_ID" \
-            --remote-name "AI股票池觀察總覽_最新版_v20260612.pdf" \
-            --file "${{ steps.observation-pdf.outputs.path }}"
 
       - name: Upload observation artifact
         if: ${{ always() && steps.schedule-gate.outputs.should_run == 'true' }}
