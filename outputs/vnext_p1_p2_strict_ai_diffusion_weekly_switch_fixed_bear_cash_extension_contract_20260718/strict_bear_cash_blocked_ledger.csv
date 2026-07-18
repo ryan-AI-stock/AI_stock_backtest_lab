@@ -1,0 +1,16 @@
+﻿variant_id,period,date,ticker,role,blocker_class,blocked_reason
+current_score,P1,2016-01-25,00631L,sell,missing_official_raw_execution_close,no accepted official raw close source for exact execution leg
+trend_dd10,P1,2016-01-25,00631L,sell,missing_official_raw_execution_close,no accepted official raw close source for exact execution leg
+crash_dd20,P1,2022-07-11,00631L,sell,missing_official_raw_execution_close,no accepted official raw close source for exact execution leg
+current_score,P2,2025-04-28,00631L,sell,missing_official_raw_execution_close,no accepted official raw close source for exact execution leg
+trend_dd10,P2,2025-04-28,00631L,sell,missing_official_raw_execution_close,no accepted official raw close source for exact execution leg
+current_score,P1,2016-01-25,00631L,sell,missing_official_raw_execution_close,no accepted official raw close source for exact execution leg
+trend_dd10,P1,2016-01-25,00631L,sell,missing_official_raw_execution_close,no accepted official raw close source for exact execution leg
+crash_dd20,P1,2022-07-11,00631L,sell,missing_official_raw_execution_close,no accepted official raw close source for exact execution leg
+current_score,P2,2025-04-28,00631L,sell,missing_official_raw_execution_close,no accepted official raw close source for exact execution leg
+trend_dd10,P2,2025-04-28,00631L,sell,missing_official_raw_execution_close,no accepted official raw close source for exact execution leg
+current_score,P1,2016-01-25,00631L,sell,missing_official_raw_execution_close,no accepted official raw close source for exact execution leg
+trend_dd10,P1,2016-01-25,00631L,sell,missing_official_raw_execution_close,no accepted official raw close source for exact execution leg
+crash_dd20,P1,2022-07-11,00631L,sell,missing_official_raw_execution_close,no accepted official raw close source for exact execution leg
+current_score,P2,2025-04-28,00631L,sell,missing_official_raw_execution_close,no accepted official raw close source for exact execution leg
+trend_dd10,P2,2025-04-28,00631L,sell,missing_official_raw_execution_close,no accepted official raw close source for exact execution leg

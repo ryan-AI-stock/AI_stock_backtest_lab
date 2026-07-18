@@ -1,0 +1,25 @@
+{
+  "task_id": "TASK-BACKTEST-CORE-VNEXT-P1-P2-STRICT-AI-DIFFUSION-WEEKLY-SWITCH-FIXED-BEAR-CASH-EXTENSION-CONTRACT-001",
+  "diagnostic_only": true,
+  "baseline": "strict_no_bear_baseline",
+  "bear_rules": {
+    "current_score": "bear_score>=3",
+    "trend_dd10": "market_close_vs_ma120<0 and market_ma120_slope20<0 and market_drawdown120<=-0.10",
+    "crash_dd20": "market_close_vs_ma120<0 and market_drawdown120<=-0.20"
+  },
+  "confirmation_weeks": 3,
+  "minimum_hold_weeks": 6,
+  "ai_rule": "ai_score=5/5",
+  "state_to_strategy": {
+    "AI集中行情": "fixed7_S10_CD10",
+    "大盤擴散行情": "00631L_buyhold",
+    "確認空頭": "cash"
+  },
+  "threshold_grid_authorized": false,
+  "formal_model_changed": false,
+  "trade_decision_changed": false,
+  "active_in_trade_decision": false,
+  "report_changed": false,
+  "not_live_rule": true,
+  "future_data_violation_count": 0
+}
