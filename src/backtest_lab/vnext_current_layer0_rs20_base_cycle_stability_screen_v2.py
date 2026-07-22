@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[2]
 RADAR = Path("C:/Users/zergv/Documents/Codex/2026-05-23/ai-stock-rotation-radar-https-docs/outputs")
 SNAPSHOT = RADAR / "radar_vnext_current_layer0_core_top250_weekly_snapshot_fill_20260722" / "current_layer0_core_top250_weekly_snapshot_delta.csv"
 PRICE = RADAR / "radar_vnext_current_layer0_base_cycle_adjusted_close_liquidity_fill_20260722"
+WARMUP = RADAR / "radar_vnext_current_layer0_base_cycle_adjusted_warmup_fill_20260722"
 COMPACT = ROOT / "outputs/vnext_layer0_compact_weekly_universe_snapshot_contract_20260707/layer0_compact_weekly_universe_snapshot.csv"
 MARKET = ROOT / "outputs/vnext_dynamic_candidate_pool_data_materialization_20260706/daily_market_features.csv"
 LAYER4 = ROOT / "outputs/vnext_layer4_80_primary_pool_contract_20260708/layer4_80_primary_pool_contract.csv"
@@ -44,6 +45,7 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--snapshot", default=str(SNAPSHOT))
     p.add_argument("--price-dir", default=str(PRICE))
+    p.add_argument("--warmup-dir", default=str(WARMUP))
     p.add_argument("--compact", default=str(COMPACT))
     p.add_argument("--market", default=str(MARKET))
     p.add_argument("--layer4", default=str(LAYER4))
@@ -51,19 +53,17 @@ def main() -> None:
     p.add_argument("--output-dir", default=str(OUT))
     p.add_argument("--requested-as-of", default=REQUESTED_AS_OF)
     a = p.parse_args()
-    build(Path(a.snapshot), Path(a.price_dir), Path(a.compact), Path(a.market), Path(a.layer4), Path(a.alternatives), Path(a.output_dir), a.requested_as_of)
+    build(Path(a.snapshot), Path(a.price_dir), Path(a.warmup_dir), Path(a.compact), Path(a.market), Path(a.layer4), Path(a.alternatives), Path(a.output_dir), a.requested_as_of)
 
 
-def build(snapshot_path: Path, price_dir: Path, compact_path: Path, market_path: Path, layer4_path: Path, alt_path: Path, out: Path, requested: str) -> dict[str, Any]:
+def build(snapshot_path: Path, price_dir: Path, warmup_dir: Path, compact_path: Path, market_path: Path, layer4_path: Path, alt_path: Path, out: Path, requested: str) -> dict[str, Any]:
     out.mkdir(parents=True, exist_ok=True)
     snapshot = _read_membership(compact_path, snapshot_path)
     current_date = _actual_asof(price_dir, snapshot, requested)
     current = snapshot[snapshot.snapshot_date.eq(pd.Timestamp("2026-07-16"))].copy()
-    prices = _read_prices(price_dir, current, current_date)
+    prices = _read_prices(price_dir, warmup_dir, current, current_date)
     turnover = _read_turnover(market_path, price_dir, current_date)
     components = _components(prices, turnover, current, layer4_path, current_date)
-    if components.low_base_score.isna().any():
-        return _write_warmup_blocked(out, requested, current_date, current, components)
     gates = _gates(prices, snapshot, components, current, current_date)
     scored = gates.merge(components, on=["ticker", "name", "market"], how="left", validate="one_to_one")
     screens = _screen_variants(scored)
@@ -71,25 +71,27 @@ def build(snapshot_path: Path, price_dir: Path, compact_path: Path, market_path:
     intersections = _intersections(screens)
     _write(screens, out / "layer0_core_base_cycle_stability_variant_ticker_gates.csv")
     _write(scored, out / "layer0_core_base_cycle_stability_scored_universe.csv")
-    _write(screens[screens.final_pass].copy(), out / "layer0_core_base_cycle_stability_passed_candidates.csv")
+    _write(screens[screens.final_rank.le(30)].copy(), out / "layer0_core_base_cycle_stability_passed_candidates.csv")
     _write(intersections, out / "layer0_core_base_cycle_stability_intersection_difference.csv")
     _write(alternatives, out / "original_alternative_top10_retention_elimination_audit.csv")
     _write(_supply(screens), out / "layer0_core_base_cycle_stability_supply_summary.csv")
+    _write(pd.DataFrame([{"field": "final_ranking", "value": "eligible only; normalized_position ascending, then frozen risk_adjusted_rs20_score descending, RS20 descending, ticker ascending"}, {"field": "published_limit", "value": 30}, {"field": "actual_as_of", "value": current_date.strftime("%Y-%m-%d")}, {"field": "raw_as_adjusted_used", "value": False}]), out / "frozen_screen_policy.csv")
     _write(_coverage(snapshot, prices, current_date, requested), out / "requested_vs_actual_coverage.csv")
     _write(pd.DataFrame([{"future_data_violation_count": 0, "result": "pass", "policy": "all score and gate inputs are <= actual_as_of"}]), out / "future_data_audit.csv")
     display = pd.read_csv(price_dir / "current_layer0_raw_display_close_20260721.csv", dtype={"ticker": str})
     _write(display, out / "official_raw_display_close_requested_20260721.csv")
     readiness = {
-        "task": TASK, "status": "complete_current_screen_diagnostic", "requested_as_of": requested,
+        "task": TASK, "status": "complete_current_screen_diagnostic_with_6907_explicit_blocked", "requested_as_of": requested,
         "actual_as_of": current_date.strftime("%Y-%m-%d"), "actual_as_of_reason": "0050 adjusted analysis close on 2026-07-21 is exact-key blocked; latest complete common adjusted session is used",
         "current_layer0_core_top250_rows": int(len(current)), "raw_as_adjusted_used": False,
+        "explicit_blocked_tickers": components.loc[components.low_base_score.isna(), "ticker"].tolist(),
         "ready_for_experiments": False, "performance_authorized": False,
         "future_data_violation_count": 0, **FLAGS,
     }
     _json(out / "readiness_for_current_layer0_base_cycle_stability_screen.json", readiness)
     _json(out / "manifest.json", {"task": TASK, "created_at": datetime.now(timezone.utc).isoformat(), "artifacts": [
-        "layer0_core_base_cycle_stability_variant_ticker_gates.csv", "layer0_core_base_cycle_stability_scored_universe.csv", "layer0_core_base_cycle_stability_passed_candidates.csv", "layer0_core_base_cycle_stability_intersection_difference.csv", "original_alternative_top10_retention_elimination_audit.csv", "layer0_core_base_cycle_stability_supply_summary.csv", "requested_vs_actual_coverage.csv", "future_data_audit.csv", "readiness_for_current_layer0_base_cycle_stability_screen.json"], **FLAGS})
-    (out / "final_summary_zh.md").write_text("# Layer0 core risk-adjusted diagnostic screen\n\n三版 frozen hard screen 已以 adjusted analysis price materialize。這不是 Layer4 primary80、績效、推薦或正式交易規則。\n", encoding="utf-8")
+        "layer0_core_base_cycle_stability_variant_ticker_gates.csv", "layer0_core_base_cycle_stability_scored_universe.csv", "layer0_core_base_cycle_stability_passed_candidates.csv", "layer0_core_base_cycle_stability_intersection_difference.csv", "original_alternative_top10_retention_elimination_audit.csv", "layer0_core_base_cycle_stability_supply_summary.csv", "frozen_screen_policy.csv", "requested_vs_actual_coverage.csv", "future_data_audit.csv", "readiness_for_current_layer0_base_cycle_stability_screen.json"], **FLAGS})
+    (out / "final_summary_zh.md").write_text("# Layer0 core risk-adjusted diagnostic screen\n\n三版 frozen hard screen 已以 adjusted analysis price materialize。合格者最後依 current normalized position 由低到高排序，risk-adjusted score 僅作同位置 tie-break。這不是 Layer4 primary80、績效、推薦或正式交易規則。\n", encoding="utf-8")
     return readiness
 
 
@@ -134,11 +136,13 @@ def _actual_asof(price_dir: Path, membership: pd.DataFrame, requested: str) -> p
     return max(valid)
 
 
-def _read_prices(price_dir: Path, current: pd.DataFrame, asof: pd.Timestamp) -> pd.DataFrame:
+def _read_prices(price_dir: Path, warmup_dir: Path, current: pd.DataFrame, asof: pd.Timestamp) -> pd.DataFrame:
     x = pd.read_csv(price_dir / "current_layer0_adjusted_analysis_exact_rows.csv.gz", compression="gzip", dtype={"ticker": str})
+    warmup = pd.read_csv(warmup_dir / "current_layer0_adjusted_warmup_exact_rows.csv.gz", compression="gzip", dtype={"ticker": str})
+    x = pd.concat([warmup, x], ignore_index=True, sort=False)
     x["ticker"] = x.ticker.str.zfill(4); x["date"] = pd.to_datetime(x.date); x["adjusted_analysis_close"] = pd.to_numeric(x.adjusted_analysis_close)
     keep = set(current.ticker) | {"0050"}
-    return x[(x.ticker.isin(keep)) & (x.date.ge(pd.Timestamp(WINDOW_START))) & (x.date.le(asof))].sort_values(["ticker", "date"])
+    return x[(x.ticker.isin(keep)) & (x.date.le(asof))].sort_values(["ticker", "date"])
 
 
 def _read_turnover(market_path: Path, price_dir: Path, asof: pd.Timestamp) -> pd.DataFrame:
@@ -197,7 +201,7 @@ def _gates(price: pd.DataFrame, snapshot: pd.DataFrame, components: pd.DataFrame
     rows=[]
     for _, m in current.iterrows():
         ticker = m["ticker"]
-        x=price[price.ticker.eq(ticker)].sort_values("date").copy(); x["loc"]=(x.adjusted_analysis_close-x.adjusted_analysis_close.min())/(x.adjusted_analysis_close.max()-x.adjusted_analysis_close.min())*100
+        x=price[(price.ticker.eq(ticker)) & (price.date.ge(pd.Timestamp(WINDOW_START)))].sort_values("date").copy(); x["loc"]=(x.adjusted_analysis_close-x.adjusted_analysis_close.min())/(x.adjusted_analysis_close.max()-x.adjusted_analysis_close.min())*100
         core=snapshot[snapshot.ticker.eq(ticker)].set_index("snapshot_date").index; flags=[d in core for d in weekly_dates]; max_out=_max_false(flags); cov=sum(flags)/len(flags)
         rng=(x.adjusted_analysis_close.max()/x.adjusted_analysis_close.min()-1)*100; max_move=(x.adjusted_analysis_close.pct_change().abs().max()/((x.adjusted_analysis_close.max()-x.adjusted_analysis_close.min())/x.adjusted_analysis_close.min())*100) if rng else float("inf")
         r={"ticker":ticker,"name":m["name"],"market":m["market"],"weekly_core_coverage":cov,"max_consecutive_outside":max_out,"range_pct":rng,"max_one_day_contribution_pct":max_move,"window_low":x.adjusted_analysis_close.min(),"window_high":x.adjusted_analysis_close.max(),"adjusted_close_asof":x.adjusted_analysis_close.iloc[-1],"normalized_position":x.loc[x.date.eq(asof),"loc"].iloc[-1],"low_hit_dates":"|".join(x.loc[x["loc"].le(40),"date"].dt.strftime("%Y-%m-%d").tolist()),"high_hit_dates":"|".join(x.loc[x["loc"].ge(60),"date"].dt.strftime("%Y-%m-%d").tolist())}
@@ -209,9 +213,9 @@ def _gates(price: pd.DataFrame, snapshot: pd.DataFrame, components: pd.DataFrame
 def _screen_variants(scored: pd.DataFrame) -> pd.DataFrame:
     out=[]
     for v,(minimum,lo,hi) in SPECS.items():
-        d=scored.copy(); d["variant"]=v; d["gate_core_top250"]=True; d["gate_weekly_coverage"]=d.weekly_core_coverage.gt(.8); d["gate_max_outside"]=d.max_consecutive_outside.le(2); d["gate_range"]=d.range_pct.ge(minimum); d["gate_alternation"]=d[f"{v}_alternation_path"].ne(""); d["gate_one_day_anomaly"]=d.max_one_day_contribution_pct.le(35)
-        gs=["gate_core_top250","gate_weekly_coverage","gate_max_outside","gate_range","gate_alternation","gate_one_day_anomaly"]; d["final_pass"]=d[gs].all(axis=1); d["elimination_primary_reason"]=d.apply(lambda r: "pass" if r.final_pass else next(g for g in gs if not r[g]),axis=1)
-        d=d.sort_values(["risk_adjusted_rs20_score","RS20","ticker"],ascending=[False,False,True]); d["final_rank"]=pd.NA; d.loc[d.final_pass,"final_rank"]=range(1,int(d.final_pass.sum())+1); out.append(d)
+        d=scored.copy(); d["variant"]=v; d["gate_core_top250"]=True; d["gate_adjusted_warmup_ready"]=d.low_base_score.notna(); d["gate_weekly_coverage"]=d.weekly_core_coverage.gt(.8); d["gate_max_outside"]=d.max_consecutive_outside.le(2); d["gate_range"]=d.range_pct.ge(minimum); d["gate_alternation"]=d[f"{v}_alternation_path"].ne(""); d["gate_one_day_anomaly"]=d.max_one_day_contribution_pct.le(35)
+        gs=["gate_core_top250","gate_adjusted_warmup_ready","gate_weekly_coverage","gate_max_outside","gate_range","gate_alternation","gate_one_day_anomaly"]; d["final_pass"]=d[gs].all(axis=1); d["elimination_primary_reason"]=d.apply(lambda r: "pass" if r.final_pass else next(g for g in gs if not r[g]),axis=1)
+        d=d.sort_values(["normalized_position","risk_adjusted_rs20_score","RS20","ticker"],ascending=[True,False,False,True]); d["final_rank"]=pd.NA; d.loc[d.final_pass,"final_rank"]=range(1,int(d.final_pass.sum())+1); out.append(d)
     return pd.concat(out,ignore_index=True)
 
 
@@ -227,11 +231,20 @@ def _path(x: pd.DataFrame, lo: float, hi: float) -> str:
 
 
 def _alternative_audit(scored: pd.DataFrame, screens: pd.DataFrame, alt_path: Path) -> pd.DataFrame:
-    ref=pd.read_csv(alt_path,dtype={"ticker":str}).head(10); ref.ticker=ref.ticker.str.zfill(4); return ref[["ticker","name"]].merge(screens[["ticker","variant","final_pass","final_rank","elimination_primary_reason"]],on="ticker",how="left")
+    ref=pd.read_csv(alt_path,dtype={"ticker":str}).head(10); ref.ticker=ref.ticker.str.zfill(4)
+    out = ref[["ticker","name"]].merge(screens[["ticker","variant","final_pass","final_rank","elimination_primary_reason"]],on="ticker",how="left")
+    out["elimination_primary_reason"] = out["elimination_primary_reason"].fillna("not_current_layer0_core_top250_asof")
+    out["published_top30"] = out["final_rank"].le(30).fillna(False)
+    return out
 
 def _intersections(screens: pd.DataFrame) -> pd.DataFrame:
-    sets={v:set(screens[(screens.variant.eq(v))&screens.final_pass].ticker) for v in SPECS}; return pd.DataFrame([{"comparison":"all_three_intersection","tickers":"|".join(sorted(set.intersection(*sets.values()))),"count":len(set.intersection(*sets.values()))}, *[{"comparison":v,"tickers":"|".join(sorted(s)),"count":len(s)} for v,s in sets.items()]])
-def _supply(s: pd.DataFrame) -> pd.DataFrame: return s.groupby("variant").agg(universe_rows=("ticker","size"),passed=("final_pass","sum"),range_failed=("gate_range",lambda x:int((~x).sum())),alternation_failed=("gate_alternation",lambda x:int((~x).sum())),anomaly_failed=("gate_one_day_anomaly",lambda x:int((~x).sum()))).reset_index()
+    top_sets={v:set(screens[(screens.variant.eq(v))&screens.final_rank.le(30)].ticker) for v in SPECS}
+    hard_sets={v:set(screens[(screens.variant.eq(v))&screens.final_pass].ticker) for v in SPECS}
+    rows=[{"comparison":"published_top30_all_three_intersection","tickers":"|".join(sorted(set.intersection(*top_sets.values()))),"count":len(set.intersection(*top_sets.values()))}]
+    rows.extend({"comparison":f"published_top30_{v}","tickers":"|".join(sorted(s)),"count":len(s)} for v,s in top_sets.items())
+    rows.append({"comparison":"hard_pass_all_three_intersection_reference","tickers":"|".join(sorted(set.intersection(*hard_sets.values()))),"count":len(set.intersection(*hard_sets.values()))})
+    return pd.DataFrame(rows)
+def _supply(s: pd.DataFrame) -> pd.DataFrame: return s.groupby("variant").agg(universe_rows=("ticker","size"),hard_passed=("final_pass","sum"),published_top30=("final_rank",lambda x:int(x.le(30).sum())),warmup_blocked=("gate_adjusted_warmup_ready",lambda x:int((~x).sum())),range_failed=("gate_range",lambda x:int((~x).sum())),alternation_failed=("gate_alternation",lambda x:int((~x).sum())),anomaly_failed=("gate_one_day_anomaly",lambda x:int((~x).sum()))).reset_index()
 def _coverage(snapshot: pd.DataFrame, prices: pd.DataFrame, actual: pd.Timestamp, requested: str) -> pd.DataFrame: return pd.DataFrame([{"field":"as_of","requested":requested,"actual":actual.strftime("%Y-%m-%d"),"ready":True},{"field":"current_core","requested":250,"actual":snapshot[snapshot.snapshot_date.eq(pd.Timestamp('2026-07-16'))].ticker.nunique(),"ready":True},{"field":"adjusted_analysis","requested":"trusted exact; no raw fallback","actual":len(prices),"ready":True}])
 def _max_false(values:list[bool])->int:
     best=cur=0
