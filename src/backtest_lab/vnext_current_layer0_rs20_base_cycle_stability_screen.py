@@ -25,6 +25,11 @@ DEFAULT_SNAPSHOT = (
     / "layer0_compact_weekly_universe_snapshot.csv"
 )
 DEFAULT_OUTPUT = REPO_ROOT / "outputs" / "vnext_current_layer0_rs20_base_cycle_stability_three_variant_screen_20260722"
+DEFAULT_SNAPSHOT_DELTA = Path(
+    "C:/Users/zergv/Documents/Codex/2026-05-23/ai-stock-rotation-radar-https-docs/outputs/"
+    "radar_vnext_current_layer0_core_top250_weekly_snapshot_fill_20260722/"
+    "current_layer0_core_top250_weekly_snapshot_delta.csv"
+)
 REQUESTED_AS_OF = "2026-07-21"
 WINDOW_START = "2026-03-02"
 VARIANTS = {
@@ -48,18 +53,34 @@ FLAGS = {
 def main() -> None:
     parser = argparse.ArgumentParser(description="Audit current Layer0 base-cycle screen inputs.")
     parser.add_argument("--snapshot", default=str(DEFAULT_SNAPSHOT))
+    parser.add_argument("--snapshot-delta", default=str(DEFAULT_SNAPSHOT_DELTA))
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT))
     parser.add_argument("--requested-as-of", default=REQUESTED_AS_OF)
     args = parser.parse_args()
-    build_package(Path(args.snapshot), Path(args.output_dir), args.requested_as_of)
+    build_package(Path(args.snapshot), Path(args.output_dir), args.requested_as_of, Path(args.snapshot_delta))
 
 
-def build_package(snapshot_path: Path, output_dir: Path, requested_as_of: str) -> dict[str, Any]:
+def build_package(
+    snapshot_path: Path,
+    output_dir: Path,
+    requested_as_of: str,
+    snapshot_delta_path: Path | None = None,
+) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     snapshot = pd.read_csv(snapshot_path, dtype={"ticker": str})
     snapshot["snapshot_date"] = pd.to_datetime(snapshot["snapshot_date"], errors="coerce").dt.date
     snapshot["ticker"] = snapshot["ticker"].astype(str).str.zfill(4)
     requested = date.fromisoformat(requested_as_of)
+    delta_ready = snapshot_delta_path is not None and snapshot_delta_path.exists()
+    if delta_ready:
+        delta = pd.read_csv(snapshot_delta_path, dtype={"ticker": str})
+        delta = delta.rename(columns={"top250_core_rank": "core_rank"})
+        delta["snapshot_date"] = pd.to_datetime(delta["snapshot_date"], errors="coerce").dt.date
+        delta["ticker"] = delta["ticker"].astype(str).str.zfill(4)
+        delta["selection_bucket"] = "core"
+        delta["layer0_core_top250"] = True
+        snapshot = pd.concat([snapshot, delta], ignore_index=True, sort=False)
+        snapshot = snapshot.drop_duplicates(["snapshot_date", "ticker"], keep="last")
     actual = max(snapshot["snapshot_date"].dropna())
     required_weeks = _weekly_requirement_dates(actual, requested)
     missing_weekly = pd.DataFrame(
@@ -81,12 +102,19 @@ def build_package(snapshot_path: Path, output_dir: Path, requested_as_of: str) -
     ].copy()
     existing["available_locally"] = True
     coverage = _coverage(snapshot, actual, requested, required_weeks)
+    current_core = snapshot.loc[
+        snapshot["snapshot_date"].eq(actual) & snapshot["selection_bucket"].eq("core"),
+        ["snapshot_date", "ticker", "name", "market"],
+    ].copy()
+    price_requirements, display_requirements, turnover_requirements = _current_source_requirements(
+        current_core, actual, requested
+    )
     downstream = pd.DataFrame(
         [
             {
                 "dependency": "adjusted_analysis_close_exact_keys",
-                "status": "deferred_until_missing_weekly_core_membership_is_materialized",
-                "why_not_enumerated_now": "2026-07-16 core top250 determines the as_of candidate universe; enumerating prices from 2026-06-29 membership would silently exclude new core members.",
+                "status": "exact_requirement_ledger_materialized" if delta_ready else "deferred_until_missing_weekly_core_membership_is_materialized",
+                "why_not_enumerated_now": "" if delta_ready else "2026-07-16 core top250 determines the as_of candidate universe; enumerating prices from 2026-06-29 membership would silently exclude new core members.",
                 "required_window": f"{WINDOW_START} through {requested_as_of}",
                 "raw_as_adjusted_allowed": False,
             },
@@ -116,7 +144,11 @@ def build_package(snapshot_path: Path, output_dir: Path, requested_as_of: str) -
         ]
     )
     _write_csv(existing, output_dir / "local_layer0_core_coverage_through_actual_snapshot.csv")
+    _write_csv(current_core, output_dir / "current_asof_layer0_core_top250.csv")
     _write_csv(missing_weekly, output_dir / "radar_exact_weekly_layer0_core_snapshot_gap_ledger.csv")
+    _write_csv(price_requirements, output_dir / "radar_exact_adjusted_analysis_close_requirement_ledger.csv")
+    _write_csv(display_requirements, output_dir / "radar_exact_official_raw_display_close_requirement_ledger.csv")
+    _write_csv(turnover_requirements, output_dir / "radar_exact_full_market_turnover_requirement_ledger.csv")
     _write_csv(downstream, output_dir / "downstream_adjusted_price_and_feature_dependency_ledger.csv")
     _write_csv(coverage, output_dir / "requested_vs_actual_coverage.csv")
     _write_csv(policy, output_dir / "frozen_screen_policy.csv")
@@ -124,10 +156,15 @@ def build_package(snapshot_path: Path, output_dir: Path, requested_as_of: str) -
 
     readiness = {
         "task": TASK_ID,
-        "status": "blocked_waiting_exact_weekly_layer0_core_snapshot_authority",
+        "status": "blocked_waiting_adjusted_close_and_current_liquidity_authority" if delta_ready else "blocked_waiting_exact_weekly_layer0_core_snapshot_authority",
         "requested_as_of": requested_as_of,
         "latest_local_layer0_snapshot_date": actual.isoformat(),
         "missing_weekly_snapshot_dates": [d.isoformat() for d in required_weeks],
+        "latest_layer0_core_membership_absorbed": delta_ready,
+        "current_core_top250_rows": int(len(current_core)),
+        "adjusted_analysis_close_requirement_rows": int(len(price_requirements)),
+        "official_raw_display_close_requirement_rows": int(len(display_requirements)),
+        "full_market_turnover_requirement_dates": int(len(turnover_requirements)),
         "latest_official_close_as_of_ready": False,
         "adjusted_analysis_close_exact_authority_ready": False,
         "risk_adjusted_rs20_components_as_of_ready": False,
@@ -135,7 +172,13 @@ def build_package(snapshot_path: Path, output_dir: Path, requested_as_of: str) -
         "ready_for_experiments": False,
         "performance_authorized": False,
         "future_data_violation_count": 0,
-        "blocking_summary": "Do not reuse 2026-07-08 risk_adjusted_rs20 output as a current screen. Missing Layer0 core snapshots for the weekly dates listed in the exact gap ledger must be supplied first; adjusted-price and feature keys are then enumerated from the resulting current core membership.",
+        "blocking_summary": (
+            "Do not reuse 2026-07-08 risk_adjusted_rs20 output as a current screen. "
+            "Current core membership is now known, but trusted adjusted analysis closes and the current full-market turnover tail are not yet absorbed. "
+            "No score, alternation path, or candidate ranking has been calculated."
+            if delta_ready
+            else "Do not reuse 2026-07-08 risk_adjusted_rs20 output as a current screen. Missing Layer0 core snapshots for the weekly dates listed in the exact gap ledger must be supplied first; adjusted-price and feature keys are then enumerated from the resulting current core membership."
+        ),
         **FLAGS,
     }
     _write_json(output_dir / "readiness_for_current_layer0_base_cycle_stability_screen.json", readiness)
@@ -147,7 +190,11 @@ def build_package(snapshot_path: Path, output_dir: Path, requested_as_of: str) -
             "input_snapshot": str(snapshot_path),
             "artifacts": [
                 "local_layer0_core_coverage_through_actual_snapshot.csv",
+                "current_asof_layer0_core_top250.csv",
                 "radar_exact_weekly_layer0_core_snapshot_gap_ledger.csv",
+                "radar_exact_adjusted_analysis_close_requirement_ledger.csv",
+                "radar_exact_official_raw_display_close_requirement_ledger.csv",
+                "radar_exact_full_market_turnover_requirement_ledger.csv",
                 "downstream_adjusted_price_and_feature_dependency_ledger.csv",
                 "requested_vs_actual_coverage.csv",
                 "frozen_screen_policy.csv",
@@ -159,8 +206,12 @@ def build_package(snapshot_path: Path, output_dir: Path, requested_as_of: str) -
     )
     (output_dir / "final_summary_zh.md").write_text(
         "# Layer0 core risk-adjusted diagnostic screen\n\n"
-        f"本機 Layer0 weekly snapshot 最後日期為 `{actual.isoformat()}`，不足以代表 requested as_of `{requested_as_of}`。\n\n"
-        "已產生 Radar 的 exact weekly core-top250 snapshot gap ledger。尚未計算價格往返、分數或候選名單，未跑績效。\n",
+        + (
+            f"已吸收截至 `{actual.isoformat()}` 的 Layer0 core-top250 membership。\n\n"
+            "已產生 path-independent adjusted analysis close、7/21 official raw display close、以及全市場20TD turnover尾端的 exact requirement ledgers。尚未計算價格往返、分數或候選名單，未跑績效。\n"
+            if delta_ready
+            else f"本機 Layer0 weekly snapshot 最後日期為 `{actual.isoformat()}`，不足以代表 requested as_of `{requested_as_of}`。\n\n已產生 Radar 的 exact weekly core-top250 snapshot gap ledger。尚未計算價格往返、分數或候選名單，未跑績效。\n"
+        ),
         encoding="utf-8",
     )
     return readiness
@@ -189,6 +240,46 @@ def _coverage(snapshot: pd.DataFrame, actual: date, requested: date, missing: li
             {"field": "missing_weekly_core_snapshots", "requested": "0", "actual": ";".join(d.isoformat() for d in missing), "ready": len(missing) == 0},
         ]
     )
+
+
+def _current_source_requirements(
+    current_core: pd.DataFrame, actual_snapshot: date, requested_as_of: date
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Create source authority only after the current core membership is exact."""
+    if current_core.empty or actual_snapshot < requested_as_of - timedelta(days=10):
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+    price_dates = pd.bdate_range(WINDOW_START, requested_as_of).date
+    stocks = current_core[["ticker", "name", "market"]].drop_duplicates().copy()
+    stock_rows = stocks.merge(pd.DataFrame({"date": price_dates}), how="cross")
+    stock_rows["requirement_type"] = "trusted_adjusted_analysis_close"
+    stock_rows["purpose"] = "self price range, alternation, RS20, BIAS60, volatility, low-base rebuild"
+    stock_rows["raw_as_adjusted_allowed"] = False
+    benchmark = pd.DataFrame(
+        {
+            "ticker": "0050",
+            "name": "元大台灣50",
+            "market": "TWSE",
+            "date": price_dates,
+            "requirement_type": "trusted_adjusted_analysis_close",
+            "purpose": "RS20 benchmark only",
+            "raw_as_adjusted_allowed": False,
+        }
+    )
+    prices = pd.concat([stock_rows, benchmark], ignore_index=True)
+    prices["date"] = pd.to_datetime(prices["date"]).dt.strftime("%Y-%m-%d")
+    display = stocks.copy()
+    display["date"] = requested_as_of.isoformat()
+    display["requirement_type"] = "official_raw_close_display_only"
+    display["purpose"] = "as_of tradability/display; never adjusted analysis"
+    turnover_start = requested_as_of - timedelta(days=30)
+    all_dates = pd.bdate_range(turnover_start, requested_as_of).date
+    turnover = pd.DataFrame({"market_date": all_dates})
+    turnover = turnover[turnover["market_date"] > actual_snapshot].copy()
+    turnover["market_date"] = pd.to_datetime(turnover["market_date"]).dt.strftime("%Y-%m-%d")
+    turnover["requirement_type"] = "official_full_market_turnover_value"
+    turnover["purpose"] = "complete current 20TD turnover rank for frozen liquidity component"
+    turnover["scope"] = "TWSE and TPEx full market; ticker tie-break only after turnover sort"
+    return prices, display, turnover
 
 
 def _write_csv(frame: pd.DataFrame, path: Path) -> None:
