@@ -14,7 +14,7 @@ from pathlib import Path
 
 
 REQUIRED_EVENT_COLUMNS = {
-    "strategy_id", "ticker", "share_class", "entitlement_date",
+    "strategy_id", "ticker", "share_class", "event_entitlement_date",
     "event_type", "event_status", "source_url", "source_hash",
 }
 REQUIRED_POSITION_COLUMNS = {
@@ -58,9 +58,14 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--position-ledger", required=True, type=Path)
     parser.add_argument("--event-package", type=Path)
+    parser.add_argument("--blocker-ledger", type=Path)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
     result = validate(args.position_ledger, args.event_package)
+    blocker_rows = read_csv(args.blocker_ledger) if args.blocker_ledger else []
+    if blocker_rows:
+        result["remaining_true_holder_blocked_rows"] = len(blocker_rows)
+        result["ready_to_rechain"] = False
     result.update(
         task_id="TASK-BACKTEST-CORE-VNEXT-THREE-STRATEGY-EVENT-DRIVEN-RECHAIN-001",
         performance_executed=False,
