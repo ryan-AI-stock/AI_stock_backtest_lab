@@ -1,6 +1,16 @@
 # AI_stock_backtest_lab
 
-被AI研究所 EP05 回測程式基地。
+股票模型研究與驗證基地。現行模型為 V4-D 凍結正式基準、C6 score0 研究版及 C6 風險 challenger。
+
+## 現行入口（2026-09-05）
+
+- [架構與重構狀態](docs/current_architecture.md)：目前服務、保留邊界及尚未完成的遷移。
+- [模型生命週期清冊](configs/model_lifecycle.json)：正式、研究與歷史版本不可混用。
+- 執行 `python scripts/validate_model_lifecycle.py` 檢查清冊與受保護產品。
+- Core、Experiments 是工程責任，不要求獨立 task；Strategy Center 由單一主 task 維護規格、結論與 checkpoint。
+- 每日／每週報告仍由原服務 repo 產出；本 repo 不接管發布或改動排程。
+
+以下 EP05 內容為歷史版本說明，**不是目前 V4-D 或 C6 的規格／成本／資料 authority**。
 
 本 repo 用來獨立承接大型回測實驗，避免把歷史資料、參數搜尋、影片資料包輸出塞進 `AI_stock_market_daily` 或 `AI_stock_rotation_radar` 的正式排程主線。
 

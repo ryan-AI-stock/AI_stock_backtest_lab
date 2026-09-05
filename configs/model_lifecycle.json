@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "models": {
+    "v4d": {"status": "frozen_formal", "runtime_repo": "AI_stock_rotation_radar"},
+    "c6_score0": {"status": "research", "runtime_repo": "AI_stock_rotation_radar"},
+    "c6_risk": {"status": "challenger", "runtime_repo": null},
+    "actual_holdings": {"status": "forward_tracking", "runtime_repo": null}
+  },
+  "protected_reports": [
+    "台股加權及中大型權值股訊號追蹤_每日台股報告.pdf",
+    "台股加權及中大型權值股訊號追蹤_每週台股報告.pdf",
+    "台股股票族群輪動雷達_每日台股報告.pdf"
+  ],
+  "protected_repositories": [
+    "AI_stock_market_daily", "AI_stock_market_weekly", "AI_stock_rotation_radar",
+    "AI_stock_schedule_rules", "AI_action_orchestrator"
+  ],
+  "required_independent_tasks": false,
+  "legacy_removal_requires": ["historical_evidence", "dependency_review", "recoverable_version", "regression_tests"],
+  "migration_status": "partial"
+}
