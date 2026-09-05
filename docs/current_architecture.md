@@ -36,3 +36,16 @@ Strategy/Core/Experiments 的 432 個來源檔均未出現在本 repo 49bbc8c �
 C6 R3-T80 提領 4,240.02 萬元的完整驗證主張已撤回：事件驗收被 wrapper 跳過、估值 carry 未限定 official_no_trade、提領選槽口徑不同。不得以 blocker=0 宣稱完整 exact 驗收。
 
 formal_model_changed=false；trade_decision_changed=false；active_in_trade_decision=false；report_changed=false。
+
+## 首批引擎入版（2026-09-05）
+
+已將本機 Core 的 run_c6_64_start_monthly_withdrawal_rechain.py 及相應測試納入 Git。
+原工作目錄暫留相同修正版，避免破壞既有絕對路徑呼叫；尚未完成所有 caller 遷移。
+
+修正：估值只接受 exact ticker/date 價格，或同 ticker/date 的 official_no_trade 證據才允許 carry。缺估值時停止 NAV 計算，禁止漏算持股或沿用未授權舊價。6項事件及估值測試通過，不等於公司行動coverage或完整模型回測驗收。
+
+R3-T80 原提領路徑窄範圍稽核：2406個持股日期鍵；舊來源含2402個exact、1個official_no_trade，缺3個。
+官方補查確認：3653於2025-10-02收盤2470元；2383與3044的2026-02-20是官方春節補假，不是應補成交價的日期。
+因此要修正交易日曆並重新計算持有TD／訊號與帳本，不能只把兩列刪掉便沿用績效。
+原始HTTP回應、SHA256及補件CSV保存於本task outputs/c6_risk_mark_audit_20260905/official_probe。
+仍未驗收：全變體公司行動區間覆蓋、完整future-data audit、統一提領規則、重鏈與新風險假說比較。
